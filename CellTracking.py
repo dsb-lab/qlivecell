@@ -1233,11 +1233,40 @@ class plotCounter:
         self.current += 1
         self.currentonround += 1
         if self.currentonround==self.groupsize:
+            self.currentround+=1
             self.current -= self.overlap
             self.currentonround=0
         if self.current < self.totalsize and self.currentround < self.rounds:
             return self.current, self.currentonround, self.currentround
         raise StopIteration
+
+
+class plotRound:
+    def __init__(self, layout, totalsize, overlap, round):
+        self.totalsize  = totalsize
+        self.overlap    = overlap
+        self.layout     = layout
+        self.groupsize  = self.layout[0] * self.layout[1]
+        
+        self.current = (self.groupsize*round -1)-(self.overlap*round)
+        self.currentonround = -1
+
+        self.rounds     = math.ceil((self.totalsize)/(self.groupsize-self.overlap))
+        self.currentround = round
+        if self.rounds == 1:
+            self.groupsize=self.totalspots
+    
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.current += 1
+        self.currentonround += 1
+        if self.currentonround==self.groupsize:
+            raise StopIteration
+        if self.current < self.totalsize and self.currentround < self.rounds:
+            return self.current, self.currentonround, self.currentround
+
 
 class CellTracking(object):
     def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7):
