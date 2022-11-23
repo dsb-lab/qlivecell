@@ -841,6 +841,8 @@ class PlotActionCS:
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=self.figheight/90, ha='right', va='top')
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
+        self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
+        self.ind = 0
         self.visualization()
         self.update()
         self.current_state=None
@@ -850,6 +852,20 @@ class PlotActionCS:
             self.z=self.zs
         else:
             self.z = None
+    
+    def onscroll(self, event):
+        if self.current_state==None:
+            self.current_state="SCL"
+            if event.button == 'up':
+                self.ind = self.ind + 1
+            elif event.button == 'down':
+                self.ind = self.ind - 1
+            print(self.ind)
+            # PLOT 
+        else:
+            print("Currently on another action")
+            return
+        self.current_state=None
 
     def __call__(self, event):
         if self.current_state==None:
