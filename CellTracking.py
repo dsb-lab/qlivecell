@@ -1519,7 +1519,7 @@ class CellTracking(object):
             else:      
                 img = imgs[z,:,:]
                 self.zs[idx1, idx2] = z
-                self.plot_axis(self.CSt[t], self.ax[idx1, idx2], img, z, t)
+                self.plot_axis(self.CSt[t], self.PACT.ax[idx1, idx2], img, z, t)
                 for lab in range(len(FinalLabels[t])):
                     z = FinalCenters[t][lab][0]
                     ys = FinalCenters[t][lab][1]
@@ -1574,8 +1574,8 @@ class PlotActionCT:
             self.max_round =  math.ceil((self.CS.slices)/(groupsize-self.CS.plot_overlap))
         else:
             self.max_round = self.CS.slices
-        self.visualization()
-        self.update()
+        #self.visualization()
+        #self.update()
 
     def __call__(self, event):
         if self.current_state==None:
