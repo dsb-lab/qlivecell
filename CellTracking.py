@@ -1447,7 +1447,7 @@ class CellTracking(object):
         self.label_correspondance[Ts[maxlabidx]][IDsco[maxlabidx]][1] = minlab
 
     def plot_tracking(self):
-        counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
+        counter = plotRound(layout=self.plot_layout_time,totalsize=self.slices, overlap=self.plot_overlap_time, round=0)
         fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
         self.zs = np.zeros_like(ax)
         self.PACT = PlotActionCT(fig, ax, self)
@@ -1470,14 +1470,15 @@ class CellTracking(object):
                 self.zs[idx1, idx2] = z
                 self.plot_axis(self.CSt[t], ax[idx1, idx2], img, z, t)
                 for lab in range(len(FinalLabels[t])):
-                    z = FinalCenters[t][lab][0]
-                    ys = FinalCenters[t][lab][1]
-                    xs = FinalCenters[t][lab][2]
-                    #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
-                    _ = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                    _ = ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
-                    _ = ax[idx1, idx2].set_xticks([])
-                    _ = ax[idx1, idx2].set_yticks([])
+                    zz = FinalCenters[t][lab][0]
+                    if zz == z:
+                        ys = FinalCenters[t][lab][1]
+                        xs = FinalCenters[t][lab][2]
+                        #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
+                        _ = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                        _ = ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
+                        _ = ax[idx1, idx2].set_xticks([])
+                        _ = ax[idx1, idx2].set_yticks([])
         plt.subplots_adjust(bottom=0.075)
         # Make a horizontal slider to control the frequency.
         axslide = fig.add_axes([0.12, 0.01, 0.8, 0.03])
@@ -1485,7 +1486,7 @@ class CellTracking(object):
             ax=axslide,
             label='time',
             valmin=0,
-            valmax=self.times,
+            valmax=self.times-1,
             valinit=0,
             valstep=1
         )
@@ -1496,12 +1497,12 @@ class CellTracking(object):
     def update_slider(self, t):
         self.PACT.t=t
         self.PACT.CS = self.CSt[t]
-        self.PACT.CT.replot_tracking()
+        self.PACT.CT.replot_tracking(self.PACT.cr)
         self.PACT.update()
 
     def replot_tracking(self, round):
         t = self.PACT.t
-        counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=round)
+        counter = plotRound(layout=self.plot_layout_time,totalsize=self.slices, overlap=self.plot_overlap_time, round=round)
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
         IMGS = self.stacks
         FinalCenters = self.FinalCenters
@@ -1521,16 +1522,16 @@ class CellTracking(object):
                 self.zs[idx1, idx2] = z
                 self.plot_axis(self.CSt[t], self.PACT.ax[idx1, idx2], img, z, t)
                 for lab in range(len(FinalLabels[t])):
-                    z = FinalCenters[t][lab][0]
-                    ys = FinalCenters[t][lab][1]
-                    xs = FinalCenters[t][lab][2]
-                    idx1 = zidxs[0][z]
-                    idx2 = zidxs[1][z]
-                    #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
-                    _ = self.PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                    _ = self.PACT.ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
-                    _ = self.PACT.ax[idx1, idx2].set_xticks([])
-                    _ = self.PACT.ax[idx1, idx2].set_yticks([])
+                    zz = FinalCenters[t][lab][0]
+                    if zz==z:
+                        ys = FinalCenters[t][lab][1]
+                        xs = FinalCenters[t][lab][2]
+                        #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
+                        _ = self.PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                        _ = self.PACT.ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
+                        _ = self.PACT.ax[idx1, idx2].set_xticks([])
+                        _ = self.PACT.ax[idx1, idx2].set_yticks([])
+
         plt.subplots_adjust(bottom=0.075)
         # Make a horizontal slider to control the frequency.
 
