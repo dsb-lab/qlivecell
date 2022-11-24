@@ -1448,6 +1448,8 @@ class CellTracking(object):
     def plot_axis(self, CS, _ax, img, z, t):
         _ = _ax.imshow(img)
         _ = _ax.set_title("z = %d" %z)
+        _ = _ax.axis(False)
+
         for cell, outline in enumerate(CS.Outlines[z]):
             xs = CS.centersi[z][cell]
             ys = CS.centersj[z][cell]
@@ -1457,7 +1459,6 @@ class CellTracking(object):
             _ = _ax.scatter(outline[:,0], outline[:,1], c=[CS._masks_colors[CS._labels_color_id[Tlab]]], s=0.5, cmap=CS._masks_cmap_name)               
             #_ = _ax.annotate(str(label), xy=(ys, xs), c="w")
             #_ = _ax.scatter([ys], [xs], s=0.5, c="white")
-            _ = _ax.axis(False)
         plotmasks = False
         if plotmasks:#if CS.pltmasks_bool:
             CS.compute_Masks_to_plot()
@@ -1532,6 +1533,7 @@ class PlotActionCT:
             idx2 = zidxs[1][z]
             self.ax[idx1, idx2].cla()
             self.CT.plot_axis(self.CS, self.ax[idx1, idx2], img, z, t)
+            _ = self.ax[idx1, idx2].axis(False)
 
         for lab in range(len(FinalLabels[t])):
             z  = FinalCenters[t][lab][0]
@@ -1542,8 +1544,6 @@ class PlotActionCT:
             #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
             _ = self.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
             _ = self.ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
-            _ = self.ax[idx1, idx2].set_xticks([])
-            _ = self.ax[idx1, idx2].set_yticks([])
 
     def delete_cells(self):
         print("delete")

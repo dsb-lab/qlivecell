@@ -28,7 +28,6 @@ CT = CellTracking( IMGS, model, trainedmodel=True
                      , min_outline_length=200
                      , neighbors_for_sequence_sorting=7)
 
-
 CT()
 
 tmin  = 0
