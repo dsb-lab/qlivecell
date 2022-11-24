@@ -1,18 +1,23 @@
+import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider, Button
 
-fig, ax = plt.subplots(2,2)
-ax[0,0].plot(range(10), range(10))
-ax[0,1].plot(range(10), range(10))
-ax[1,0].plot(range(10), range(10))
-ax[1,1].plot(range(10), range(10))
 
-plt.tight_layout()
+# The parametrized function to be plotted
+def f(t, frequency):
+    return 5 * np.sin(2 * np.pi * frequency * t)
 
-_ax = fig.add_subplot()
-_ax.xaxis.set_visible(False)
-_ax.yaxis.set_visible(False)
-_ax.set_zorder(1000)
-_ax.patch.set_alpha(0.5)
-_ax.patch.set_color('r')
+t = np.linspace(0, 1, 1000)
+
+# Define initial parameters
+init_frequency = 3
+
+# Create the figure and the line that we will manipulate
+fig, ax = plt.subplots()
+line, = ax.plot(t, f(t, init_frequency), lw=2)
+ax.set_xlabel('Time [s]')
+
+# adjust the main plot to make room for the sliders
+fig.subplots_adjust(bottom=0.25)
 
 plt.show()
