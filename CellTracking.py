@@ -1570,13 +1570,9 @@ class PlotActionCT:
         self.z = None
         self.CS = CT.CSt[self.t]
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
-        if isinstance(self.zs, np.ndarray):
-            groupsize  = self.CS.plot_layout[0] * self.CS.plot_layout[1]
-            self.max_round =  math.ceil((self.CS.slices)/(groupsize-self.CS.plot_overlap))
-        else:
-            self.max_round = self.CS.slices
-        #self.visualization()
-        #self.update()
+        groupsize  = self.CT.plot_layout_time[0] * self.CT.plot_layout_time[1]
+        self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap_time))
+        print(self.max_round)
 
     def __call__(self, event):
         if self.current_state==None:
@@ -1623,6 +1619,7 @@ class PlotActionCT:
                 self.cr = self.cr - 1
             self.cr = max(self.cr, 0)
             self.cr = min(self.cr, self.max_round)
+            print(self.cr)
             self.CT.replot_tracking(self.cr)
             self.update()
         else:
