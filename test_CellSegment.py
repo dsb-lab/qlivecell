@@ -33,13 +33,3 @@ CS = CellSegmentation( imgs, model, trainedmodel=True
                      , min_outline_length=200
                      , neighbors_for_sequence_sorting=7)
 CS()
-
-fig, ax = plt.subplots(1, 1)
-
-X = np.random.rand(20, 20, 40)
-
-tracker = IndexTracker(ax, X)
-
-
-fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
-plt.show()
