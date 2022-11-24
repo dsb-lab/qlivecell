@@ -485,8 +485,9 @@ class CellSegmentation(object):
                     pidx=id
                     break
             if len(used_idxs)==a:
-                raise Exception("Improve your point drawing, this is a bit embarrasing") 
-        
+                self.printfancy("Improve your point drawing, this is a bit embarrasing") 
+                self.PA.visualization()
+                return
         return np.array(new_outline), used_idxs
 
     def _increase_point_resolution(self, outline):
@@ -527,12 +528,7 @@ class CellSegmentation(object):
             self.centersi[z].pop(id_l)
             self.centersj[z].pop(id_l)
         self.update_labels()
-        if isinstance(self.plot_only_z, int):
-            img = self.stack[self.plot_only_z,:,:]
-            PA.ax.cla()
-            self.plot_axis(PA.ax, img, self.plot_only_z)
-        else:
-            self.replot_segmented()
+        self.replot_segmented(PA.cr)
         
     # Combines cells by assigning the info for the cell with higher label number
     # to the other one. Cells must not appear in the same and they must be contiguous
@@ -544,12 +540,7 @@ class CellSegmentation(object):
         id_l = np.where(np.array(self.labels[Zs[maxcid]])==max(cells))[0][0]
         self.labels[Zs[maxcid]][id_l] = min(cells)
         self.update_labels()
-        if isinstance(self.plot_only_z, int):
-            img = self.stack[self.plot_only_z,:,:]
-            PA.ax.cla()
-            self.plot_axis(PA.ax, img, self.plot_only_z)
-        else:
-            self.replot_segmented()
+        self.replot_segmented(PA.cr)
 
     def add_cell(self, PA):
         line, = PA.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
@@ -562,17 +553,10 @@ class CellSegmentation(object):
         new_outline = np.asarray([list(a) for a in zip(np.rint(self.linebuilder.xs).astype(np.int64), np.rint(self.linebuilder.ys).astype(np.int64))])
         new_outline_sorted, _ = self._sort_point_sequence(new_outline)
         new_outline_sorted_highres = self._increase_point_resolution(new_outline_sorted)
-        img = self.stack[PA.z,:,:]
-        PA.ax_sel.cla()
         self.Outlines[PA.z].append(new_outline_sorted_highres)
         self.Masks[PA.z].append(self._points_within_hull(new_outline_sorted_highres))
         self.update_labels()
-        if isinstance(self.plot_only_z, int):
-            img = self.stack[self.plot_only_z,:,:]
-            PA.ax.cla()
-            self.plot_axis(PA.ax, img, self.plot_only_z)
-        else:
-            self.replot_segmented()
+        self.replot_segmented(PA.cr)
         
     def _end_actions(self):
         self.printfancy("")
@@ -666,7 +650,7 @@ class CellSegmentation(object):
         self.printfancy("")
         self.printfancy("Proceeding to plot cell segmentation")
         self.printfancy("- To plot a specific PLANE type the number")            
-        self.printfancy("- Press ENTER to plot all")
+        self.printfancy("- Press ENTER to plot layout")
         self.printfancy("- Press B to go back to action selection")
         self.printfancy("")
         self.plot_only_z=input("#   SELECTION: ")
@@ -698,7 +682,7 @@ class CellSegmentation(object):
                 # plot
                 fig, ax = plt.subplots()
                 self.plot_axis(ax, img, self.plot_only_z)
-                PA = PlotActionCS(fig, ax, self.plot_only_z, self)
+                self.PA = PlotActionCS(fig, ax, self.plot_only_z, self, self.plot_only_z)
                 plt.show()
 
                 self.printfancy("")
@@ -711,21 +695,16 @@ class CellSegmentation(object):
                 self.printfancy("")
                 self.actions()
                 return
+        
         self.printfancy("")
-        self.printfancy("## Plotting all planes ##")
-        counter = plotCounter(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap)
+        self.printfancy("## Plotting layout ##")
         
         # tuple with dimension 2 containing vectors of size=groupsize
         # each element is the correspondent index for a given z plane
-        
-        myaxes = []
-        self.PlotActions = []
-        for r in range(counter.rounds):
-            fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
-            zs = np.empty_like(ax)
-            myaxes.append(ax)
-            PA = PlotActionCS(fig, ax, zs, self)
-            self.PlotActions.append(PA)
+        counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
+        fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
+        zs = np.empty_like(ax)
+        self.PA = PlotActionCS(fig, ax, zs, self, 0)
         if len(ax.shape)==1:
             zidxs = range(counter.groupsize)
         else:
@@ -735,76 +714,78 @@ class CellSegmentation(object):
         for z, id, round in counter:
             
             # select current z plane
-            img = self.stack[z,:,:]
             if len(ax.shape)==1:
-                # select corresponding idxs on the plot 
                 idx = zidxs[id]
-                self.PlotActions[round].zs[idx] = z
+                if z == None:
+                    ax[idx].axis(False)
+                else:
+                    img = self.stack[z,:,:]
 
-                # plot
-                self.plot_axis(myaxes[round][idx], img, z)
+                    # select corresponding idxs on the plot 
+                    self.PA.zs[idx] = z
+
+                    # plot
+                    self.plot_axis(ax[idx], img, z)
                 
-                #check if the group is complete
-                if id==counter.groupsize-1:
-                    counter.currentround += 1
-
-                # Hide grid lines for empty plots 
-                for id in range(-1, -1*counter.emptyspots-1, -1):
-                    idx = zidxs[id]
-                    myaxes[-1][idx].axis(False)
             else:
-                # select corresponding idxs on the plot 
-                idx1 = zidxs[0][id]
-                idx2 = zidxs[1][id]
-                self.PlotActions[round].zs[idx1, idx2] = z
+                if z == None:
+                    ax[idx1,idx2].axis(False)
+                else:      
+                    # select corresponding idxs on the plot 
+                    img = self.stack[z,:,:]
+                    idx1 = zidxs[0][id]
+                    idx2 = zidxs[1][id]
+                    self.PA.zs[idx1, idx2] = z
 
-                # plot
-                self.plot_axis(myaxes[round][idx1, idx2], img, z)
-                
-                #check if the group is complete
-                if id==counter.groupsize-1:
-                    counter.currentround += 1
-
-            # Hide grid lines for empty plots 
-            for id in range(-1, -1*counter.emptyspots-1, -1):
-                idx1 = zidxs[0][id]
-                idx2 = zidxs[1][id]
-                myaxes[-1][idx1,idx2].axis(False)
-
+                    # plot
+                    self.plot_axis(ax[idx1, idx2], img, z)
+                    
         plt.show()
         self.printfancy("")
         self.printfancy("## Plotting completed ##")
         self.printfancy("")
 
-    def replot_segmented(self):
-        counter = plotCounter(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap)
-        
-        # tuple with dimension 2 containing vectors of size=groupsize
-        # each element is the correspondent index for a given z plane
-        if len(self.PlotActions[0].ax.shape)==1:
-            zidxs = range(counter.groupsize)
-        else:
-            zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
-        # Plot all our Zs in the corresponding round
-        
-        for z, id, round in counter:
-            img = self.stack[z,:,:]
-            if len(self.PlotActions[round].ax.shape)==1:
-                # select corresponding idxs on the plot 
-                idx = zidxs[id]
-                self.PlotActions[round].ax[idx].cla()
-                self.plot_axis(self.PlotActions[round].ax[idx], img, z)
+    def replot_segmented(self, round):
+        if isinstance(self.PA.ax, np.ndarray):
+            counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=round)
+
+            if len(self.PA.ax.shape)==1:
+                zidxs = range(counter.groupsize)
             else:
-                # select corresponding idxs on the plot 
-                idx1 = zidxs[0][id]
-                idx2 = zidxs[1][id]
-                # plot
-                self.PlotActions[round].ax[idx1,idx2].cla()
-                self.plot_axis(self.PlotActions[round].ax[idx1,idx2], img, z)
-                
-                #check if the group is complete
-            if id==counter.groupsize-1:
-                counter.currentround += 1
+                zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
+
+            # Plot all our Zs in the corresponding round
+            
+            for z, id, r in counter:
+                if len(self.PA.ax.shape)==1:
+                    idx = zidxs[id]
+                    if z == None:
+                        self.PA.ax[idx].axis(False)
+                    else:
+                        self.PA.zs[idx] = z
+                        img = self.stack[z,:,:]
+
+                        self.PA.ax[idx].cla()
+                        self.plot_axis(self.PA.ax[idx], img, z)
+                else:
+                    idx1 = zidxs[0][id]
+                    idx2 = zidxs[1][id]
+                    if z == None:
+                        self.ax[idx1,idx2].axis(False)
+                    else:      
+                        # select corresponding idxs on the plot 
+                        self.PA.zs[idx1, idx2] = z
+                        img = self.stack[z,:,:]
+
+                        # plot
+                        self.PA.ax[idx1, idx2].cla()
+                        self.plot_axis(self.PA.ax[idx1, idx2], img, z)
+        else:
+            img  = self.stack[round,:,:]
+            self.PA.zs = round
+            self.PA.z  = round
+            self.PA.ax.cla()
+            self.plot_axis(self.PA.ax, img, round)
 
     def plot_axis(self, _ax, img, z):
         _ = _ax.imshow(img)
@@ -828,8 +809,11 @@ class CellSegmentation(object):
             if zz==z:
                 _ = _ax.scatter([ys], [xs], s=3.0, c="k")
 
+    def replot_axis(self, _ax, img, z):
+        pass
+
 class PlotActionCS:
-    def __init__(self, fig, ax, zs, CS):
+    def __init__(self, fig, ax, zs, CS, current_round):
         self.fig=fig
         self.ax=ax
         self.CS=CS
@@ -842,7 +826,12 @@ class PlotActionCS:
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
-        self.ind = 0
+        if isinstance(zs, np.ndarray):
+            groupsize  = self.CS.plot_layout[0] * self.CS.plot_layout[1]
+            self.max_round =  math.ceil((self.CS.slices)/(groupsize-self.CS.plot_overlap))
+        else:
+            self.max_round = self.CS.slices
+        self.cr = current_round
         self.visualization()
         self.update()
         self.current_state=None
@@ -857,13 +846,15 @@ class PlotActionCS:
         if self.current_state==None:
             self.current_state="SCL"
             if event.button == 'up':
-                self.ind = self.ind + 1
+                self.cr = self.cr + 1
             elif event.button == 'down':
-                self.ind = self.ind - 1
-            print(self.ind)
-            # PLOT 
+                self.cr = self.cr - 1
+            self.cr = max(self.cr, 0)
+            self.cr = min(self.cr, self.max_round)
+            self.CS.replot_segmented(self.cr)
+            self.update()
         else:
-            print("Currently on another action")
+            self.CS.printfancy("Currently on another action")
             return
         self.current_state=None
 
@@ -913,7 +904,10 @@ class PlotActionCS:
                 self.current_subplot=None
                 self.current_state=None
                 self.ax_sel=None
-                self.z=None
+                if isinstance(self.zs, int):
+                    self.z=self.zs
+                else:
+                    self.z = None
             else:
                 # We have to wait for the current action to finish
                 pass
@@ -1054,7 +1048,6 @@ class SubplotPicker_add():
                         if event.inaxes==self.PA.ax[i]:
                             self.PA.current_subplot = i
                             self.PA.z = self.PA.zs[i]
-                            print(self.PA.z)
                             self.canvas.mpl_disconnect(self.cid)
                             self.f1()
                             self.f2(self.PA)
@@ -1093,9 +1086,10 @@ class CellPicker_del():
                                         self.PA.z = self.PA.zs[i,j]
             else:
                 self.PA.ax_sel = self.PA.ax
+                self.PA.z = self.PA.zs
 
             if event.inaxes!=self.PA.ax_sel:
-                print("WRONG AXES")
+                pass
             else:
                 x = np.rint(event.xdata).astype(np.int64)
                 y = np.rint(event.ydata).astype(np.int64)
@@ -1161,7 +1155,7 @@ class CellPicker_com():
                 self.PA.ax_sel = self.PA.ax
 
             if event.inaxes!=self.PA.ax_sel:
-                print("WRONG AXES")
+                pass
             else:
                 x = np.rint(event.xdata).astype(np.int64)
                 y = np.rint(event.ydata).astype(np.int64)
@@ -1240,7 +1234,6 @@ class plotCounter:
             return self.current, self.currentonround, self.currentround
         raise StopIteration
 
-
 class plotRound:
     def __init__(self, layout, totalsize, overlap, round):
         self.totalsize  = totalsize
@@ -1266,7 +1259,8 @@ class plotRound:
             raise StopIteration
         if self.current < self.totalsize and self.currentround < self.rounds:
             return self.current, self.currentonround, self.currentround
-
+        else:
+            return None, self.currentonround, self.currentround
 
 class CellTracking(object):
     def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7):
