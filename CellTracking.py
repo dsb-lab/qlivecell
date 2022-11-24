@@ -9,6 +9,8 @@ import itertools
 import random
 from scipy.spatial import cKDTree
 from copy import deepcopy
+from matplotlib.widgets import Slider
+
 plt.rcParams.update({'figure.max_open_warning': 0})
 
 LINE_UP = '\033[1A'
@@ -809,9 +811,6 @@ class CellSegmentation(object):
             if zz==z:
                 _ = _ax.scatter([ys], [xs], s=3.0, c="k")
 
-    def replot_axis(self, _ax, img, z):
-        pass
-
 class PlotActionCS:
     def __init__(self, fig, ax, zs, CS, current_round):
         self.fig=fig
@@ -1263,7 +1262,7 @@ class plotRound:
             return None, self.currentonround, self.currentround
 
 class CellTracking(object):
-    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7):
+    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_layout_time=(2,3), plot_overlap_time=1,plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7):
         self.stacks            = stacks
         self._model            = model
         self._trainedmodel     = trainedmodel
@@ -1281,6 +1280,8 @@ class CellTracking(object):
         self.plot_layout       = plot_layout
         self.plot_overlap      = plot_overlap
         self.plot_masks        = plot_masks
+        self.plot_layout_time  = plot_layout_time
+        self.plot_overlap_time = plot_overlap_time
         self._max_label        = 0
         self._masks_cmap_name  = masks_cmap
         self._masks_cmap       = cm.get_cmap(self._masks_cmap_name)
@@ -1445,6 +1446,95 @@ class CellTracking(object):
         self.FinalLabels[Ts[maxlabidx]][idd] = minlab
         self.label_correspondance[Ts[maxlabidx]][IDsco[maxlabidx]][1] = minlab
 
+    def plot_tracking(self):
+        counter = plotRound(layout=self.plot_layout_time,totalsize=self.slices, overlap=self.plot_overlap_time, round=0)
+        fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
+        self.zs = np.zeros_like(ax)
+        self.PACT = PlotActionCT(fig, ax, self)
+        zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
+        t=0
+        IMGS = self.stacks
+        FinalCenters = self.FinalCenters
+        FinalLabels  = self.FinalLabels
+        imgs   = IMGS[t,:,:,:]
+        # Plot all our Zs in the corresponding round
+        for z, id, round in counter:
+            # select current z plane
+            idx1 = zidxs[0][id]
+            idx2 = zidxs[1][id]
+            ax[idx1,idx2].axis(False)
+            if z == None:
+                pass
+            else:      
+                img = imgs[z,:,:]
+                self.zs[idx1, idx2] = z
+                self.plot_axis(self.CSt[t], ax[idx1, idx2], img, z, t)
+                for lab in range(len(FinalLabels[t])):
+                    zz = FinalCenters[t][lab][0]
+                    if zz == z:
+                        ys = FinalCenters[t][lab][1]
+                        xs = FinalCenters[t][lab][2]
+                        #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
+                        _ = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                        _ = ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
+                        _ = ax[idx1, idx2].set_xticks([])
+                        _ = ax[idx1, idx2].set_yticks([])
+        plt.subplots_adjust(bottom=0.075)
+        # Make a horizontal slider to control the frequency.
+        axslide = fig.add_axes([0.12, 0.01, 0.8, 0.03])
+        self.time_slider = Slider(
+            ax=axslide,
+            label='time',
+            valmin=0,
+            valmax=self.times-1,
+            valinit=0,
+            valstep=1
+        )
+        self.time_slider.on_changed(self.update_slider)
+        plt.show()
+
+    # The function to be called anytime a slider's value changes
+    def update_slider(self, t):
+        self.PACT.t=t
+        self.PACT.CS = self.CSt[t]
+        self.PACT.CT.replot_tracking(self.PACT.cr)
+        self.PACT.update()
+
+    def replot_tracking(self, round):
+        t = self.PACT.t
+        counter = plotRound(layout=self.plot_layout_time,totalsize=self.slices, overlap=self.plot_overlap_time, round=round)
+        zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
+        IMGS = self.stacks
+        FinalCenters = self.FinalCenters
+        FinalLabels  = self.FinalLabels
+        imgs   = IMGS[t,:,:,:]
+        # Plot all our Zs in the corresponding round
+        for z, id, r in counter:
+            # select current z plane
+            idx1 = zidxs[0][id]
+            idx2 = zidxs[1][id]
+            self.PACT.ax[idx1,idx2].cla()
+            self.PACT.ax[idx1,idx2].axis(False)
+            if z == None:
+                pass
+            else:      
+                img = imgs[z,:,:]
+                self.zs[idx1, idx2] = z
+                self.plot_axis(self.CSt[t], self.PACT.ax[idx1, idx2], img, z, t)
+                for lab in range(len(FinalLabels[t])):
+                    zz = FinalCenters[t][lab][0]
+                    if zz==z:
+                        ys = FinalCenters[t][lab][1]
+                        xs = FinalCenters[t][lab][2]
+                        #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
+                        _ = self.PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                        _ = self.PACT.ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
+                        _ = self.PACT.ax[idx1, idx2].set_xticks([])
+                        _ = self.PACT.ax[idx1, idx2].set_yticks([])
+
+        plt.subplots_adjust(bottom=0.075)
+        # Make a horizontal slider to control the frequency.
+
     def plot_axis(self, CS, _ax, img, z, t):
         _ = _ax.imshow(img)
         _ = _ax.set_title("z = %d" %z)
@@ -1465,21 +1555,23 @@ class CellTracking(object):
             _ = _ax.imshow(CS._masks_cmap(CS._Masks_to_plot[z], alpha=CS._Masks_to_plot_alphas[z], bytes=True), cmap=CS._masks_cmap_name)
 
 class PlotActionCT:
-    def __init__(self, fig, ax, t, CT, plot_masks=False):
+    def __init__(self, fig, ax, CT):
         self.fig=fig
         self.ax=ax
-        self.plot_masks=plot_masks
+        self.plot_masks=CT.plot_masks
         self.CT=CT
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
         self.current_state=None
         self.current_subplot = None
-        self.t =t
+        self.cr = 0
+        self.t =0
         self.zs=CT.zs 
         self.z = None
-        self.CS = CT.CSt[t]
-        self.visualization()
-        self.update()
+        self.CS = CT.CSt[self.t]
+        self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
+        groupsize  = self.CT.plot_layout_time[0] * self.CT.plot_layout_time[1]
+        self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap_time))-1
 
     def __call__(self, event):
         if self.current_state==None:
@@ -1501,7 +1593,7 @@ class PlotActionCT:
                 if self.current_state=="del":
                     self.CP.stopit()
                     self.CT.delete_cell(self)
-                    self.redraw_plot()
+                    self.CT.replot_tracking(self.cr)
                     self.list_of_cells = []
                 elif self.current_state=="com":
                     self.CP.stopit()
@@ -1517,33 +1609,24 @@ class PlotActionCT:
                 # We have to wait for the current action to finish
                 pass
 
-    def update(self): 
+    def onscroll(self, event):
+        if self.current_state==None:
+            self.current_state="SCL"
+            if event.button == 'up':
+                self.cr = self.cr + 1
+            elif event.button == 'down':
+                self.cr = self.cr - 1
+            self.cr = max(self.cr, 0)
+            self.cr = min(self.cr, self.max_round)
+            self.CT.replot_tracking(self.cr)
+            self.update()
+        else:
+            return
+        self.current_state=None
+
+    def update(self):
+        self.fig.canvas.draw_idle()
         self.fig.canvas.draw()
-
-    def redraw_plot(self):
-        IMGS = self.CT.stacks
-        FinalCenters = self.CT.FinalCenters
-        FinalLabels  = self.CT.FinalLabels
-        zidxs  = np.unravel_index(range(30), (5,6))
-        t = self.t
-        imgs   = IMGS[t,:,:,:]
-        for z in range(len(imgs[:,0,0])):
-            img = imgs[z,:,:]
-            idx1 = zidxs[0][z]
-            idx2 = zidxs[1][z]
-            self.ax[idx1, idx2].cla()
-            self.CT.plot_axis(self.CS, self.ax[idx1, idx2], img, z, t)
-            _ = self.ax[idx1, idx2].axis(False)
-
-        for lab in range(len(FinalLabels[t])):
-            z  = FinalCenters[t][lab][0]
-            ys = FinalCenters[t][lab][1]
-            xs = FinalCenters[t][lab][2]
-            idx1 = zidxs[0][z]
-            idx2 = zidxs[1][z]
-            #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
-            _ = self.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-            _ = self.ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
 
     def delete_cells(self):
         print("delete")
@@ -1565,9 +1648,8 @@ class PlotActionCT:
 
     def visualization(self):
         print("visualization")
-        self.redraw_plot()
+        self.CT.replot_tracking(self.cr)
         self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))
-
 
 class CellPickerCT_del():
     def __init__(self, PA):

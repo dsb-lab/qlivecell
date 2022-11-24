@@ -39,30 +39,3 @@ def extract_position_as_matrices(CT):
             Y[i,t] = CT.FinalCenters[t][id][2]
     return X,Y,Z
 
-def plot_tracking(CT, t):
-    IMGS = CT.stacks
-    FinalCenters = CT.FinalCenters
-    FinalLabels  = CT.FinalLabels
-    zidxs  = np.unravel_index(range(30), (5,6))
-    fig,ax = plt.subplots(5,6, figsize=(40,40))
-    imgs   = IMGS[t,:,:,:]
-    CT.zs = np.zeros_like(ax)
-    for z in range(len(imgs[:,0,0])):
-        img = imgs[z,:,:]
-        idx1 = zidxs[0][z]
-        idx2 = zidxs[1][z]
-        CT.zs[idx1, idx2] = z
-        CT.plot_axis(CT.CSt[t], ax[idx1, idx2], img, z, t)
-
-    for lab in range(len(FinalLabels[t])):
-        z = FinalCenters[t][lab][0]
-        ys = FinalCenters[t][lab][1]
-        xs = FinalCenters[t][lab][2]
-        idx1 = zidxs[0][z]
-        idx2 = zidxs[1][z]
-        #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
-        _ = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-        _ = ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
-        _ = ax[idx1, idx2].set_xticks([])
-        _ = ax[idx1, idx2].set_yticks([])
-    return fig, ax
