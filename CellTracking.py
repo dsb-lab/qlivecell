@@ -1291,10 +1291,10 @@ class CellTracking(object):
         self.cells_to_combine  = []
 
     def __call__(self):
+        self.copyCT  = deepcopy(self)
+        self._copyCT = deepcopy(self)
         self.cell_segmentation()
         self.cell_tracking()
-        self.copyCT = deepcopy(self)
-        self._copyCT = deepcopy(self)
 
     def undo_corrections(self, all=False):
         if all:
@@ -1605,9 +1605,11 @@ class PlotActionCT:
                 self.combine_cells()
             elif event.key == 'm':
                 self.CT.one_step_copy()
+                self.current_state="mit"
                 self.mitosis()
             elif event.key == 'a':
                 self.CT.one_step_copy()
+                self.current_state="apo"
                 self.apoptosis()
             elif event.key == 'escape':
                 self.visualization()
