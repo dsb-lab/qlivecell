@@ -1294,17 +1294,32 @@ class CellTracking(object):
         self.cell_segmentation()
         self.cell_tracking()
         self.copyCT = deepcopy(self)
+        self._copyCT = deepcopy(self)
 
-    def undo_corrections(self):
-        self.TLabels   = deepcopy(self.copyCT.TLabels)
-        self.TCenters  = deepcopy(self.copyCT.TCenters)
-        self.TOutlines = deepcopy(self.copyCT.TOutlines)
-        self.CSt       = deepcopy(self.copyCT.CSt)
-        self.FinalLabels  = deepcopy(self.copyCT.FinalLabels)
-        self.FinalCenters = deepcopy(self.copyCT.FinalCenters)
-        self.FinalOulines = deepcopy(self.copyCT.FinalOulines)
-        self.label_correspondance = deepcopy(self.copyCT.label_correspondance)
-        
+    def undo_corrections(self, all=False):
+        if all:
+            backup = self.copyCT
+        else:
+            backup = self._copyCT
+        self.TLabels   = deepcopy(backup.TLabels)
+        self.TCenters  = deepcopy(backup.TCenters)
+        self.TOutlines = deepcopy(backup.TOutlines)
+        self.CSt       = deepcopy(backup.CSt)
+        self.FinalLabels  = deepcopy(backup.FinalLabels)
+        self.FinalCenters = deepcopy(backup.FinalCenters)
+        self.FinalOulines = deepcopy(backup.FinalOulines)
+        self.label_correspondance = deepcopy(backup.label_correspondance)
+    
+    def one_step_copy(self):
+        self._copyCT.TLabels   = deepcopy(self.TLabels)
+        self._copyCT.TCenters  = deepcopy(self.TCenters)
+        self._copyCT.TOutlines = deepcopy(self.TOutlines)
+        self._copyCT.CSt       = deepcopy(self.CSt)
+        self._copyCT.FinalLabels  = deepcopy(self.FinalLabels)
+        self._copyCT.FinalCenters = deepcopy(self.FinalCenters)
+        self._copyCT.FinalOulines = deepcopy(self.FinalOulines)
+        self._copyCT.label_correspondance = deepcopy(self.label_correspondance)
+    
     def cell_segmentation(self):
         self.TLabels   = []
         self.TCenters  = []
@@ -1413,12 +1428,11 @@ class CellTracking(object):
         self.FinalOulines = FinalOutlines
         None
     
-    def update_labels(self):
-        pass
-    
     def delete_cell(self, PA):
         cells = [x[0] for x in PA.list_of_cells]
         Zs    = [x[1] for x in PA.list_of_cells]
+        if len(cells) == 0:
+            return
         for i,z in enumerate(Zs):
             id_l = np.where(np.array(PA.CS.labels[z])==cells[i])[0][0]
             PA.CS.labels[z].pop(id_l)
@@ -1426,7 +1440,6 @@ class CellTracking(object):
             PA.CS.Masks[z].pop(id_l)
             PA.CS.centersi[z].pop(id_l)
             PA.CS.centersj[z].pop(id_l)
-        
         PA.CS.update_labels()
         self.cell_tracking()
 
@@ -1562,7 +1575,7 @@ class PlotActionCT:
         self.CT=CT
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
-        self.current_state=None
+        self.current_state="START"
         self.current_subplot = None
         self.cr = 0
         self.t =0
@@ -1572,21 +1585,34 @@ class PlotActionCT:
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
         groupsize  = self.CT.plot_layout_time[0] * self.CT.plot_layout_time[1]
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap_time))-1
+        self.get_size()
+        actionsbox = "Possible actions     - q : quit plot\n - z : undo previous action   - ESC : visualization \n - d : delete cell       - c : combine cells \n - a : apoptotic event   - m : mitotic events"
+        self.actionlist = self.fig.text(0.98, 0.98, actionsbox, fontsize=1, ha='right', va='top')
+        self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
+        self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n        PRESS ENTER TO START", fontsize=1, ha='left', va='top')
+        self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
+        self.update()
 
     def __call__(self, event):
         if self.current_state==None:
             if event.key == 'd':
+                self.CT.one_step_copy()
                 self.current_state="del"
                 self.delete_cells()
             elif event.key == 'c':
+                self.CT.one_step_copy()
                 self.current_state="com"
                 self.combine_cells()
             elif event.key == 'm':
+                self.CT.one_step_copy()
                 self.mitosis()
             elif event.key == 'a':
+                self.CT.one_step_copy()
                 self.apoptosis()
             elif event.key == 'escape':
                 self.visualization()
+            elif event.key == 'z':
+                self.CT.undo_corrections(all=False)
             self.update()
         else:
             if event.key=='enter':
@@ -1625,31 +1651,82 @@ class PlotActionCT:
         self.current_state=None
 
     def update(self):
+        cells_to_plot = self.sort_list_of_cells()
+        cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
+        s = "\n".join(cells_string)
+        self.get_size()
+        if self.figheight < self.figwidth:
+            width_or_height = self.figheight
+            scale1=90
+            scale2=70
+        else:
+            scale1=110
+            scale2=90
+            width_or_height = self.figwidth
+        self.actionlist.set(fontsize=width_or_height/scale1)
+        self.selected_cells.set(fontsize=width_or_height/scale1)
+        self.selected_cells.set(text="Cells\nSelected\n\n"+s)
+        self.instructions.set(fontsize=width_or_height/scale2)
+        self.title.set(fontsize=width_or_height/scale2)
+        plt.subplots_adjust(top=0.9,right=0.8)
         self.fig.canvas.draw_idle()
         self.fig.canvas.draw()
 
+    def sort_list_of_cells(self):
+        if len(self.list_of_cells)==0:
+            return self.list_of_cells
+        else:
+            cells = [x[0] for x in self.list_of_cells]
+            Zs    = [x[1] for x in self.list_of_cells]
+
+            cidxs  = np.argsort(cells)
+            cells = np.array(cells)[cidxs]
+            Zs    = np.array(Zs)[cidxs]
+
+            ucells = np.unique(cells)
+            final_cells = []
+            for c in ucells:
+                ids = np.where(cells == c)
+                _cells = cells[ids]
+                _Zs    = Zs[ids]
+                zidxs = np.argsort(_Zs)
+                for id in zidxs:
+                    final_cells.append([_cells[id], _Zs[id]])
+
+            return final_cells
+
+    def get_size(self):
+        bboxfig = self.fig.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+        widthfig, heightfig = bboxfig.width*self.fig.dpi, bboxfig.height*self.fig.dpi
+        self.figwidth  = widthfig
+        self.figheight = heightfig
+
     def delete_cells(self):
-        print("delete")
-        self.fig.patch.set_facecolor((1.0,0.0,0.0,0.3))
+        self.title.set(text="DELETE CELL\nMODE", ha='left', x=0.01)
+        self.instructions.set(text="Right-click to delete cell on a plane\ndouble right-click to delete on all planes", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((1.0,0.0,0.0,0.2))
         self.CP = CellPickerCT_del(self)
     
     def combine_cells(self):
-        print("combinations")
-        self.fig.patch.set_facecolor((0.0,0.0,1.0,0.3))
+        self.title.set(text="COMBINE CELLS\nMODE", ha='left', x=0.01)
+        self.instructions.set(text="\nRigth-click to select cells to be combined", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((0.0,0.0,1.0,0.2))        
         self.CP = CellPickerCT_com(self)
 
     def mitosis(self):
-        print("mitosis")
-        self.fig.patch.set_facecolor((0.0,1.0,0.0,0.3))
+        self.title.set(text="DETECT MITOSIS\nMODE", ha='left', x=0.01)
+        self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((0.0,1.0,0.0,0.2))
 
     def apoptosis(self):
-        print("apoptosis")
-        self.fig.patch.set_facecolor((0.0,0.0,0.0,0.3))
+        self.title.set(text="DETECT APOPTOSIS\nMODE", ha='left', x=0.01)
+        self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((0.0,0.0,0.0,0.2))
 
     def visualization(self):
-        print("visualization")
-        self.CT.replot_tracking(self.cr)
-        self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))
+        self.title.set(text="VISUALIZATION\nMODE", ha='left', x=0.01)
+        self.instructions.set(text="Chose one of the actions to change mode", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))        
 
 class CellPickerCT_del():
     def __init__(self, PA):
@@ -1701,7 +1778,6 @@ class CellPickerCT_del():
                                 for zz in zs:
                                     self.PA.list_of_cells.append([lab, zz])
                             self.PA.update()
-            print(self.PA.list_of_cells)
 
             # Select cell and store it   
 

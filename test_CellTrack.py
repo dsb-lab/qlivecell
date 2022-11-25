@@ -33,4 +33,4 @@ CT()
 
 CT.plot_tracking()
 
-CT.undo_corrections()
+CT.undo_corrections(all=True)
