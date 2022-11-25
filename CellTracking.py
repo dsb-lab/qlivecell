@@ -70,7 +70,7 @@ class CellSegmentation(object):
         self.printfancy("")
         print("####################     SEGMENTATION COMPLETED   ####################")
         self.printfancy("")
-        self.actions()
+        #self.actions()
 
     def _cell_segmentation_outlines(self):
 
@@ -1586,10 +1586,10 @@ class PlotActionCT:
         groupsize  = self.CT.plot_layout_time[0] * self.CT.plot_layout_time[1]
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap_time))-1
         self.get_size()
-        actionsbox = "Possible actions     - q : quit plot\n - z : undo previous action   - ESC : visualization \n - d : delete cell       - c : combine cells \n - a : apoptotic event   - m : mitotic events"
+        actionsbox = "Possible actions:                 - q : quit plot            \n - z : undo previous action   - ESC : visualization \n - d : delete cell                    - c : combine cells   \n - a : apoptotic event           - m : mitotic events "
         self.actionlist = self.fig.text(0.98, 0.98, actionsbox, fontsize=1, ha='right', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
-        self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n        PRESS ENTER TO START", fontsize=1, ha='left', va='top')
+        self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n                     PRESS ENTER TO START", fontsize=1, ha='left', va='top')
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
         self.update()
 
