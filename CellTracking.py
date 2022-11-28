@@ -1638,8 +1638,9 @@ class PlotActionCT:
                 pass
 
     def onscroll(self, event):
-        if self.current_state==None:
-            self.current_state="SCL"
+        if self.current_state in [None, "com", "mit", "apo"]:
+            if self.current_state == None:
+                self.current_state="SCL"
             if event.button == 'up':
                 self.cr = self.cr + 1
             elif event.button == 'down':
@@ -1650,11 +1651,18 @@ class PlotActionCT:
             self.update()
         else:
             return
-        self.current_state=None
+        if self.current_state=="SCL":
+            self.current_state=None
 
     def update(self):
-        cells_to_plot = self.sort_list_of_cells()
-        cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
+        if self.current_state=="com":
+            cells_to_plot=self.extract_unique_cell_time_list_of_cells()
+            print(cells_to_plot)
+            cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
+            print(cells_string)
+        else:
+            cells_to_plot = self.sort_list_of_cells()
+            cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
         s = "\n".join(cells_string)
         self.get_size()
         if self.figheight < self.figwidth:
@@ -1674,13 +1682,23 @@ class PlotActionCT:
         self.fig.canvas.draw_idle()
         self.fig.canvas.draw()
 
+    def extract_unique_cell_time_list_of_cells(self):
+        if len(self.list_of_cells)==0:
+            return self.list_of_cells
+        cells = [x[0] for x in self.list_of_cells]
+        Ts    = [x[1] for x in self.list_of_cells]
+
+        #cs, cids = np.unique(cells, return_index=True)
+        ts, tids = np.unique(Ts,  return_index=True)
+        
+        return [[cells[i], Ts[i]] for i in tids]
+
     def sort_list_of_cells(self):
         if len(self.list_of_cells)==0:
             return self.list_of_cells
         else:
             cells = [x[0] for x in self.list_of_cells]
             Zs    = [x[1] for x in self.list_of_cells]
-
             cidxs  = np.argsort(cells)
             cells = np.array(cells)[cidxs]
             Zs    = np.array(Zs)[cidxs]
@@ -1828,14 +1846,13 @@ class CellPickerCT_com():
                         if (picked_point==point).all():
                             z   = self.PA.z
                             lab = self.PA.CS.labels[z][i]
-                            print(self.PA.CT.label_correspondance)
                             idcorr = np.where(np.array(self.PA.CT.label_correspondance[self.PA.t])[:,0]==lab)[0][0]
                             Tlab = self.PA.CT.label_correspondance[self.PA.t][idcorr][1]
                             cell = [Tlab, self.PA.t, idcorr]
-                            print("cell = ", cell)
                             # Check if the cell is already on the list
                             if len(self.PA.CT.cells_to_combine)==0:
                                 self.PA.CT.cells_to_combine.append(cell)
+                                self.PA.list_of_cells.append(cell)
                             else:
                                 if Tlab not in np.array(self.PA.CT.cells_to_combine)[:,0]:
                                     if len(self.PA.CT.cells_to_combine)==2:
@@ -1843,10 +1860,11 @@ class CellPickerCT_com():
                                     else:
                                         if self.PA.t not in np.array(self.PA.CT.cells_to_combine)[:,1]:
                                             self.PA.CT.cells_to_combine.append(cell)
+                                            self.PA.list_of_cells.append(cell)
                                 else:
                                     self.PA.CT.cells_to_combine.remove(cell)
+                                    self.PA.list_of_cells.remove(cell)
                             self.PA.update()
-            print(self.PA.CT.cells_to_combine)
 
     def stopit(self):
         
