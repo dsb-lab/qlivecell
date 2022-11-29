@@ -1295,6 +1295,15 @@ class CellTracking(object):
         self._copyCT = deepcopy(self)
         self.cell_segmentation()
         self.cell_tracking()
+        self.copyCT.TLabels   = deepcopy(self.TLabels)
+        self.copyCT.TCenters  = deepcopy(self.TCenters)
+        self.copyCT.TOutlines = deepcopy(self.TOutlines)
+        self.copyCT.CSt       = deepcopy(self.CSt)
+        self.copyCT.FinalLabels  = deepcopy(self.FinalLabels)
+        self.copyCT.FinalCenters = deepcopy(self.FinalCenters)
+        self.copyCT.FinalOulines = deepcopy(self.FinalOulines)
+        self.copyCT.label_correspondance = deepcopy(self.label_correspondance)
+        self.one_step_copy()
 
     def undo_corrections(self, all=False):
         if all:
@@ -1309,11 +1318,9 @@ class CellTracking(object):
         self.FinalCenters = deepcopy(backup.FinalCenters)
         self.FinalOulines = deepcopy(backup.FinalOulines)
         self.label_correspondance = deepcopy(backup.label_correspondance)
-        self.PACT.CT = self
-        self.PACT.CS = self.CSt[self.PACT.t]
-        self.replot_tracking(self.PACT.cr)
-        self.PACT.visualization()
-        self.PACT.update()
+        for PACT in self.PACTs:
+            PACT.CT = self
+            PACT.CS = self.CSt[PACT.t]
 
     def one_step_copy(self):
         self._copyCT.TLabels   = deepcopy(self.TLabels)
@@ -1463,63 +1470,62 @@ class CellTracking(object):
         self.FinalLabels[Ts[maxlabidx]][idd] = minlab
         self.label_correspondance[Ts[maxlabidx]][IDsco[maxlabidx]][1] = minlab
 
-    def plot_tracking(self):
-        counter = plotRound(layout=self.plot_layout_time,totalsize=self.slices, overlap=self.plot_overlap_time, round=0)
-        fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
-        self.zs = np.zeros_like(ax)
-        self.PACT = PlotActionCT(fig, ax, self)
-        zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
-        t=0
-        IMGS = self.stacks
-        FinalCenters = self.FinalCenters
-        FinalLabels  = self.FinalLabels
-        imgs   = IMGS[t,:,:,:]
-        # Plot all our Zs in the corresponding round
-        for z, id, round in counter:
-            # select current z plane
-            idx1 = zidxs[0][id]
-            idx2 = zidxs[1][id]
-            ax[idx1,idx2].axis(False)
-            if z == None:
-                pass
-            else:      
-                img = imgs[z,:,:]
-                self.zs[idx1, idx2] = z
-                self.plot_axis(self.CSt[t], ax[idx1, idx2], img, z, t)
-                for lab in range(len(FinalLabels[t])):
-                    zz = FinalCenters[t][lab][0]
-                    if zz == z:
-                        ys = FinalCenters[t][lab][1]
-                        xs = FinalCenters[t][lab][2]
-                        #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
-                        _ = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                        _ = ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
-                        _ = ax[idx1, idx2].set_xticks([])
-                        _ = ax[idx1, idx2].set_yticks([])
-        plt.subplots_adjust(bottom=0.075)
-        # Make a horizontal slider to control the frequency.
-        axslide = fig.add_axes([0.12, 0.01, 0.8, 0.03])
-        self.time_slider = Slider(
-            ax=axslide,
-            label='time',
-            valmin=0,
-            valmax=self.times-1,
-            valinit=0,
-            valstep=1
-        )
-        self.time_slider.on_changed(self.update_slider)
+    def plot_tracking(self, windows=1):
+        self.PACTs=[]
+        self.time_sliders = []
+        for w in range(windows):
+            counter = plotRound(layout=self.plot_layout_time,totalsize=self.slices, overlap=self.plot_overlap_time, round=0)
+            fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
+            self.PACTs.append(PlotActionCT(fig, ax, self))
+            self.PACTs[w].zs = np.zeros_like(ax)
+            zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
+            t=0
+            IMGS = self.stacks
+            FinalCenters = self.FinalCenters
+            FinalLabels  = self.FinalLabels
+            imgs   = IMGS[t,:,:,:]
+            # Plot all our Zs in the corresponding round
+            for z, id, round in counter:
+                # select current z plane
+                idx1 = zidxs[0][id]
+                idx2 = zidxs[1][id]
+                ax[idx1,idx2].axis(False)
+                if z == None:
+                    pass
+                else:      
+                    img = imgs[z,:,:]
+                    self.PACTs[w].zs[idx1, idx2] = z
+                    self.plot_axis(self.CSt[t], ax[idx1, idx2], img, z, t)
+                    for lab in range(len(FinalLabels[t])):
+                        zz = FinalCenters[t][lab][0]
+                        if zz == z:
+                            ys = FinalCenters[t][lab][1]
+                            xs = FinalCenters[t][lab][2]
+                            #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
+                            _ = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                            _ = ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
+                            _ = ax[idx1, idx2].set_xticks([])
+                            _ = ax[idx1, idx2].set_yticks([])
+                            
+            plt.subplots_adjust(bottom=0.075)
+            # Make a horizontal slider to control the frequency.
+            axslide = fig.add_axes([0.12, 0.01, 0.8, 0.03])
+            time_slider = Slider(
+                ax=axslide,
+                label='time',
+                valmin=0,
+                valmax=self.times-1,
+                valinit=0,
+                valstep=1
+            )
+            self.time_sliders.append(time_slider)
+            self.time_sliders[w].on_changed(self.PACTs[w].update_slider)
         plt.show()
 
-    # The function to be called anytime a slider's value changes
-    def update_slider(self, t):
-        self.PACT.t=t
-        self.PACT.CS = self.CSt[t]
-        self.PACT.CT.replot_tracking(self.PACT.cr)
-        self.PACT.update()
 
-    def replot_tracking(self, round):
-        t = self.PACT.t
-        counter = plotRound(layout=self.plot_layout_time,totalsize=self.slices, overlap=self.plot_overlap_time, round=round)
+    def replot_tracking(self, PACT):
+        t = PACT.t
+        counter = plotRound(layout=self.plot_layout_time,totalsize=self.slices, overlap=self.plot_overlap_time, round=PACT.cr)
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
         IMGS = self.stacks
         FinalCenters = self.FinalCenters
@@ -1530,24 +1536,24 @@ class CellTracking(object):
             # select current z plane
             idx1 = zidxs[0][id]
             idx2 = zidxs[1][id]
-            self.PACT.ax[idx1,idx2].cla()
-            self.PACT.ax[idx1,idx2].axis(False)
+            PACT.ax[idx1,idx2].cla()
+            PACT.ax[idx1,idx2].axis(False)
             if z == None:
                 pass
             else:      
                 img = imgs[z,:,:]
-                self.zs[idx1, idx2] = z
-                self.plot_axis(self.CSt[t], self.PACT.ax[idx1, idx2], img, z, t)
+                PACT.zs[idx1, idx2] = z
+                self.plot_axis(self.CSt[t], PACT.ax[idx1, idx2], img, z, t)
                 for lab in range(len(FinalLabels[t])):
                     zz = FinalCenters[t][lab][0]
                     if zz==z:
                         ys = FinalCenters[t][lab][1]
                         xs = FinalCenters[t][lab][2]
                         #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
-                        _ = self.PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                        _ = self.PACT.ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
-                        _ = self.PACT.ax[idx1, idx2].set_xticks([])
-                        _ = self.PACT.ax[idx1, idx2].set_yticks([])
+                        _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                        _ = PACT.ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
+                        _ = PACT.ax[idx1, idx2].set_xticks([])
+                        _ = PACT.ax[idx1, idx2].set_yticks([])
 
         plt.subplots_adjust(bottom=0.075)
         # Make a horizontal slider to control the frequency.
@@ -1583,7 +1589,7 @@ class PlotActionCT:
         self.current_subplot = None
         self.cr = 0
         self.t =0
-        self.zs=CT.zs 
+        self.zs=[]
         self.z = None
         self.CS = CT.CSt[self.t]
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
@@ -1619,20 +1625,35 @@ class PlotActionCT:
                 self.visualization()
             elif event.key == 'z':
                 self.CT.undo_corrections(all=False)
+                for PACT in self.CT.PACTs:
+                        PACT.CT.replot_tracking(PACT)
+                self.visualization()
             self.update()
         else:
             if event.key=='enter':
                 if self.current_state=="del":
                     self.CP.stopit()
                     self.CT.delete_cell(self)
-                    self.CT.replot_tracking(self.cr)
-                    self.list_of_cells = []
+                    for PACT in self.CT.PACTs:
+                        self.list_of_cells = []
+                        PACT.CT.replot_tracking(PACT)
+                        PACT.visualization()
+                        PACT.update()
                 elif self.current_state=="com":
                     self.CP.stopit()
                     self.CT.combine_cells(self)
-                    self.CT.cells_to_combine = []
-                self.visualization()
-                self.update()
+                    for PACT in self.CT.PACTs:
+                        PACT.current_subplot=None
+                        PACT.current_state=None
+                        PACT.ax_sel=None
+                        PACT.z=None
+                        PACT.CT.cells_to_combine = []
+                        PACT.CT.replot_tracking(PACT)
+                        PACT.visualization()
+                        PACT.update()
+                else:
+                    self.visualization()
+                    self.update()
                 self.current_subplot=None
                 self.current_state=None
                 self.ax_sel=None
@@ -1640,6 +1661,13 @@ class PlotActionCT:
             else:
                 # We have to wait for the current action to finish
                 pass
+
+    # The function to be called anytime a slider's value changes
+    def update_slider(self, t):
+        self.t=t
+        self.CS = self.CT.CSt[t]
+        self.CT.replot_tracking(self)
+        self.update()
 
     def onscroll(self, event):
         if self.current_state in [None, "com", "mit", "apo"]:
@@ -1651,7 +1679,7 @@ class PlotActionCT:
                 self.cr = self.cr - 1
             self.cr = max(self.cr, 0)
             self.cr = min(self.cr, self.max_round)
-            self.CT.replot_tracking(self.cr)
+            self.CT.replot_tracking(self)
             self.update()
         else:
             return
@@ -1685,10 +1713,10 @@ class PlotActionCT:
         self.fig.canvas.draw()
 
     def extract_unique_cell_time_list_of_cells(self):
-        if len(self.list_of_cells)==0:
-            return self.list_of_cells
-        cells = [x[0] for x in self.list_of_cells]
-        Ts    = [x[1] for x in self.list_of_cells]
+        if len(self.CT.cells_to_combine)==0:
+            return self.CT.cells_to_combine
+        cells = [x[0] for x in self.CT.cells_to_combine]
+        Ts    = [x[1] for x in self.CT.cells_to_combine]
 
         #cs, cids = np.unique(cells, return_index=True)
         ts, tids = np.unique(Ts,  return_index=True)
@@ -1751,42 +1779,42 @@ class PlotActionCT:
         self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))        
 
 class CellPickerCT_del():
-    def __init__(self, PA):
-        self.PA  = PA
-        self.cid = self.PA.fig.canvas.mpl_connect('button_press_event', self)
-        self.canvas  = self.PA.fig.canvas
+    def __init__(self, PACT):
+        self.PACT  = PACT
+        self.cid = self.PACT.fig.canvas.mpl_connect('button_press_event', self)
+        self.canvas  = self.PACT.fig.canvas
     def __call__(self, event):
         if event.button==3:
-            if isinstance(self.PA.ax, np.ndarray):
-                axshape = self.PA.ax.shape
+            if isinstance(self.PACT.ax, np.ndarray):
+                axshape = self.PACT.ax.shape
                 # Select ax 
                 for i in range(axshape[0]):
                         for j in range(axshape[1]):
-                                if event.inaxes==self.PA.ax[i,j]:
-                                    self.PA.current_subplot = [i,j]
-                                    self.PA.ax_sel = self.PA.ax[i,j]
-                                    self.PA.z = self.PA.zs[i,j]
+                                if event.inaxes==self.PACT.ax[i,j]:
+                                    self.PACT.current_subplot = [i,j]
+                                    self.PACT.ax_sel = self.PACT.ax[i,j]
+                                    self.PACT.z = self.PACT.zs[i,j]
             else:
-                self.PA.ax_sel = self.PA.ax
+                self.PACT.ax_sel = self.PACT.ax
 
-            if event.inaxes!=self.PA.ax_sel:
+            if event.inaxes!=self.PACT.ax_sel:
                 pass
             else:
                 x = np.rint(event.xdata).astype(np.int64)
                 y = np.rint(event.ydata).astype(np.int64)
                 picked_point = np.array([x, y])
-                for i ,mask in enumerate(self.PA.CS.Masks[self.PA.z]):
+                for i ,mask in enumerate(self.PACT.CS.Masks[self.PACT.z]):
                     for point in mask:
                         if (picked_point==point).all():
-                            z   = self.PA.z
-                            lab = self.PA.CS.labels[z][i]
+                            z   = self.PACT.z
+                            lab = self.PACT.CS.labels[z][i]
                             cell = [lab, z]
                             #if event.dblclick==True:
-                            idx_lab = np.where(np.array(self.PA.CS._Zlabel_l)==lab)[0][0]
-                            zs = self.PA.CS._Zlabel_z[idx_lab]
+                            idx_lab = np.where(np.array(self.PACT.CS._Zlabel_l)==lab)[0][0]
+                            zs = self.PACT.CS._Zlabel_z[idx_lab]
                             add_all=True
                             idxtopop=[]
-                            for jj, _cell in enumerate(self.PA.list_of_cells):
+                            for jj, _cell in enumerate(self.PACT.list_of_cells):
                                 _lab = _cell[0]
                                 _z   = _cell[1]
                                 if _lab == lab:
@@ -1795,11 +1823,11 @@ class CellPickerCT_del():
                                         idxtopop.append(jj)
                             idxtopop.sort(reverse=True)
                             for jj in idxtopop:
-                                self.PA.list_of_cells.pop(jj)
+                                self.PACT.list_of_cells.pop(jj)
                             if add_all:
                                 for zz in zs:
-                                    self.PA.list_of_cells.append([lab, zz])
-                            self.PA.update()
+                                    self.PACT.list_of_cells.append([lab, zz])
+                            self.PACT.update()
 
             # Select cell and store it   
 
@@ -1807,31 +1835,31 @@ class CellPickerCT_del():
         self.canvas.mpl_disconnect(self.cid)
 
 class CellPickerCT_com():
-    def __init__(self, PA):
-        self.PA  = PA
-        self.cid = self.PA.fig.canvas.mpl_connect('button_press_event', self)
-        self.canvas  = self.PA.fig.canvas
+    def __init__(self, PACT):
+        self.PACT  = PACT
+        self.cid = self.PACT.fig.canvas.mpl_connect('button_press_event', self)
+        self.canvas  = self.PACT.fig.canvas
     def __call__(self, event):
 
         # Button pressed is a mouse right-click (3)
         if event.button==3:
 
             # Check if the figure is a 2D layout
-            if isinstance(self.PA.ax, np.ndarray):
-                axshape = self.PA.ax.shape
+            if isinstance(self.PACT.ax, np.ndarray):
+                axshape = self.PACT.ax.shape
 
                 # Get subplot of clicked point 
                 for i in range(axshape[0]):
                         for j in range(axshape[1]):
-                                if event.inaxes==self.PA.ax[i,j]:
-                                    self.PA.current_subplot = [i,j]
-                                    self.PA.ax_sel = self.PA.ax[i,j]
-                                    self.PA.z = self.PA.zs[i,j]
+                                if event.inaxes==self.PACT.ax[i,j]:
+                                    self.PACT.current_subplot = [i,j]
+                                    self.PACT.ax_sel = self.PACT.ax[i,j]
+                                    self.PACT.z = self.PACT.zs[i,j]
             else:
                 raise IndexError("Plot layout not supported")
 
             # Check if the selection was inside a subplot at all
-            if event.inaxes!=self.PA.ax_sel:
+            if event.inaxes!=self.PACT.ax_sel:
                 pass
             # If so, proceed
             else:
@@ -1842,30 +1870,29 @@ class CellPickerCT_com():
                 picked_point = np.array([x, y])
 
                 # Check if the point is inside the mask of any cell
-                for i ,mask in enumerate(self.PA.CS.Masks[self.PA.z]):
+                for i ,mask in enumerate(self.PACT.CS.Masks[self.PACT.z]):
                     for point in mask:
                         if (picked_point==point).all():
-                            z   = self.PA.z
-                            lab = self.PA.CS.labels[z][i]
-                            idcorr = np.where(np.array(self.PA.CT.label_correspondance[self.PA.t])[:,0]==lab)[0][0]
-                            Tlab = self.PA.CT.label_correspondance[self.PA.t][idcorr][1]
-                            cell = [Tlab, self.PA.t, idcorr]
+                            z   = self.PACT.z
+                            lab = self.PACT.CS.labels[z][i]
+                            idcorr = np.where(np.array(self.PACT.CT.label_correspondance[self.PACT.t])[:,0]==lab)[0][0]
+                            Tlab = self.PACT.CT.label_correspondance[self.PACT.t][idcorr][1]
+                            cell = [Tlab, self.PACT.t, idcorr]
                             # Check if the cell is already on the list
-                            if len(self.PA.CT.cells_to_combine)==0:
-                                self.PA.CT.cells_to_combine.append(cell)
-                                self.PA.list_of_cells.append(cell)
+                            if len(self.PACT.CT.cells_to_combine)==0:
+                                self.PACT.CT.cells_to_combine.append(cell)
                             else:
-                                if Tlab not in np.array(self.PA.CT.cells_to_combine)[:,0]:
-                                    if len(self.PA.CT.cells_to_combine)==2:
-                                        self.PA.CS.fancyprint("cannot combine more than 2 cells at once")
+                                if Tlab not in np.array(self.PACT.CT.cells_to_combine)[:,0]:
+                                    if len(self.PACT.CT.cells_to_combine)==2:
+                                        self.PACT.CS.fancyprint("cannot combine more than 2 cells at once")
                                     else:
-                                        if self.PA.t not in np.array(self.PA.CT.cells_to_combine)[:,1]:
-                                            self.PA.CT.cells_to_combine.append(cell)
-                                            self.PA.list_of_cells.append(cell)
+                                        if self.PACT.t not in np.array(self.PACT.CT.cells_to_combine)[:,1]:
+                                            self.PACT.CT.cells_to_combine.append(cell)
                                 else:
-                                    self.PA.CT.cells_to_combine.remove(cell)
-                                    self.PA.list_of_cells.remove(cell)
-                            self.PA.update()
+                                    self.PACT.CT.cells_to_combine.remove(cell)
+                            for PACT in self.PACT.CT.PACTs:
+                                if PACT.current_state=="com":
+                                    PACT.update()
 
     def stopit(self):
         

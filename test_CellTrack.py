@@ -30,7 +30,6 @@ CT = CellTracking( IMGS, model, trainedmodel=True
                      , neighbors_for_sequence_sorting=7)
 
 CT()
-
-CT.plot_tracking()
+CT.plot_tracking(windows=2)
 
 #CT.undo_corrections(all=True)
