@@ -1289,6 +1289,8 @@ class CellTracking(object):
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self.cells_to_combine  = []
+        self.apoptotic_events = []
+        self.mitotic_events   = []
 
     def __call__(self):
         self.copyCT  = deepcopy(self)
@@ -1318,6 +1320,8 @@ class CellTracking(object):
         self.FinalCenters = deepcopy(backup.FinalCenters)
         self.FinalOulines = deepcopy(backup.FinalOulines)
         self.label_correspondance = deepcopy(backup.label_correspondance)
+        self.apoptotic_events = deepcopy(backup.apoptotic_events)
+        self.mitotic_events = deepcopy(backup.mitotic_events)
         for PACT in self.PACTs:
             PACT.CT = self
             PACT.CS = self.CSt[PACT.t]
@@ -1331,7 +1335,9 @@ class CellTracking(object):
         self._copyCT.FinalCenters = deepcopy(self.FinalCenters)
         self._copyCT.FinalOulines = deepcopy(self.FinalOulines)
         self._copyCT.label_correspondance = deepcopy(self.label_correspondance)
-    
+        self._copyCT.apoptotic_events = deepcopy(self.apoptotic_events)
+        self._copyCT.mitotic_events = deepcopy(self.mitotic_events)
+
     def cell_segmentation(self):
         self.TLabels   = []
         self.TCenters  = []
@@ -1454,7 +1460,7 @@ class CellTracking(object):
         PA.CS.update_labels()
         self.cell_tracking()
 
-    def combine_cells(self, PA):
+    def combine_cells(self):
         if len(self.cells_to_combine)==0:
             return
         cells = [x[0] for x in self.cells_to_combine]
@@ -1469,6 +1475,11 @@ class CellTracking(object):
         idd = np.where(np.array(self.FinalLabels[Ts[maxlabidx]])==maxlab)[0][0]         
         self.FinalLabels[Ts[maxlabidx]][idd] = minlab
         self.label_correspondance[Ts[maxlabidx]][IDsco[maxlabidx]][1] = minlab
+
+    def apoptosis(self, list_of_cells):
+        for cell in list_of_cells:
+            if cell not in self.apoptotic_events:
+                self.apoptotic_events.append(cell)
 
     def plot_tracking(self, windows=1):
         self.PACTs=[]
@@ -1641,7 +1652,7 @@ class PlotActionCT:
                         PACT.update()
                 elif self.current_state=="com":
                     self.CP.stopit()
-                    self.CT.combine_cells(self)
+                    self.CT.combine_cells()
                     for PACT in self.CT.PACTs:
                         PACT.current_subplot=None
                         PACT.current_state=None
@@ -1651,6 +1662,11 @@ class PlotActionCT:
                         PACT.CT.replot_tracking(PACT)
                         PACT.visualization()
                         PACT.update()
+                elif self.current_state=="apo":
+                    self.CT.apoptosis(self.list_of_cells)
+                    self.list_of_cells=[]
+                    self.visualization()
+                    self.update()
                 else:
                     self.visualization()
                     self.update()
@@ -1687,7 +1703,8 @@ class PlotActionCT:
             self.current_state=None
 
     def update(self):
-        if self.current_state=="com":
+        if self.current_state in ["apo","com"]:
+            print(self.list_of_cells)
             cells_to_plot=self.extract_unique_cell_time_list_of_cells()
             cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
         else:
@@ -1713,15 +1730,20 @@ class PlotActionCT:
         self.fig.canvas.draw()
 
     def extract_unique_cell_time_list_of_cells(self):
-        if len(self.CT.cells_to_combine)==0:
-            return self.CT.cells_to_combine
-        cells = [x[0] for x in self.CT.cells_to_combine]
-        Ts    = [x[1] for x in self.CT.cells_to_combine]
+        if self.current_state=="com":
+            list_of_cells=self.CT.cells_to_combine
+        elif self.current_state=="apo":
+            list_of_cells=self.list_of_cells
 
-        #cs, cids = np.unique(cells, return_index=True)
-        ts, tids = np.unique(Ts,  return_index=True)
+        if len(list_of_cells)==0:
+            return list_of_cells
+        cells = [x[0] for x in list_of_cells]
+        Ts    = [x[1] for x in list_of_cells]
+    
+        cs, cids = np.unique(cells, return_index=True)
+        #ts, tids = np.unique(Ts,  return_index=True)
         
-        return [[cells[i], Ts[i]] for i in tids]
+        return [[cells[i], Ts[i]] for i in cids]
 
     def sort_list_of_cells(self):
         if len(self.list_of_cells)==0:
@@ -1772,6 +1794,7 @@ class PlotActionCT:
         self.title.set(text="DETECT APOPTOSIS\nMODE", ha='left', x=0.01)
         self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
         self.fig.patch.set_facecolor((0.0,0.0,0.0,0.2))
+        self.CP = CellPickerCT_apo(self)
 
     def visualization(self):
         self.title.set(text="VISUALIZATION\nMODE", ha='left', x=0.01)
@@ -1828,8 +1851,6 @@ class CellPickerCT_del():
                                 for zz in zs:
                                     self.PACT.list_of_cells.append([lab, zz])
                             self.PACT.update()
-
-            # Select cell and store it   
 
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
@@ -1897,4 +1918,53 @@ class CellPickerCT_com():
     def stopit(self):
         
         # Stop this interaction with the plot 
+        self.canvas.mpl_disconnect(self.cid)
+
+class CellPickerCT_apo():
+    def __init__(self, PACT):
+        self.PACT  = PACT
+        self.cid = self.PACT.fig.canvas.mpl_connect('button_press_event', self)
+        self.canvas  = self.PACT.fig.canvas
+    def __call__(self, event):
+        if event.button==3:
+            if isinstance(self.PACT.ax, np.ndarray):
+                axshape = self.PACT.ax.shape
+                # Select ax 
+                for i in range(axshape[0]):
+                        for j in range(axshape[1]):
+                                if event.inaxes==self.PACT.ax[i,j]:
+                                    self.PACT.current_subplot = [i,j]
+                                    self.PACT.ax_sel = self.PACT.ax[i,j]
+                                    self.PACT.z = self.PACT.zs[i,j]
+            else:
+                self.PACT.ax_sel = self.PACT.ax
+
+            if event.inaxes!=self.PACT.ax_sel:
+                pass
+            else:
+                x = np.rint(event.xdata).astype(np.int64)
+                y = np.rint(event.ydata).astype(np.int64)
+                picked_point = np.array([x, y])
+                for i ,mask in enumerate(self.PACT.CS.Masks[self.PACT.z]):
+                    for point in mask:
+                        if (picked_point==point).all():
+                            z   = self.PACT.z
+                            lab = self.PACT.CS.labels[z][i]
+                            cell = [lab, self.PACT.t]
+                            idxtopop=[]
+                            pop_cell=False
+                            for jj, _cell in enumerate(self.PACT.list_of_cells):
+                                _lab = _cell[0]
+                                _t   = _cell[1]
+                                if _lab == lab:
+                                    pop_cell=True
+                                    idxtopop.append(jj)
+                            if pop_cell:
+                                idxtopop.sort(reverse=True)
+                                for jj in idxtopop:
+                                    self.PACT.list_of_cells.pop(jj)
+                            else:
+                                self.PACT.list_of_cells.append(cell)
+                            self.PACT.update()
+    def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
