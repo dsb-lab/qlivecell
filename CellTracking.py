@@ -1560,8 +1560,10 @@ class CellTracking(object):
                     if zz==z:
                         ys = FinalCenters[t][lab][1]
                         xs = FinalCenters[t][lab][2]
-                        #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
-                        _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                        if [lab, PACT.t] in self.apoptotic_events:
+                            _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="k")
+                        else:
+                            _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
                         _ = PACT.ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
                         _ = PACT.ax[idx1, idx2].set_xticks([])
                         _ = PACT.ax[idx1, idx2].set_yticks([])
@@ -1665,8 +1667,10 @@ class PlotActionCT:
                 elif self.current_state=="apo":
                     self.CT.apoptosis(self.list_of_cells)
                     self.list_of_cells=[]
-                    self.visualization()
-                    self.update()
+                    for PACT in self.CT.PACTs:
+                        PACT.CT.replot_tracking(PACT)
+                        PACT.visualization()
+                        PACT.update()
                 else:
                     self.visualization()
                     self.update()
