@@ -11,7 +11,7 @@ from scipy.spatial import cKDTree
 from copy import deepcopy
 from matplotlib.widgets import Slider
 
-plt.rcParams.update({'figure.max_open_warning': 0})
+#plt.rcParams.update({'figure.max_open_warning': 0})
 
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
@@ -1309,7 +1309,12 @@ class CellTracking(object):
         self.FinalCenters = deepcopy(backup.FinalCenters)
         self.FinalOulines = deepcopy(backup.FinalOulines)
         self.label_correspondance = deepcopy(backup.label_correspondance)
-    
+        self.PACT.CT = self
+        self.PACT.CS = self.CSt[self.PACT.t]
+        self.replot_tracking(self.PACT.cr)
+        self.PACT.visualization()
+        self.PACT.update()
+
     def one_step_copy(self):
         self._copyCT.TLabels   = deepcopy(self.TLabels)
         self._copyCT.TCenters  = deepcopy(self.TCenters)
@@ -1369,7 +1374,6 @@ class CellTracking(object):
         FinalCenters  = []
         FinalOutlines = []
         for t in range(np.shape(self.stacks)[0]):
-            print("T = ", t)
             if t==0:
                 FinalLabels.append(TLabels[0])
                 FinalCenters.append(TCenters[0])
@@ -1657,9 +1661,7 @@ class PlotActionCT:
     def update(self):
         if self.current_state=="com":
             cells_to_plot=self.extract_unique_cell_time_list_of_cells()
-            print(cells_to_plot)
             cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
-            print(cells_string)
         else:
             cells_to_plot = self.sort_list_of_cells()
             cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
@@ -1768,7 +1770,7 @@ class CellPickerCT_del():
                 self.PA.ax_sel = self.PA.ax
 
             if event.inaxes!=self.PA.ax_sel:
-                print("WRONG AXES")
+                pass
             else:
                 x = np.rint(event.xdata).astype(np.int64)
                 y = np.rint(event.ydata).astype(np.int64)
@@ -1830,8 +1832,7 @@ class CellPickerCT_com():
 
             # Check if the selection was inside a subplot at all
             if event.inaxes!=self.PA.ax_sel:
-                print("WRONG AXES")
-            
+                pass
             # If so, proceed
             else:
 
@@ -1856,7 +1857,7 @@ class CellPickerCT_com():
                             else:
                                 if Tlab not in np.array(self.PA.CT.cells_to_combine)[:,0]:
                                     if len(self.PA.CT.cells_to_combine)==2:
-                                        print("cannot combine more than 2 cells at once")
+                                        self.PA.CS.fancyprint("cannot combine more than 2 cells at once")
                                     else:
                                         if self.PA.t not in np.array(self.PA.CT.cells_to_combine)[:,1]:
                                             self.PA.CT.cells_to_combine.append(cell)

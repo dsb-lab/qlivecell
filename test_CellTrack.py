@@ -33,5 +33,4 @@ CT()
 
 CT.plot_tracking()
 
-# This is a test
 #CT.undo_corrections(all=True)
