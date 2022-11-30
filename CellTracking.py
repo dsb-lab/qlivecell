@@ -47,7 +47,7 @@ class CellSegmentation(object):
         self._assign_color_to_label()
 
     def __call__(self):
-        print("####################   SEGMENTING CURRENT EMBRYO  ####################")
+        print("################       SEGMENTING CURRENT EMBRYO      ################")
         self.printfancy("")
         self._cell_segmentation_outlines()
         self.printfancy("")
@@ -68,9 +68,9 @@ class CellSegmentation(object):
 
         self.printfancy("Segmentation completed and revised")
         self.printfancy("")
-        print("####################     SEGMENTATION COMPLETED   ####################")
+        print("################         SEGMENTATION COMPLETED       ################")
         self.printfancy("")
-        #self.actions()
+        self.actions()
 
     def _cell_segmentation_outlines(self):
 
@@ -562,7 +562,7 @@ class CellSegmentation(object):
         
     def _end_actions(self):
         self.printfancy("")
-        print("##################     ERROR CORRECTION FINISHED     #################")
+        print("################       ERROR CORRECTION FINISHED      ################")
         self._returnflag = True
         return
 
@@ -595,7 +595,7 @@ class CellSegmentation(object):
             print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
     
     def actions(self):
-        print("####################       ACTION SELECTION       ####################")
+        print("################           ACTION SELECTION           ################")
         self.printfancy("")
         self.printfancy("Select one of these actions by typing the")
         self.printfancy("corresponding number:")
@@ -612,7 +612,7 @@ class CellSegmentation(object):
         try:
             chosen_action = int(act)
             if chosen_action in [1,2,3,4]:
-                self.printfancy("")
+                #self.printfancy("")
                 self._actions[chosen_action-1]()
                 if self._returnflag==True:
                     return
@@ -1262,7 +1262,7 @@ class plotRound:
             return None, self.currentonround, self.currentround
 
 class CellTracking(object):
-    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_layout_time=(2,3), plot_overlap_time=1,plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7):
+    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1):
         self.stacks            = stacks
         self._model            = model
         self._trainedmodel     = trainedmodel
@@ -1277,11 +1277,11 @@ class CellTracking(object):
         self._fullmat          = use_full_matrix_to_compute_overlap
         self._zneigh           = z_neighborhood
         self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
-        self.plot_layout       = plot_layout
-        self.plot_overlap      = plot_overlap
+        self.plot_layout_seg   = plot_layout_segmentation
+        self.plot_overlap_seg  = plot_overlap_segmentation
         self.plot_masks        = plot_masks
-        self.plot_layout_time  = plot_layout_time
-        self.plot_overlap_time = plot_overlap_time
+        self.plot_layout_track = plot_layout_tracking
+        self.plot_overlap_track= plot_overlap_tracking
         self._max_label        = 0
         self._masks_cmap_name  = masks_cmap
         self._masks_cmap       = cm.get_cmap(self._masks_cmap_name)
@@ -1291,6 +1291,7 @@ class CellTracking(object):
         self.cells_to_combine  = []
         self.apoptotic_events = []
         self.mitotic_events   = []
+        self.plot_tracking_windows=plot_tracking_windows
 
     def __call__(self):
         self.copyCT  = deepcopy(self)
@@ -1306,6 +1307,13 @@ class CellTracking(object):
         self.copyCT.FinalOulines = deepcopy(self.FinalOulines)
         self.copyCT.label_correspondance = deepcopy(self.label_correspondance)
         self.one_step_copy()
+        self.CSt[0].printfancy("")
+        self.CSt[0].printfancy("Plotting...")
+        self.CSt[0].printfancy("Proceed with the correction of the tracking.")
+        self.plot_tracking()
+        self.CSt[0].printfancy("")
+        print("#######################    PROCESS FINISHED   #######################")
+
 
     def undo_corrections(self, all=False):
         if all:
@@ -1343,8 +1351,8 @@ class CellTracking(object):
         self.TCenters  = []
         self.TOutlines = []
         self.CSt       = []
+        print("######################   BEGIN SEGMENTATIONS   ######################")
         for t in range(self.times):
-            print("\n\n ######   CURRENT TIME = %d   ######\n" %t)
             imgs = self.stacks[t,:,:,:]
             CS = CellSegmentation( imgs, self._model, trainedmodel=self._trainedmodel
                                 , channels=self._channels
@@ -1355,18 +1363,21 @@ class CellTracking(object):
                                 , use_full_matrix_to_compute_overlap=self._fullmat
                                 , z_neighborhood=self._zneigh
                                 , overlap_gradient_th=self._overlap_th
-                                , plot_layout=self.plot_layout
-                                , plot_overlap=self.plot_overlap
+                                , plot_layout=self.plot_layout_seg
+                                , plot_overlap=self.plot_overlap_seg
                                 , plot_masks=self.plot_masks
                                 , masks_cmap=self._masks_cmap_name
                                 , min_outline_length=self._min_outline_length
                                 , neighbors_for_sequence_sorting=self._nearest_neighs)
-
-            print("Segmenting stack for current time...")          
+            CS.printfancy("")
+            CS.printfancy("######   CURRENT TIME = %d   ######" %t)
+            CS.printfancy("")
             CS()
-            print("Segmentation and corrections completed. Proceeding to next time")
+            CS.printfancy("Segmentation and corrections completed. Proceeding to next time")
             self.CSt.append(CS)
-    
+        CS.printfancy("")
+        print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
+
     def extract_labels(self):
         self.TLabels   = []
         self.TCenters  = []
@@ -1481,11 +1492,13 @@ class CellTracking(object):
             if cell not in self.apoptotic_events:
                 self.apoptotic_events.append(cell)
 
-    def plot_tracking(self, windows=1):
+    def plot_tracking(self, windows=None):
+        if windows==None:
+            windows=self.plot_tracking_windows
         self.PACTs=[]
         self.time_sliders = []
         for w in range(windows):
-            counter = plotRound(layout=self.plot_layout_time,totalsize=self.slices, overlap=self.plot_overlap_time, round=0)
+            counter = plotRound(layout=self.plot_layout_track,totalsize=self.slices, overlap=self.plot_overlap_track, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
             self.PACTs.append(PlotActionCT(fig, ax, self))
             self.PACTs[w].zs = np.zeros_like(ax)
@@ -1536,7 +1549,7 @@ class CellTracking(object):
 
     def replot_tracking(self, PACT):
         t = PACT.t
-        counter = plotRound(layout=self.plot_layout_time,totalsize=self.slices, overlap=self.plot_overlap_time, round=PACT.cr)
+        counter = plotRound(layout=self.plot_layout_track,totalsize=self.slices, overlap=self.plot_overlap_track, round=PACT.cr)
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
         IMGS = self.stacks
         FinalCenters = self.FinalCenters
@@ -1606,8 +1619,8 @@ class PlotActionCT:
         self.z = None
         self.CS = CT.CSt[self.t]
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
-        groupsize  = self.CT.plot_layout_time[0] * self.CT.plot_layout_time[1]
-        self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap_time))-1
+        groupsize  = self.CT.plot_layout_track[0] * self.CT.plot_layout_track[1]
+        self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap_track))-1
         self.get_size()
         actionsbox = "Possible actions:                 - q : quit plot            \n - z : undo previous action   - ESC : visualization \n - d : delete cell                    - c : combine cells   \n - a : apoptotic event           - m : mitotic events "
         self.actionlist = self.fig.text(0.98, 0.98, actionsbox, fontsize=1, ha='right', va='top')
@@ -1638,6 +1651,10 @@ class PlotActionCT:
                 self.visualization()
             elif event.key == 'z':
                 self.CT.undo_corrections(all=False)
+                for PACT in self.CT.PACTs:
+                        PACT.CT.replot_tracking(PACT)
+            elif event.key == 'Z':
+                self.CT.undo_corrections(all=True)
                 for PACT in self.CT.PACTs:
                         PACT.CT.replot_tracking(PACT)
                 self.visualization()
@@ -1909,7 +1926,7 @@ class CellPickerCT_com():
                             else:
                                 if Tlab not in np.array(self.PACT.CT.cells_to_combine)[:,0]:
                                     if len(self.PACT.CT.cells_to_combine)==2:
-                                        self.PACT.CS.fancyprint("cannot combine more than 2 cells at once")
+                                        self.PACT.CS.printfancy("cannot combine more than 2 cells at once")
                                     else:
                                         if self.PACT.t not in np.array(self.PACT.CT.cells_to_combine)[:,1]:
                                             self.PACT.CT.cells_to_combine.append(cell)

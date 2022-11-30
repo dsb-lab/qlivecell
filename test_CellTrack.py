@@ -20,16 +20,14 @@ CT = CellTracking( IMGS, model, trainedmodel=True
                      , use_full_matrix_to_compute_overlap=True
                      , z_neighborhood=2
                      , overlap_gradient_th=0.15
-                     , plot_layout=(2,2)
-                     , plot_overlap=1
-                     , plot_layout_time=(2,3)
-                     , plot_overlap_time=1
+                     , plot_layout_segmentation=(2,2)
+                     , plot_overlap_segmentation=1
+                     , plot_layout_tracking=(2,3)
+                     , plot_overlap_tracking=1
                      , plot_masks=False
                      , masks_cmap='tab10'
                      , min_outline_length=200
-                     , neighbors_for_sequence_sorting=7)
+                     , neighbors_for_sequence_sorting=7
+                     , plot_tracking_windows=2)
 
 CT()
-CT.plot_tracking(windows=2)
-
-#CT.undo_corrections(all=True)
