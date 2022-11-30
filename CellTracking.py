@@ -517,7 +517,7 @@ class CellSegmentation(object):
         self._position3d()
         self.printfancy("")
         self.printfancy("## Labels updated ##")
-        self.printfancy("")
+        #self.printfancy("")
 
     def delete_cell(self, PA):
         cells = [x[0] for x in PA.list_of_cells]
@@ -761,26 +761,23 @@ class CellSegmentation(object):
             for z, id, r in counter:
                 if len(self.PA.ax.shape)==1:
                     idx = zidxs[id]
+                    self.PA.ax[idx].cla()
                     if z == None:
                         self.PA.ax[idx].axis(False)
                     else:
                         self.PA.zs[idx] = z
                         img = self.stack[z,:,:]
-
-                        self.PA.ax[idx].cla()
                         self.plot_axis(self.PA.ax[idx], img, z)
                 else:
                     idx1 = zidxs[0][id]
                     idx2 = zidxs[1][id]
+                    self.PA.ax[idx1, idx2].cla()
                     if z == None:
-                        self.ax[idx1,idx2].axis(False)
+                        self.PA.ax[idx1,idx2].axis(False)
                     else:      
                         # select corresponding idxs on the plot 
                         self.PA.zs[idx1, idx2] = z
                         img = self.stack[z,:,:]
-
-                        # plot
-                        self.PA.ax[idx1, idx2].cla()
                         self.plot_axis(self.PA.ax[idx1, idx2], img, z)
         else:
             img  = self.stack[round,:,:]
@@ -827,7 +824,7 @@ class PlotActionCS:
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
         if isinstance(zs, np.ndarray):
             groupsize  = self.CS.plot_layout[0] * self.CS.plot_layout[1]
-            self.max_round =  math.ceil((self.CS.slices)/(groupsize-self.CS.plot_overlap))
+            self.max_round =  math.ceil((self.CS.slices)/(groupsize-self.CS.plot_overlap))-1
         else:
             self.max_round = self.CS.slices
         self.cr = current_round
@@ -1289,8 +1286,8 @@ class CellTracking(object):
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self.cells_to_combine  = []
-        self.apoptotic_events = []
-        self.mitotic_events   = []
+        self.apoptotic_events  = []
+        self.mitotic_events    = []
         self.plot_tracking_windows=plot_tracking_windows
 
     def __call__(self):
@@ -1546,7 +1543,6 @@ class CellTracking(object):
             self.time_sliders[w].on_changed(self.PACTs[w].update_slider)
         plt.show()
 
-
     def replot_tracking(self, PACT):
         t = PACT.t
         counter = plotRound(layout=self.plot_layout_track,totalsize=self.slices, overlap=self.plot_overlap_track, round=PACT.cr)
@@ -1622,7 +1618,7 @@ class PlotActionCT:
         groupsize  = self.CT.plot_layout_track[0] * self.CT.plot_layout_track[1]
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap_track))-1
         self.get_size()
-        actionsbox = "Possible actions:                 - q : quit plot            \n - z : undo previous action   - ESC : visualization \n - d : delete cell                    - c : combine cells   \n - a : apoptotic event           - m : mitotic events "
+        actionsbox = "Possible actions:                                                 \n - q : quit plot                      - ESC : visualization \n - z : undo previous action   - Z : undo all actions\n - d : delete cell                   - c : combine cells    \n - a : apoptotic event          - m : mitotic events  "
         self.actionlist = self.fig.text(0.98, 0.98, actionsbox, fontsize=1, ha='right', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
         self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n                     PRESS ENTER TO START", fontsize=1, ha='left', va='top')
