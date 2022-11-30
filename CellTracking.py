@@ -70,6 +70,7 @@ class CellSegmentation(object):
         self.printfancy("")
         print("################         SEGMENTATION COMPLETED       ################")
         self.printfancy("")
+        self._copyCS = deepcopy(self)
         self.actions()
 
     def _cell_segmentation_outlines(self):
@@ -631,7 +632,18 @@ class CellSegmentation(object):
             self.printfancy("")
             self.actions()
             return
-    
+
+    def undo_action(self):
+        self.labels   = deepcopy(self._copyCS.labels)
+        self.Outlines = deepcopy(self._copyCS.Outlines)
+        self.Masks    = deepcopy(self._copyCS.Masks)
+        self.update_labels()
+        
+    def one_step_copy(self):
+        self._copyCS.labels   = deepcopy(self.labels)
+        self._copyCS.Outlines = deepcopy(self.Outlines)
+        self._copyCS.Masks    = deepcopy(self.Masks)
+
     def compute_Masks_to_plot(self):
         self._Masks_to_plot = np.zeros_like(self.stack, dtype=np.int32)
         self._Masks_to_plot_alphas = np.zeros_like(self.stack, dtype=np.int32)
@@ -814,7 +826,7 @@ class PlotActionCS:
         self.ax=ax
         self.CS=CS
         self.get_size()
-        actionsbox = "Possible actions      - ESC : visualization  \n- q : quit plot           - a     : add cells        \n- d : delete cell       - c      : combine cells"
+        actionsbox = "Possible actions                                   \n- ESC : visualization   - q : quit plot        \n- z : undo action         - a : add cells       \n- d : delete cell           - c : combine cells"
         self.actionlist = self.fig.text(0.98, 0.98, actionsbox, fontsize=self.figheight/90, ha='right', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=self.figheight/70)
         self.instructions = self.fig.text(0.2, 0.98, "instructions", fontsize=self.figheight/70, ha='left', va='top')
@@ -857,17 +869,20 @@ class PlotActionCS:
     def __call__(self, event):
         if self.current_state==None:
             if event.key == 'a':
+                self.CS.one_step_copy()
                 self.CS.printfancy("")
                 self.CS.printfancy("# Entering ADD mode. Press ENTER to exit #")
                 self.current_state="add"
                 self.visualization()
                 self.add_cells()
             elif event.key == 'd':
+                self.CS.one_step_copy()
                 self.CS.printfancy("")
                 self.CS.printfancy("# Entering DELETE mode. Press ENTER to exit #")
                 self.current_state="del"
                 self.delete_cells()
             elif event.key == 'c':
+                self.CS.one_step_copy()
                 self.CS.printfancy("")
                 self.CS.printfancy("# Entering COMBINE mode. Press ENTER to exit #")
                 self.current_state="com"
@@ -875,6 +890,10 @@ class PlotActionCS:
             elif event.key == 'escape':
                 self.CS.printfancy("")
                 self.CS.printfancy("# Entering VISUALIZATION mode #")
+            elif event.key == 'z':
+                self.CS.printfancy("# Correcting previous action... #")
+                self.CS.undo_action()
+                self.CS.replot_segmented(self.cr)
                 self.visualization()
             self.update()
         else:
