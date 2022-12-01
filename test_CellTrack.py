@@ -31,4 +31,3 @@ CT = CellTracking( IMGS, model, trainedmodel=True
                      , plot_tracking_windows=2)
 
 CT()
-CT.plot_tracking()

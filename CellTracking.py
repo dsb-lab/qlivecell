@@ -1653,7 +1653,6 @@ class PlotActionCT:
                 for PACT in self.CT.PACTs:
                         PACT.CT.replot_tracking(PACT)
             elif event.key == 'Z':
-                print("PERO QUE HACE AQUIII")
                 self.CT.undo_corrections(all=True)
                 for PACT in self.CT.PACTs:
                         PACT.CT.replot_tracking(PACT)
