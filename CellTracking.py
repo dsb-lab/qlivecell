@@ -1344,7 +1344,7 @@ class CellTracking(object):
             PACT.CS = self.CSt[PACT.t]
 
     def one_step_copy(self):
-        self._copy = deepcopy(self)
+        self._copyCT = deepcopy(self)
 
     def cell_segmentation(self):
         self.TLabels   = []
@@ -1653,6 +1653,7 @@ class PlotActionCT:
                 for PACT in self.CT.PACTs:
                         PACT.CT.replot_tracking(PACT)
             elif event.key == 'Z':
+                print("PERO QUE HACE AQUIII")
                 self.CT.undo_corrections(all=True)
                 for PACT in self.CT.PACTs:
                         PACT.CT.replot_tracking(PACT)
@@ -1662,6 +1663,7 @@ class PlotActionCT:
             if event.key=='enter':
                 if self.current_state=="del":
                     self.CP.stopit()
+                    delattr(self, 'CP')
                     self.CT.delete_cell(self)
                     for PACT in self.CT.PACTs:
                         self.list_of_cells = []
@@ -1670,6 +1672,7 @@ class PlotActionCT:
                         PACT.update()
                 elif self.current_state=="com":
                     self.CP.stopit()
+                    delattr(self, 'CP')
                     self.CT.combine_cells()
                     for PACT in self.CT.PACTs:
                         PACT.current_subplot=None
