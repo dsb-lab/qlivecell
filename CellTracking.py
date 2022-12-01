@@ -1330,7 +1330,6 @@ class CellTracking(object):
         self.CSt[0].printfancy("")
         print("#######################    PROCESS FINISHED   #######################")
 
-
     def undo_corrections(self, all=False):
         if all:
             backup = self.copyCT
