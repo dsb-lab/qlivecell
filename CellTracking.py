@@ -1496,7 +1496,7 @@ class CellTracking(object):
         if windows==None:
             windows=self.plot_tracking_windows
         self.PACTs=[]
-        self.time_sliders = []
+        time_sliders = []
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout_track,totalsize=self.slices, overlap=self.plot_overlap_track, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
@@ -1542,8 +1542,8 @@ class CellTracking(object):
                 valinit=0,
                 valstep=1
             )
-            self.time_sliders.append(time_slider)
-            self.time_sliders[w].on_changed(self.PACTs[w].update_slider)
+            time_sliders.append(time_slider)
+            time_sliders[w].on_changed(self.PACTs[w].update_slider)
         plt.show()
 
     def replot_tracking(self, PACT):
