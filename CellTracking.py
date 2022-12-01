@@ -908,10 +908,12 @@ class PlotActionCS:
                         self.CS.complete_add_cell(self)
                 elif self.current_state=="del":
                     self.CP.stopit()
+                    delattr(self, 'CP')
                     self.CS.delete_cell(self)
                     self.list_of_cells = []
                 elif self.current_state=="com":
                     self.CP.stopit()
+                    delattr(self, 'CP')
                     self.CS.combine_cells(self)
                     self.list_of_cells = []
                 self.visualization()
@@ -1310,18 +1312,10 @@ class CellTracking(object):
         self.plot_tracking_windows=plot_tracking_windows
 
     def __call__(self):
-        self.copyCT  = deepcopy(self)
-        self._copyCT = deepcopy(self)
         self.cell_segmentation()
         self.cell_tracking()
-        self.copyCT.TLabels   = deepcopy(self.TLabels)
-        self.copyCT.TCenters  = deepcopy(self.TCenters)
-        self.copyCT.TOutlines = deepcopy(self.TOutlines)
-        self.copyCT.CSt       = deepcopy(self.CSt)
-        self.copyCT.FinalLabels  = deepcopy(self.FinalLabels)
-        self.copyCT.FinalCenters = deepcopy(self.FinalCenters)
-        self.copyCT.FinalOulines = deepcopy(self.FinalOulines)
-        self.copyCT.label_correspondance = deepcopy(self.label_correspondance)
+        self.copyCT  = deepcopy(self)
+        self._copyCT = deepcopy(self)
         self.one_step_copy()
         self.CSt[0].printfancy("")
         self.CSt[0].printfancy("Plotting...")
@@ -1350,16 +1344,7 @@ class CellTracking(object):
             PACT.CS = self.CSt[PACT.t]
 
     def one_step_copy(self):
-        self._copyCT.TLabels   = deepcopy(self.TLabels)
-        self._copyCT.TCenters  = deepcopy(self.TCenters)
-        self._copyCT.TOutlines = deepcopy(self.TOutlines)
-        self._copyCT.CSt       = deepcopy(self.CSt)
-        self._copyCT.FinalLabels  = deepcopy(self.FinalLabels)
-        self._copyCT.FinalCenters = deepcopy(self.FinalCenters)
-        self._copyCT.FinalOulines = deepcopy(self.FinalOulines)
-        self._copyCT.label_correspondance = deepcopy(self.label_correspondance)
-        self._copyCT.apoptotic_events = deepcopy(self.apoptotic_events)
-        self._copyCT.mitotic_events = deepcopy(self.mitotic_events)
+        self._copy = deepcopy(self)
 
     def cell_segmentation(self):
         self.TLabels   = []
