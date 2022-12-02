@@ -1323,6 +1323,7 @@ class CellTracking(object):
 
     def __call__(self):
         self.cell_segmentation()
+        gc.collect()
         self.cell_tracking()
         self.copyCT  = deepcopy(self)
         self._copyCT = deepcopy(self)
