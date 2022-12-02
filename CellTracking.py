@@ -858,9 +858,6 @@ class PlotActionCS:
             self.z=self.zs
         else:
             self.z = None
-        print("JUST INIT PLOT ACTION")
-        print(plt.get_fignums())
-    
     def onscroll(self, event):
         if self.current_state==None:
             self.current_state="SCL"
@@ -905,14 +902,9 @@ class PlotActionCS:
                 self.CS.printfancy("# Correcting previous action... #")
                 self.CS.undo_action()
                 self.CS.replot_segmented(self.cr)
-                self.visualization()
-            print("END OF CALL")
-            print(plt.get_fignums())
             self.update()
         else:
             if event.key=='enter':
-                print("CLICKED ENTER")
-                print(plt.get_fignums())
                 if self.current_state=="add":
                     if self.current_subplot==None:
                         pass
@@ -931,8 +923,6 @@ class PlotActionCS:
                     delattr(self, 'CP')
                     self.CS.combine_cells(self)
                     self.list_of_cells = []
-                print("AFTER DOING WHATEVER")
-                print(plt.get_fignums())
                 self.visualization()
                 self.update()
                 self.current_subplot=None
@@ -1331,22 +1321,14 @@ class CellTracking(object):
         self.plot_tracking_windows=plot_tracking_windows
 
     def __call__(self):
-        print("START SEGMENT")
-        print(plt.get_fignums())
         self.cell_segmentation()
-        print("START TRACKING")
-        print(plt.get_fignums())
         self.cell_tracking()
-        print("END TRACKING")
-        print(plt.get_fignums())
         self.copyCT  = deepcopy(self)
         self._copyCT = deepcopy(self)
         self.backups = deque([self._copyCT], self._backup_steps_tra)
         self.CSt[0].printfancy("")
         self.CSt[0].printfancy("Plotting...")
-        self.CSt[0].printfancy("Proceed with the correction of the tracking.")
         self.plot_tracking()
-        print(plt.get_fignums())
         self.CSt[0].printfancy("")
         print("#######################    PROCESS FINISHED   #######################")
 
@@ -1540,14 +1522,8 @@ class CellTracking(object):
         if windows==None:
             windows=self.plot_tracking_windows
         self.PACTs=[]
-        print("Inside plot tracking")
-        print(plt.get_fignums())
         time_sliders = []
-        print("PRE WINDOWS = ", windows)
         for w in range(windows):
-            print("WINDOWS = ", windows)
-            print("PLOTTING PLOT PRE", w)
-            print(plt.get_fignums())
             counter = plotRound(layout=self.plot_layout_track,totalsize=self.slices, overlap=self.plot_overlap_track, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
             self.PACTs.append(PlotActionCT(fig, ax, self))
@@ -1594,10 +1570,6 @@ class CellTracking(object):
             )
             time_sliders.append(time_slider)
             time_sliders[w].on_changed(self.PACTs[w].update_slider)
-            print("PLOTTING PLOT POST", w)
-            print(plt.get_fignums())
-        print("PLOTTING END")
-        print(plt.get_fignums())
         plt.show()
 
     def replot_tracking(self, PACT):
