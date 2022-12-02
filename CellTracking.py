@@ -74,8 +74,7 @@ class CellSegmentation(object):
         print("################         SEGMENTATION COMPLETED       ################")
         self.printfancy("")
         self._copyCS = deepcopy(self)
-        self.backups = deque([], self._backup_steps)
-        self.one_step_copy()
+        self.backups = deque([self._copyCS], self._backup_steps)
         self.actions()
 
     def _cell_segmentation_outlines(self):
@@ -648,7 +647,11 @@ class CellSegmentation(object):
             self.one_step_copy()
         
     def one_step_copy(self):
-        self.backups.append(deepcopy(self))
+        new_copy = deepcopy(self._copyCS)
+        new_copy.labels   = deepcopy(self.labels)
+        new_copy.Outlines = deepcopy(self.Outlines)
+        new_copy.Masks    = deepcopy(self.Masks)
+        self.backups.append(deepcopy(new_copy))
 
     def compute_Masks_to_plot(self):
         self._Masks_to_plot = np.zeros_like(self.stack, dtype=np.int32)
@@ -855,6 +858,8 @@ class PlotActionCS:
             self.z=self.zs
         else:
             self.z = None
+        print("JUST INIT PLOT ACTION")
+        print(plt.get_fignums())
     
     def onscroll(self, event):
         if self.current_state==None:
@@ -901,9 +906,13 @@ class PlotActionCS:
                 self.CS.undo_action()
                 self.CS.replot_segmented(self.cr)
                 self.visualization()
+            print("END OF CALL")
+            print(plt.get_fignums())
             self.update()
         else:
             if event.key=='enter':
+                print("CLICKED ENTER")
+                print(plt.get_fignums())
                 if self.current_state=="add":
                     if self.current_subplot==None:
                         pass
@@ -922,6 +931,8 @@ class PlotActionCS:
                     delattr(self, 'CP')
                     self.CS.combine_cells(self)
                     self.list_of_cells = []
+                print("AFTER DOING WHATEVER")
+                print(plt.get_fignums())
                 self.visualization()
                 self.update()
                 self.current_subplot=None
@@ -931,7 +942,6 @@ class PlotActionCS:
                     self.z=self.zs
                 else:
                     self.z = None
-                gc.collect()
             else:
                 # We have to wait for the current action to finish
                 pass
@@ -1321,15 +1331,22 @@ class CellTracking(object):
         self.plot_tracking_windows=plot_tracking_windows
 
     def __call__(self):
+        print("START SEGMENT")
+        print(plt.get_fignums())
         self.cell_segmentation()
+        print("START TRACKING")
+        print(plt.get_fignums())
         self.cell_tracking()
-        self.copyCT  = deepcopy(self)
-        self._copyCT = deepcopy(self)
-        self.backups = deque([self._copyCT], self._backup_steps_tra)
+        print("END TRACKING")
+        print(plt.get_fignums())
+        #self.copyCT  = deepcopy(self)
+        #self._copyCT = deepcopy(self)
+        #self.backups = deque([self._copyCT], self._backup_steps_tra)
         self.CSt[0].printfancy("")
         self.CSt[0].printfancy("Plotting...")
         self.CSt[0].printfancy("Proceed with the correction of the tracking.")
         self.plot_tracking()
+        print(plt.get_fignums())
         self.CSt[0].printfancy("")
         print("#######################    PROCESS FINISHED   #######################")
 
@@ -1400,8 +1417,7 @@ class CellTracking(object):
             CS.printfancy("")
             CS()
             CS.printfancy("Segmentation and corrections completed. Proceeding to next time")
-            delattr(CS, 'backups')
-            gc.collect()
+            #delattr(CS, 'backups')
             self.CSt.append(CS)
         CS.printfancy("")
         print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
@@ -1524,6 +1540,8 @@ class CellTracking(object):
         if windows==None:
             windows=self.plot_tracking_windows
         self.PACTs=[]
+        print("Inside plot tracking")
+        print(plt.get_fignums())
         time_sliders = []
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout_track,totalsize=self.slices, overlap=self.plot_overlap_track, round=0)
@@ -1659,39 +1677,41 @@ class PlotActionCT:
     def __call__(self, event):
         if self.current_state==None:
             if event.key == 'd':
-                self.CT.one_step_copy()
+                #self.CT.one_step_copy()
                 self.current_state="del"
                 self.delete_cells()
             elif event.key == 'c':
-                self.CT.one_step_copy()
+                #self.CT.one_step_copy()
                 self.current_state="com"
                 self.combine_cells()
             elif event.key == 'm':
-                self.CT.one_step_copy()
+                #self.CT.one_step_copy()
                 self.current_state="mit"
                 self.mitosis()
             elif event.key == 'a':
-                self.CT.one_step_copy()
+                #self.CT.one_step_copy()
                 self.current_state="apo"
                 self.apoptosis()
             elif event.key == 'escape':
                 self.visualization()
             elif event.key == 'z':
-                self.CT.undo_corrections(all=False)
-                for PACT in self.CT.PACTs:
-                        PACT.CT.replot_tracking(PACT)
+                pass
+                #self.CT.undo_corrections(all=False)
+                #for PACT in self.CT.PACTs:
+                #        PACT.CT.replot_tracking(PACT)
+                #self.visualization()
             elif event.key == 'Z':
-                self.CT.undo_corrections(all=True)
-                for PACT in self.CT.PACTs:
-                        PACT.CT.replot_tracking(PACT)
-                self.visualization()
+                pass
+                #self.CT.undo_corrections(all=True)
+                #for PACT in self.CT.PACTs:
+                #        PACT.CT.replot_tracking(PACT)
+                #self.visualization()
             self.update()
         else:
             if event.key=='enter':
                 if self.current_state=="del":
                     self.CP.stopit()
-                    delattr(self, 'CP')
-                    gc.collect()
+                    #delattr(self, 'CP')
                     self.CT.delete_cell(self)
                     for PACT in self.CT.PACTs:
                         self.list_of_cells = []
@@ -1700,7 +1720,7 @@ class PlotActionCT:
                         PACT.update()
                 elif self.current_state=="com":
                     self.CP.stopit()
-                    delattr(self, 'CP')
+                    #delattr(self, 'CP')
                     self.CT.combine_cells()
                     for PACT in self.CT.PACTs:
                         PACT.current_subplot=None
@@ -1725,7 +1745,6 @@ class PlotActionCT:
                 self.current_state=None
                 self.ax_sel=None
                 self.z=None
-                gc.collect()
             else:
                 # We have to wait for the current action to finish
                 pass

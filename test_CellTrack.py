@@ -34,4 +34,3 @@ if __name__ == "__main__":
                         , backup_steps_tracking=5)
 
     CT()
-    plt.show()
