@@ -858,6 +858,7 @@ class PlotActionCS:
             self.z=self.zs
         else:
             self.z = None
+            
     def onscroll(self, event):
         if self.current_state==None:
             self.current_state="SCL"
