@@ -1330,6 +1330,7 @@ class CellTracking(object):
         self.backups = deque([self._copyCT], self._backup_steps_tra)
         self.CSt[0].printfancy("")
         self.CSt[0].printfancy("Plotting...")
+        plt.close("all")
         self.plot_tracking()
         self.CSt[0].printfancy("")
         print("#######################    PROCESS FINISHED   #######################")
