@@ -28,6 +28,8 @@ CT = CellTracking( IMGS, model, trainedmodel=True
                      , masks_cmap='tab10'
                      , min_outline_length=200
                      , neighbors_for_sequence_sorting=7
-                     , plot_tracking_windows=2)
+                     , plot_tracking_windows=2
+                     , backup_steps_segmentation=5
+                     , backup_steps_tracking=5)
 
 CT()

@@ -73,7 +73,8 @@ class CellSegmentation(object):
         print("################         SEGMENTATION COMPLETED       ################")
         self.printfancy("")
         self._copyCS = deepcopy(self)
-        self.backups = deque([self._copyCS], self._backup_steps)
+        self.backups = deque([], self._backup_steps)
+        self.one_step_copy()
         self.actions()
 
     def _cell_segmentation_outlines(self):
@@ -646,11 +647,7 @@ class CellSegmentation(object):
             self.one_step_copy()
         
     def one_step_copy(self):
-        new_copy = deepcopy(self._copyCS)
-        new_copy.labels   = deepcopy(self.labels)
-        new_copy.Outlines = deepcopy(self.Outlines)
-        new_copy.Masks    = deepcopy(self.Masks)
-        self.backups.append(new_copy)
+        self.backups.append(deepcopy(self))
 
     def compute_Masks_to_plot(self):
         self._Masks_to_plot = np.zeros_like(self.stack, dtype=np.int32)
@@ -1288,7 +1285,7 @@ class plotRound:
             return None, self.currentonround, self.currentround
 
 class CellTracking(object):
-    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1):
+    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps_segmentation=5, backup_steps_tracking=5):
         self.stacks            = stacks
         self._model            = model
         self._trainedmodel     = trainedmodel
@@ -1317,6 +1314,8 @@ class CellTracking(object):
         self.cells_to_combine  = []
         self.apoptotic_events  = []
         self.mitotic_events    = []
+        self._backup_steps_seg = backup_steps_segmentation
+        self._backup_steps_tra = backup_steps_tracking
         self.plot_tracking_windows=plot_tracking_windows
 
     def __call__(self):
@@ -1324,6 +1323,7 @@ class CellTracking(object):
         self.cell_tracking()
         self.copyCT  = deepcopy(self)
         self._copyCT = deepcopy(self)
+        self.backups = deque([], self._backup_steps_tra)
         self.one_step_copy()
         self.CSt[0].printfancy("")
         self.CSt[0].printfancy("Plotting...")
@@ -1336,7 +1336,8 @@ class CellTracking(object):
         if all:
             backup = self.copyCT
         else:
-            backup = self._copyCT
+            backup = self.backups.pop()
+        
         self.TLabels   = deepcopy(backup.TLabels)
         self.TCenters  = deepcopy(backup.TCenters)
         self.TOutlines = deepcopy(backup.TOutlines)
@@ -1350,11 +1351,13 @@ class CellTracking(object):
         for PACT in self.PACTs:
             PACT.CT = self
             PACT.CS = self.CSt[PACT.t]
+        
+        # Make sure there is always a backup on the list
+        if len(self.backups)==0:
+                    self.one_step_copy()
 
-    def add_copy(self):
-        pass
     def one_step_copy(self):
-        self._copyCT = deepcopy(self)
+        self.backups.append(deepcopy(self))
 
     def cell_segmentation(self):
         self.TLabels   = []
@@ -1378,7 +1381,8 @@ class CellTracking(object):
                                 , plot_masks=self.plot_masks
                                 , masks_cmap=self._masks_cmap_name
                                 , min_outline_length=self._min_outline_length
-                                , neighbors_for_sequence_sorting=self._nearest_neighs)
+                                , neighbors_for_sequence_sorting=self._nearest_neighs
+                                , backup_steps=self._backup_steps_seg)
             CS.printfancy("")
             CS.printfancy("######   CURRENT TIME = %d   ######" %t)
             CS.printfancy("")
