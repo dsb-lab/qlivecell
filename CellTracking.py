@@ -1388,6 +1388,7 @@ class CellTracking(object):
             CS.printfancy("")
             CS()
             CS.printfancy("Segmentation and corrections completed. Proceeding to next time")
+            delattr(CS, 'backups')
             self.CSt.append(CS)
         CS.printfancy("")
         print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
