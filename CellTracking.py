@@ -10,6 +10,7 @@ import random
 from scipy.spatial import cKDTree
 from copy import deepcopy
 from matplotlib.widgets import Slider
+from collections import deque
 
 #plt.rcParams.update({'figure.max_open_warning': 0})
 
@@ -19,7 +20,7 @@ LINE_CLEAR = '\x1b[2K'
 # This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
 class CellSegmentation(object):
 
-    def __init__(self, stack, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7):
+    def __init__(self, stack, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7, backup_steps=5):
         self.stack               = stack
         self._model              = model
         self._trainedmodel       = trainedmodel
@@ -44,6 +45,7 @@ class CellSegmentation(object):
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self._returnfalg         = False
+        self._backup_steps       = backup_steps
         self._assign_color_to_label()
 
     def __call__(self):
@@ -71,6 +73,7 @@ class CellSegmentation(object):
         print("################         SEGMENTATION COMPLETED       ################")
         self.printfancy("")
         self._copyCS = deepcopy(self)
+        self.backups = deque([self._copyCS], self._backup_steps)
         self.actions()
 
     def _cell_segmentation_outlines(self):
@@ -634,15 +637,20 @@ class CellSegmentation(object):
             return
 
     def undo_action(self):
-        self.labels   = deepcopy(self._copyCS.labels)
-        self.Outlines = deepcopy(self._copyCS.Outlines)
-        self.Masks    = deepcopy(self._copyCS.Masks)
+        backup = self.backups.pop()
+        self.labels   = deepcopy(backup.labels)
+        self.Outlines = deepcopy(backup.Outlines)
+        self.Masks    = deepcopy(backup.Masks)
         self.update_labels()
+        if len(self.backups)==0:
+            self.one_step_copy()
         
     def one_step_copy(self):
-        self._copyCS.labels   = deepcopy(self.labels)
-        self._copyCS.Outlines = deepcopy(self.Outlines)
-        self._copyCS.Masks    = deepcopy(self.Masks)
+        new_copy = deepcopy(self._copyCS)
+        new_copy.labels   = deepcopy(self.labels)
+        new_copy.Outlines = deepcopy(self.Outlines)
+        new_copy.Masks    = deepcopy(self.Masks)
+        self.backups.append(new_copy)
 
     def compute_Masks_to_plot(self):
         self._Masks_to_plot = np.zeros_like(self.stack, dtype=np.int32)
@@ -1343,6 +1351,8 @@ class CellTracking(object):
             PACT.CT = self
             PACT.CS = self.CSt[PACT.t]
 
+    def add_copy(self):
+        pass
     def one_step_copy(self):
         self._copyCT = deepcopy(self)
 
