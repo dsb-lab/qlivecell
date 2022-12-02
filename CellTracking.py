@@ -1417,7 +1417,7 @@ class CellTracking(object):
             CS.printfancy("")
             CS()
             CS.printfancy("Segmentation and corrections completed. Proceeding to next time")
-            #delattr(CS, 'backups')
+            delattr(CS, 'backups')
             self.CSt.append(CS)
         CS.printfancy("")
         print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
@@ -1543,7 +1543,11 @@ class CellTracking(object):
         print("Inside plot tracking")
         print(plt.get_fignums())
         time_sliders = []
+        print("PRE WINDOWS = ", windows)
         for w in range(windows):
+            print("WINDOWS = ", windows)
+            print("PLOTTING PLOT PRE", w)
+            print(plt.get_fignums())
             counter = plotRound(layout=self.plot_layout_track,totalsize=self.slices, overlap=self.plot_overlap_track, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
             self.PACTs.append(PlotActionCT(fig, ax, self))
@@ -1590,6 +1594,10 @@ class CellTracking(object):
             )
             time_sliders.append(time_slider)
             time_sliders[w].on_changed(self.PACTs[w].update_slider)
+            print("PLOTTING PLOT POST", w)
+            print(plt.get_fignums())
+        print("PLOTTING END")
+        print(plt.get_fignums())
         plt.show()
 
     def replot_tracking(self, PACT):
@@ -1712,7 +1720,11 @@ class PlotActionCT:
                     delattr(self, 'CP')
                     self.CT.delete_cell(self)
                     for PACT in self.CT.PACTs:
-                        self.list_of_cells = []
+                        PACT.list_of_cells = []
+                        PACT.current_subplot=None
+                        PACT.current_state=None
+                        PACT.ax_sel=None
+                        PACT.z=None
                         PACT.CT.replot_tracking(PACT)
                         PACT.visualization()
                         PACT.update()
@@ -1730,6 +1742,8 @@ class PlotActionCT:
                         PACT.visualization()
                         PACT.update()
                 elif self.current_state=="apo":
+                    self.CP.stopit()
+                    delattr(self, 'CP')
                     self.CT.apoptosis(self.list_of_cells)
                     self.list_of_cells=[]
                     for PACT in self.CT.PACTs:
@@ -1773,7 +1787,6 @@ class PlotActionCT:
 
     def update(self):
         if self.current_state in ["apo","com"]:
-            print(self.list_of_cells)
             cells_to_plot=self.extract_unique_cell_time_list_of_cells()
             cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
         else:
