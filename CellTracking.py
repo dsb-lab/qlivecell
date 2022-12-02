@@ -11,6 +11,7 @@ from scipy.spatial import cKDTree
 from copy import deepcopy
 from matplotlib.widgets import Slider
 from collections import deque
+import gc
 
 #plt.rcParams.update({'figure.max_open_warning': 0})
 
@@ -930,6 +931,7 @@ class PlotActionCS:
                     self.z=self.zs
                 else:
                     self.z = None
+                gc.collect()
             else:
                 # We have to wait for the current action to finish
                 pass
@@ -1399,6 +1401,7 @@ class CellTracking(object):
             CS()
             CS.printfancy("Segmentation and corrections completed. Proceeding to next time")
             delattr(CS, 'backups')
+            gc.collect()
             self.CSt.append(CS)
         CS.printfancy("")
         print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
@@ -1688,6 +1691,7 @@ class PlotActionCT:
                 if self.current_state=="del":
                     self.CP.stopit()
                     delattr(self, 'CP')
+                    gc.collect()
                     self.CT.delete_cell(self)
                     for PACT in self.CT.PACTs:
                         self.list_of_cells = []
@@ -1721,6 +1725,7 @@ class PlotActionCT:
                 self.current_state=None
                 self.ax_sel=None
                 self.z=None
+                gc.collect()
             else:
                 # We have to wait for the current action to finish
                 pass
