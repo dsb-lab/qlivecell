@@ -1525,7 +1525,10 @@ class CellTracking(object):
                 self.apoptotic_events.append(cell)
 
     def mitosis(self):
-        pass
+        if len(self.mito_cells != 3):
+            return 
+        mito_ev = [self.mito_cells[0], [self.mito_cells[1], self.mito_cells[2]]]
+        self.mitotic_events.append(mito_ev)
 
     def plot_tracking(self, windows=None):
         if windows==None:
