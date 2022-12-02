@@ -10,6 +10,8 @@ import random
 from scipy.spatial import cKDTree
 from copy import deepcopy
 from matplotlib.widgets import Slider
+from collections import deque
+import gc
 
 #plt.rcParams.update({'figure.max_open_warning': 0})
 
@@ -19,7 +21,7 @@ LINE_CLEAR = '\x1b[2K'
 # This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
 class CellSegmentation(object):
 
-    def __init__(self, stack, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7):
+    def __init__(self, stack, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7, backup_steps=5):
         self.stack               = stack
         self._model              = model
         self._trainedmodel       = trainedmodel
@@ -44,6 +46,7 @@ class CellSegmentation(object):
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self._returnfalg         = False
+        self._backup_steps       = backup_steps
         self._assign_color_to_label()
 
     def __call__(self):
@@ -71,6 +74,7 @@ class CellSegmentation(object):
         print("################         SEGMENTATION COMPLETED       ################")
         self.printfancy("")
         self._copyCS = deepcopy(self)
+        self.backups = deque([self._copyCS], self._backup_steps)
         self.actions()
 
     def _cell_segmentation_outlines(self):
@@ -634,15 +638,20 @@ class CellSegmentation(object):
             return
 
     def undo_action(self):
-        self.labels   = deepcopy(self._copyCS.labels)
-        self.Outlines = deepcopy(self._copyCS.Outlines)
-        self.Masks    = deepcopy(self._copyCS.Masks)
+        backup = self.backups.pop()
+        self.labels   = deepcopy(backup.labels)
+        self.Outlines = deepcopy(backup.Outlines)
+        self.Masks    = deepcopy(backup.Masks)
         self.update_labels()
+        if len(self.backups)==0:
+            self.one_step_copy()
         
     def one_step_copy(self):
-        self._copyCS.labels   = deepcopy(self.labels)
-        self._copyCS.Outlines = deepcopy(self.Outlines)
-        self._copyCS.Masks    = deepcopy(self.Masks)
+        new_copy = deepcopy(self._copyCS)
+        new_copy.labels   = deepcopy(self.labels)
+        new_copy.Outlines = deepcopy(self.Outlines)
+        new_copy.Masks    = deepcopy(self.Masks)
+        self.backups.append(deepcopy(new_copy))
 
     def compute_Masks_to_plot(self):
         self._Masks_to_plot = np.zeros_like(self.stack, dtype=np.int32)
@@ -849,7 +858,7 @@ class PlotActionCS:
             self.z=self.zs
         else:
             self.z = None
-    
+            
     def onscroll(self, event):
         if self.current_state==None:
             self.current_state="SCL"
@@ -894,7 +903,6 @@ class PlotActionCS:
                 self.CS.printfancy("# Correcting previous action... #")
                 self.CS.undo_action()
                 self.CS.replot_segmented(self.cr)
-                self.visualization()
             self.update()
         else:
             if event.key=='enter':
@@ -1280,7 +1288,7 @@ class plotRound:
             return None, self.currentonround, self.currentround
 
 class CellTracking(object):
-    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1):
+    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps_segmentation=5, backup_steps_tracking=5):
         self.stacks            = stacks
         self._model            = model
         self._trainedmodel     = trainedmodel
@@ -1309,6 +1317,8 @@ class CellTracking(object):
         self.cells_to_combine  = []
         self.apoptotic_events  = []
         self.mitotic_events    = []
+        self._backup_steps_seg = backup_steps_segmentation
+        self._backup_steps_tra = backup_steps_tracking
         self.plot_tracking_windows=plot_tracking_windows
 
     def __call__(self):
@@ -1316,10 +1326,9 @@ class CellTracking(object):
         self.cell_tracking()
         self.copyCT  = deepcopy(self)
         self._copyCT = deepcopy(self)
-        self.one_step_copy()
+        self.backups = deque([self._copyCT], self._backup_steps_tra)
         self.CSt[0].printfancy("")
         self.CSt[0].printfancy("Plotting...")
-        self.CSt[0].printfancy("Proceed with the correction of the tracking.")
         self.plot_tracking()
         self.CSt[0].printfancy("")
         print("#######################    PROCESS FINISHED   #######################")
@@ -1328,7 +1337,8 @@ class CellTracking(object):
         if all:
             backup = self.copyCT
         else:
-            backup = self._copyCT
+            backup = self.backups.pop()
+        
         self.TLabels   = deepcopy(backup.TLabels)
         self.TCenters  = deepcopy(backup.TCenters)
         self.TOutlines = deepcopy(backup.TOutlines)
@@ -1342,9 +1352,24 @@ class CellTracking(object):
         for PACT in self.PACTs:
             PACT.CT = self
             PACT.CS = self.CSt[PACT.t]
+        
+        # Make sure there is always a backup on the list
+        if len(self.backups)==0:
+                    self.one_step_copy()
 
     def one_step_copy(self):
-        self._copyCT = deepcopy(self)
+        new_copy = deepcopy(self._copyCT)
+        new_copy.TLabels   = deepcopy(self.TLabels)
+        new_copy.TCenters  = deepcopy(self.TCenters)
+        new_copy.TOutlines = deepcopy(self.TOutlines)
+        new_copy.CSt       = deepcopy(self.CSt)
+        new_copy.FinalLabels  = deepcopy(self.FinalLabels)
+        new_copy.FinalCenters = deepcopy(self.FinalCenters)
+        new_copy.FinalOulines = deepcopy(self.FinalOulines)
+        new_copy.label_correspondance = deepcopy(self.label_correspondance)
+        new_copy.apoptotic_events = deepcopy(self.apoptotic_events)
+        new_copy.mitotic_events = deepcopy(self.mitotic_events)
+        self.backups.append(new_copy)
 
     def cell_segmentation(self):
         self.TLabels   = []
@@ -1368,12 +1393,14 @@ class CellTracking(object):
                                 , plot_masks=self.plot_masks
                                 , masks_cmap=self._masks_cmap_name
                                 , min_outline_length=self._min_outline_length
-                                , neighbors_for_sequence_sorting=self._nearest_neighs)
+                                , neighbors_for_sequence_sorting=self._nearest_neighs
+                                , backup_steps=self._backup_steps_seg)
             CS.printfancy("")
             CS.printfancy("######   CURRENT TIME = %d   ######" %t)
             CS.printfancy("")
             CS()
             CS.printfancy("Segmentation and corrections completed. Proceeding to next time")
+            delattr(CS, 'backups')
             self.CSt.append(CS)
         CS.printfancy("")
         print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
@@ -1652,6 +1679,7 @@ class PlotActionCT:
                 self.CT.undo_corrections(all=False)
                 for PACT in self.CT.PACTs:
                         PACT.CT.replot_tracking(PACT)
+                self.visualization()
             elif event.key == 'Z':
                 self.CT.undo_corrections(all=True)
                 for PACT in self.CT.PACTs:
@@ -1665,7 +1693,11 @@ class PlotActionCT:
                     delattr(self, 'CP')
                     self.CT.delete_cell(self)
                     for PACT in self.CT.PACTs:
-                        self.list_of_cells = []
+                        PACT.list_of_cells = []
+                        PACT.current_subplot=None
+                        PACT.current_state=None
+                        PACT.ax_sel=None
+                        PACT.z=None
                         PACT.CT.replot_tracking(PACT)
                         PACT.visualization()
                         PACT.update()
@@ -1683,6 +1715,8 @@ class PlotActionCT:
                         PACT.visualization()
                         PACT.update()
                 elif self.current_state=="apo":
+                    self.CP.stopit()
+                    delattr(self, 'CP')
                     self.CT.apoptosis(self.list_of_cells)
                     self.list_of_cells=[]
                     for PACT in self.CT.PACTs:
@@ -1726,7 +1760,6 @@ class PlotActionCT:
 
     def update(self):
         if self.current_state in ["apo","com"]:
-            print(self.list_of_cells)
             cells_to_plot=self.extract_unique_cell_time_list_of_cells()
             cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
         else:
