@@ -1323,8 +1323,7 @@ class CellTracking(object):
         self.cell_tracking()
         self.copyCT  = deepcopy(self)
         self._copyCT = deepcopy(self)
-        self.backups = deque([], self._backup_steps_tra)
-        self.one_step_copy()
+        self.backups = deque([self._copyCT], self._backup_steps_tra)
         self.CSt[0].printfancy("")
         self.CSt[0].printfancy("Plotting...")
         self.CSt[0].printfancy("Proceed with the correction of the tracking.")
@@ -1357,7 +1356,18 @@ class CellTracking(object):
                     self.one_step_copy()
 
     def one_step_copy(self):
-        self.backups.append(deepcopy(self))
+        new_copy = deepcopy(self._copyCT)
+        new_copy.TLabels   = deepcopy(self.TLabels)
+        new_copy.TCenters  = deepcopy(self.TCenters)
+        new_copy.TOutlines = deepcopy(self.TOutlines)
+        new_copy.CSt       = deepcopy(self.CSt)
+        new_copy.FinalLabels  = deepcopy(self.FinalLabels)
+        new_copy.FinalCenters = deepcopy(self.FinalCenters)
+        new_copy.FinalOulines = deepcopy(self.FinalOulines)
+        new_copy.label_correspondance = deepcopy(self.label_correspondance)
+        new_copy.apoptotic_events = deepcopy(self.apoptotic_events)
+        new_copy.mitotic_events = deepcopy(self.mitotic_events)
+        self.backups.append(new_copy)
 
     def cell_segmentation(self):
         self.TLabels   = []
