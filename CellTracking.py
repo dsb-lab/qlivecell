@@ -1339,9 +1339,9 @@ class CellTracking(object):
         self.cell_tracking()
         print("END TRACKING")
         print(plt.get_fignums())
-        #self.copyCT  = deepcopy(self)
-        #self._copyCT = deepcopy(self)
-        #self.backups = deque([self._copyCT], self._backup_steps_tra)
+        self.copyCT  = deepcopy(self)
+        self._copyCT = deepcopy(self)
+        self.backups = deque([self._copyCT], self._backup_steps_tra)
         self.CSt[0].printfancy("")
         self.CSt[0].printfancy("Plotting...")
         self.CSt[0].printfancy("Proceed with the correction of the tracking.")
@@ -1677,41 +1677,39 @@ class PlotActionCT:
     def __call__(self, event):
         if self.current_state==None:
             if event.key == 'd':
-                #self.CT.one_step_copy()
+                self.CT.one_step_copy()
                 self.current_state="del"
                 self.delete_cells()
             elif event.key == 'c':
-                #self.CT.one_step_copy()
+                self.CT.one_step_copy()
                 self.current_state="com"
                 self.combine_cells()
             elif event.key == 'm':
-                #self.CT.one_step_copy()
+                self.CT.one_step_copy()
                 self.current_state="mit"
                 self.mitosis()
             elif event.key == 'a':
-                #self.CT.one_step_copy()
+                self.CT.one_step_copy()
                 self.current_state="apo"
                 self.apoptosis()
             elif event.key == 'escape':
                 self.visualization()
             elif event.key == 'z':
-                pass
-                #self.CT.undo_corrections(all=False)
-                #for PACT in self.CT.PACTs:
-                #        PACT.CT.replot_tracking(PACT)
-                #self.visualization()
+                self.CT.undo_corrections(all=False)
+                for PACT in self.CT.PACTs:
+                        PACT.CT.replot_tracking(PACT)
+                self.visualization()
             elif event.key == 'Z':
-                pass
-                #self.CT.undo_corrections(all=True)
-                #for PACT in self.CT.PACTs:
-                #        PACT.CT.replot_tracking(PACT)
-                #self.visualization()
+                self.CT.undo_corrections(all=True)
+                for PACT in self.CT.PACTs:
+                        PACT.CT.replot_tracking(PACT)
+                self.visualization()
             self.update()
         else:
             if event.key=='enter':
                 if self.current_state=="del":
                     self.CP.stopit()
-                    #delattr(self, 'CP')
+                    delattr(self, 'CP')
                     self.CT.delete_cell(self)
                     for PACT in self.CT.PACTs:
                         self.list_of_cells = []
@@ -1720,7 +1718,7 @@ class PlotActionCT:
                         PACT.update()
                 elif self.current_state=="com":
                     self.CP.stopit()
-                    #delattr(self, 'CP')
+                    delattr(self, 'CP')
                     self.CT.combine_cells()
                     for PACT in self.CT.PACTs:
                         PACT.current_subplot=None
