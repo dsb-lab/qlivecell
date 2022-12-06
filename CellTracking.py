@@ -1525,7 +1525,7 @@ class CellTracking(object):
                 self.apoptotic_events.append(cell)
 
     def mitosis(self):
-        if len(self.mito_cells != 3):
+        if len(self.mito_cells) != 3:
             return 
         mito_ev = [self.mito_cells[0], [self.mito_cells[1], self.mito_cells[2]]]
         self.mitotic_events.append(mito_ev)
@@ -1582,7 +1582,7 @@ class CellTracking(object):
             )
             time_sliders.append(time_slider)
             time_sliders[w].on_changed(self.PACTs[w].update_slider)
-        plt.show()
+        plt.show(block=False)
 
     def replot_tracking(self, PACT):
         t = PACT.t
@@ -1868,7 +1868,7 @@ class PlotActionCT:
 
     def mitosis(self):
         self.title.set(text="DETECT MITOSIS\nMODE", ha='left', x=0.01)
-        self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
+        self.instructions.set(text="Right-click to SELECT THE MOTHER (1)\nAND DAUGHTER (2) CELLS", ha='left', x=0.2)
         self.fig.patch.set_facecolor((0.0,1.0,0.0,0.2))
         self.CP = CellPickerCT_mit(self)
 
