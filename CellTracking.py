@@ -1582,7 +1582,7 @@ class CellTracking(object):
             )
             time_sliders.append(time_slider)
             time_sliders[w].on_changed(self.PACTs[w].update_slider)
-        plt.show(block=False)
+        plt.show()
 
     def replot_tracking(self, PACT):
         t = PACT.t
