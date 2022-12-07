@@ -864,9 +864,9 @@ class PlotActionCS:
         if self.current_state==None:
             self.current_state="SCL"
             if event.button == 'up':
-                self.cr = self.cr + 1
-            elif event.button == 'down':
                 self.cr = self.cr - 1
+            elif event.button == 'down':
+                self.cr = self.cr + 1
             self.cr = max(self.cr, 0)
             self.cr = min(self.cr, self.max_round)
             self.CS.replot_segmented(self.cr)
