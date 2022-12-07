@@ -75,7 +75,7 @@ class CellSegmentation(object):
         self.printfancy("")
         self._copyCS = deepcopy(self)
         self.backups = deque([self._copyCS], self._backup_steps)
-        #self.actions()
+        self.actions()
 
     def _cell_segmentation_outlines(self):
 
@@ -1387,7 +1387,7 @@ class CellTracking(object):
         new_copy = deepcopy(self._backupCT)
         new_copy(t, self)
         self.backups.append(new_copy)
-        
+
         gc.collect()
 
     def cell_segmentation(self):
@@ -1467,13 +1467,6 @@ class CellTracking(object):
                         if np.abs(FinalCenters[t-1][i][0] - TCenters[t][j][0])>2:
                             Dists[i,j] = 100.0
 
-                #iDists = 1/Dists
-                #col_sums = iDists.sum(axis=0)
-                #piDists1 = iDists/col_sums[np.newaxis, :]
-                #row_sums = iDists.sum(axis=1)
-                #piDists2 = iDists/row_sums[:, np.newaxis]
-                #pMat = piDists1*piDists2
-
                 a = np.argmin(Dists, axis=0) # max prob for each future cell to be a past cell
                 b = np.argmin(Dists, axis=1) # max prob for each past cell to be a future one
                 correspondance = []
@@ -1502,7 +1495,6 @@ class CellTracking(object):
         self.FinalLabels  = FinalLabels
         self.FinalCenters = FinalCenters
         self.FinalOulines = FinalOutlines
-        None
     
     def delete_cell(self, PA):
         cells = [x[0] for x in PA.list_of_cells]
@@ -1647,8 +1639,6 @@ class CellTracking(object):
             idd = np.where(np.array(self.label_correspondance[t])[:,0]==label)[0][0]
             Tlab = self.label_correspondance[t][idd][1]
             _ = _ax.scatter(outline[:,0], outline[:,1], c=[CS._masks_colors[CS._labels_color_id[Tlab]]], s=0.5, cmap=CS._masks_cmap_name)               
-            #_ = _ax.annotate(str(label), xy=(ys, xs), c="w")
-            #_ = _ax.scatter([ys], [xs], s=0.5, c="white")
         plotmasks = False
         if plotmasks:#if CS.pltmasks_bool:
             CS.compute_Masks_to_plot()
