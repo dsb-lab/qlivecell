@@ -1663,7 +1663,7 @@ class PlotActionCT:
         actionsbox = "Possible actions:                                                 \n - q : quit plot                      - ESC : visualization \n - z : undo previous action   - Z : undo all actions\n - d : delete cell                   - c : combine cells    \n - a : apoptotic event          - m : mitotic events  "
         self.actionlist = self.fig.text(0.98, 0.98, actionsbox, fontsize=1, ha='right', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
-        self.timetxt = self.fig.text(0.05, 0.92, "TIME = %d min" %(self.CT.tstep*self.t), fontsize=1, ha='left', va='top')
+        self.timetxt = self.fig.text(0.05, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
         self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n                     PRESS ENTER TO START", fontsize=1, ha='left', va='top')
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
         self.update()
@@ -1809,7 +1809,7 @@ class PlotActionCT:
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Cells\nSelected\n\n"+s)
         self.instructions.set(fontsize=width_or_height/scale2)
-        self.timetxt.set(text="TIME = %d min" %(self.CT.tstep*self.t), fontsize=width_or_height/scale2)
+        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
         self.title.set(fontsize=width_or_height/scale2)
         plt.subplots_adjust(top=0.9,right=0.8)
         self.fig.canvas.draw_idle()

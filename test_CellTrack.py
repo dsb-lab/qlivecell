@@ -8,7 +8,7 @@ pthtosave='/home/pablo/Desktop/PhD/projects/Data/blastocysts/CellTrack/2h_claire
 
 files = os.listdir(pth)
 emb = 24
-embcode=files[emb]
+embcode=files[emb][0:-4]
 IMGS   = [imread(pth+f)[0:2,:,1,:,:] for f in files[emb:emb+1]][0]
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
 #model  = models.Cellpose(gpu=True, model_type='nuclei')
@@ -38,4 +38,4 @@ CT = CellTracking( IMGS, model, embcode
 
 CT()
 CT.plot_tracking()
-save_CT(CT, path=pthtosave, filename="CT_emb%d" %emb)
+save_CT(CT, path=pthtosave, filename="CT_"+embcode)
