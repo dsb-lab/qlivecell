@@ -21,7 +21,8 @@ LINE_CLEAR = '\x1b[2K'
 # This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
 class CellSegmentation(object):
 
-    def __init__(self, stack, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7, backup_steps=5):
+    def __init__(self, stack, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7, backup_steps=5):
+        self.embcode             = embcode
         self.stack               = stack
         self._model              = model
         self._trainedmodel       = trainedmodel
@@ -1308,7 +1309,8 @@ class backup_CellTrack():
         self.mit_evs   = deepcopy(CT.mitotic_events)
 
 class CellTracking(object):
-    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps_segmentation=5, backup_steps_tracking=5, time_step=None):
+    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps_segmentation=5, backup_steps_tracking=5, time_step=None):
+        self.embcode           = embcode
         self.stacks            = stacks
         self._model            = model
         self._trainedmodel     = trainedmodel
@@ -1393,7 +1395,7 @@ class CellTracking(object):
         print("######################   BEGIN SEGMENTATIONS   ######################")
         for t in range(self.times):
             imgs = self.stacks[t,:,:,:]
-            CS = CellSegmentation( imgs, self._model, trainedmodel=self._trainedmodel
+            CS = CellSegmentation( imgs, self._model, self.embcode, trainedmodel=self._trainedmodel
                                 , channels=self._channels
                                 , flow_th_cellpose=self._flow_th_cellpose
                                 , distance_th_z=self._distance_th_z
