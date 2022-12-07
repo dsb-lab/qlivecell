@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 
 def compute_distance_xy(X1, X2, Y1, Y2):
     return np.sqrt((X2-X1)**2 + (Y2-Y1)**2)
@@ -39,3 +40,17 @@ def extract_position_as_matrices(CT):
             Y[i,t] = CT.FinalCenters[t][id][2]
     return X,Y,Z
 
+def save_CT(CT, path=None, filename=None, _del_plots=True):
+    pthsave = path+filename
+    file_to_store = open(pthsave+".pickle", "wb")
+    if _del_plots:
+        delattr(CT, 'PACTs')
+    pickle.dump(CT, file_to_store)
+    file_to_store.close()
+
+def load_CT(path=None, filename=None):
+    pthsave = path+filename
+    file_to_store = open(pthsave+".pickle", "rb")
+    _CT = pickle.load(file_to_store)
+    file_to_store.close()
+    return _CT

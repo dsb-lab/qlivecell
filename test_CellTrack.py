@@ -3,11 +3,12 @@ from cellpose import models
 import os
 from CellTracking import *
 from utils_ct import *
-
 pth='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
+pthtosave='/home/pablo/Desktop/PhD/projects/Data/blastocysts/CellTrack/2h_claire_ERK-KTR_MKATE2/'
+
 files = os.listdir(pth)
 emb = 10
-IMGS   = [imread(pth+f)[:,:,1,:,:] for f in files[emb:emb+1]][0]
+IMGS   = [imread(pth+f)[0:2,:,1,:,:] for f in files[emb:emb+1]][0]
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
 #model  = models.Cellpose(gpu=True, model_type='nuclei')
 
@@ -34,3 +35,5 @@ CT = CellTracking( IMGS, model, trainedmodel=True
                     , time_step=5)
 
 CT()
+
+save_CT(CT, path=pthtosave, filename="CT_emb %d" %emb)

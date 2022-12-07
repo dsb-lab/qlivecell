@@ -1345,7 +1345,6 @@ class CellTracking(object):
 
     def __call__(self):
         self.cell_segmentation()
-        gc.collect()
         self.cell_tracking()
         self.backupCT  = backup_CellTrack(0, self)
         self._backupCT = backup_CellTrack(0, self)
@@ -1377,8 +1376,6 @@ class CellTracking(object):
             PACT.CT = self
             PACT.CS = self.CSt[PACT.t]
         
-        gc.collect()
-
         # Make sure there is always a backup on the list
         if len(self.backups)==0:
             self.one_step_copy()
@@ -1387,8 +1384,6 @@ class CellTracking(object):
         new_copy = deepcopy(self._backupCT)
         new_copy(t, self)
         self.backups.append(new_copy)
-
-        gc.collect()
 
     def cell_segmentation(self):
         self.TLabels   = []
@@ -1775,9 +1770,9 @@ class PlotActionCT:
             if self.current_state == None:
                 self.current_state="SCL"
             if event.button == 'up':
-                self.cr = self.cr + 1
-            elif event.button == 'down':
                 self.cr = self.cr - 1
+            elif event.button == 'down':
+                self.cr = self.cr + 1
             self.cr = max(self.cr, 0)
             self.cr = min(self.cr, self.max_round)
             self.CT.replot_tracking(self)
@@ -1793,6 +1788,10 @@ class PlotActionCT:
             cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
         else:
             cells_to_plot = self.sort_list_of_cells()
+            for i,x in enumerate(cells_to_plot):
+                idd = np.where(np.array(self.CT.label_correspondance[self.t])[:,0]==x[0])[0][0]
+                Tlab = self.CT.label_correspondance[self.t][idd][1]
+                cells_to_plot[i][0] = Tlab
             cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
         s = "\n".join(cells_string)
         self.get_size()
