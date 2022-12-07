@@ -75,7 +75,7 @@ class CellSegmentation(object):
         self.printfancy("")
         self._copyCS = deepcopy(self)
         self.backups = deque([self._copyCS], self._backup_steps)
-        self.actions()
+        #self.actions()
 
     def _cell_segmentation_outlines(self):
 
@@ -1287,6 +1287,26 @@ class plotRound:
         else:
             return None, self.currentonround, self.currentround
 
+class backup_CellTrack():
+    def __init__(self, t, CT):
+        self._assign(t, CT)
+
+    def __call__(self, t, CT):
+        self._assign(t, CT)
+
+    def _assign(self, t, CT):
+        self.t = t
+        self.labels    = deepcopy(CT.TLabels[t])
+        self.centers   = deepcopy(CT.TCenters[t])
+        self.outlines  = deepcopy(CT.TOutlines[t])
+        self.CS        = deepcopy(CT.CSt[t])
+        self.flabels   = deepcopy(CT.FinalLabels[t])
+        self.fcenters  = deepcopy(CT.FinalCenters[t])
+        self.foutlines = deepcopy(CT.FinalOulines[t])
+        self.lab_corr  = deepcopy(CT.label_correspondance[t])
+        self.apo_evs   = deepcopy(CT.apoptotic_events)
+        self.mit_evs   = deepcopy(CT.mitotic_events)
+
 class CellTracking(object):
     def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps_segmentation=5, backup_steps_tracking=5, time_step=None):
         self.stacks            = stacks
@@ -1327,9 +1347,9 @@ class CellTracking(object):
         self.cell_segmentation()
         gc.collect()
         self.cell_tracking()
-        self.copyCT  = deepcopy(self)
-        self._copyCT = deepcopy(self)
-        self.backups = deque([self._copyCT], self._backup_steps_tra)
+        self.backupCT  = backup_CellTrack(0, self)
+        self._backupCT = backup_CellTrack(0, self)
+        self.backups = deque([self._backupCT], self._backup_steps_tra)
         self.CSt[0].printfancy("")
         self.CSt[0].printfancy("Plotting...")
         plt.close("all")
@@ -1339,41 +1359,36 @@ class CellTracking(object):
 
     def undo_corrections(self, all=False):
         if all:
-            backup = self.copyCT
+            backup = self.backupCT
         else:
             backup = self.backups.pop()
         
-        self.TLabels   = deepcopy(backup.TLabels)
-        self.TCenters  = deepcopy(backup.TCenters)
-        self.TOutlines = deepcopy(backup.TOutlines)
-        self.CSt       = deepcopy(backup.CSt)
-        self.FinalLabels  = deepcopy(backup.FinalLabels)
-        self.FinalCenters = deepcopy(backup.FinalCenters)
-        self.FinalOulines = deepcopy(backup.FinalOulines)
-        self.label_correspondance = deepcopy(backup.label_correspondance)
-        self.apoptotic_events = deepcopy(backup.apoptotic_events)
-        self.mitotic_events = deepcopy(backup.mitotic_events)
+        self.TLabels[backup.t]   = deepcopy(backup.labels)
+        self.TCenters[backup.t]  = deepcopy(backup.centers)
+        self.TOutlines[backup.t] = deepcopy(backup.outlines)
+        self.CSt[backup.t] = deepcopy(backup.CS)
+        self.FinalLabels[backup.t]   = deepcopy(backup.flabels)
+        self.FinalCenters[backup.t]  = deepcopy(backup.fcenters)
+        self.FinalOulines[backup.t]  = deepcopy(backup.foutlines)
+        self.label_correspondance[backup.t] = deepcopy(backup.lab_corr)
+        self.apoptotic_events = deepcopy(backup.apo_evs)
+        self.mitotic_events = deepcopy(backup.mit_evs)
         for PACT in self.PACTs:
             PACT.CT = self
             PACT.CS = self.CSt[PACT.t]
         
+        gc.collect()
+
         # Make sure there is always a backup on the list
         if len(self.backups)==0:
-                    self.one_step_copy()
+            self.one_step_copy()
 
-    def one_step_copy(self):
-        new_copy = deepcopy(self._copyCT)
-        new_copy.TLabels   = deepcopy(self.TLabels)
-        new_copy.TCenters  = deepcopy(self.TCenters)
-        new_copy.TOutlines = deepcopy(self.TOutlines)
-        new_copy.CSt       = deepcopy(self.CSt)
-        new_copy.FinalLabels  = deepcopy(self.FinalLabels)
-        new_copy.FinalCenters = deepcopy(self.FinalCenters)
-        new_copy.FinalOulines = deepcopy(self.FinalOulines)
-        new_copy.label_correspondance = deepcopy(self.label_correspondance)
-        new_copy.apoptotic_events = deepcopy(self.apoptotic_events)
-        new_copy.mitotic_events = deepcopy(self.mitotic_events)
+    def one_step_copy(self, t=0):
+        new_copy = deepcopy(self._backupCT)
+        new_copy(t, self)
         self.backups.append(new_copy)
+        
+        gc.collect()
 
     def cell_segmentation(self):
         self.TLabels   = []
@@ -1543,10 +1558,9 @@ class CellTracking(object):
             self.PACTs[w].zs = np.zeros_like(ax)
             zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
             t=0
-            IMGS = self.stacks
             FinalCenters = self.FinalCenters
             FinalLabels  = self.FinalLabels
-            imgs   = IMGS[t,:,:,:]
+            imgs   = self.stacks[t,:,:,:]
             # Plot all our Zs in the corresponding round
             for z, id, round in counter:
                 # select current z plane
@@ -1589,10 +1603,9 @@ class CellTracking(object):
         t = PACT.t
         counter = plotRound(layout=self.plot_layout_track,totalsize=self.slices, overlap=self.plot_overlap_track, round=PACT.cr)
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
-        IMGS = self.stacks
         FinalCenters = self.FinalCenters
         FinalLabels  = self.FinalLabels
-        imgs   = IMGS[t,:,:,:]
+        imgs   = self.stacks[t,:,:,:]
         # Plot all our Zs in the corresponding round
         for z, id, r in counter:
             # select current z plane
@@ -1671,19 +1684,19 @@ class PlotActionCT:
     def __call__(self, event):
         if self.current_state==None:
             if event.key == 'd':
-                self.CT.one_step_copy()
+                self.CT.one_step_copy(self.t)
                 self.current_state="del"
                 self.delete_cells()
             elif event.key == 'c':
-                self.CT.one_step_copy()
+                self.CT.one_step_copy(self.t)
                 self.current_state="com"
                 self.combine_cells()
             elif event.key == 'm':
-                self.CT.one_step_copy()
+                self.CT.one_step_copy(self.t)
                 self.current_state="mit"
                 self.mitosis()
             elif event.key == 'a':
-                self.CT.one_step_copy()
+                self.CT.one_step_copy(self.t)
                 self.current_state="apo"
                 self.apoptosis()
             elif event.key == 'escape':
