@@ -1288,7 +1288,7 @@ class plotRound:
             return None, self.currentonround, self.currentround
 
 class CellTracking(object):
-    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps_segmentation=5, backup_steps_tracking=5):
+    def __init__(self, stacks, model, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps_segmentation=5, backup_steps_tracking=5, time_step=None):
         self.stacks            = stacks
         self._model            = model
         self._trainedmodel     = trainedmodel
@@ -1321,6 +1321,7 @@ class CellTracking(object):
         self._backup_steps_seg = backup_steps_segmentation
         self._backup_steps_tra = backup_steps_tracking
         self.plot_tracking_windows=plot_tracking_windows
+        self.tstep = time_step
 
     def __call__(self):
         self.cell_segmentation()
@@ -1662,6 +1663,7 @@ class PlotActionCT:
         actionsbox = "Possible actions:                                                 \n - q : quit plot                      - ESC : visualization \n - z : undo previous action   - Z : undo all actions\n - d : delete cell                   - c : combine cells    \n - a : apoptotic event          - m : mitotic events  "
         self.actionlist = self.fig.text(0.98, 0.98, actionsbox, fontsize=1, ha='right', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
+        self.timetxt = self.fig.text(0.05, 0.92, "TIME = %d min" %(self.CT.tstep*self.t), fontsize=1, ha='left', va='top')
         self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n                     PRESS ENTER TO START", fontsize=1, ha='left', va='top')
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
         self.update()
@@ -1803,6 +1805,7 @@ class PlotActionCT:
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Cells\nSelected\n\n"+s)
         self.instructions.set(fontsize=width_or_height/scale2)
+        self.timetxt.set(text="TIME = %d min" %(self.CT.tstep*self.t), fontsize=width_or_height/scale2)
         self.title.set(fontsize=width_or_height/scale2)
         plt.subplots_adjust(top=0.9,right=0.8)
         self.fig.canvas.draw_idle()
@@ -1855,31 +1858,31 @@ class PlotActionCT:
         self.figheight = heightfig
 
     def delete_cells(self):
-        self.title.set(text="DELETE CELL\nMODE", ha='left', x=0.01)
+        self.title.set(text="DELETE CELL", ha='left', x=0.01)
         self.instructions.set(text="Right-click to delete cell on a plane\ndouble right-click to delete on all planes", ha='left', x=0.2)
         self.fig.patch.set_facecolor((1.0,0.0,0.0,0.2))
         self.CP = CellPickerCT_del(self)
     
     def combine_cells(self):
-        self.title.set(text="COMBINE CELLS\nMODE", ha='left', x=0.01)
+        self.title.set(text="COMBINE CELLS", ha='left', x=0.01)
         self.instructions.set(text="\nRigth-click to select cells to be combined", ha='left', x=0.2)
         self.fig.patch.set_facecolor((0.0,0.0,1.0,0.2))        
         self.CP = CellPickerCT_com(self)
 
     def mitosis(self):
-        self.title.set(text="DETECT MITOSIS\nMODE", ha='left', x=0.01)
+        self.title.set(text="DETECT MITOSIS", ha='left', x=0.01)
         self.instructions.set(text="Right-click to SELECT THE MOTHER (1)\nAND DAUGHTER (2) CELLS", ha='left', x=0.2)
         self.fig.patch.set_facecolor((0.0,1.0,0.0,0.2))
         self.CP = CellPickerCT_mit(self)
 
     def apoptosis(self):
-        self.title.set(text="DETECT APOPTOSIS\nMODE", ha='left', x=0.01)
+        self.title.set(text="DETECT APOPTOSIS", ha='left', x=0.01)
         self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
         self.fig.patch.set_facecolor((0.0,0.0,0.0,0.2))
         self.CP = CellPickerCT_apo(self)
 
     def visualization(self):
-        self.title.set(text="VISUALIZATION\nMODE", ha='left', x=0.01)
+        self.title.set(text="VISUALIZATION MODE", ha='left', x=0.01)
         self.instructions.set(text="Chose one of the actions to change mode", ha='left', x=0.2)
         self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))        
 

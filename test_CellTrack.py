@@ -6,8 +6,8 @@ from utils_ct import *
 
 pth='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
 files = os.listdir(pth)
-emb = 16
-IMGS   = [imread(pth+f)[0:2,:,1,:,:] for f in files[emb:emb+1]][0]
+emb = 4
+IMGS   = [imread(pth+f)[:,:,1,:,:] for f in files[emb:emb+1]][0]
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
 #model  = models.Cellpose(gpu=True, model_type='nuclei')
 
@@ -30,6 +30,7 @@ CT = CellTracking( IMGS, model, trainedmodel=True
                     , neighbors_for_sequence_sorting=7
                     , plot_tracking_windows=2
                     , backup_steps_segmentation=10
-                    , backup_steps_tracking=10)
+                    , backup_steps_tracking=10
+                    , time_step=5)
 
 CT()
