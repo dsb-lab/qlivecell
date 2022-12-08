@@ -21,7 +21,7 @@ LINE_CLEAR = '\x1b[2K'
 # This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
 class CellSegmentation(object):
 
-    def __init__(self, stack, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,2), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7, backup_steps=5):
+    def __init__(self, stack, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_masks=True, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7):
         self.embcode             = embcode
         self.stack               = stack
         self._model              = model
@@ -36,10 +36,6 @@ class CellSegmentation(object):
         self._fullmat            = use_full_matrix_to_compute_overlap
         self._zneigh             = z_neighborhood
         self._overlap_th         = overlap_gradient_th # is used to separed cells that could be consecutive on z
-        self._actions            = [self.plot_segmented, self.update_labels, self.__call__, self._end_actions]
-        self.plot_layout         = plot_layout
-        self.plot_overlap        = plot_overlap
-        self.plot_masks          = plot_masks
         self._max_label          = 0
         self._masks_cmap_name    = masks_cmap
         self._masks_cmap         = cm.get_cmap(self._masks_cmap_name)
@@ -47,7 +43,6 @@ class CellSegmentation(object):
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self._returnfalg         = False
-        self._backup_steps       = backup_steps
         self._assign_color_to_label()
 
     def __call__(self):
@@ -74,9 +69,6 @@ class CellSegmentation(object):
         self.printfancy("")
         print("################         SEGMENTATION COMPLETED       ################")
         self.printfancy("")
-        self._copyCS = deepcopy(self)
-        self.backups = deque([self._copyCS], self._backup_steps)
-        self.actions()
 
     def _cell_segmentation_outlines(self):
 
@@ -523,7 +515,6 @@ class CellSegmentation(object):
         self._position3d()
         self.printfancy("")
         self.printfancy("## Labels updated ##")
-        #self.printfancy("")
 
     def delete_cell(self, PA):
         cells = [x[0] for x in PA.list_of_cells]
@@ -536,7 +527,6 @@ class CellSegmentation(object):
             self.centersi[z].pop(id_l)
             self.centersj[z].pop(id_l)
         self.update_labels()
-        self.replot_segmented(PA.cr)
         
     # Combines cells by assigning the info for the cell with higher label number
     # to the other one. Cells must not appear in the same and they must be contiguous
@@ -548,7 +538,6 @@ class CellSegmentation(object):
         id_l = np.where(np.array(self.labels[Zs[maxcid]])==max(cells))[0][0]
         self.labels[Zs[maxcid]][id_l] = min(cells)
         self.update_labels()
-        self.replot_segmented(PA.cr)
 
     def add_cell(self, PA):
         line, = PA.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
@@ -564,13 +553,6 @@ class CellSegmentation(object):
         self.Outlines[PA.z].append(new_outline_sorted_highres)
         self.Masks[PA.z].append(self._points_within_hull(new_outline_sorted_highres))
         self.update_labels()
-        self.replot_segmented(PA.cr)
-        
-    def _end_actions(self):
-        self.printfancy("")
-        print("################       ERROR CORRECTION FINISHED      ################")
-        self._returnflag = True
-        return
 
     def printfancy(self, string, finallength=70):
         new_str = "#   "+string
@@ -599,60 +581,6 @@ class CellSegmentation(object):
             print("#   Progress: [", tags, spaces, "] ", percents, "   #", sep="")
         elif percent > 99:
             print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
-    
-    def actions(self):
-        print("################           ACTION SELECTION           ################")
-        self.printfancy("")
-        self.printfancy("Select one of these actions by typing the")
-        self.printfancy("corresponding number:")
-        self.printfancy("")
-        self.printfancy("1 - Plot embryo")
-        self.printfancy("2 - Update labels")
-        self.printfancy("3 - Undo all actions and redo segmentation")
-        self.printfancy("4 - END action selection")
-        self.printfancy("")
-        act=input("#   SELECTION: ")
-        self.printclear()    
-        self.printfancy("SELECTION: "+act)
-        self._returnflag = False
-        try:
-            chosen_action = int(act)
-            if chosen_action in [1,2,3,4]:
-                #self.printfancy("")
-                self._actions[chosen_action-1]()
-                if self._returnflag==True:
-                    return
-                self.printfancy("")
-                self.actions()
-                return 
-            else:
-                self.printfancy("")
-                self.printfancy("ERROR: Please select one of the given options")
-                self.printfancy("")
-                self.actions()
-                return
-        except ValueError:
-            self.printfancy("")
-            self.printfancy("ERROR: Please select one of the given options")
-            self.printfancy("")
-            self.actions()
-            return
-
-    def undo_action(self):
-        backup = self.backups.pop()
-        self.labels   = deepcopy(backup.labels)
-        self.Outlines = deepcopy(backup.Outlines)
-        self.Masks    = deepcopy(backup.Masks)
-        self.update_labels()
-        if len(self.backups)==0:
-            self.one_step_copy()
-        
-    def one_step_copy(self):
-        new_copy = deepcopy(self._copyCS)
-        new_copy.labels   = deepcopy(self.labels)
-        new_copy.Outlines = deepcopy(self.Outlines)
-        new_copy.Masks    = deepcopy(self.Masks)
-        self.backups.append(deepcopy(new_copy))
 
     def compute_Masks_to_plot(self):
         self._Masks_to_plot = np.zeros_like(self.stack, dtype=np.int32)
@@ -669,144 +597,6 @@ class CellSegmentation(object):
     def _assign_color_to_label(self):
         coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
         self._labels_color_id = [next(coloriter) for i in range(1000)]
-
-    def plot_segmented(self):
-        self.printfancy("")
-        self.printfancy("Proceeding to plot cell segmentation")
-        self.printfancy("- To plot a specific PLANE type the number")            
-        self.printfancy("- Press ENTER to plot layout")
-        self.printfancy("- Press B to go back to action selection")
-        self.printfancy("")
-        self.plot_only_z=input("#   SELECTION: ")
-        self.printclear()    
-        self.printfancy("SELECTION: "+self.plot_only_z)
-        if self.plot_only_z == 'B':
-            self.actions()
-            return
-        try:
-            self.plot_only_z = int(self.plot_only_z)
-        except:
-            self.plot_only_z=None
-
-        pltmasks = input("#   PLOT MASKS? (y/n), ENTER for default: ")
-        self.printclear()    
-        self.printfancy("PLOT MASKS? (y/n), ENTER for default: "+pltmasks)
-        self.pltmasks_bool = self.plot_masks
-        if pltmasks == 'y':
-            self.pltmasks_bool = True
-        elif pltmasks == 'n':
-            self.pltmasks_bool = False
-
-        if self.plot_only_z!=None:
-            if isinstance(self.plot_only_z, int) and self.plot_only_z in range(self.slices):
-                self.printfancy("Plotting plane z = %d" %self.plot_only_z)
-
-                img = self.stack[self.plot_only_z,:,:]
-
-                # plot
-                fig, ax = plt.subplots()
-                self.plot_axis(ax, img, self.plot_only_z)
-                self.PA = PlotActionCS(fig, ax, self.plot_only_z, self, self.plot_only_z)
-                plt.show()
-
-                self.printfancy("")
-                self.printfancy("## Plotting completed ##")
-                self.printfancy("")
-                return
-            else:
-                self.printfancy("")
-                self.printfancy("Please give a proper plane number. Going back to action selection")
-                self.printfancy("")
-                self.actions()
-                return
-        
-        self.printfancy("")
-        self.printfancy("## Plotting layout ##")
-        
-        # tuple with dimension 2 containing vectors of size=groupsize
-        # each element is the correspondent index for a given z plane
-        counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
-        fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
-        zs = np.empty_like(ax)
-        self.PA = PlotActionCS(fig, ax, zs, self, 0)
-        if len(ax.shape)==1:
-            zidxs = range(counter.groupsize)
-        else:
-            zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
-
-        # Plot all our Zs in the corresponding round
-        for z, id, round in counter:
-            
-            # select current z plane
-            if len(ax.shape)==1:
-                idx = zidxs[id]
-                if z == None:
-                    ax[idx].axis(False)
-                else:
-                    img = self.stack[z,:,:]
-
-                    # select corresponding idxs on the plot 
-                    self.PA.zs[idx] = z
-
-                    # plot
-                    self.plot_axis(ax[idx], img, z)
-                
-            else:
-                if z == None:
-                    ax[idx1,idx2].axis(False)
-                else:      
-                    # select corresponding idxs on the plot 
-                    img = self.stack[z,:,:]
-                    idx1 = zidxs[0][id]
-                    idx2 = zidxs[1][id]
-                    self.PA.zs[idx1, idx2] = z
-
-                    # plot
-                    self.plot_axis(ax[idx1, idx2], img, z)
-                    
-        plt.show()
-        self.printfancy("")
-        self.printfancy("## Plotting completed ##")
-        self.printfancy("")
-
-    def replot_segmented(self, round):
-        if isinstance(self.PA.ax, np.ndarray):
-            counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=round)
-
-            if len(self.PA.ax.shape)==1:
-                zidxs = range(counter.groupsize)
-            else:
-                zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
-
-            # Plot all our Zs in the corresponding round
-            
-            for z, id, r in counter:
-                if len(self.PA.ax.shape)==1:
-                    idx = zidxs[id]
-                    self.PA.ax[idx].cla()
-                    if z == None:
-                        self.PA.ax[idx].axis(False)
-                    else:
-                        self.PA.zs[idx] = z
-                        img = self.stack[z,:,:]
-                        self.plot_axis(self.PA.ax[idx], img, z)
-                else:
-                    idx1 = zidxs[0][id]
-                    idx2 = zidxs[1][id]
-                    self.PA.ax[idx1, idx2].cla()
-                    if z == None:
-                        self.PA.ax[idx1,idx2].axis(False)
-                    else:      
-                        # select corresponding idxs on the plot 
-                        self.PA.zs[idx1, idx2] = z
-                        img = self.stack[z,:,:]
-                        self.plot_axis(self.PA.ax[idx1, idx2], img, z)
-        else:
-            img  = self.stack[round,:,:]
-            self.PA.zs = round
-            self.PA.z  = round
-            self.PA.ax.cla()
-            self.plot_axis(self.PA.ax, img, round)
 
     def plot_axis(self, _ax, img, z):
         _ = _ax.imshow(img)
@@ -830,153 +620,609 @@ class CellSegmentation(object):
             if zz==z:
                 _ = _ax.scatter([ys], [xs], s=3.0, c="k")
 
-class PlotActionCS:
-    def __init__(self, fig, ax, zs, CS, current_round):
+class plotCounter:
+    def __init__(self, layout, totalsize, overlap ):
+        self.current = -1
+        self.currentonround = -1
+        self.totalsize  = totalsize
+        self.overlap    = overlap
+        self.layout     = layout
+        self.groupsize  = self.layout[0] * self.layout[1]
+        self.rounds     = math.ceil((self.totalsize)/(self.groupsize-self.overlap))
+        self.currentround = 0
+        self.totalspots = self.groupsize*self.rounds
+        self.totalplots = (self.rounds-1)*self.overlap + self.totalsize
+        self.emptyspots = self.totalspots - self.totalplots
+        if self.rounds == 1:
+            self.groupsize=self.totalspots
+        if self.emptyspots+self.overlap == self.groupsize:
+            self.rounds -= 1
+            self.totalspots = self.groupsize*self.rounds
+            self.totalplots = (self.rounds-1)*self.overlap + self.totalsize
+            self.emptyspots = self.totalspots - self.totalplots
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.current += 1
+        self.currentonround += 1
+        if self.currentonround==self.groupsize:
+            self.currentround+=1
+            self.current -= self.overlap
+            self.currentonround=0
+        if self.current < self.totalsize and self.currentround < self.rounds:
+            return self.current, self.currentonround, self.currentround
+        raise StopIteration
+
+class plotRound:
+    def __init__(self, layout, totalsize, overlap, round):
+        self.totalsize  = totalsize
+        self.overlap    = overlap
+        self.layout     = layout
+        self.groupsize  = self.layout[0] * self.layout[1]
+        
+        self.current = (self.groupsize*round -1)-(self.overlap*round)
+        self.currentonround = -1
+
+        self.rounds     = math.ceil((self.totalsize)/(self.groupsize-self.overlap))
+        self.currentround = round
+        if self.rounds == 1:
+            self.groupsize=self.totalspots
+    
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.current += 1
+        self.currentonround += 1
+        if self.currentonround==self.groupsize:
+            raise StopIteration
+        if self.current < self.totalsize and self.currentround < self.rounds:
+            return self.current, self.currentonround, self.currentround
+        else:
+            return None, self.currentonround, self.currentround
+
+class backup_CellTrack():
+    def __init__(self, t, CT):
+        self._assign(t, CT)
+
+    def __call__(self, t, CT):
+        self._assign(t, CT)
+
+    def _assign(self, t, CT):
+        self.t = t
+        self.labels    = deepcopy(CT.TLabels[t])
+        self.centers   = deepcopy(CT.TCenters[t])
+        self.outlines  = deepcopy(CT.TOutlines[t])
+        self.CS        = deepcopy(CT.CSt[t])
+        self.flabels   = deepcopy(CT.FinalLabels[t])
+        self.fcenters  = deepcopy(CT.FinalCenters[t])
+        self.foutlines = deepcopy(CT.FinalOulines[t])
+        self.lab_corr  = deepcopy(CT.label_correspondance[t])
+        self.apo_evs   = deepcopy(CT.apoptotic_events)
+        self.mit_evs   = deepcopy(CT.mitotic_events)
+
+class CellTracking(object):
+    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None):
+        self.embcode           = embcode
+        self.stacks            = stacks
+        self._model            = model
+        self._trainedmodel     = trainedmodel
+        self._channels         = channels
+        self._flow_th_cellpose = flow_th_cellpose
+        self._distance_th_z    = distance_th_z
+        self._xyresolution     = xyresolution
+        self.times             = np.shape(stacks)[0]
+        self.slices            = np.shape(stacks)[1]
+        self.stack_dims        = np.shape(stacks)[-2:]
+        self._relative         = relative_overlap
+        self._fullmat          = use_full_matrix_to_compute_overlap
+        self._zneigh           = z_neighborhood
+        self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
+        self.plot_masks        = plot_masks
+        self.plot_layout = plot_layout
+        self.plot_overlap= plot_overlap
+        self._max_label        = 0
+        self._masks_cmap_name  = masks_cmap
+        self._masks_cmap       = cm.get_cmap(self._masks_cmap_name)
+        self._masks_colors     = self._masks_cmap.colors
+        self._min_outline_length = min_outline_length
+        self._nearest_neighs     = neighbors_for_sequence_sorting
+        self.cells_to_combine  = []
+        self.mito_cells        = []
+        self.apoptotic_events  = []
+        self.mitotic_events    = []
+        self._backup_steps= backup_steps
+        self.plot_tracking_windows=plot_tracking_windows
+        self.tstep = time_step
+
+    def __call__(self):
+        self.cell_segmentation()
+        self.cell_tracking()
+        self.backupCT  = backup_CellTrack(0, self)
+        self._backupCT = backup_CellTrack(0, self)
+        self.backups = deque([self._backupCT], self._backup_steps)
+        self.CSt[0].printfancy("")
+        self.CSt[0].printfancy("Plotting...")
+        plt.close("all")
+        self.plot_tracking()
+        self.CSt[0].printfancy("")
+        print("#######################    PROCESS FINISHED   #######################")
+
+    def undo_corrections(self, all=False):
+        if all:
+            backup = self.backupCT
+        else:
+            backup = self.backups.pop()
+        
+        self.TLabels[backup.t]   = deepcopy(backup.labels)
+        self.TCenters[backup.t]  = deepcopy(backup.centers)
+        self.TOutlines[backup.t] = deepcopy(backup.outlines)
+        self.CSt[backup.t] = deepcopy(backup.CS)
+        self.FinalLabels[backup.t]   = deepcopy(backup.flabels)
+        self.FinalCenters[backup.t]  = deepcopy(backup.fcenters)
+        self.FinalOulines[backup.t]  = deepcopy(backup.foutlines)
+        self.label_correspondance[backup.t] = deepcopy(backup.lab_corr)
+        self.apoptotic_events = deepcopy(backup.apo_evs)
+        self.mitotic_events = deepcopy(backup.mit_evs)
+        for PACT in self.PACTs:
+            PACT.CT = self
+            PACT.CS = self.CSt[PACT.t]
+        
+        # Make sure there is always a backup on the list
+        if len(self.backups)==0:
+            self.one_step_copy()
+
+    def one_step_copy(self, t=0):
+        new_copy = deepcopy(self._backupCT)
+        new_copy(t, self)
+        self.backups.append(new_copy)
+
+    def cell_segmentation(self):
+        self.TLabels   = []
+        self.TCenters  = []
+        self.TOutlines = []
+        self.CSt       = []
+        print("######################   BEGIN SEGMENTATIONS   ######################")
+        for t in range(self.times):
+            imgs = self.stacks[t,:,:,:]
+            CS = CellSegmentation( imgs, self._model, self.embcode, trainedmodel=self._trainedmodel
+                                , channels=self._channels
+                                , flow_th_cellpose=self._flow_th_cellpose
+                                , distance_th_z=self._distance_th_z
+                                , xyresolution=self._xyresolution
+                                , relative_overlap=self._relative
+                                , use_full_matrix_to_compute_overlap=self._fullmat
+                                , z_neighborhood=self._zneigh
+                                , overlap_gradient_th=self._overlap_th
+                                , masks_cmap=self._masks_cmap_name
+                                , min_outline_length=self._min_outline_length
+                                , neighbors_for_sequence_sorting=self._nearest_neighs)
+
+            CS.printfancy("")
+            CS.printfancy("######   CURRENT TIME = %d   ######" %t)
+            CS.printfancy("")
+            CS()
+            CS.printfancy("Segmentation and corrections completed. Proceeding to next time")
+            self.CSt.append(CS)
+        CS.printfancy("")
+        print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
+
+    def extract_labels(self):
+        self.TLabels   = []
+        self.TCenters  = []
+        self.TOutlines = []
+        self.label_correspondance = []
+        for t in range(self.times):
+            self.TLabels.append(self.CSt[t].labels_centers)
+            self.TCenters.append(self.CSt[t].centers_positions)
+            self.TOutlines.append(self.CSt[t].centers_outlines)
+            self.label_correspondance.append([])
+
+    def cell_tracking(self):
+        self.apoptotic_events  = []
+        self.mitotic_events    = []
+        self.extract_labels()
+        TLabels  = self.TLabels
+        TCenters = self.TCenters
+        TOutlines = self.TOutlines
+        FinalLabels   = []
+        FinalCenters  = []
+        FinalOutlines = []
+        for t in range(np.shape(self.stacks)[0]):
+            if t==0:
+                FinalLabels.append(TLabels[0])
+                FinalCenters.append(TCenters[0])
+                FinalOutlines.append(TOutlines[0])
+                labmax = np.max(FinalLabels[0])
+                for lab in TLabels[0]:
+                    self.label_correspondance[0].append([lab, lab])
+            else:
+                FinalLabels.append([])
+                FinalCenters.append([])
+                FinalOutlines.append([])
+
+                Dists = np.ones((len(FinalLabels[t-1]), len(TLabels[t])))
+                for i in range(len(FinalLabels[t-1])):
+                    poscell1 = np.array(FinalCenters[t-1][i][1:])*np.array([0.2767553, 0.2767553])
+                    for j in range(len(TLabels[t])): 
+                        poscell2 = np.array(TCenters[t][j][1:])*np.array([0.2767553, 0.2767553])
+                        Dists[i,j] = np.linalg.norm(poscell1-poscell2)
+                        if np.abs(FinalCenters[t-1][i][0] - TCenters[t][j][0])>2:
+                            Dists[i,j] = 100.0
+
+                a = np.argmin(Dists, axis=0) # max prob for each future cell to be a past cell
+                b = np.argmin(Dists, axis=1) # max prob for each past cell to be a future one
+                correspondance = []
+                notcorrespondenta = []
+                notcorrespondentb = []
+                for i,j in enumerate(b):
+                    if i==a[j]:
+                        if Dists[i,j] < 7.5:
+                            correspondance.append([i,j]) #[past, future]
+                            self.label_correspondance[t].append([TLabels[t][j], FinalLabels[t-1][i]])
+                            FinalLabels[t].append(FinalLabels[t-1][i])
+                            FinalCenters[t].append(TCenters[t][j])
+                            FinalOutlines[t].append(TOutlines[t][j])                            
+                    else:
+                        notcorrespondenta.append(i)
+                labmax = np.maximum(np.max(FinalLabels[t-1]), labmax)
+                for j in range(len(a)):
+                    if j not in np.array(correspondance)[:,1]:
+                        self.label_correspondance[t].append([TLabels[t][j], labmax+1])
+                        FinalLabels[t].append(labmax+1)
+                        labmax+=1
+                        FinalCenters[t].append(TCenters[t][j])
+                        FinalOutlines[t].append(TOutlines[t][j])
+                        notcorrespondentb.append(j)
+                
+        self.FinalLabels  = FinalLabels
+        self.FinalCenters = FinalCenters
+        self.FinalOulines = FinalOutlines
+    
+    def delete_cell(self, PA):
+        cells = [x[0] for x in PA.list_of_cells]
+        Zs    = [x[1] for x in PA.list_of_cells]
+        if len(cells) == 0:
+            return
+        for i,z in enumerate(Zs):
+            id_l = np.where(np.array(PA.CS.labels[z])==cells[i])[0][0]
+            PA.CS.labels[z].pop(id_l)
+            PA.CS.Outlines[z].pop(id_l)
+            PA.CS.Masks[z].pop(id_l)
+            PA.CS.centersi[z].pop(id_l)
+            PA.CS.centersj[z].pop(id_l)
+        PA.CS.update_labels()
+        self.cell_tracking()
+
+    def combine_cells(self):
+        if len(self.cells_to_combine)==0:
+            return
+        cells = [x[0] for x in self.cells_to_combine]
+        Ts    = [x[1] for x in self.cells_to_combine]
+        IDsco = [x[2] for x in self.cells_to_combine]
+
+        maxlabidx = np.argmax(cells)
+        minlabidx = np.argmin(cells)
+        maxlab = max(cells)
+        minlab = min(cells)
+
+        idd = np.where(np.array(self.FinalLabels[Ts[maxlabidx]])==maxlab)[0][0]         
+        self.FinalLabels[Ts[maxlabidx]][idd] = minlab
+        self.label_correspondance[Ts[maxlabidx]][IDsco[maxlabidx]][1] = minlab
+
+    def apoptosis(self, list_of_cells):
+        for cell in list_of_cells:
+            if cell not in self.apoptotic_events:
+                self.apoptotic_events.append(cell)
+
+    def mitosis(self):
+        if len(self.mito_cells) != 3:
+            return 
+        mito_ev = [self.mito_cells[0], [self.mito_cells[1], self.mito_cells[2]]]
+        self.mitotic_events.append(mito_ev)
+
+    def plot_tracking(self, windows=None):
+        if windows==None:
+            windows=self.plot_tracking_windows
+        self.PACTs=[]
+        time_sliders = []
+        for w in range(windows):
+            counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
+            fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
+            self.PACTs.append(PlotActionCT(fig, ax, self))
+            self.PACTs[w].zs = np.zeros_like(ax)
+            zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
+            t=0
+            FinalCenters = self.FinalCenters
+            FinalLabels  = self.FinalLabels
+            imgs   = self.stacks[t,:,:,:]
+            # Plot all our Zs in the corresponding round
+            for z, id, round in counter:
+                # select current z plane
+                idx1 = zidxs[0][id]
+                idx2 = zidxs[1][id]
+                ax[idx1,idx2].axis(False)
+                if z == None:
+                    pass
+                else:      
+                    img = imgs[z,:,:]
+                    self.PACTs[w].zs[idx1, idx2] = z
+                    self.plot_axis(self.CSt[t], ax[idx1, idx2], img, z, t)
+                    for lab in range(len(FinalLabels[t])):
+                        zz = FinalCenters[t][lab][0]
+                        if zz == z:
+                            ys = FinalCenters[t][lab][1]
+                            xs = FinalCenters[t][lab][2]
+                            #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
+                            _ = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                            _ = ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
+                            _ = ax[idx1, idx2].set_xticks([])
+                            _ = ax[idx1, idx2].set_yticks([])
+                            
+            plt.subplots_adjust(bottom=0.075)
+            # Make a horizontal slider to control the frequency.
+            axslide = fig.add_axes([0.12, 0.01, 0.8, 0.03])
+            time_slider = Slider(
+                ax=axslide,
+                label='time',
+                valmin=0,
+                valmax=self.times-1,
+                valinit=0,
+                valstep=1
+            )
+            time_sliders.append(time_slider)
+            time_sliders[w].on_changed(self.PACTs[w].update_slider)
+        plt.show()
+
+    def replot_tracking(self, PACT):
+        t = PACT.t
+        counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=PACT.cr)
+        zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
+        FinalCenters = self.FinalCenters
+        FinalLabels  = self.FinalLabels
+        imgs   = self.stacks[t,:,:,:]
+        # Plot all our Zs in the corresponding round
+        for z, id, r in counter:
+            # select current z plane
+            idx1 = zidxs[0][id]
+            idx2 = zidxs[1][id]
+            PACT.ax[idx1,idx2].cla()
+            PACT.ax[idx1,idx2].axis(False)
+            if z == None:
+                pass
+            else:      
+                img = imgs[z,:,:]
+                PACT.zs[idx1, idx2] = z
+                self.plot_axis(self.CSt[t], PACT.ax[idx1, idx2], img, z, t)
+                for lab in range(len(FinalLabels[t])):
+                    zz = FinalCenters[t][lab][0]
+                    if zz==z:
+                        ys = FinalCenters[t][lab][1]
+                        xs = FinalCenters[t][lab][2]
+                        if [lab, PACT.t] in self.apoptotic_events:
+                            _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="k")
+                        else:
+                            _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                        _ = PACT.ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
+                        _ = PACT.ax[idx1, idx2].set_xticks([])
+                        _ = PACT.ax[idx1, idx2].set_yticks([])
+
+        plt.subplots_adjust(bottom=0.075)
+        # Make a horizontal slider to control the frequency.
+
+    def plot_axis(self, CS, _ax, img, z, t):
+        _ = _ax.imshow(img)
+        _ = _ax.set_title("z = %d" %z)
+        _ = _ax.axis(False)
+
+        for cell, outline in enumerate(CS.Outlines[z]):
+            xs = CS.centersi[z][cell]
+            ys = CS.centersj[z][cell]
+            label = CS.labels[z][cell]
+            idd = np.where(np.array(self.label_correspondance[t])[:,0]==label)[0][0]
+            Tlab = self.label_correspondance[t][idd][1]
+            _ = _ax.scatter(outline[:,0], outline[:,1], c=[CS._masks_colors[CS._labels_color_id[Tlab]]], s=0.5, cmap=CS._masks_cmap_name)               
+        plotmasks = False
+        if plotmasks:#if CS.pltmasks_bool:
+            CS.compute_Masks_to_plot()
+            _ = _ax.imshow(CS._masks_cmap(CS._Masks_to_plot[z], alpha=CS._Masks_to_plot_alphas[z], bytes=True), cmap=CS._masks_cmap_name)
+
+class PlotActionCT:
+    def __init__(self, fig, ax, CT):
         self.fig=fig
         self.ax=ax
-        self.CS=CS
-        self.get_size()
-        actionsbox = "Possible actions                                   \n- ESC : visualization   - q : quit plot        \n- z : undo action         - a : add cells       \n- d : delete cell           - c : combine cells"
-        self.actionlist = self.fig.text(0.98, 0.98, actionsbox, fontsize=self.figheight/90, ha='right', va='top')
-        self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=self.figheight/70)
-        self.instructions = self.fig.text(0.2, 0.98, "instructions", fontsize=self.figheight/70, ha='left', va='top')
-        self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=self.figheight/90, ha='right', va='top')
+        self.plot_masks=CT.plot_masks
+        self.CT=CT
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
-        self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
-        if isinstance(zs, np.ndarray):
-            groupsize  = self.CS.plot_layout[0] * self.CS.plot_layout[1]
-            self.max_round =  math.ceil((self.CS.slices)/(groupsize-self.CS.plot_overlap))-1
-        else:
-            self.max_round = self.CS.slices
-        self.cr = current_round
-        self.visualization()
-        self.update()
-        self.current_state=None
+        self.current_state="START"
         self.current_subplot = None
-        self.zs = zs
-        if isinstance(self.zs, int):
-            self.z=self.zs
-        else:
-            self.z = None
-            
-    def onscroll(self, event):
+        self.cr = 0
+        self.t =0
+        self.zs=[]
+        self.z = None
+        self.CS = CT.CSt[self.t]
+        self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
+        groupsize  = self.CT.plot_layout[0] * self.CT.plot_layout[1]
+        self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
+        self.get_size()
+        actionsbox = "Possible actions:                                                 \n - q : quit plot                      - ESC : visualization \n - z : undo previous action   - Z : undo all actions\n - d : delete cell                   - c : combine cells    \n - a : apoptotic event          - m : mitotic events  "
+        self.actionlist = self.fig.text(0.98, 0.98, actionsbox, fontsize=1, ha='right', va='top')
+        self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
+        self.timetxt = self.fig.text(0.05, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
+        self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n                     PRESS ENTER TO START", fontsize=1, ha='left', va='top')
+        self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
+        self.update()
+
+    def __call__(self, event):
         if self.current_state==None:
-            self.current_state="SCL"
+            if event.key == 'd':
+                self.CT.one_step_copy(self.t)
+                self.current_state="del"
+                self.delete_cells()
+            elif event.key == 'c':
+                self.CT.one_step_copy(self.t)
+                self.current_state="com"
+                self.combine_cells()
+            elif event.key == 'm':
+                self.CT.one_step_copy(self.t)
+                self.current_state="mit"
+                self.mitosis()
+            if event.key == 'A':
+                self.CT.one_step_copy()
+                self.current_state="add"
+                self.add_cells()
+            elif event.key == 'a':
+                self.CT.one_step_copy(self.t)
+                self.current_state="apo"
+                self.apoptosis()
+            elif event.key == 'escape':
+                self.visualization()
+            elif event.key == 'z':
+                self.CT.undo_corrections(all=False)
+                for PACT in self.CT.PACTs:
+                        PACT.CT.replot_tracking(PACT)
+                self.visualization()
+            elif event.key == 'Z':
+                self.CT.undo_corrections(all=True)
+                for PACT in self.CT.PACTs:
+                        PACT.CT.replot_tracking(PACT)
+                self.visualization()
+            self.update()
+
+        else:
+            if event.key=='enter':
+                if self.current_state=="add":
+                    if self.current_subplot==None:
+                        pass
+                    else:
+                        self.ax_sel.patches.remove(self.patch)
+                        self.CS.complete_add_cell(self)
+                        self.CT.cell_tracking()
+                        for PACT in self.CT.PACTs:
+                            PACT.list_of_cells = []
+                            PACT.current_subplot=None
+                            PACT.current_state=None
+                            PACT.ax_sel=None
+                            PACT.z=None
+                            PACT.CT.replot_tracking(PACT)
+                            PACT.visualization()
+                            PACT.update()
+                if self.current_state=="del":
+                    self.CP.stopit()
+                    delattr(self, 'CP')
+                    self.CT.delete_cell(self)
+                    for PACT in self.CT.PACTs:
+                        PACT.list_of_cells = []
+                        PACT.current_subplot=None
+                        PACT.current_state=None
+                        PACT.ax_sel=None
+                        PACT.z=None
+                        PACT.CT.replot_tracking(PACT)
+                        PACT.visualization()
+                        PACT.update()
+                elif self.current_state=="com":
+                    self.CP.stopit()
+                    delattr(self, 'CP')
+                    self.CT.combine_cells()
+                    for PACT in self.CT.PACTs:
+                        PACT.current_subplot=None
+                        PACT.current_state=None
+                        PACT.ax_sel=None
+                        PACT.z=None
+                        PACT.CT.cells_to_combine = []
+                        PACT.CT.replot_tracking(PACT)
+                        PACT.visualization()
+                        PACT.update()
+                elif self.current_state=="apo":
+                    self.CP.stopit()
+                    delattr(self, 'CP')
+                    self.CT.apoptosis(self.list_of_cells)
+                    self.list_of_cells=[]
+                    for PACT in self.CT.PACTs:
+                        PACT.CT.replot_tracking(PACT)
+                        PACT.visualization()
+                        PACT.update()
+                elif self.current_state=="mit":
+                    self.CP.stopit()
+                    delattr(self, 'CP')
+                    self.CT.mitosis()
+                    for PACT in self.CT.PACTs:
+                        PACT.current_subplot=None
+                        PACT.current_state=None
+                        PACT.ax_sel=None
+                        PACT.z=None
+                        PACT.CT.mito_cells = []
+                        PACT.CT.replot_tracking(PACT)
+                        PACT.visualization()
+                        PACT.update()
+                else:
+                    self.visualization()
+                    self.update()
+                self.current_subplot=None
+                self.current_state=None
+                self.ax_sel=None
+                self.z=None
+            else:
+                # We have to wait for the current action to finish
+                pass
+
+    # The function to be called anytime a slider's value changes
+    def update_slider(self, t):
+        self.t=t
+        self.CS = self.CT.CSt[t]
+        self.CT.replot_tracking(self)
+        self.update()
+
+    def onscroll(self, event):
+        if self.current_state in [None, "com", "mit", "apo"]:
+            if self.current_state == None:
+                self.current_state="SCL"
             if event.button == 'up':
                 self.cr = self.cr - 1
             elif event.button == 'down':
                 self.cr = self.cr + 1
             self.cr = max(self.cr, 0)
             self.cr = min(self.cr, self.max_round)
-            self.CS.replot_segmented(self.cr)
+            self.CT.replot_tracking(self)
             self.update()
         else:
-            self.CS.printfancy("Currently on another action")
             return
-        self.current_state=None
+        if self.current_state=="SCL":
+            self.current_state=None
 
-    def __call__(self, event):
-        if self.current_state==None:
-            if event.key == 'a':
-                self.CS.one_step_copy()
-                self.CS.printfancy("")
-                self.CS.printfancy("# Entering ADD mode. Press ENTER to exit #")
-                self.current_state="add"
-                self.visualization()
-                self.add_cells()
-            elif event.key == 'd':
-                self.CS.one_step_copy()
-                self.CS.printfancy("")
-                self.CS.printfancy("# Entering DELETE mode. Press ENTER to exit #")
-                self.current_state="del"
-                self.delete_cells()
-            elif event.key == 'c':
-                self.CS.one_step_copy()
-                self.CS.printfancy("")
-                self.CS.printfancy("# Entering COMBINE mode. Press ENTER to exit #")
-                self.current_state="com"
-                self.combine_cells()
-            elif event.key == 'escape':
-                self.CS.printfancy("")
-                self.CS.printfancy("# Entering VISUALIZATION mode #")
-            elif event.key == 'z':
-                self.CS.printfancy("# Correcting previous action... #")
-                self.CS.undo_action()
-                self.CS.replot_segmented(self.cr)
-            self.update()
+    def update(self):
+        if self.current_state in ["apo","com", "mit"]:
+            cells_to_plot=self.extract_unique_cell_time_list_of_cells()
+            cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
         else:
-            if event.key=='enter':
-                if self.current_state=="add":
-                    if self.current_subplot==None:
-                        pass
-                    elif self.current_subplot=='single':
-                        self.CS.complete_add_cell(self)
-                    else:
-                        self.ax_sel.patches.remove(self.patch)
-                        self.CS.complete_add_cell(self)
-                elif self.current_state=="del":
-                    self.CP.stopit()
-                    delattr(self, 'CP')
-                    self.CS.delete_cell(self)
-                    self.list_of_cells = []
-                elif self.current_state=="com":
-                    self.CP.stopit()
-                    delattr(self, 'CP')
-                    self.CS.combine_cells(self)
-                    self.list_of_cells = []
-                self.visualization()
-                self.update()
-                self.current_subplot=None
-                self.current_state=None
-                self.ax_sel=None
-                if isinstance(self.zs, int):
-                    self.z=self.zs
-                else:
-                    self.z = None
-            else:
-                # We have to wait for the current action to finish
-                pass
-
-    def update(self): 
+            cells_to_plot = self.sort_list_of_cells()
+            for i,x in enumerate(cells_to_plot):
+                idd = np.where(np.array(self.CT.label_correspondance[self.t])[:,0]==x[0])[0][0]
+                Tlab = self.CT.label_correspondance[self.t][idd][1]
+                cells_to_plot[i][0] = Tlab
+            cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
+        s = "\n".join(cells_string)
         self.get_size()
         if self.figheight < self.figwidth:
             width_or_height = self.figheight
+            scale1=90
+            scale2=70
         else:
+            scale1=110
+            scale2=90
             width_or_height = self.figwidth
-        self.actionlist.set(fontsize=width_or_height/90)
-        self.selected_cells.set(fontsize=width_or_height/90)
-        cells_to_plot = self.sort_list_of_cells()
-        cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
-        s = "\n".join(cells_string)
+        self.actionlist.set(fontsize=width_or_height/scale1)
+        self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Cells\nSelected\n\n"+s)
-        self.instructions.set(fontsize=width_or_height/70)
-        self.title.set(fontsize=width_or_height/70)
+        self.instructions.set(fontsize=width_or_height/scale2)
+        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
+        self.title.set(fontsize=width_or_height/scale2)
         plt.subplots_adjust(top=0.9,right=0.8)
+        self.fig.canvas.draw_idle()
         self.fig.canvas.draw()
-
-    def sort_list_of_cells(self):
-        if len(self.list_of_cells)==0:
-            return self.list_of_cells
-        else:
-            cells = [x[0] for x in self.list_of_cells]
-            Zs    = [x[1] for x in self.list_of_cells]
-
-            cidxs  = np.argsort(cells)
-            cells = np.array(cells)[cidxs]
-            Zs    = np.array(Zs)[cidxs]
-
-            ucells = np.unique(cells)
-            final_cells = []
-            for c in ucells:
-                ids = np.where(cells == c)
-                _cells = cells[ids]
-                _Zs    = Zs[ids]
-                zidxs = np.argsort(_Zs)
-                for id in zidxs:
-                    final_cells.append([_cells[id], _Zs[id]])
-
-            return final_cells
 
     def add_cells(self):
         self.title.set(text="ADD CELL\nMODE", ha='left', x=0.01)
@@ -1027,29 +1273,82 @@ class PlotActionCS:
             self.ax_sel = self.ax
             self.fig.patch.set_facecolor((0.0,1.0,0.0,0.3))
             self.CS.add_cell(self)
-    
-    def delete_cells(self):
-        self.title.set(text="DELETE CELL\nMODE", ha='left', x=0.01)
-        self.instructions.set(text="Right-click to delete cell on a plane\ndouble right-click to delete on all planes", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((1.0,0.0,0.0,0.3))
-        self.CP = CellPicker_del(self)
-    
-    def combine_cells(self):
-        self.title.set(text="COMBINE CELLS\nMODE", ha='left', x=0.01)
-        self.instructions.set(text="\nRigth-click to select cells to be combined", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((0.0,0.0,1.0,0.3))
-        self.CP = CellPicker_com(self)
 
-    def visualization(self):
-        self.title.set(text="VISUALIZATION\nMODE", ha='left', x=0.01)
-        self.instructions.set(text="Chose one of the actions to change mode", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))
+    def extract_unique_cell_time_list_of_cells(self):
+        if self.current_state=="com":
+            list_of_cells=self.CT.cells_to_combine
+        if self.current_state=="mit":
+            list_of_cells=self.CT.mito_cells
+        elif self.current_state=="apo":
+            list_of_cells=self.list_of_cells
+
+        if len(list_of_cells)==0:
+            return list_of_cells
+        cells = [x[0] for x in list_of_cells]
+        Ts    = [x[1] for x in list_of_cells]
+    
+        cs, cids = np.unique(cells, return_index=True)
+        #ts, tids = np.unique(Ts,  return_index=True)
+        
+        return [[cells[i], Ts[i]] for i in cids]
+
+    def sort_list_of_cells(self):
+        if len(self.list_of_cells)==0:
+            return self.list_of_cells
+        else:
+            cells = [x[0] for x in self.list_of_cells]
+            Zs    = [x[1] for x in self.list_of_cells]
+            cidxs  = np.argsort(cells)
+            cells = np.array(cells)[cidxs]
+            Zs    = np.array(Zs)[cidxs]
+
+            ucells = np.unique(cells)
+            final_cells = []
+            for c in ucells:
+                ids = np.where(cells == c)
+                _cells = cells[ids]
+                _Zs    = Zs[ids]
+                zidxs = np.argsort(_Zs)
+                for id in zidxs:
+                    final_cells.append([_cells[id], _Zs[id]])
+
+            return final_cells
 
     def get_size(self):
         bboxfig = self.fig.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
         widthfig, heightfig = bboxfig.width*self.fig.dpi, bboxfig.height*self.fig.dpi
         self.figwidth  = widthfig
         self.figheight = heightfig
+
+    def delete_cells(self):
+        self.title.set(text="DELETE CELL", ha='left', x=0.01)
+        self.instructions.set(text="Right-click to delete cell on a plane\ndouble right-click to delete on all planes", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((1.0,0.0,0.0,0.2))
+        self.CP = CellPickerCT_del(self)
+    
+    def combine_cells(self):
+        self.title.set(text="COMBINE CELLS", ha='left', x=0.01)
+        self.instructions.set(text="\nRigth-click to select cells to be combined", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((0.0,0.0,1.0,0.2))        
+        self.CP = CellPickerCT_com(self)
+
+    def mitosis(self):
+        self.title.set(text="DETECT MITOSIS", ha='left', x=0.01)
+        self.instructions.set(text="Right-click to SELECT THE MOTHER (1)\nAND DAUGHTER (2) CELLS", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((0.0,1.0,0.0,0.2))
+        self.CP = CellPickerCT_mit(self)
+
+    def apoptosis(self):
+        self.title.set(text="DETECT APOPTOSIS", ha='left', x=0.01)
+        self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((0.0,0.0,0.0,0.2))
+        self.CP = CellPickerCT_apo(self)
+
+    def visualization(self):
+        self.title.set(text="VISUALIZATION MODE", ha='left', x=0.01)
+        self.instructions.set(text="Chose one of the actions to change mode", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))        
+
 
 class SubplotPicker_add():
     def __init__(self, PA, f1=None,f2=None):
@@ -1224,671 +1523,6 @@ class LineBuilder:
     def stopit(self):
         self.line.figure.canvas.mpl_disconnect(self.cid)
         self.line.remove()
-    
-class plotCounter:
-    def __init__(self, layout, totalsize, overlap ):
-        self.current = -1
-        self.currentonround = -1
-        self.totalsize  = totalsize
-        self.overlap    = overlap
-        self.layout     = layout
-        self.groupsize  = self.layout[0] * self.layout[1]
-        self.rounds     = math.ceil((self.totalsize)/(self.groupsize-self.overlap))
-        self.currentround = 0
-        self.totalspots = self.groupsize*self.rounds
-        self.totalplots = (self.rounds-1)*self.overlap + self.totalsize
-        self.emptyspots = self.totalspots - self.totalplots
-        if self.rounds == 1:
-            self.groupsize=self.totalspots
-        if self.emptyspots+self.overlap == self.groupsize:
-            self.rounds -= 1
-            self.totalspots = self.groupsize*self.rounds
-            self.totalplots = (self.rounds-1)*self.overlap + self.totalsize
-            self.emptyspots = self.totalspots - self.totalplots
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self.current += 1
-        self.currentonround += 1
-        if self.currentonround==self.groupsize:
-            self.currentround+=1
-            self.current -= self.overlap
-            self.currentonround=0
-        if self.current < self.totalsize and self.currentround < self.rounds:
-            return self.current, self.currentonround, self.currentround
-        raise StopIteration
-
-class plotRound:
-    def __init__(self, layout, totalsize, overlap, round):
-        self.totalsize  = totalsize
-        self.overlap    = overlap
-        self.layout     = layout
-        self.groupsize  = self.layout[0] * self.layout[1]
-        
-        self.current = (self.groupsize*round -1)-(self.overlap*round)
-        self.currentonround = -1
-
-        self.rounds     = math.ceil((self.totalsize)/(self.groupsize-self.overlap))
-        self.currentround = round
-        if self.rounds == 1:
-            self.groupsize=self.totalspots
-    
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self.current += 1
-        self.currentonround += 1
-        if self.currentonround==self.groupsize:
-            raise StopIteration
-        if self.current < self.totalsize and self.currentround < self.rounds:
-            return self.current, self.currentonround, self.currentround
-        else:
-            return None, self.currentonround, self.currentround
-
-class backup_CellTrack():
-    def __init__(self, t, CT):
-        self._assign(t, CT)
-
-    def __call__(self, t, CT):
-        self._assign(t, CT)
-
-    def _assign(self, t, CT):
-        self.t = t
-        self.labels    = deepcopy(CT.TLabels[t])
-        self.centers   = deepcopy(CT.TCenters[t])
-        self.outlines  = deepcopy(CT.TOutlines[t])
-        self.CS        = deepcopy(CT.CSt[t])
-        self.flabels   = deepcopy(CT.FinalLabels[t])
-        self.fcenters  = deepcopy(CT.FinalCenters[t])
-        self.foutlines = deepcopy(CT.FinalOulines[t])
-        self.lab_corr  = deepcopy(CT.label_correspondance[t])
-        self.apo_evs   = deepcopy(CT.apoptotic_events)
-        self.mit_evs   = deepcopy(CT.mitotic_events)
-
-class CellTracking(object):
-    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout_segmentation=(2,2), plot_overlap_segmentation=1, plot_layout_tracking=(2,3), plot_overlap_tracking=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps_segmentation=5, backup_steps_tracking=5, time_step=None):
-        self.embcode           = embcode
-        self.stacks            = stacks
-        self._model            = model
-        self._trainedmodel     = trainedmodel
-        self._channels         = channels
-        self._flow_th_cellpose = flow_th_cellpose
-        self._distance_th_z    = distance_th_z
-        self._xyresolution     = xyresolution
-        self.times             = np.shape(stacks)[0]
-        self.slices            = np.shape(stacks)[1]
-        self.stack_dims        = np.shape(stacks)[-2:]
-        self._relative         = relative_overlap
-        self._fullmat          = use_full_matrix_to_compute_overlap
-        self._zneigh           = z_neighborhood
-        self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
-        self.plot_layout_seg   = plot_layout_segmentation
-        self.plot_overlap_seg  = plot_overlap_segmentation
-        self.plot_masks        = plot_masks
-        self.plot_layout_track = plot_layout_tracking
-        self.plot_overlap_track= plot_overlap_tracking
-        self._max_label        = 0
-        self._masks_cmap_name  = masks_cmap
-        self._masks_cmap       = cm.get_cmap(self._masks_cmap_name)
-        self._masks_colors     = self._masks_cmap.colors
-        self._min_outline_length = min_outline_length
-        self._nearest_neighs     = neighbors_for_sequence_sorting
-        self.cells_to_combine  = []
-        self.mito_cells        = []
-        self.apoptotic_events  = []
-        self.mitotic_events    = []
-        self._backup_steps_seg = backup_steps_segmentation
-        self._backup_steps_tra = backup_steps_tracking
-        self.plot_tracking_windows=plot_tracking_windows
-        self.tstep = time_step
-
-    def __call__(self):
-        self.cell_segmentation()
-        self.cell_tracking()
-        self.backupCT  = backup_CellTrack(0, self)
-        self._backupCT = backup_CellTrack(0, self)
-        self.backups = deque([self._backupCT], self._backup_steps_tra)
-        self.CSt[0].printfancy("")
-        self.CSt[0].printfancy("Plotting...")
-        plt.close("all")
-        self.plot_tracking()
-        self.CSt[0].printfancy("")
-        print("#######################    PROCESS FINISHED   #######################")
-
-    def undo_corrections(self, all=False):
-        if all:
-            backup = self.backupCT
-        else:
-            backup = self.backups.pop()
-        
-        self.TLabels[backup.t]   = deepcopy(backup.labels)
-        self.TCenters[backup.t]  = deepcopy(backup.centers)
-        self.TOutlines[backup.t] = deepcopy(backup.outlines)
-        self.CSt[backup.t] = deepcopy(backup.CS)
-        self.FinalLabels[backup.t]   = deepcopy(backup.flabels)
-        self.FinalCenters[backup.t]  = deepcopy(backup.fcenters)
-        self.FinalOulines[backup.t]  = deepcopy(backup.foutlines)
-        self.label_correspondance[backup.t] = deepcopy(backup.lab_corr)
-        self.apoptotic_events = deepcopy(backup.apo_evs)
-        self.mitotic_events = deepcopy(backup.mit_evs)
-        for PACT in self.PACTs:
-            PACT.CT = self
-            PACT.CS = self.CSt[PACT.t]
-        
-        # Make sure there is always a backup on the list
-        if len(self.backups)==0:
-            self.one_step_copy()
-
-    def one_step_copy(self, t=0):
-        new_copy = deepcopy(self._backupCT)
-        new_copy(t, self)
-        self.backups.append(new_copy)
-
-    def cell_segmentation(self):
-        self.TLabels   = []
-        self.TCenters  = []
-        self.TOutlines = []
-        self.CSt       = []
-        print("######################   BEGIN SEGMENTATIONS   ######################")
-        for t in range(self.times):
-            imgs = self.stacks[t,:,:,:]
-            CS = CellSegmentation( imgs, self._model, self.embcode, trainedmodel=self._trainedmodel
-                                , channels=self._channels
-                                , flow_th_cellpose=self._flow_th_cellpose
-                                , distance_th_z=self._distance_th_z
-                                , xyresolution=self._xyresolution
-                                , relative_overlap=self._relative
-                                , use_full_matrix_to_compute_overlap=self._fullmat
-                                , z_neighborhood=self._zneigh
-                                , overlap_gradient_th=self._overlap_th
-                                , plot_layout=self.plot_layout_seg
-                                , plot_overlap=self.plot_overlap_seg
-                                , plot_masks=self.plot_masks
-                                , masks_cmap=self._masks_cmap_name
-                                , min_outline_length=self._min_outline_length
-                                , neighbors_for_sequence_sorting=self._nearest_neighs
-                                , backup_steps=self._backup_steps_seg)
-            CS.printfancy("")
-            CS.printfancy("######   CURRENT TIME = %d   ######" %t)
-            CS.printfancy("")
-            CS()
-            CS.printfancy("Segmentation and corrections completed. Proceeding to next time")
-            delattr(CS, 'backups')
-            self.CSt.append(CS)
-        CS.printfancy("")
-        print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
-
-    def extract_labels(self):
-        self.TLabels   = []
-        self.TCenters  = []
-        self.TOutlines = []
-        self.label_correspondance = []
-        for t in range(self.times):
-            self.TLabels.append(self.CSt[t].labels_centers)
-            self.TCenters.append(self.CSt[t].centers_positions)
-            self.TOutlines.append(self.CSt[t].centers_outlines)
-            self.label_correspondance.append([])
-
-    def cell_tracking(self):
-        self.apoptotic_events  = []
-        self.mitotic_events    = []
-        self.extract_labels()
-        TLabels  = self.TLabels
-        TCenters = self.TCenters
-        TOutlines = self.TOutlines
-        FinalLabels   = []
-        FinalCenters  = []
-        FinalOutlines = []
-        for t in range(np.shape(self.stacks)[0]):
-            if t==0:
-                FinalLabels.append(TLabels[0])
-                FinalCenters.append(TCenters[0])
-                FinalOutlines.append(TOutlines[0])
-                labmax = np.max(FinalLabels[0])
-                for lab in TLabels[0]:
-                    self.label_correspondance[0].append([lab, lab])
-            else:
-                FinalLabels.append([])
-                FinalCenters.append([])
-                FinalOutlines.append([])
-
-                Dists = np.ones((len(FinalLabels[t-1]), len(TLabels[t])))
-                for i in range(len(FinalLabels[t-1])):
-                    poscell1 = np.array(FinalCenters[t-1][i][1:])*np.array([0.2767553, 0.2767553])
-                    for j in range(len(TLabels[t])): 
-                        poscell2 = np.array(TCenters[t][j][1:])*np.array([0.2767553, 0.2767553])
-                        Dists[i,j] = np.linalg.norm(poscell1-poscell2)
-                        if np.abs(FinalCenters[t-1][i][0] - TCenters[t][j][0])>2:
-                            Dists[i,j] = 100.0
-
-                a = np.argmin(Dists, axis=0) # max prob for each future cell to be a past cell
-                b = np.argmin(Dists, axis=1) # max prob for each past cell to be a future one
-                correspondance = []
-                notcorrespondenta = []
-                notcorrespondentb = []
-                for i,j in enumerate(b):
-                    if i==a[j]:
-                        if Dists[i,j] < 7.5:
-                            correspondance.append([i,j]) #[past, future]
-                            self.label_correspondance[t].append([TLabels[t][j], FinalLabels[t-1][i]])
-                            FinalLabels[t].append(FinalLabels[t-1][i])
-                            FinalCenters[t].append(TCenters[t][j])
-                            FinalOutlines[t].append(TOutlines[t][j])                            
-                    else:
-                        notcorrespondenta.append(i)
-                labmax = np.maximum(np.max(FinalLabels[t-1]), labmax)
-                for j in range(len(a)):
-                    if j not in np.array(correspondance)[:,1]:
-                        self.label_correspondance[t].append([TLabels[t][j], labmax+1])
-                        FinalLabels[t].append(labmax+1)
-                        labmax+=1
-                        FinalCenters[t].append(TCenters[t][j])
-                        FinalOutlines[t].append(TOutlines[t][j])
-                        notcorrespondentb.append(j)
-                
-        self.FinalLabels  = FinalLabels
-        self.FinalCenters = FinalCenters
-        self.FinalOulines = FinalOutlines
-    
-    def delete_cell(self, PA):
-        cells = [x[0] for x in PA.list_of_cells]
-        Zs    = [x[1] for x in PA.list_of_cells]
-        if len(cells) == 0:
-            return
-        for i,z in enumerate(Zs):
-            id_l = np.where(np.array(PA.CS.labels[z])==cells[i])[0][0]
-            PA.CS.labels[z].pop(id_l)
-            PA.CS.Outlines[z].pop(id_l)
-            PA.CS.Masks[z].pop(id_l)
-            PA.CS.centersi[z].pop(id_l)
-            PA.CS.centersj[z].pop(id_l)
-        PA.CS.update_labels()
-        self.cell_tracking()
-
-    def combine_cells(self):
-        if len(self.cells_to_combine)==0:
-            return
-        cells = [x[0] for x in self.cells_to_combine]
-        Ts    = [x[1] for x in self.cells_to_combine]
-        IDsco = [x[2] for x in self.cells_to_combine]
-
-        maxlabidx = np.argmax(cells)
-        minlabidx = np.argmin(cells)
-        maxlab = max(cells)
-        minlab = min(cells)
-
-        idd = np.where(np.array(self.FinalLabels[Ts[maxlabidx]])==maxlab)[0][0]         
-        self.FinalLabels[Ts[maxlabidx]][idd] = minlab
-        self.label_correspondance[Ts[maxlabidx]][IDsco[maxlabidx]][1] = minlab
-
-    def apoptosis(self, list_of_cells):
-        for cell in list_of_cells:
-            if cell not in self.apoptotic_events:
-                self.apoptotic_events.append(cell)
-
-    def mitosis(self):
-        if len(self.mito_cells) != 3:
-            return 
-        mito_ev = [self.mito_cells[0], [self.mito_cells[1], self.mito_cells[2]]]
-        self.mitotic_events.append(mito_ev)
-
-    def plot_tracking(self, windows=None):
-        if windows==None:
-            windows=self.plot_tracking_windows
-        self.PACTs=[]
-        time_sliders = []
-        for w in range(windows):
-            counter = plotRound(layout=self.plot_layout_track,totalsize=self.slices, overlap=self.plot_overlap_track, round=0)
-            fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
-            self.PACTs.append(PlotActionCT(fig, ax, self))
-            self.PACTs[w].zs = np.zeros_like(ax)
-            zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
-            t=0
-            FinalCenters = self.FinalCenters
-            FinalLabels  = self.FinalLabels
-            imgs   = self.stacks[t,:,:,:]
-            # Plot all our Zs in the corresponding round
-            for z, id, round in counter:
-                # select current z plane
-                idx1 = zidxs[0][id]
-                idx2 = zidxs[1][id]
-                ax[idx1,idx2].axis(False)
-                if z == None:
-                    pass
-                else:      
-                    img = imgs[z,:,:]
-                    self.PACTs[w].zs[idx1, idx2] = z
-                    self.plot_axis(self.CSt[t], ax[idx1, idx2], img, z, t)
-                    for lab in range(len(FinalLabels[t])):
-                        zz = FinalCenters[t][lab][0]
-                        if zz == z:
-                            ys = FinalCenters[t][lab][1]
-                            xs = FinalCenters[t][lab][2]
-                            #_ = ax[idx1, idx2].scatter(FinalOutlines[t][lab][:,0], FinalOutlines[t][lab][:,1], s=0.5)
-                            _ = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                            _ = ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
-                            _ = ax[idx1, idx2].set_xticks([])
-                            _ = ax[idx1, idx2].set_yticks([])
-                            
-            plt.subplots_adjust(bottom=0.075)
-            # Make a horizontal slider to control the frequency.
-            axslide = fig.add_axes([0.12, 0.01, 0.8, 0.03])
-            time_slider = Slider(
-                ax=axslide,
-                label='time',
-                valmin=0,
-                valmax=self.times-1,
-                valinit=0,
-                valstep=1
-            )
-            time_sliders.append(time_slider)
-            time_sliders[w].on_changed(self.PACTs[w].update_slider)
-        plt.show()
-
-    def replot_tracking(self, PACT):
-        t = PACT.t
-        counter = plotRound(layout=self.plot_layout_track,totalsize=self.slices, overlap=self.plot_overlap_track, round=PACT.cr)
-        zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
-        FinalCenters = self.FinalCenters
-        FinalLabels  = self.FinalLabels
-        imgs   = self.stacks[t,:,:,:]
-        # Plot all our Zs in the corresponding round
-        for z, id, r in counter:
-            # select current z plane
-            idx1 = zidxs[0][id]
-            idx2 = zidxs[1][id]
-            PACT.ax[idx1,idx2].cla()
-            PACT.ax[idx1,idx2].axis(False)
-            if z == None:
-                pass
-            else:      
-                img = imgs[z,:,:]
-                PACT.zs[idx1, idx2] = z
-                self.plot_axis(self.CSt[t], PACT.ax[idx1, idx2], img, z, t)
-                for lab in range(len(FinalLabels[t])):
-                    zz = FinalCenters[t][lab][0]
-                    if zz==z:
-                        ys = FinalCenters[t][lab][1]
-                        xs = FinalCenters[t][lab][2]
-                        if [lab, PACT.t] in self.apoptotic_events:
-                            _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="k")
-                        else:
-                            _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                        _ = PACT.ax[idx1, idx2].annotate(str(FinalLabels[t][lab]), xy=(ys, xs), c="white")
-                        _ = PACT.ax[idx1, idx2].set_xticks([])
-                        _ = PACT.ax[idx1, idx2].set_yticks([])
-
-        plt.subplots_adjust(bottom=0.075)
-        # Make a horizontal slider to control the frequency.
-
-    def plot_axis(self, CS, _ax, img, z, t):
-        _ = _ax.imshow(img)
-        _ = _ax.set_title("z = %d" %z)
-        _ = _ax.axis(False)
-
-        for cell, outline in enumerate(CS.Outlines[z]):
-            xs = CS.centersi[z][cell]
-            ys = CS.centersj[z][cell]
-            label = CS.labels[z][cell]
-            idd = np.where(np.array(self.label_correspondance[t])[:,0]==label)[0][0]
-            Tlab = self.label_correspondance[t][idd][1]
-            _ = _ax.scatter(outline[:,0], outline[:,1], c=[CS._masks_colors[CS._labels_color_id[Tlab]]], s=0.5, cmap=CS._masks_cmap_name)               
-        plotmasks = False
-        if plotmasks:#if CS.pltmasks_bool:
-            CS.compute_Masks_to_plot()
-            _ = _ax.imshow(CS._masks_cmap(CS._Masks_to_plot[z], alpha=CS._Masks_to_plot_alphas[z], bytes=True), cmap=CS._masks_cmap_name)
-
-class PlotActionCT:
-    def __init__(self, fig, ax, CT):
-        self.fig=fig
-        self.ax=ax
-        self.plot_masks=CT.plot_masks
-        self.CT=CT
-        self.list_of_cells = []
-        self.act = fig.canvas.mpl_connect('key_press_event', self)
-        self.current_state="START"
-        self.current_subplot = None
-        self.cr = 0
-        self.t =0
-        self.zs=[]
-        self.z = None
-        self.CS = CT.CSt[self.t]
-        self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
-        groupsize  = self.CT.plot_layout_track[0] * self.CT.plot_layout_track[1]
-        self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap_track))-1
-        self.get_size()
-        actionsbox = "Possible actions:                                                 \n - q : quit plot                      - ESC : visualization \n - z : undo previous action   - Z : undo all actions\n - d : delete cell                   - c : combine cells    \n - a : apoptotic event          - m : mitotic events  "
-        self.actionlist = self.fig.text(0.98, 0.98, actionsbox, fontsize=1, ha='right', va='top')
-        self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
-        self.timetxt = self.fig.text(0.05, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
-        self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n                     PRESS ENTER TO START", fontsize=1, ha='left', va='top')
-        self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
-        self.update()
-
-    def __call__(self, event):
-        if self.current_state==None:
-            if event.key == 'd':
-                self.CT.one_step_copy(self.t)
-                self.current_state="del"
-                self.delete_cells()
-            elif event.key == 'c':
-                self.CT.one_step_copy(self.t)
-                self.current_state="com"
-                self.combine_cells()
-            elif event.key == 'm':
-                self.CT.one_step_copy(self.t)
-                self.current_state="mit"
-                self.mitosis()
-            elif event.key == 'a':
-                self.CT.one_step_copy(self.t)
-                self.current_state="apo"
-                self.apoptosis()
-            elif event.key == 'escape':
-                self.visualization()
-            elif event.key == 'z':
-                self.CT.undo_corrections(all=False)
-                for PACT in self.CT.PACTs:
-                        PACT.CT.replot_tracking(PACT)
-                self.visualization()
-            elif event.key == 'Z':
-                self.CT.undo_corrections(all=True)
-                for PACT in self.CT.PACTs:
-                        PACT.CT.replot_tracking(PACT)
-                self.visualization()
-            self.update()
-        else:
-            if event.key=='enter':
-                if self.current_state=="del":
-                    self.CP.stopit()
-                    delattr(self, 'CP')
-                    self.CT.delete_cell(self)
-                    for PACT in self.CT.PACTs:
-                        PACT.list_of_cells = []
-                        PACT.current_subplot=None
-                        PACT.current_state=None
-                        PACT.ax_sel=None
-                        PACT.z=None
-                        PACT.CT.replot_tracking(PACT)
-                        PACT.visualization()
-                        PACT.update()
-                elif self.current_state=="com":
-                    self.CP.stopit()
-                    delattr(self, 'CP')
-                    self.CT.combine_cells()
-                    for PACT in self.CT.PACTs:
-                        PACT.current_subplot=None
-                        PACT.current_state=None
-                        PACT.ax_sel=None
-                        PACT.z=None
-                        PACT.CT.cells_to_combine = []
-                        PACT.CT.replot_tracking(PACT)
-                        PACT.visualization()
-                        PACT.update()
-                elif self.current_state=="apo":
-                    self.CP.stopit()
-                    delattr(self, 'CP')
-                    self.CT.apoptosis(self.list_of_cells)
-                    self.list_of_cells=[]
-                    for PACT in self.CT.PACTs:
-                        PACT.CT.replot_tracking(PACT)
-                        PACT.visualization()
-                        PACT.update()
-                elif self.current_state=="mit":
-                    self.CP.stopit()
-                    delattr(self, 'CP')
-                    self.CT.mitosis()
-                    for PACT in self.CT.PACTs:
-                        PACT.current_subplot=None
-                        PACT.current_state=None
-                        PACT.ax_sel=None
-                        PACT.z=None
-                        PACT.CT.mito_cells = []
-                        PACT.CT.replot_tracking(PACT)
-                        PACT.visualization()
-                        PACT.update()
-                else:
-                    self.visualization()
-                    self.update()
-                self.current_subplot=None
-                self.current_state=None
-                self.ax_sel=None
-                self.z=None
-            else:
-                # We have to wait for the current action to finish
-                pass
-
-    # The function to be called anytime a slider's value changes
-    def update_slider(self, t):
-        self.t=t
-        self.CS = self.CT.CSt[t]
-        self.CT.replot_tracking(self)
-        self.update()
-
-    def onscroll(self, event):
-        if self.current_state in [None, "com", "mit", "apo"]:
-            if self.current_state == None:
-                self.current_state="SCL"
-            if event.button == 'up':
-                self.cr = self.cr - 1
-            elif event.button == 'down':
-                self.cr = self.cr + 1
-            self.cr = max(self.cr, 0)
-            self.cr = min(self.cr, self.max_round)
-            self.CT.replot_tracking(self)
-            self.update()
-        else:
-            return
-        if self.current_state=="SCL":
-            self.current_state=None
-
-    def update(self):
-        if self.current_state in ["apo","com", "mit"]:
-            cells_to_plot=self.extract_unique_cell_time_list_of_cells()
-            cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
-        else:
-            cells_to_plot = self.sort_list_of_cells()
-            for i,x in enumerate(cells_to_plot):
-                idd = np.where(np.array(self.CT.label_correspondance[self.t])[:,0]==x[0])[0][0]
-                Tlab = self.CT.label_correspondance[self.t][idd][1]
-                cells_to_plot[i][0] = Tlab
-            cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
-        s = "\n".join(cells_string)
-        self.get_size()
-        if self.figheight < self.figwidth:
-            width_or_height = self.figheight
-            scale1=90
-            scale2=70
-        else:
-            scale1=110
-            scale2=90
-            width_or_height = self.figwidth
-        self.actionlist.set(fontsize=width_or_height/scale1)
-        self.selected_cells.set(fontsize=width_or_height/scale1)
-        self.selected_cells.set(text="Cells\nSelected\n\n"+s)
-        self.instructions.set(fontsize=width_or_height/scale2)
-        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
-        self.title.set(fontsize=width_or_height/scale2)
-        plt.subplots_adjust(top=0.9,right=0.8)
-        self.fig.canvas.draw_idle()
-        self.fig.canvas.draw()
-
-    def extract_unique_cell_time_list_of_cells(self):
-        if self.current_state=="com":
-            list_of_cells=self.CT.cells_to_combine
-        if self.current_state=="mit":
-            list_of_cells=self.CT.mito_cells
-        elif self.current_state=="apo":
-            list_of_cells=self.list_of_cells
-
-        if len(list_of_cells)==0:
-            return list_of_cells
-        cells = [x[0] for x in list_of_cells]
-        Ts    = [x[1] for x in list_of_cells]
-    
-        cs, cids = np.unique(cells, return_index=True)
-        #ts, tids = np.unique(Ts,  return_index=True)
-        
-        return [[cells[i], Ts[i]] for i in cids]
-
-    def sort_list_of_cells(self):
-        if len(self.list_of_cells)==0:
-            return self.list_of_cells
-        else:
-            cells = [x[0] for x in self.list_of_cells]
-            Zs    = [x[1] for x in self.list_of_cells]
-            cidxs  = np.argsort(cells)
-            cells = np.array(cells)[cidxs]
-            Zs    = np.array(Zs)[cidxs]
-
-            ucells = np.unique(cells)
-            final_cells = []
-            for c in ucells:
-                ids = np.where(cells == c)
-                _cells = cells[ids]
-                _Zs    = Zs[ids]
-                zidxs = np.argsort(_Zs)
-                for id in zidxs:
-                    final_cells.append([_cells[id], _Zs[id]])
-
-            return final_cells
-
-    def get_size(self):
-        bboxfig = self.fig.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
-        widthfig, heightfig = bboxfig.width*self.fig.dpi, bboxfig.height*self.fig.dpi
-        self.figwidth  = widthfig
-        self.figheight = heightfig
-
-    def delete_cells(self):
-        self.title.set(text="DELETE CELL", ha='left', x=0.01)
-        self.instructions.set(text="Right-click to delete cell on a plane\ndouble right-click to delete on all planes", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((1.0,0.0,0.0,0.2))
-        self.CP = CellPickerCT_del(self)
-    
-    def combine_cells(self):
-        self.title.set(text="COMBINE CELLS", ha='left', x=0.01)
-        self.instructions.set(text="\nRigth-click to select cells to be combined", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((0.0,0.0,1.0,0.2))        
-        self.CP = CellPickerCT_com(self)
-
-    def mitosis(self):
-        self.title.set(text="DETECT MITOSIS", ha='left', x=0.01)
-        self.instructions.set(text="Right-click to SELECT THE MOTHER (1)\nAND DAUGHTER (2) CELLS", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((0.0,1.0,0.0,0.2))
-        self.CP = CellPickerCT_mit(self)
-
-    def apoptosis(self):
-        self.title.set(text="DETECT APOPTOSIS", ha='left', x=0.01)
-        self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((0.0,0.0,0.0,0.2))
-        self.CP = CellPickerCT_apo(self)
-
-    def visualization(self):
-        self.title.set(text="VISUALIZATION MODE", ha='left', x=0.01)
-        self.instructions.set(text="Chose one of the actions to change mode", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))        
 
 class CellPickerCT_del():
     def __init__(self, PACT):
