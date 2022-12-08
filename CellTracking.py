@@ -1324,7 +1324,7 @@ class PlotActionCT:
         self.title.set(text="DELETE CELL", ha='left', x=0.01)
         self.instructions.set(text="Right-click to delete cell on a plane\ndouble right-click to delete on all planes", ha='left', x=0.2)
         self.fig.patch.set_facecolor((1.0,0.0,0.0,0.2))
-        self.CP = CellPickerCT_del(self)
+        self.CP = CellPicker_del(self)
     
     def combine_cells(self):
         self.title.set(text="COMBINE CELLS", ha='left', x=0.01)
@@ -1348,7 +1348,6 @@ class PlotActionCT:
         self.title.set(text="VISUALIZATION MODE", ha='left', x=0.01)
         self.instructions.set(text="Chose one of the actions to change mode", ha='left', x=0.2)
         self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))        
-
 
 class SubplotPicker_add():
     def __init__(self, PA, f1=None,f2=None):
@@ -1523,60 +1522,6 @@ class LineBuilder:
     def stopit(self):
         self.line.figure.canvas.mpl_disconnect(self.cid)
         self.line.remove()
-
-class CellPickerCT_del():
-    def __init__(self, PACT):
-        self.PACT  = PACT
-        self.cid = self.PACT.fig.canvas.mpl_connect('button_press_event', self)
-        self.canvas  = self.PACT.fig.canvas
-    def __call__(self, event):
-        if event.button==3:
-            if isinstance(self.PACT.ax, np.ndarray):
-                axshape = self.PACT.ax.shape
-                # Select ax 
-                for i in range(axshape[0]):
-                        for j in range(axshape[1]):
-                                if event.inaxes==self.PACT.ax[i,j]:
-                                    self.PACT.current_subplot = [i,j]
-                                    self.PACT.ax_sel = self.PACT.ax[i,j]
-                                    self.PACT.z = self.PACT.zs[i,j]
-            else:
-                self.PACT.ax_sel = self.PACT.ax
-
-            if event.inaxes!=self.PACT.ax_sel:
-                pass
-            else:
-                x = np.rint(event.xdata).astype(np.int64)
-                y = np.rint(event.ydata).astype(np.int64)
-                picked_point = np.array([x, y])
-                for i ,mask in enumerate(self.PACT.CS.Masks[self.PACT.z]):
-                    for point in mask:
-                        if (picked_point==point).all():
-                            z   = self.PACT.z
-                            lab = self.PACT.CS.labels[z][i]
-                            cell = [lab, z]
-                            #if event.dblclick==True:
-                            idx_lab = np.where(np.array(self.PACT.CS._Zlabel_l)==lab)[0][0]
-                            zs = self.PACT.CS._Zlabel_z[idx_lab]
-                            add_all=True
-                            idxtopop=[]
-                            for jj, _cell in enumerate(self.PACT.list_of_cells):
-                                _lab = _cell[0]
-                                _z   = _cell[1]
-                                if _lab == lab:
-                                    if _z in zs:
-                                        add_all=False
-                                        idxtopop.append(jj)
-                            idxtopop.sort(reverse=True)
-                            for jj in idxtopop:
-                                self.PACT.list_of_cells.pop(jj)
-                            if add_all:
-                                for zz in zs:
-                                    self.PACT.list_of_cells.append([lab, zz])
-                            self.PACT.update()
-
-    def stopit(self):
-        self.canvas.mpl_disconnect(self.cid)
 
 class CellPickerCT_com():
     def __init__(self, PACT):
