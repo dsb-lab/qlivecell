@@ -18,6 +18,8 @@ import gc
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
 
+class Cell():
+    pass
 # This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
 class CellSegmentation(object):
 
@@ -510,8 +512,9 @@ class CellSegmentation(object):
 
         return newoutline_new
 
-    def update_labels(self):
-        self._update()
+    def update_labels(self,extract_labels=True):
+        if extract_labels:
+            self._update()
         self._position3d()
         self.printfancy("")
         self.printfancy("## Labels updated ##")
@@ -530,14 +533,6 @@ class CellSegmentation(object):
         
     # Combines cells by assigning the info for the cell with higher label number
     # to the other one. Cells must not appear in the same and they must be contiguous
-    def combine_cells(self, PA):
-        cells = [x[0] for x in PA.list_of_cells]
-        Zs    = [x[1] for x in PA.list_of_cells]
-        if len(cells)==0: return
-        maxcid = cells.index(max(cells))
-        id_l = np.where(np.array(self.labels[Zs[maxcid]])==max(cells))[0][0]
-        self.labels[Zs[maxcid]][id_l] = min(cells)
-        self.update_labels()
 
     def add_cell(self, PA):
         line, = PA.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
@@ -896,7 +891,24 @@ class CellTracking(object):
         PA.CS.update_labels()
         self.cell_tracking()
 
-    def combine_cells(self):
+    def combine_cells_z(self, PA):
+        cells = [x[0] for x in PA.list_of_cells]
+        Zs    = [x[1] for x in PA.list_of_cells]
+        if len(cells)==0: return
+        maxcid = cells.index(max(cells))
+        print(Zs[maxcid])
+        id_l = np.where(np.array(PA.CS.labels[Zs[maxcid]])==max(cells))[0][0]
+        print(PA.CS.labels[Zs[maxcid]][id_l])
+        PA.CS.labels[Zs[maxcid]][id_l] = min(cells)
+        print(PA.CS.labels[Zs[maxcid]][id_l])
+        PA.CS.update_labels()
+        print(PA.CS.labels[Zs[maxcid]][id_l])
+        self.cell_tracking()
+        print(PA.CS.labels[Zs[maxcid]][id_l])
+        print(self.CSt[PA.t].labels[Zs[maxcid]][id_l])
+
+
+    def combine_cells_t(self):
         if len(self.cells_to_combine)==0:
             return
         cells = [x[0] for x in self.cells_to_combine]
@@ -1062,10 +1074,14 @@ class PlotActionCT:
                 self.CT.one_step_copy(self.t)
                 self.current_state="del"
                 self.delete_cells()
+            elif event.key == 'C':
+                self.CT.one_step_copy(self.t)
+                self.current_state="Com"
+                self.combine_cells_t()
             elif event.key == 'c':
                 self.CT.one_step_copy(self.t)
                 self.current_state="com"
-                self.combine_cells()
+                self.combine_cells_z()
             elif event.key == 'm':
                 self.CT.one_step_copy(self.t)
                 self.current_state="mit"
@@ -1094,6 +1110,7 @@ class PlotActionCT:
 
         else:
             if event.key=='enter':
+
                 if self.current_state=="add":
                     if self.current_subplot==None:
                         pass
@@ -1110,6 +1127,7 @@ class PlotActionCT:
                             PACT.CT.replot_tracking(PACT)
                             PACT.visualization()
                             PACT.update()
+
                 if self.current_state=="del":
                     self.CP.stopit()
                     delattr(self, 'CP')
@@ -1123,10 +1141,11 @@ class PlotActionCT:
                         PACT.CT.replot_tracking(PACT)
                         PACT.visualization()
                         PACT.update()
-                elif self.current_state=="com":
+
+                elif self.current_state=="Com":
                     self.CP.stopit()
                     delattr(self, 'CP')
-                    self.CT.combine_cells()
+                    self.CT.combine_cells_t()
                     for PACT in self.CT.PACTs:
                         PACT.current_subplot=None
                         PACT.current_state=None
@@ -1136,6 +1155,21 @@ class PlotActionCT:
                         PACT.CT.replot_tracking(PACT)
                         PACT.visualization()
                         PACT.update()
+
+                elif self.current_state=="com":
+                    self.CP.stopit()
+                    delattr(self, 'CP')
+                    self.CT.combine_cells_z(self)
+                    for PACT in self.CT.PACTs:
+                        PACT.list_of_cells = []
+                        PACT.current_subplot=None
+                        PACT.current_state=None
+                        PACT.ax_sel=None
+                        PACT.z=None
+                        PACT.CT.replot_tracking(PACT)
+                        PACT.visualization()
+                        PACT.update()
+
                 elif self.current_state=="apo":
                     self.CP.stopit()
                     delattr(self, 'CP')
@@ -1145,6 +1179,7 @@ class PlotActionCT:
                         PACT.CT.replot_tracking(PACT)
                         PACT.visualization()
                         PACT.update()
+
                 elif self.current_state=="mit":
                     self.CP.stopit()
                     delattr(self, 'CP')
@@ -1177,7 +1212,7 @@ class PlotActionCT:
         self.update()
 
     def onscroll(self, event):
-        if self.current_state in [None, "com", "mit", "apo"]:
+        if self.current_state in [None, "Com", "mit", "apo", "com"]:
             if self.current_state == None:
                 self.current_state="SCL"
             if event.button == 'up':
@@ -1194,7 +1229,7 @@ class PlotActionCT:
             self.current_state=None
 
     def update(self):
-        if self.current_state in ["apo","com", "mit"]:
+        if self.current_state in ["apo","Com", "mit"]:
             cells_to_plot=self.extract_unique_cell_time_list_of_cells()
             cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
         else:
@@ -1275,7 +1310,7 @@ class PlotActionCT:
             self.CS.add_cell(self)
 
     def extract_unique_cell_time_list_of_cells(self):
-        if self.current_state=="com":
+        if self.current_state=="Com":
             list_of_cells=self.CT.cells_to_combine
         if self.current_state=="mit":
             list_of_cells=self.CT.mito_cells
@@ -1326,23 +1361,29 @@ class PlotActionCT:
         self.fig.patch.set_facecolor((1.0,0.0,0.0,0.2))
         self.CP = CellPicker_del(self)
     
-    def combine_cells(self):
+    def combine_cells_t(self):
         self.title.set(text="COMBINE CELLS", ha='left', x=0.01)
         self.instructions.set(text="\nRigth-click to select cells to be combined", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((0.0,0.0,1.0,0.2))        
-        self.CP = CellPickerCT_com(self)
+        self.fig.patch.set_facecolor((0.3,0.0,1.0,0.2))        
+        self.CP = CellPicker_com_t(self)
+
+    def combine_cells_z(self):
+        self.title.set(text="COMBINE CELLS\nMODE", ha='left', x=0.01)
+        self.instructions.set(text="\nRigth-click to select cells to be combined", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((0.0,0.0,1.0,0.2))
+        self.CP = CellPicker_com_z(self)
 
     def mitosis(self):
         self.title.set(text="DETECT MITOSIS", ha='left', x=0.01)
         self.instructions.set(text="Right-click to SELECT THE MOTHER (1)\nAND DAUGHTER (2) CELLS", ha='left', x=0.2)
         self.fig.patch.set_facecolor((0.0,1.0,0.0,0.2))
-        self.CP = CellPickerCT_mit(self)
+        self.CP = CellPicker_mit(self)
 
     def apoptosis(self):
         self.title.set(text="DETECT APOPTOSIS", ha='left', x=0.01)
         self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
         self.fig.patch.set_facecolor((0.0,0.0,0.0,0.2))
-        self.CP = CellPickerCT_apo(self)
+        self.CP = CellPicker_apo(self)
 
     def visualization(self):
         self.title.set(text="VISUALIZATION MODE", ha='left', x=0.01)
@@ -1384,6 +1425,27 @@ class SubplotPicker_add():
                                     self.canvas.mpl_disconnect(self.cid)
                                     self.f1()
                                     self.f2(self.PA)
+
+class LineBuilder:
+    def __init__(self, line):
+        self.line = line
+        self.xs = list(line.get_xdata())
+        self.ys = list(line.get_ydata())
+        self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
+
+    def __call__(self, event):
+        if event.inaxes!=self.line.axes: 
+            return
+        if event.button==3:
+            self.xs.append(event.xdata)
+            self.ys.append(event.ydata)
+            self.line.set_data(self.xs, self.ys)
+            self.line.figure.canvas.draw()
+        else:
+            return
+    def stopit(self):
+        self.line.figure.canvas.mpl_disconnect(self.cid)
+        self.line.remove()
 
 class CellPicker_del():
     def __init__(self, PA):
@@ -1452,7 +1514,7 @@ class CellPicker_del():
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
-class CellPicker_com():
+class CellPicker_com_z():
     def __init__(self, PA):
         self.PA  = PA
         self.cid = self.PA.fig.canvas.mpl_connect('button_press_event', self)
@@ -1501,29 +1563,8 @@ class CellPicker_com():
 
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
-                 
-class LineBuilder:
-    def __init__(self, line):
-        self.line = line
-        self.xs = list(line.get_xdata())
-        self.ys = list(line.get_ydata())
-        self.cid = line.figure.canvas.mpl_connect('button_press_event', self)
 
-    def __call__(self, event):
-        if event.inaxes!=self.line.axes: 
-            return
-        if event.button==3:
-            self.xs.append(event.xdata)
-            self.ys.append(event.ydata)
-            self.line.set_data(self.xs, self.ys)
-            self.line.figure.canvas.draw()
-        else:
-            return
-    def stopit(self):
-        self.line.figure.canvas.mpl_disconnect(self.cid)
-        self.line.remove()
-
-class CellPickerCT_com():
+class CellPicker_com_t():
     def __init__(self, PACT):
         self.PACT  = PACT
         self.cid = self.PACT.fig.canvas.mpl_connect('button_press_event', self)
@@ -1588,7 +1629,7 @@ class CellPickerCT_com():
         # Stop this interaction with the plot 
         self.canvas.mpl_disconnect(self.cid)
 
-class CellPickerCT_apo():
+class CellPicker_apo():
     def __init__(self, PACT):
         self.PACT  = PACT
         self.cid = self.PACT.fig.canvas.mpl_connect('button_press_event', self)
@@ -1637,7 +1678,7 @@ class CellPickerCT_apo():
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
-class CellPickerCT_mit():
+class CellPicker_mit():
     def __init__(self, PACT):
         self.PACT  = PACT
         self.cid = self.PACT.fig.canvas.mpl_connect('button_press_event', self)
