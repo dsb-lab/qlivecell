@@ -705,6 +705,7 @@ class Cell():
         self.masks    = masks
         self.CT = CT
         self._extract_cell_centers()
+        
     def _extract_cell_centers(self):
         # Function for extracting the cell centers for the masks of a given embryo. 
         # It is extracted computing the positional centroid weighted with the intensisty of each point. 
@@ -719,20 +720,13 @@ class Cell():
             for z, outlines in enumerate(self.outlines[t]):
 
                 # Current xy plane with the intensity of fluorescence 
-                img = self.CT.stacks[t,z,:,:]
+                img = self.CT.stacks[self.times[t],self.zs[t][z],:,:]
 
-                # Append an empty list for the current z-level. We will push here the i and j coordinates of each cell. 
-                self.centersi[t].append([])
-                self.centersj[t].append([])
-
-                # Loop over all the cells detected in this level
-                for cell, outline in enumerate(outlines):
-
-                    # x and y coordinates of the centroid.
-                    xs = np.average(self.masks[t][z][cell][:,1], weights=img[self.masks[t][z][cell][:,1], self.masks[t][z][cell][:,0]])
-                    ys = np.average(self.masks[t][z][cell][:,0], weights=img[self.masks[t][z][cell][:,1], self.masks[t][z][cell][:,0]])
-                    self.centersi[t][z].append(xs)
-                    self.centersj[t][z].append(ys)
+                # x and y coordinates of the centroid.
+                xs = np.average(self.masks[t][z][:,1], weights=img[self.masks[t][z][:,1], self.masks[t][z][:,0]])
+                ys = np.average(self.masks[t][z][:,0], weights=img[self.masks[t][z][:,1], self.masks[t][z][:,0]])
+                self.centersi[t].append(xs)
+                self.centersj[t].append(ys)
 
 class CellTracking(object):
     def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None):
@@ -911,8 +905,7 @@ class CellTracking(object):
         self.FinalOutlines = FinalOutlines
     
     def _extract_unique_labels_and_max_label(self):
-        FL = np.asarray([np.array(xi) for xi in self.FinalLabels])
-        self.unique_labels = np.unique(np.hstack(FL))
+        self.unique_labels = np.unique(np.hstack(self.FinalLabels))
         self.max_label = max(self.unique_labels)
     
     def _extract_unique_labels_and_max_label_from_cells(self):
@@ -929,11 +922,12 @@ class CellTracking(object):
             for t in range(self.times):
                 if lab in self.FinalLabels[t]:
                     TIMES.append(t)
-                    CS = self.CSt[t]
-                    idd = np.where(np.array(self.label_correspondance[t])[:,1]==lab)[0][0]
-                    _lab = self.label_correspondance[t][idd,0]
+                    CS   = self.CSt[t]
+                    idd  = np.where(np.array(self.label_correspondance[t])[:,1]==lab)[0][0]
+                    _lab = self.label_correspondance[t][idd][0]
                     ZS.append(CS._Zlabel_z[_lab])
                     OUTLINES.append([])
+                    MASKS.append([])
                     for z in ZS[-1]:
                         id_l = np.where(np.array(CS.labels[z])==_lab)[0][0]
                         OUTLINES[-1].append(CS.Outlines[z][id_l])
