@@ -35,20 +35,8 @@ CT = CellTracking( IMGS, model, embcode
 
 CT()
 
-CT.plot_tracking()
+#CT.plot_tracking()
 
 #save_CT(CT, path=pthtosave, filename="CT_"+embcode)
 
-
-class Cell():
-    def __init__(self, label, zs, times, outlines, masks, centersi, centersj):
-        self.label = label
-        self.zs    = zs
-        self.times = times
-        self.outlines = outlines
-        self.masks    = masks 
-        self.centersi = centersi
-        self.centersj = centersj
-        
-
-for l,lab in enumerate
+cells = CT.init_cells()
