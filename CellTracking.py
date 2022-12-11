@@ -18,8 +18,6 @@ import gc
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
 
-class Cell():
-    pass
 # This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
 class CellSegmentation(object):
 
@@ -65,13 +63,14 @@ class CellSegmentation(object):
         self._remove_short_cells()
         self._update()
         self._position3d()
+                
         self.printfancy("")
 
         self.printfancy("Segmentation completed and revised")
         self.printfancy("")
         print("################         SEGMENTATION COMPLETED       ################")
         self.printfancy("")
-
+    
     def _cell_segmentation_outlines(self):
 
         # This function will return the Outlines and Mask of the current embryo. 
@@ -80,7 +79,6 @@ class CellSegmentation(object):
         self.Masks    = []
 
         # Number of z-levels
-        
         self.printfancy("Progress: ")
         # Loop over the z-levels
         for z in range(self.slices):
@@ -351,7 +349,7 @@ class CellSegmentation(object):
                 else:
                     self._Zoverlaps_conv[-1].append(val/n)
 
-    def _detect_cell_barriers(self): # Need to consider changing also masks outlines etc
+    def _detect_cell_barriers(self):
         self._nuclear_intensity_cell_z()
         self._compute_overlap_measure()
 
@@ -693,7 +691,7 @@ class backup_CellTrack():
         self.CS        = deepcopy(CT.CSt[t])
         self.flabels   = deepcopy(CT.FinalLabels[t])
         self.fcenters  = deepcopy(CT.FinalCenters[t])
-        self.foutlines = deepcopy(CT.FinalOulines[t])
+        self.foutlines = deepcopy(CT.FinalOutlines[t])
         self.lab_corr  = deepcopy(CT.label_correspondance[t])
         self.apo_evs   = deepcopy(CT.apoptotic_events)
         self.mit_evs   = deepcopy(CT.mitotic_events)
@@ -757,7 +755,7 @@ class CellTracking(object):
         self.CSt[backup.t] = deepcopy(backup.CS)
         self.FinalLabels[backup.t]   = deepcopy(backup.flabels)
         self.FinalCenters[backup.t]  = deepcopy(backup.fcenters)
-        self.FinalOulines[backup.t]  = deepcopy(backup.foutlines)
+        self.FinalOutlines[backup.t]  = deepcopy(backup.foutlines)
         self.label_correspondance[backup.t] = deepcopy(backup.lab_corr)
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
@@ -874,7 +872,7 @@ class CellTracking(object):
                 
         self.FinalLabels  = FinalLabels
         self.FinalCenters = FinalCenters
-        self.FinalOulines = FinalOutlines
+        self.FinalOutlines = FinalOutlines
     
     def delete_cell(self, PA):
         cells = [x[0] for x in PA.list_of_cells]
@@ -906,7 +904,6 @@ class CellTracking(object):
         self.cell_tracking()
         print(PA.CS.labels[Zs[maxcid]][id_l])
         print(self.CSt[PA.t].labels[Zs[maxcid]][id_l])
-
 
     def combine_cells_t(self):
         if len(self.cells_to_combine)==0:
