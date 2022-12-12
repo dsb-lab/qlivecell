@@ -779,6 +779,7 @@ class CellTracking(object):
         self.cell_segmentation()
         self.cell_tracking()
         self.init_cells()
+        self.update_CT_cell_attributes()
         self.backupCT  = backup_CellTrack(0, self)
         self._backupCT = backup_CellTrack(0, self)
         self.backups = deque([self._backupCT], self._backup_steps)
