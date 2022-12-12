@@ -37,22 +37,10 @@ CT()
 
 #save_CT(CT, path=pthtosave, filename="CT_"+embcode)
 
-Labs = [[0,1,3,5], [0,1,2,6], [1,2,4,7]]
-ulabs = np.unique(np.hstack(Labs))
-maxlab = np.max(ulabs)
-cumchange = np.zeros(len(ulabs))
-for t, labs in enumerate(Labs):
-    labst = np.unique(np.hstack(labs))
-    if t==0:
-        maxl = len(labs)-1
-        labinc = [0 if maxl-lab > 0 else maxl-lab for lab in labst]
-        Labs[t] = [labs[l]+labinc[l] for l in range(len(labst))]
-        cumchange[Labs[t]] += labinc
-    else:
-        pass
-    
 lst = [[0,1,3,5], [0,1,2,6], [1,2,4,7]] # the sublist MUST be sorted
-lst = [[0,1,3], [0,1,2], [1,2]] # the sublist MUST be sorted
+#lst = [[0,1,3], [0,1,2], [1,2]] # the sublist MUST be sorted
+lstchange = [[0 for number in l] for l in lst]
+
 
 combined = [item for sublist in lst for item in sublist]
 
@@ -64,18 +52,40 @@ for lid, l in enumerate(lst):
 for lid, l in enumerate(lst):
     for i, x in enumerate(l):
         if x in result[lid]:
-            pass
+            continue
         else:
             inc  = x - (result[lid][-1]+1)
             newx = x - inc
-            lst[lid][i] = newx
             if inc>0:
                 for _lid, _l in enumerate(lst):
                     if _lid < lid:
                         continue
                     else:
-                        for _i, _x in enumerate(_l): 
-                            if _x>=newx:
-                                lst[_lid][_i] = _x+(newx-_x+1)
-                                
-                            
+                        for _i, _x in enumerate(_l):
+                            if _x<newx:
+                                pass
+                            elif _x==newx:
+                                lstchange[_lid][_i] = 1
+                            else:
+                                lstchange[_lid][_i] = -1
+                for i, l in enumerate(lst):
+                    print(l)
+                    for j, n in enumerate(l):
+                        print(l)
+                        print(lst[i][j])
+                        print(lstchange[i][j])
+                        print(result[i])
+                        _l = [x for ii,x in enumerate(l) if ii!=j]
+                        while (n+lstchange[i][j] in _l) and (n+lstchange[i][j] not in result[i]):
+                            print(n+lstchange[i][j])
+                            lstchange[i][j]+=1
+                        preresults = [item for lll, sublist in enumerate(lst) for item in sublist if lll<i]
+                        while (n+lstchange[i][j] in preresults) and (n+lstchange[i][j] not in result[i]):
+                            print(n+lstchange[i][j])
+                            lstchange[i][j]+=1
+                        lst[i][j] = n+lstchange[i][j]
+                print(lst)
+                lstchange = [[0 for number in l] for l in lst]
+        assert(1==0)
+
+print(lst)
