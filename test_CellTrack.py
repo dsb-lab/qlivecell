@@ -35,8 +35,4 @@ CT = CellTracking( IMGS, model, embcode
 
 CT()
 
-#CT.plot_tracking()
-
 #save_CT(CT, path=pthtosave, filename="CT_"+embcode)
-
-cells = CT.init_cells()
