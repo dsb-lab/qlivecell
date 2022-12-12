@@ -37,7 +37,7 @@ CT()
 
 #save_CT(CT, path=pthtosave, filename="CT_"+embcode)
 
-Labs = [[0,1,3,5], [0,1,2,4], [1,2,6,7]]
+Labs = [[0,1,3,5], [0,1,2,6], [1,2,4,7]]
 ulabs = np.unique(np.hstack(Labs))
 maxlab = np.max(ulabs)
 cumchange = np.zeros(len(ulabs))
@@ -50,4 +50,32 @@ for t, labs in enumerate(Labs):
         cumchange[Labs[t]] += labinc
     else:
         pass
-            
+    
+lst = [[0,1,3,5], [0,1,2,6], [1,2,4,7]] # the sublist MUST be sorted
+lst = [[0,1,3], [0,1,2], [1,2]] # the sublist MUST be sorted
+
+combined = [item for sublist in lst for item in sublist]
+
+result = [[x for x in range(len(lst[0])) if x==lst[0][x]]]
+for lid, l in enumerate(lst):
+    if lid==0: continue
+    result.append([x for x in l if x in lst[lid-1]])
+
+for lid, l in enumerate(lst):
+    for i, x in enumerate(l):
+        if x in result[lid]:
+            pass
+        else:
+            inc  = x - (result[lid][-1]+1)
+            newx = x - inc
+            lst[lid][i] = newx
+            if inc>0:
+                for _lid, _l in enumerate(lst):
+                    if _lid < lid:
+                        continue
+                    else:
+                        for _i, _x in enumerate(_l): 
+                            if _x>=newx:
+                                lst[_lid][_i] = _x+(newx-_x+1)
+                                
+                            
