@@ -36,3 +36,18 @@ CT = CellTracking( IMGS, model, embcode
 CT()
 
 #save_CT(CT, path=pthtosave, filename="CT_"+embcode)
+
+Labs = [[0,1,3,5], [0,1,2,4], [1,2,6,7]]
+ulabs = np.unique(np.hstack(Labs))
+maxlab = np.max(ulabs)
+cumchange = np.zeros(len(ulabs))
+for t, labs in enumerate(Labs):
+    labst = np.unique(np.hstack(labs))
+    if t==0:
+        maxl = len(labs)-1
+        labinc = [0 if maxl-lab > 0 else maxl-lab for lab in labst]
+        Labs[t] = [labs[l]+labinc[l] for l in range(len(labst))]
+        cumchange[Labs[t]] += labinc
+    else:
+        pass
+            

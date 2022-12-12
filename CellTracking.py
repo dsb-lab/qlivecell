@@ -517,36 +517,6 @@ class CellSegmentation(object):
         self.printfancy("")
         self.printfancy("## Labels updated ##")
 
-    def delete_cell(self, PA):
-        cells = [x[0] for x in PA.list_of_cells]
-        Zs    = [x[1] for x in PA.list_of_cells]
-        for i,z in enumerate(Zs):
-            id_l = np.where(np.array(self.labels[z])==cells[i])[0][0]
-            self.labels[z].pop(id_l)
-            self.Outlines[z].pop(id_l)
-            self.Masks[z].pop(id_l)
-            self.centersi[z].pop(id_l)
-            self.centersj[z].pop(id_l)
-        self.update_labels()
-        
-    # Combines cells by assigning the info for the cell with higher label number
-    # to the other one. Cells must not appear in the same and they must be contiguous
-
-    def add_cell(self, PA):
-        line, = PA.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
-        self.linebuilder = LineBuilder(line)
-
-    def complete_add_cell(self, PA):
-        self.linebuilder.stopit()
-        if len(self.linebuilder.xs)<3:
-            return
-        new_outline = np.asarray([list(a) for a in zip(np.rint(self.linebuilder.xs).astype(np.int64), np.rint(self.linebuilder.ys).astype(np.int64))])
-        new_outline_sorted, _ = self._sort_point_sequence(new_outline)
-        new_outline_sorted_highres = self._increase_point_resolution(new_outline_sorted)
-        self.Outlines[PA.z].append(new_outline_sorted_highres)
-        self.Masks[PA.z].append(self._points_within_hull(new_outline_sorted_highres))
-        self.update_labels()
-
     def printfancy(self, string, finallength=70):
         new_str = "#   "+string
         while len(new_str)<finallength-1:
@@ -685,14 +655,7 @@ class backup_CellTrack():
 
     def _assign(self, t, CT):
         self.t = t
-        self.labels    = deepcopy(CT.TLabels[t])
-        self.centers   = deepcopy(CT.TCenters[t])
-        self.outlines  = deepcopy(CT.TOutlines[t])
-        self.CS        = deepcopy(CT.CSt[t])
-        self.flabels   = deepcopy(CT.FinalLabels[t])
-        self.fcenters  = deepcopy(CT.FinalCenters[t])
-        self.foutlines = deepcopy(CT.FinalOutlines[t])
-        self.lab_corr  = deepcopy(CT.label_correspondance[t])
+        self.cells = deepcopy(CT.cells)
         self.apo_evs   = deepcopy(CT.apoptotic_events)
         self.mit_evs   = deepcopy(CT.mitotic_events)
 
@@ -718,8 +681,6 @@ class Cell():
         for tid, t in enumerate(self.times):
             self.centersi.append([])
             self.centersj.append([])
-            self.centers.append([])
-            self.centers_weight.append([])
             for zid, z in enumerate(self.zs[tid]):
                 mask = self.masks[tid][zid]
                 # Current xy plane with the intensity of fluorescence 
@@ -730,8 +691,7 @@ class Cell():
                 ys = np.average(mask[:,0], weights=img[mask[:,1], mask[:,0]])
                 self.centersi[tid].append(xs)
                 self.centersj[tid].append(ys)
-                
-                if len(self.centers) == 0:
+                if len(self.centers) < tid+1:
                     self.centers.append([z,ys,xs])
                     self.centers_weight.append(np.sum(img[mask[:,1], mask[:,0]]))
                 else:
@@ -774,7 +734,20 @@ class CellTracking(object):
         self._backup_steps= backup_steps
         self.plot_tracking_windows=plot_tracking_windows
         self.tstep = time_step
+        self._assign_color_to_label()
 
+    def printfancy(self, string, finallength=70):
+        new_str = "#   "+string
+        while len(new_str)<finallength-1:
+            new_str+=" "
+        new_str+="#"
+        print(new_str)
+
+    def printclear(self):
+        LINE_UP = '\033[1A'
+        LINE_CLEAR = '\x1b[2K'
+        print(LINE_UP, end=LINE_CLEAR)
+        
     def __call__(self):
         self.cell_segmentation()
         self.cell_tracking()
@@ -783,11 +756,11 @@ class CellTracking(object):
         self.backupCT  = backup_CellTrack(0, self)
         self._backupCT = backup_CellTrack(0, self)
         self.backups = deque([self._backupCT], self._backup_steps)
-        self.CSt[0].printfancy("")
-        self.CSt[0].printfancy("Plotting...")
+        self.printfancy("")
+        self.printfancy("Plotting...")
         plt.close("all")
         self.plot_tracking()
-        self.CSt[0].printfancy("")
+        self.printfancy("")
         print("#######################    PROCESS FINISHED   #######################")
 
     def undo_corrections(self, all=False):
@@ -796,19 +769,12 @@ class CellTracking(object):
         else:
             backup = self.backups.pop()
         
-        self.TLabels[backup.t]   = deepcopy(backup.labels)
-        self.TCenters[backup.t]  = deepcopy(backup.centers)
-        self.TOutlines[backup.t] = deepcopy(backup.outlines)
-        self.CSt[backup.t] = deepcopy(backup.CS)
-        self.FinalLabels[backup.t]   = deepcopy(backup.flabels)
-        self.FinalCenters[backup.t]  = deepcopy(backup.fcenters)
-        self.FinalOutlines[backup.t]  = deepcopy(backup.foutlines)
-        self.label_correspondance[backup.t] = deepcopy(backup.lab_corr)
+        self.cells = deepcopy(backup.cells)
+        self.update_CT_cell_attributes()
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
         for PACT in self.PACTs:
             PACT.CT = self
-            PACT.CS = self.CSt[PACT.t]
         
         # Make sure there is always a backup on the list
         if len(self.backups)==0:
@@ -823,7 +789,11 @@ class CellTracking(object):
         self.TLabels   = []
         self.TCenters  = []
         self.TOutlines = []
-        self.CSt       = []
+        self.label_correspondance = []
+        self._Outlines = []
+        self._Masks    = []
+        self._labels   = []
+        self._Zlabel_zs= []
         print("######################   BEGIN SEGMENTATIONS   ######################")
         for t in range(self.times):
             imgs = self.stacks[t,:,:,:]
@@ -840,28 +810,23 @@ class CellTracking(object):
                                 , min_outline_length=self._min_outline_length
                                 , neighbors_for_sequence_sorting=self._nearest_neighs)
 
-            CS.printfancy("")
-            CS.printfancy("######   CURRENT TIME = %d   ######" %t)
-            CS.printfancy("")
+            self.printfancy("")
+            self.printfancy("######   CURRENT TIME = %d   ######" %t)
+            self.printfancy("")
             CS()
-            CS.printfancy("Segmentation and corrections completed. Proceeding to next time")
-            self.CSt.append(CS)
-        CS.printfancy("")
+            self.printfancy("Segmentation and corrections completed. Proceeding to next time")
+            self.TLabels.append(CS.labels_centers)
+            self.TCenters.append(CS.centers_positions)
+            self.TOutlines.append(CS.centers_outlines)
+            self.label_correspondance.append([])        
+            self._Outlines.append(CS.Outlines)
+            self._Masks.append(CS.Masks)
+            self._labels.append(CS.labels)
+            self._Zlabel_zs.append(CS._Zlabel_z)
+            self.printfancy("")
         print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
 
-    def extract_labels(self):
-        self.TLabels   = []
-        self.TCenters  = []
-        self.TOutlines = []
-        self.label_correspondance = []
-        for t in range(self.times):
-            self.TLabels.append(self.CSt[t].labels_centers)
-            self.TCenters.append(self.CSt[t].centers_positions)
-            self.TOutlines.append(self.CSt[t].centers_outlines)
-            self.label_correspondance.append([])
-
     def cell_tracking(self):
-        self.extract_labels()
         TLabels  = self.TLabels
         TCenters = self.TCenters
         TOutlines = self.TOutlines
@@ -920,13 +885,14 @@ class CellTracking(object):
         self.FinalOutlines = FinalOutlines
     
     def _extract_unique_labels_and_max_label(self):
-        pass
-    
+        self.unique_labels = np.unique(np.hstack(np.hstack(self.Labels)))
+        self.max_label = max(self.unique_labels)
+            
     def init_cells(self):
         self.unique_labels = np.unique(np.hstack(self.FinalLabels))
         self.max_label = max(self.unique_labels)        
         self.cells = []
-        for l, lab in enumerate(self.unique_labels):
+        for lab in self.unique_labels:
             OUTLINES = []
             MASKS    = []
             TIMES    = []
@@ -934,18 +900,19 @@ class CellTracking(object):
             for t in range(self.times):
                 if lab in self.FinalLabels[t]:
                     TIMES.append(t)
-                    CS   = self.CSt[t]
                     idd  = np.where(np.array(self.label_correspondance[t])[:,1]==lab)[0][0]
                     _lab = self.label_correspondance[t][idd][0]
-                    ZS.append(CS._Zlabel_z[_lab])
+                    ZS.append(self._Zlabel_zs[t][_lab])
                     OUTLINES.append([])
                     MASKS.append([])
                     for z in ZS[-1]:
-                        id_l = np.where(np.array(CS.labels[z])==_lab)[0][0]
-                        OUTLINES[-1].append(CS.Outlines[z][id_l])
-                        MASKS[-1].append(CS.Masks[z][id_l])
+                        id_l = np.where(np.array(self._labels[t][z])==_lab)[0][0]
+                        OUTLINES[-1].append(self._Outlines[t][z][id_l])
+                        MASKS[-1].append(self._Masks[t][z][id_l])
             self.cells.append(Cell(lab, ZS, TIMES, OUTLINES, MASKS, self))
 
+    def order_labels(self):
+        pass
     def update_CT_cell_attributes(self):
         self.Labels   = []
         self.Outlines = []
@@ -972,7 +939,93 @@ class CellTracking(object):
                     self.Masks[t][z].append(cell.masks[tid][zid])
                     self.Centersi[t][z].append(cell.centersi[tid][zid])
                     self.Centersj[t][z].append(cell.centersj[tid][zid])
-                    
+    
+    def _sort_point_sequence(self, outline):
+        min_dists, min_dist_idx = cKDTree(outline).query(outline,self._nearest_neighs)
+        min_dists = min_dists[:,1:]
+        min_dist_idx = min_dist_idx[:,1:]
+        new_outline = []
+        used_idxs   = []
+        pidx = random.choice(range(len(outline)))
+        new_outline.append(outline[pidx])
+        used_idxs.append(pidx)
+        while len(new_outline)<len(outline):
+            a = len(used_idxs)
+            for id in min_dist_idx[pidx,:]:
+                if id not in used_idxs:
+                    new_outline.append(outline[id])
+                    used_idxs.append(id)
+                    pidx=id
+                    break
+            if len(used_idxs)==a:
+                self.printfancy("Improve your point drawing, this is a bit embarrasing") 
+                self.PA.visualization()
+                return
+        return np.array(new_outline), used_idxs
+
+    def _increase_point_resolution(self, outline):
+        rounds = np.ceil(np.log2(self._min_outline_length/len(outline))).astype('int32')
+        if rounds==0:
+                newoutline_new=np.copy(outline)
+        for r in range(rounds):
+            if r==0:
+                pre_outline=np.copy(outline)
+            else:
+                pre_outline=np.copy(newoutline_new)
+            newoutline_new = np.copy(pre_outline)
+            i=0
+            while i < len(pre_outline)*2 - 2:
+                newpoint = np.array([np.rint((newoutline_new[i] + newoutline_new[i+1])/2).astype('int32')])
+                newoutline_new = np.insert(newoutline_new, i+1, newpoint, axis=0)
+                i+=2
+            newpoint = np.array([np.rint((pre_outline[-1] + pre_outline[0])/2).astype('int32')])
+            newoutline_new = np.insert(newoutline_new, 0, newpoint, axis=0)
+
+        return newoutline_new
+    
+    def _points_within_hull(self, hull):
+        # With this function we compute the points contained within a hull or outline.
+        pointsinside=[]
+        sortidx = np.argsort(hull[:,1])
+        outx = hull[:,0][sortidx]
+        outy = hull[:,1][sortidx]
+        curry = outy[0]
+        minx = np.iinfo(np.int32).max
+        maxx = 0
+        for j,y in enumerate(outy):
+            done=False
+            while not done:
+                if y==curry:
+                    minx = np.minimum(minx, outx[j])
+                    maxx = np.maximum(maxx, outx[j])
+                    done=True
+                    curry=y
+                else:
+                    for x in range(minx, maxx+1):
+                        pointsinside.append([x, curry])
+                    minx = np.iinfo(np.int32).max
+                    maxx = 0
+                    curry= y
+
+        pointsinside=np.array(pointsinside)
+        return pointsinside
+    
+    def add_cell(self, PACT):
+        line, = PACT.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
+        self.linebuilder = LineBuilder(line)
+
+    def complete_add_cell(self, PACT):
+        self.linebuilder.stopit()
+        if len(self.linebuilder.xs)<3:
+            return
+        new_outline = np.asarray([list(a) for a in zip(np.rint(self.linebuilder.xs).astype(np.int64), np.rint(self.linebuilder.ys).astype(np.int64))])
+        new_outline_sorted, _ = self._sort_point_sequence(new_outline)
+        new_outline_sorted_highres = self._increase_point_resolution(new_outline_sorted)
+        outlines = [[new_outline_sorted_highres]]
+        masks = [[self._points_within_hull(new_outline_sorted_highres)]]
+        self._extract_unique_labels_and_max_label()
+        self.cells.append(Cell(self.max_label+1, [[PACT.z]], [PACT.t], outlines, masks, self))
+
     def delete_cell(self, PA):
         cells = [x[0] for x in PA.list_of_cells]
         Zs    = [x[1] for x in PA.list_of_cells]
@@ -1113,6 +1166,10 @@ class CellTracking(object):
                         _ = PACT.ax[idx1, idx2].set_yticks([])                        
         plt.subplots_adjust(bottom=0.075)
         # Make a horizontal slider to control the frequency.
+        
+    def _assign_color_to_label(self):
+        coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
+        self._labels_color_id = [next(coloriter) for i in range(1000)]
 
     def plot_axis(self, _ax, img, z, t):
         _ = _ax.imshow(img)
@@ -1122,9 +1179,6 @@ class CellTracking(object):
         for cell, outline in enumerate(Outlines):
             label = self.Labels[t][z][cell]
             _ = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
-        #if plotmasks:#if CS.pltmasks_bool:
-        #    CS.compute_Masks_to_plot()
-        #    _ = _ax.imshow(CS._masks_cmap(CS._Masks_to_plot[z], alpha=CS._Masks_to_plot_alphas[z], bytes=True), cmap=CS._masks_cmap_name)
 
 class PlotActionCT:
     def __init__(self, fig, ax, CT):
@@ -1140,7 +1194,6 @@ class PlotActionCT:
         self.t =0
         self.zs=[]
         self.z = None
-        self.CS = CT.CSt[self.t]
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
         groupsize  = self.CT.plot_layout[0] * self.CT.plot_layout[1]
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
