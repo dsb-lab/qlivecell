@@ -883,11 +883,7 @@ class CellTracking(object):
         self.FinalLabels   = FinalLabels
         self.FinalCenters  = FinalCenters
         self.FinalOutlines = FinalOutlines
-    
-    def _extract_unique_labels_and_max_label(self):
-        self.unique_labels = np.unique(np.hstack(np.hstack(self.Labels)))
-        self.max_label = max(self.unique_labels)
-            
+
     def init_cells(self):
         self.unique_labels = np.unique(np.hstack(self.FinalLabels))
         self.max_label = max(self.unique_labels)        
@@ -911,34 +907,69 @@ class CellTracking(object):
                         MASKS[-1].append(self._Masks[t][z][id_l])
             self.cells.append(Cell(lab, ZS, TIMES, OUTLINES, MASKS, self))
 
+    def _extract_unique_labels_and_max_label(self):
+        self.unique_labels = np.unique(np.hstack(np.hstack(self.Labels)))
+        self.max_label = max(self.unique_labels)
+
+    def _extract_unique_labels_per_time(self):
+        self.unique_labels_T = list([list(np.unique(np.hstack(self.Labels[i]))) for i in range(self.times)])
+
     def order_labels(self):
-        pass
-    def update_CT_cell_attributes(self):
-        self.Labels   = []
-        self.Outlines = []
-        self.Masks    = []
-        self.Centersi = []
-        self.Centersj = []
-        for t in range(self.times):
-            self.Labels.append([])
-            self.Outlines.append([])
-            self.Masks.append([])
-            self.Centersi.append([])
-            self.Centersj.append([])
-            for z in range(self.slices):
-                self.Labels[t].append([])
-                self.Outlines[t].append([])
-                self.Masks[t].append([])
-                self.Centersi[t].append([])
-                self.Centersj[t].append([])
+        self.update_CT_cell_attributes()
+        self._extract_unique_labels_and_max_label()
+        self._extract_unique_labels_per_time()
+        P = self.unique_labels_T
+        Q = [[-1 for item in sublist] for sublist in P]
+        C = [[] for item in range(self.max_label+1)]
+        for i, p in enumerate(P):
+            for j, n in enumerate(p):
+                C[n].append([i,j])
+        PQ = [-1 for sublist in C]
+        nmax = 0
+        for i, p in enumerate(P):
+            for j, n in enumerate(p):
+                ids = C[n]
+                if Q[i][j] == -1:
+                    for ij in ids:
+                        Q[ij[0]][ij[1]] = nmax
+                    PQ[n] = nmax
+                    nmax += 1
+        return P,Q,PQ
+
+    def update_labels(self):
+        old_labels, new_labels, correspondance = self.order_labels()
         for cell in self.cells:
-            for tid, t in enumerate(cell.times):
-                for zid, z in enumerate(cell.zs[tid]):
-                    self.Labels[t][z].append(cell.label)
-                    self.Outlines[t][z].append(cell.outlines[tid][zid])
-                    self.Masks[t][z].append(cell.masks[tid][zid])
-                    self.Centersi[t][z].append(cell.centersi[tid][zid])
-                    self.Centersj[t][z].append(cell.centersj[tid][zid])
+            cell.label = correspondance[cell.label]
+        self.update_CT_cell_attributes()
+        self._extract_unique_labels_and_max_label()
+        self._extract_unique_labels_per_time()
+
+    def update_CT_cell_attributes(self):
+            self.Labels   = []
+            self.Outlines = []
+            self.Masks    = []
+            self.Centersi = []
+            self.Centersj = []
+            for t in range(self.times):
+                self.Labels.append([])
+                self.Outlines.append([])
+                self.Masks.append([])
+                self.Centersi.append([])
+                self.Centersj.append([])
+                for z in range(self.slices):
+                    self.Labels[t].append([])
+                    self.Outlines[t].append([])
+                    self.Masks[t].append([])
+                    self.Centersi[t].append([])
+                    self.Centersj[t].append([])
+            for cell in self.cells:
+                for tid, t in enumerate(cell.times):
+                    for zid, z in enumerate(cell.zs[tid]):
+                        self.Labels[t][z].append(cell.label)
+                        self.Outlines[t][z].append(cell.outlines[tid][zid])
+                        self.Masks[t][z].append(cell.masks[tid][zid])
+                        self.Centersi[t][z].append(cell.centersi[tid][zid])
+                        self.Centersj[t][z].append(cell.centersj[tid][zid])
     
     def _sort_point_sequence(self, outline):
         min_dists, min_dist_idx = cKDTree(outline).query(outline,self._nearest_neighs)

@@ -35,26 +35,9 @@ CT = CellTracking( IMGS, model, embcode
 
 CT()
 
+CT.cells.append(Cell(CT.max_label+1, [[0]], [0], [[CT.Outlines[-1][-1][-1]]], [[CT.Masks[-1][-1][-1]]], CT))
 #save_CT(CT, path=pthtosave, filename="CT_"+embcode)
 
-P = [[0,1,3,5], [0,1,2,6], [1,2,4,7]]
-Q = [[-1 for item in sublist] for sublist in P]
-keys = [item for sublist in P for item in sublist]
-keys = list(np.unique(keys))
-vals = [[] for key in keys]
-for i, p in enumerate(P):
-    for j, n in enumerate(p):
-        vals[n].append([i,j])
-C = {keys[i]: vals[i] for i in range(len(keys))}
-
-nmax = 0
-for i, p in enumerate(P):
-    for j, n in enumerate(p):
-        ids = C[n]
-        if Q[i][j] == -1:
-            for ij in ids:
-                    Q[ij[0]][ij[1]] = nmax
-            nmax += 1
-
-print(P)
-print(Q)
+CT.max_label
+CT.cells[-1].times
+CT.update_labels()
