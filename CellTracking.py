@@ -42,7 +42,6 @@ class CellSegmentation(object):
         self._masks_colors       = self._masks_cmap.colors
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
-        self._returnfalg         = False
         self._assign_color_to_label()
 
     def __call__(self):
