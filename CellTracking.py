@@ -1176,6 +1176,8 @@ class CellTracking(object):
         for cell in list_of_cells:
             if cell not in self.apoptotic_events:
                 self.apoptotic_events.append(cell)
+            else:
+                self.apoptotic_events.remove(cell)
 
     def mitosis(self):
         if len(self.mito_cells) != 3:
