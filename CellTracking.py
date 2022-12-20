@@ -666,6 +666,7 @@ class Cell():
         self.outlines = outlines
         self.masks    = masks
         self.CT = CT
+        self._rem=False
         self._extract_cell_centers()
         
     def _extract_cell_centers(self):
@@ -700,11 +701,25 @@ class Cell():
                         self.centers[tid] = [z,ys,xs]
                         self.centers_weight[tid] = curr_weight
     
+    def _update(self):
+        remt = []
+        for tid, t in enumerate(self.times):
+            if len(self.zs[tid])==0:
+                remt.append(t)
+        
+        for t in remt:
+            self.times.remove(t)
+        
+        if len(self.times)==0:
+            self._rem=True
+            
+        self._sort_over_z()
+        
     def _sort_over_z(self):
         idxs = []
         for tid, t in enumerate(self.times):
             idxs.append(np.argsort(self.zs[tid]))
-        
+            
         newzs = [[self.zs[tid][i] for i in sublist] for tid, sublist in enumerate(idxs)]
         newouts = [[self.outlines[tid][i] for i in sublist] for tid, sublist in enumerate(idxs)]
         newmasks = [[self.masks[tid][i] for i in sublist] for tid, sublist in enumerate(idxs)]
@@ -1072,20 +1087,23 @@ class CellTracking(object):
         self._extract_unique_labels_and_max_label()
         self.cells.append(Cell(self.max_label+1, [[PACT.z]], [PACT.t], outlines, masks, self))
 
-    def delete_cell(self, PA):
-        cells = [x[0] for x in PA.list_of_cells]
-        Zs    = [x[1] for x in PA.list_of_cells]
+    def delete_cell(self, PACT):
+        cells = [x[0] for x in PACT.list_of_cells]
+        Zs    = [x[1] for x in PACT.list_of_cells]
         if len(cells) == 0:
             return
-        for i,z in enumerate(Zs):
-            id_l = np.where(np.array(PA.CS.labels[z])==cells[i])[0][0]
-            PA.CS.labels[z].pop(id_l)
-            PA.CS.Outlines[z].pop(id_l)
-            PA.CS.Masks[z].pop(id_l)
-            PA.CS.centersi[z].pop(id_l)
-            PA.CS.centersj[z].pop(id_l)
-        PA.CS.update_labels()
-        self.cell_tracking()
+        for i,lab in enumerate(cells):
+            z=Zs[i]
+            cell  = self._get_cell(lab)
+            tid   = cell.times.index(PACT.t)
+            idrem = cell.zs[tid].index(z)
+            cell.zs[tid].pop(idrem)
+            cell.outlines[tid].pop(idrem)
+            cell.masks[tid].pop(idrem)
+            cell._update()
+            if cell._rem:
+                self._del_cell(max(lab))
+        self.update_labels()
 
     def combine_cells_z(self, PACT):
         cells = [x[0] for x in PACT.list_of_cells]
@@ -1104,16 +1122,15 @@ class CellTracking(object):
             cell_min.zs[tid_min_cell].append(z)
             cell_min.outlines[tid_min_cell].append(outlines_max_cell[zid])
             cell_min.masks[tid_min_cell].append(masks_max_cell[zid])
-        cell_min._sort_over_z()
+        cell_min._update()
 
         cell_max.times.pop(tid_max_cell)
         cell_max.zs.pop(tid_max_cell)
         cell_max.outlines.pop(tid_max_cell)
         cell_max.masks.pop(tid_max_cell)
-        if len(cell_max.times)==0:
+        cell_max._update()
+        if cell_max._rem:
             self._del_cell(max(cells))
-        else:
-            cell_max._sort_over_z()
         self.update_labels()
             
     def combine_cells_t(self):
