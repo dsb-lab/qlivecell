@@ -35,9 +35,5 @@ CT = CellTracking( IMGS, model, embcode
 
 CT()
 
-CT.cells.append(Cell(CT.max_label+1, [[0]], [0], [[CT.Outlines[-1][-1][-1]]], [[CT.Masks[-1][-1][-1]]], CT))
-#save_CT(CT, path=pthtosave, filename="CT_"+embcode)
+#CT.plot_tracking()
 
-CT.max_label
-CT.cells[-1].times
-CT.update_labels()
