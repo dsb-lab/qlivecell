@@ -907,7 +907,9 @@ class CellTracking(object):
             self.cells.append(Cell(lab, ZS, TIMES, OUTLINES, MASKS, self))
 
     def _extract_unique_labels_and_max_label(self):
-        self.unique_labels = np.unique(np.hstack(np.hstack(self.Labels)))
+        _ = np.hstack(self.Labels)
+        _ = np.hstack(_)
+        self.unique_labels = np.unique(_)
         self.max_label = int(max(self.unique_labels))
 
     def _extract_unique_labels_per_time(self):
@@ -1110,7 +1112,12 @@ class CellTracking(object):
             return 
         mito_ev = [self.mito_cells[0], [self.mito_cells[1], self.mito_cells[2]]]
         self.mitotic_events.append(mito_ev)
-
+    
+    def _get_cell(self, lab):
+        for cell in self.cells:
+            if cell.label == lab:
+                return cell
+    
     def plot_tracking(self, windows=None):
         if windows==None:
             windows=self.plot_tracking_windows
@@ -1162,10 +1169,6 @@ class CellTracking(object):
             time_sliders[w].on_changed(self.PACTs[w].update_slider)
         plt.show()
 
-    def _get_cell(self, lab):
-        for cell in self.cells:
-            if cell.label == lab:
-                return cell
     def replot_tracking(self, PACT):
         t = PACT.t
         counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=PACT.cr)
@@ -1198,7 +1201,6 @@ class CellTracking(object):
                         _ = PACT.ax[idx1, idx2].set_xticks([])
                         _ = PACT.ax[idx1, idx2].set_yticks([])                        
         plt.subplots_adjust(bottom=0.075)
-        # Make a horizontal slider to control the frequency.
         
     def _assign_color_to_label(self):
         coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
