@@ -712,14 +712,14 @@ class Cell():
         
         if len(self.times)==0:
             self._rem=True
-            
+        
+        self._sort_over_t()
         self._sort_over_z()
         
     def _sort_over_z(self):
         idxs = []
         for tid, t in enumerate(self.times):
             idxs.append(np.argsort(self.zs[tid]))
-            
         newzs = [[self.zs[tid][i] for i in sublist] for tid, sublist in enumerate(idxs)]
         newouts = [[self.outlines[tid][i] for i in sublist] for tid, sublist in enumerate(idxs)]
         newmasks = [[self.masks[tid][i] for i in sublist] for tid, sublist in enumerate(idxs)]
@@ -727,7 +727,18 @@ class Cell():
         self.outlines = newouts
         self.masks = newmasks
         self._extract_cell_centers()
-
+    
+    def _sort_over_t(self):
+        idxs = np.argsort(self.times)
+        self.times.sort()
+        newzs = [self.zs[tid] for tid in idxs]
+        newouts = [self.outlines[tid] for tid in idxs]
+        newmasks= [self.masks[tid] for tid in idxs]
+        self.zs = newzs
+        self.outlines = newouts
+        self.masks = newmasks
+        self._extract_cell_centers()
+        
 class CellTracking(object):
     def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None):
         self.embcode           = embcode
@@ -1138,17 +1149,29 @@ class CellTracking(object):
             return
         cells = [x[0] for x in self.cells_to_combine]
         Ts    = [x[1] for x in self.cells_to_combine]
-        IDsco = [x[2] for x in self.cells_to_combine]
+        
+        # Selected cells must be on different times
+        if len(np.unique(Ts))!=2:
+            return
 
-        maxlabidx = np.argmax(cells)
-        minlabidx = np.argmin(cells)
         maxlab = max(cells)
         minlab = min(cells)
+        cellmax = self._get_cell(maxlab)
+        cellmin = self._get_cell(minlab)
+        
+        for tid, t in enumerate(cellmax.times):
+            cellmin.times.append(t)
+            cellmin.zs.append(cellmax.zs[tid])
+            cellmin.outlines.append(cellmax.outlines[tid])
+            cellmin.masks.append(cellmax.masks[tid])
+        
+        cellmin._update()
+        self._del_cell(maxlab)
+        self.update_labels()
 
-        idd = np.where(np.array(self.FinalLabels[Ts[maxlabidx]])==maxlab)[0][0]         
-        self.FinalLabels[Ts[maxlabidx]][idd] = minlab
-        self.label_correspondance[Ts[maxlabidx]][IDsco[maxlabidx]][1] = minlab
-
+    def separate_cells_t(self):
+        pass
+    
     def apoptosis(self, list_of_cells):
         for cell in list_of_cells:
             if cell not in self.apoptotic_events:
