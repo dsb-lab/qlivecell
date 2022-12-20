@@ -1079,13 +1079,9 @@ class CellTracking(object):
         maxcid = cells.index(max(cells))
         print(Zs[maxcid])
         id_l = np.where(np.array(PA.CS.labels[Zs[maxcid]])==max(cells))[0][0]
-        print(PA.CS.labels[Zs[maxcid]][id_l])
         PA.CS.labels[Zs[maxcid]][id_l] = min(cells)
-        print(PA.CS.labels[Zs[maxcid]][id_l])
         PA.CS.update_labels()
-        print(PA.CS.labels[Zs[maxcid]][id_l])
         self.cell_tracking()
-        print(PA.CS.labels[Zs[maxcid]][id_l])
         print(self.CSt[PA.t].labels[Zs[maxcid]][id_l])
     
     def combine_cells_t(self):
