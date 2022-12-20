@@ -699,6 +699,19 @@ class Cell():
                     if curr_weight > prev_weight:
                         self.centers[tid] = [z,ys,xs]
                         self.centers_weight[tid] = curr_weight
+    
+    def _sort_over_z(self):
+        idxs = []
+        for tid, t in enumerate(self.times):
+            idxs.append(np.argsort(self.zs[tid]))
+        
+        newzs = [[self.zs[tid][i] for i in sublist] for tid, sublist in enumerate(idxs)]
+        newouts = [[self.outlines[tid][i] for i in sublist] for tid, sublist in enumerate(idxs)]
+        newmasks = [[self.masks[tid][i] for i in sublist] for tid, sublist in enumerate(idxs)]
+        self.zs = newzs
+        self.outlines = newouts
+        self.masks = newmasks
+        self._extract_cell_centers()
 
 class CellTracking(object):
     def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None):
@@ -751,7 +764,7 @@ class CellTracking(object):
         self.cell_segmentation()
         self.cell_tracking()
         self.init_cells()
-        self.update_CT_cell_attributes()
+        self.update_labels()
         self.backupCT  = backup_CellTrack(0, self)
         self._backupCT = backup_CellTrack(0, self)
         self.backups = deque([self._backupCT], self._backup_steps)
@@ -1074,18 +1087,35 @@ class CellTracking(object):
         PA.CS.update_labels()
         self.cell_tracking()
 
-    def combine_cells_z(self, PA):
-        cells = [x[0] for x in PA.list_of_cells]
-        Zs    = [x[1] for x in PA.list_of_cells]
-        if len(cells)==0: return
-        maxcid = cells.index(max(cells))
-        print(Zs[maxcid])
-        id_l = np.where(np.array(PA.CS.labels[Zs[maxcid]])==max(cells))[0][0]
-        PA.CS.labels[Zs[maxcid]][id_l] = min(cells)
-        PA.CS.update_labels()
-        self.cell_tracking()
-        print(self.CSt[PA.t].labels[Zs[maxcid]][id_l])
-    
+    def combine_cells_z(self, PACT):
+        cells = [x[0] for x in PACT.list_of_cells]
+        Zs    = [x[1] for x in PACT.list_of_cells]
+        if len(cells)!=2: return
+        cell_min = self._get_cell(min(cells))
+        cell_max = self._get_cell(max(cells))
+        
+        t = PACT.t
+        tid_min_cell = cell_min.times.index(t)
+        tid_max_cell = cell_max.times.index(t)
+        zs_max_cell = cell_max.zs[tid_max_cell]
+        outlines_max_cell = cell_max.outlines[tid_max_cell]
+        masks_max_cell    = cell_max.masks[tid_max_cell]
+        for zid, z in enumerate(zs_max_cell):
+            cell_min.zs[tid_min_cell].append(z)
+            cell_min.outlines[tid_min_cell].append(outlines_max_cell[zid])
+            cell_min.masks[tid_min_cell].append(masks_max_cell[zid])
+        cell_min._sort_over_z()
+
+        cell_max.times.pop(tid_max_cell)
+        cell_max.zs.pop(tid_max_cell)
+        cell_max.outlines.pop(tid_max_cell)
+        cell_max.masks.pop(tid_max_cell)
+        if len(cell_max.times)==0:
+            self._del_cell(max(cells))
+        else:
+            cell_max._sort_over_z()
+        self.update_labels()
+            
     def combine_cells_t(self):
         if len(self.cells_to_combine)!=2:
             return
@@ -1118,6 +1148,13 @@ class CellTracking(object):
             if cell.label == lab:
                 return cell
     
+    def _del_cell(self, lab):
+        idx = 0
+        for idd, cell in enumerate(self.cells):
+            if cell.label == lab:
+                idx=idd
+        self.cells.pop(idx)
+        
     def plot_tracking(self, windows=None):
         if windows==None:
             windows=self.plot_tracking_windows
@@ -1407,9 +1444,7 @@ class PlotActionCT:
         else:
             cells_to_plot = self.sort_list_of_cells()
             for i,x in enumerate(cells_to_plot):
-                idd = np.where(np.array(self.CT.label_correspondance[self.t])[:,0]==x[0])[0][0]
-                Tlab = self.CT.label_correspondance[self.t][idd][1]
-                cells_to_plot[i][0] = Tlab
+                cells_to_plot[i][0] = x[0]
             cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
         s = "\n".join(cells_string)
         self.get_size()
