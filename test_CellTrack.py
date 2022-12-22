@@ -33,6 +33,5 @@ CT = CellTracking( IMGS, model, embcode
                     , backup_steps=5
                     , time_step=5)
 
-CT()
-
+CT() 
 #CT.plot_tracking()
