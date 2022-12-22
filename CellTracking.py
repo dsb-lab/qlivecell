@@ -1183,7 +1183,10 @@ class CellTracking(object):
         if len(self.mito_cells) != 3:
             return 
         mito_ev = [self.mito_cells[0], [self.mito_cells[1], self.mito_cells[2]]]
-        self.mitotic_events.append(mito_ev)
+        if mito_ev in self.mitotic_events:
+            self.mitotic_events.remove(mito_ev)
+        else:
+            self.mitotic_events.append(mito_ev)
     
     def _get_cell(self, lab):
         for cell in self.cells:
