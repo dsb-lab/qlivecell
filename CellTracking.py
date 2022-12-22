@@ -705,16 +705,26 @@ class Cell():
         remt = []
         for tid, t in enumerate(self.times):
             if len(self.zs[tid])==0:
-                remt.append(t)
-        
+                remt.append(t)        
+
         for t in remt:
-            self.times.remove(t)
-        
+            idt = self.times.index(t)
+            self.times.pop(idt)  
+            self.zs.pop(idt)  
+            self.outlines.pop(idt)
+            self.masks.pop(idt)
+
         if len(self.times)==0:
             self._rem=True
         
+        print("PRE T")
+        print(self.zs)
         self._sort_over_t()
+        print("PRE Z")
+        print(self.zs)
         self._sort_over_z()
+        print("POST ALL")
+        print(self.zs)
         
     def _sort_over_z(self):
         idxs = []
@@ -1106,12 +1116,21 @@ class CellTracking(object):
         for i,lab in enumerate(cells):
             z=Zs[i]
             cell  = self._get_cell(lab)
+            print(cell.label)
+            print(cell.times)
+            print(cell.zs)
             tid   = cell.times.index(PACT.t)
             idrem = cell.zs[tid].index(z)
             cell.zs[tid].pop(idrem)
             cell.outlines[tid].pop(idrem)
             cell.masks[tid].pop(idrem)
+            print(cell.label)
+            print(cell.times)
+            print(cell.zs)
             cell._update()
+            print(cell.label)
+            print(cell.times)
+            print(cell.zs)
             if cell._rem:
                 self._del_cell(max(lab))
         self.update_labels()
@@ -1182,7 +1201,7 @@ class CellTracking(object):
     def mitosis(self):
         if len(self.mito_cells) != 3:
             return 
-        mito_ev = [self.mito_cells[0], [self.mito_cells[1], self.mito_cells[2]]]
+        mito_ev = [self.mito_cells[0], self.mito_cells[1], self.mito_cells[2]]
         if mito_ev in self.mitotic_events:
             self.mitotic_events.remove(mito_ev)
         else:
@@ -1275,13 +1294,20 @@ class CellTracking(object):
                     tid = cell.times.index(t)
                     zz, ys, xs = cell.centers[tid]
                     if zz == z:
+
                         if [lab, PACT.t] in self.apoptotic_events:
                             _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="k")
                         else:
                             _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
                         _ = PACT.ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
                         _ = PACT.ax[idx1, idx2].set_xticks([])
-                        _ = PACT.ax[idx1, idx2].set_yticks([])                        
+                        _ = PACT.ax[idx1, idx2].set_yticks([])               
+                        
+                        for mitoev in self.mitotic_events:
+                            for cell in mitoev:
+                                if [lab, PACT.t]==cell:
+                                    _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="red")
+                                             
         plt.subplots_adjust(bottom=0.075)
         
     def _assign_color_to_label(self):
