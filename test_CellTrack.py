@@ -30,7 +30,7 @@ CT = CellTracking( IMGS, model, embcode
                     , min_outline_length=200
                     , neighbors_for_sequence_sorting=7
                     , plot_tracking_windows=1
-                    , backup_steps=5
+                    , backup_steps=2
                     , time_step=5)
 
 CT() 

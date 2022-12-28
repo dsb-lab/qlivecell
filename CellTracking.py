@@ -8,7 +8,7 @@ from matplotlib import cm
 import itertools
 import random
 from scipy.spatial import cKDTree
-from copy import deepcopy
+from copy import deepcopy, copy
 from matplotlib.widgets import Slider
 from collections import deque
 import gc
@@ -653,7 +653,7 @@ class backup_CellTrack():
         self._assign(t, CT)
 
     def _assign(self, t, CT):
-        self.t = t
+        self.t = copy(t)
         self.cells = deepcopy(CT.cells)
         self.apo_evs   = deepcopy(CT.apoptotic_events)
         self.mit_evs   = deepcopy(CT.mitotic_events)
@@ -665,11 +665,10 @@ class Cell():
         self.times = times
         self.outlines = outlines
         self.masks    = masks
-        self.CT = CT
         self._rem=False
-        self._extract_cell_centers()
+        self._extract_cell_centers(CT)
         
-    def _extract_cell_centers(self):
+    def _extract_cell_centers(self,CT):
         # Function for extracting the cell centers for the masks of a given embryo. 
         # It is extracted computing the positional centroid weighted with the intensisty of each point. 
         # It returns list of similar shape as Outlines and Masks. 
@@ -684,7 +683,7 @@ class Cell():
             for zid, z in enumerate(self.zs[tid]):
                 mask = self.masks[tid][zid]
                 # Current xy plane with the intensity of fluorescence 
-                img = self.CT.stacks[t,z,:,:]
+                img = CT.stacks[t,z,:,:]
 
                 # x and y coordinates of the centroid.
                 xs = np.average(mask[:,1], weights=img[mask[:,1], mask[:,0]])
@@ -701,7 +700,7 @@ class Cell():
                         self.centers[tid] = [z,ys,xs]
                         self.centers_weight[tid] = curr_weight
     
-    def _update(self):
+    def _update(self, CT):
         remt = []
         for tid, t in enumerate(self.times):
             if len(self.zs[tid])==0:
@@ -717,15 +716,10 @@ class Cell():
         if len(self.times)==0:
             self._rem=True
         
-        print("PRE T")
-        print(self.zs)
-        self._sort_over_t()
-        print("PRE Z")
-        print(self.zs)
         self._sort_over_z()
-        print("POST ALL")
-        print(self.zs)
-        
+        self._sort_over_t()
+        self._extract_cell_centers(CT)
+            
     def _sort_over_z(self):
         idxs = []
         for tid, t in enumerate(self.times):
@@ -736,7 +730,6 @@ class Cell():
         self.zs = newzs
         self.outlines = newouts
         self.masks = newmasks
-        self._extract_cell_centers()
     
     def _sort_over_t(self):
         idxs = np.argsort(self.times)
@@ -747,8 +740,7 @@ class Cell():
         self.zs = newzs
         self.outlines = newouts
         self.masks = newmasks
-        self._extract_cell_centers()
-        
+
 class CellTracking(object):
     def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None):
         self.embcode           = embcode
@@ -816,6 +808,7 @@ class CellTracking(object):
             backup = self.backupCT
         else:
             backup = self.backups.pop()
+            gc.collect()
         
         self.cells = deepcopy(backup.cells)
         self.update_CT_cell_attributes()
@@ -829,8 +822,7 @@ class CellTracking(object):
             self.one_step_copy()
 
     def one_step_copy(self, t=0):
-        new_copy = deepcopy(self._backupCT)
-        new_copy(t, self)
+        new_copy = backup_CellTrack(t, self)
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
@@ -1116,23 +1108,14 @@ class CellTracking(object):
         for i,lab in enumerate(cells):
             z=Zs[i]
             cell  = self._get_cell(lab)
-            print(cell.label)
-            print(cell.times)
-            print(cell.zs)
             tid   = cell.times.index(PACT.t)
             idrem = cell.zs[tid].index(z)
             cell.zs[tid].pop(idrem)
             cell.outlines[tid].pop(idrem)
             cell.masks[tid].pop(idrem)
-            print(cell.label)
-            print(cell.times)
-            print(cell.zs)
-            cell._update()
-            print(cell.label)
-            print(cell.times)
-            print(cell.zs)
+            cell._update(self)
             if cell._rem:
-                self._del_cell(max(lab))
+                self._del_cell(lab)
         self.update_labels()
 
     def combine_cells_z(self, PACT):
@@ -1152,13 +1135,13 @@ class CellTracking(object):
             cell_min.zs[tid_min_cell].append(z)
             cell_min.outlines[tid_min_cell].append(outlines_max_cell[zid])
             cell_min.masks[tid_min_cell].append(masks_max_cell[zid])
-        cell_min._update()
+        cell_min._update(self)
 
         cell_max.times.pop(tid_max_cell)
         cell_max.zs.pop(tid_max_cell)
         cell_max.outlines.pop(tid_max_cell)
         cell_max.masks.pop(tid_max_cell)
-        cell_max._update()
+        cell_max._update(self)
         if cell_max._rem:
             self._del_cell(max(cells))
         self.update_labels()
@@ -1184,7 +1167,7 @@ class CellTracking(object):
             cellmin.outlines.append(cellmax.outlines[tid])
             cellmin.masks.append(cellmax.masks[tid])
         
-        cellmin._update()
+        cellmin._update(self)
         self._del_cell(maxlab)
         self.update_labels()
 
