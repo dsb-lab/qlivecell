@@ -1253,7 +1253,7 @@ class CellTracking(object):
             time_sliders[w].on_changed(self.PACTs[w].update_slider)
         plt.show()
 
-    def replot_tracking(self, PACT):
+    def replot_tracking(self, PACT, plot_outlines=True):
         t = PACT.t
         counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=PACT.cr)
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
@@ -1270,7 +1270,7 @@ class CellTracking(object):
             else:      
                 img = imgs[z,:,:]
                 PACT.zs[idx1, idx2] = z
-                self.plot_axis(PACT.ax[idx1, idx2], img, z, t)
+                self.plot_axis(PACT.ax[idx1, idx2], img, z, t, plot_outlines=plot_outlines)
                 labs = self.Labels[t][z]
                 for lab in labs:
                     cell = self._get_cell(lab)
@@ -1297,14 +1297,15 @@ class CellTracking(object):
         coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
         self._labels_color_id = [next(coloriter) for i in range(1000)]
 
-    def plot_axis(self, _ax, img, z, t):
+    def plot_axis(self, _ax, img, z, t, plot_outlines=True):
         _ = _ax.imshow(img)
         _ = _ax.set_title("z = %d" %z)
         _ = _ax.axis(False)
         Outlines = self.Outlines[t][z]
-        for cell, outline in enumerate(Outlines):
-            label = self.Labels[t][z][cell]
-            _ = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
+        if plot_outlines:
+            for cell, outline in enumerate(Outlines):
+                label = self.Labels[t][z][cell]
+                _ = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
 
 class PlotActionCT:
     def __init__(self, fig, ax, CT):
@@ -1325,13 +1326,14 @@ class PlotActionCT:
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
         self.get_size()
         actionsbox1 = "Possible actions:\n- d : delete cell\n- c : combine cells - z\n- m : mitotic events\n- z : undo previous action\n- q : quit plot"
-        actionsbox2 = "- ESC : visualization\n- A : add cell\n- C : combine cells - t\n- a : apoptotic event\n- Z : undo all actions"          
+        actionsbox2 = "- ESC : visualization\n- A : add cell\n- C : combine cells - t\n- a : apoptotic event\n- Z : undo all actions\n- o : show/hide outlines"          
         self.actionlist1 = self.fig.text(0.6, 0.98, actionsbox1, fontsize=1, ha='left', va='top')
         self.actionlist2 = self.fig.text(0.8, 0.98, actionsbox2, fontsize=1, ha='left', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
         self.timetxt = self.fig.text(0.05, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
         self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n                     PRESS ENTER TO START", fontsize=1, ha='left', va='top')
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
+        self.plot_outlines=True
         self.update()
 
     def __call__(self, event):
@@ -1362,15 +1364,18 @@ class PlotActionCT:
                 self.apoptosis()
             elif event.key == 'escape':
                 self.visualization()
+            elif event.key == 'o':
+                self.plot_outlines = not self.plot_outlines
+                self.visualization()
             elif event.key == 'z':
                 self.CT.undo_corrections(all=False)
                 for PACT in self.CT.PACTs:
-                        PACT.CT.replot_tracking(PACT)
+                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                 self.visualization()
             elif event.key == 'Z':
                 self.CT.undo_corrections(all=True)
                 for PACT in self.CT.PACTs:
-                        PACT.CT.replot_tracking(PACT)
+                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                 self.visualization()
             self.update()
 
@@ -1390,7 +1395,7 @@ class PlotActionCT:
                             PACT.current_state=None
                             PACT.ax_sel=None
                             PACT.z=None
-                            PACT.CT.replot_tracking(PACT)
+                            PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                             PACT.visualization()
                             PACT.update()
 
@@ -1404,7 +1409,7 @@ class PlotActionCT:
                         PACT.current_state=None
                         PACT.ax_sel=None
                         PACT.z=None
-                        PACT.CT.replot_tracking(PACT)
+                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                         PACT.visualization()
                         PACT.update()
 
@@ -1418,7 +1423,7 @@ class PlotActionCT:
                         PACT.ax_sel=None
                         PACT.z=None
                         PACT.CT.cells_to_combine = []
-                        PACT.CT.replot_tracking(PACT)
+                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                         PACT.visualization()
                         PACT.update()
 
@@ -1432,7 +1437,7 @@ class PlotActionCT:
                         PACT.current_state=None
                         PACT.ax_sel=None
                         PACT.z=None
-                        PACT.CT.replot_tracking(PACT)
+                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                         PACT.visualization()
                         PACT.update()
 
@@ -1442,7 +1447,7 @@ class PlotActionCT:
                     self.CT.apoptosis(self.list_of_cells)
                     self.list_of_cells=[]
                     for PACT in self.CT.PACTs:
-                        PACT.CT.replot_tracking(PACT)
+                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                         PACT.visualization()
                         PACT.update()
 
@@ -1456,7 +1461,7 @@ class PlotActionCT:
                         PACT.ax_sel=None
                         PACT.z=None
                         PACT.CT.mito_cells = []
-                        PACT.CT.replot_tracking(PACT)
+                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                         PACT.visualization()
                         PACT.update()
                 else:
@@ -1473,7 +1478,7 @@ class PlotActionCT:
     # The function to be called anytime a slider's value changes
     def update_slider(self, t):
         self.t=t
-        self.CT.replot_tracking(self)
+        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
 
     def onscroll(self, event):
@@ -1486,7 +1491,7 @@ class PlotActionCT:
                 self.cr = self.cr + 1
             self.cr = max(self.cr, 0)
             self.cr = min(self.cr, self.max_round)
-            self.CT.replot_tracking(self)
+            self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
             self.update()
         else:
             return
@@ -1645,7 +1650,7 @@ class PlotActionCT:
         self.CP = CellPicker_apo(self)
 
     def visualization(self):
-        self.CT.replot_tracking(self)
+        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
         self.title.set(text="VISUALIZATION MODE", ha='left', x=0.01)
         self.instructions.set(text="Chose one of the actions to change mode", ha='left', x=0.2)
