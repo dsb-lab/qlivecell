@@ -1201,7 +1201,17 @@ class CellTracking(object):
             if cell.label == lab:
                 idx=idd
         self.cells.pop(idx)
-        
+  
+    def plot_axis(self, _ax, img, z, t, plot_outlines=True):
+        self._im = _ax.imshow(img)
+        self._title = _ax.set_title("z = %d" %z)
+        _ = _ax.axis(False)
+        Outlines = self.Outlines[t][z]
+        if plot_outlines:
+            for cell, outline in enumerate(Outlines):
+                label = self.Labels[t][z][cell]
+                self._outlines_scatter = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
+      
     def plot_tracking(self, windows=None):
         if windows==None:
             windows=self.plot_tracking_windows
@@ -1292,21 +1302,12 @@ class CellTracking(object):
                                     _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="red")
                                              
         plt.subplots_adjust(bottom=0.075)
-        
+
     def _assign_color_to_label(self):
         coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
         self._labels_color_id = [next(coloriter) for i in range(1000)]
 
-    def plot_axis(self, _ax, img, z, t, plot_outlines=True):
-        _ = _ax.imshow(img)
-        _ = _ax.set_title("z = %d" %z)
-        _ = _ax.axis(False)
-        Outlines = self.Outlines[t][z]
-        if plot_outlines:
-            for cell, outline in enumerate(Outlines):
-                label = self.Labels[t][z][cell]
-                _ = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
-
+    
 class PlotActionCT:
     def __init__(self, fig, ax, CT):
         self.fig=fig
