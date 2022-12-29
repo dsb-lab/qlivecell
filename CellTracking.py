@@ -1203,20 +1203,28 @@ class CellTracking(object):
         self.cells.pop(idx)
   
     def plot_axis(self, _ax, img, z, t, plot_outlines=True):
-        self._im = _ax.imshow(img)
-        self._title = _ax.set_title("z = %d" %z)
+        im = _ax.imshow(img)
+        self._imshows.append(im)
+        title = _ax.set_title("z = %d" %z)
+        self._titles.append(title)
         _ = _ax.axis(False)
         Outlines = self.Outlines[t][z]
         if plot_outlines:
             for cell, outline in enumerate(Outlines):
                 label = self.Labels[t][z][cell]
-                self._outlines_scatter = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
-      
+                out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
+                self._outline_scatters.append(out_plot)
+                
     def plot_tracking(self, windows=None):
         if windows==None:
             windows=self.plot_tracking_windows
         self.PACTs=[]
         time_sliders = []
+        self._imshows  = []
+        self._titles   = []
+        self._outline_scatters = []
+        self._pos_scatters     = []
+        self._annotations      = []
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
@@ -1238,13 +1246,16 @@ class CellTracking(object):
                     self.PACTs[w].zs[idx1, idx2] = z
                     self.plot_axis(ax[idx1, idx2], img, z, t)
                     labs = self.Labels[t][z]
+                    
                     for lab in labs:
                         cell = self._get_cell(lab)
                         tid = cell.times.index(t)
                         zz, ys, xs = cell.centers[tid]
                         if zz == z:
-                            _ = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                            _ = ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
+                            pos = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                            self._pos_scatters.append(pos)
+                            ano = ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
+                            self._annotations.append(ano)
                             _ = ax[idx1, idx2].set_xticks([])
                             _ = ax[idx1, idx2].set_yticks([])
                             
@@ -1269,6 +1280,15 @@ class CellTracking(object):
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
         imgs   = self.stacks[t,:,:,:]
         # Plot all our Zs in the corresponding round
+        for sc in self._outline_scatters:
+            sc.remove()
+        for sc in self._pos_scatters:
+            sc.remove()
+        for ano in self._annotations:
+            ano.remove()
+        self._outline_scatters = []
+        self._pos_scatters     = []
+        self._annotations      = []
         for z, id, r in counter:
             # select current z plane
             idx1 = zidxs[0][id]
