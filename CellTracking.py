@@ -1274,6 +1274,17 @@ class CellTracking(object):
             time_sliders[w].on_changed(self.PACTs[w].update_slider)
         plt.show()
 
+    def replot_axis(self, _ax, img, z, t, imid, plot_outlines=True):
+            self._imshows[imid].set_data(img)
+            self._titles[imid].set_text("z = %d" %z)
+            #_ = _ax.axis(False)
+            Outlines = self.Outlines[t][z]
+            if plot_outlines:
+                for cell, outline in enumerate(Outlines):
+                    label = self.Labels[t][z][cell]
+                    out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
+                    self._outline_scatters.append(out_plot)
+                    
     def replot_tracking(self, PACT, plot_outlines=True):
         t = PACT.t
         counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=PACT.cr)
@@ -1293,34 +1304,35 @@ class CellTracking(object):
             # select current z plane
             idx1 = zidxs[0][id]
             idx2 = zidxs[1][id]
-            PACT.ax[idx1,idx2].cla()
-            PACT.ax[idx1,idx2].axis(False)
             if z == None:
-                pass
+                img = np.zeros(self.stack_dims)
+                self._imshows[id].set_data(img)
+                self._titles[id].set_text("")
             else:      
                 img = imgs[z,:,:]
                 PACT.zs[idx1, idx2] = z
-                self.plot_axis(PACT.ax[idx1, idx2], img, z, t, plot_outlines=plot_outlines)
                 labs = self.Labels[t][z]
+                self.replot_axis(PACT.ax[idx1, idx2], img, z, t, id, plot_outlines=plot_outlines)
                 for lab in labs:
                     cell = self._get_cell(lab)
                     tid = cell.times.index(t)
                     zz, ys, xs = cell.centers[tid]
                     if zz == z:
-
                         if [lab, PACT.t] in self.apoptotic_events:
                             _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="k")
+                            self._pos_scatters.append(_)
                         else:
                             _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                        _ = PACT.ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
-                        _ = PACT.ax[idx1, idx2].set_xticks([])
-                        _ = PACT.ax[idx1, idx2].set_yticks([])               
+                            self._pos_scatters.append(_)
+                        ano = PACT.ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
+                        self._annotations.append(ano)              
                         
                         for mitoev in self.mitotic_events:
                             for cell in mitoev:
                                 if [lab, PACT.t]==cell:
                                     _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="red")
-                                             
+                                    self._pos_scatters.append(_)
+
         plt.subplots_adjust(bottom=0.075)
 
     def _assign_color_to_label(self):

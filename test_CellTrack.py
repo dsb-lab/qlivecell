@@ -36,4 +36,3 @@ CT = CellTracking( IMGS, model, embcode
 CT() 
 #CT.plot_tracking()
 
-fig, ax = plt.subplots()
