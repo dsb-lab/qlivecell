@@ -834,6 +834,7 @@ class CellTracking(object):
         self._Masks    = []
         self._labels   = []
         self._Zlabel_zs= []
+        self._Zlabel_ls= []
         print("######################   BEGIN SEGMENTATIONS   ######################")
         for t in range(self.times):
             imgs = self.stacks[t,:,:,:]
@@ -863,6 +864,7 @@ class CellTracking(object):
             self._Masks.append(CS.Masks)
             self._labels.append(CS.labels)
             self._Zlabel_zs.append(CS._Zlabel_z)
+            self._Zlabel_ls.append(CS._Zlabel_l)
             self.printfancy("")
         print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
 
@@ -935,13 +937,19 @@ class CellTracking(object):
             ZS       = []
             for t in range(self.times):
                 if lab in self.FinalLabels[t]:
+                    print(lab)
+                    print(t)
                     TIMES.append(t)
                     idd  = np.where(np.array(self.label_correspondance[t])[:,1]==lab)[0][0]
                     _lab = self.label_correspondance[t][idd][0]
+                    print(_lab)
                     ZS.append(self._Zlabel_zs[t][_lab])
+                    print(ZS[-1])
                     OUTLINES.append([])
                     MASKS.append([])
                     for z in ZS[-1]:
+                        print(z)
+                        print(self._labels[t][z])
                         id_l = np.where(np.array(self._labels[t][z])==_lab)[0][0]
                         OUTLINES[-1].append(self._Outlines[t][z][id_l])
                         MASKS[-1].append(self._Masks[t][z][id_l])
