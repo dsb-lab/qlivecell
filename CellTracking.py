@@ -659,7 +659,8 @@ class backup_CellTrack():
         self.mit_evs   = deepcopy(CT.mitotic_events)
 
 class Cell():
-    def __init__(self, label, zs, times, outlines, masks, CT):
+    def __init__(self, cellid, label, zs, times, outlines, masks, CT):
+        self.id    = cellid
         self.label = label
         self.zs    = zs
         self.times = times
@@ -740,6 +741,36 @@ class Cell():
         self.zs = newzs
         self.outlines = newouts
         self.masks = newmasks
+    
+    def find_z_discontinuities(self, CT, t):
+        tid   = self.times.index(t)
+        if not self.checkConsecutive(self.zs[tid]):
+            discontinuities = self.whereNotConsecutive(self.zs[tid])
+            for discid, disc in enumerate(discontinuities):
+                try:
+                    nextdisc = discontinuities[discid+1]
+                except IndexError:
+                    nextdisc = len(self.zs[tid])
+                newzs = self.zs[tid][disc:nextdisc]
+                newoutlines = self.outlines[tid][disc:nextdisc]
+                newmasks    = self.masks[tid][disc:nextdisc]
+                CT.cells.append(Cell(CT.currentcellid, CT.max_label+1, [newzs], [t], [newoutlines], [newmasks], CT))
+                CT.currentcellid+=1
+                CT.max_label+=1
+                CT.cells[-1]._update(CT)
+            self.zs[tid]       = self.zs[tid][0:discontinuities[0]]
+            self.outlines[tid] = self.outlines[tid][0:discontinuities[0]]
+            self.masks[tid]    = self.masks[tid][0:discontinuities[0]]
+            self.label = CT.max_label+1
+            CT.max_label+=1
+            self._update(CT)
+
+    def checkConsecutive(self, l):
+        n = len(l) - 1
+        return (sum(np.diff(sorted(l)) == 1) >= n)
+    
+    def whereNotConsecutive(self, l):
+        return [id+1 for id, val in enumerate(np.diff(l)) if val > 1]
 
 class CellTracking(object):
     def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None):
@@ -927,6 +958,7 @@ class CellTracking(object):
         self.FinalOutlines = FinalOutlines
 
     def init_cells(self):
+        self.currentcellid = 0
         self.unique_labels = np.unique(np.hstack(self.FinalLabels))
         self.max_label = int(max(self.unique_labels))
         self.cells = []
@@ -937,23 +969,18 @@ class CellTracking(object):
             ZS       = []
             for t in range(self.times):
                 if lab in self.FinalLabels[t]:
-                    print(lab)
-                    print(t)
                     TIMES.append(t)
                     idd  = np.where(np.array(self.label_correspondance[t])[:,1]==lab)[0][0]
                     _lab = self.label_correspondance[t][idd][0]
-                    print(_lab)
                     ZS.append(self._Zlabel_zs[t][_lab])
-                    print(ZS[-1])
                     OUTLINES.append([])
                     MASKS.append([])
                     for z in ZS[-1]:
-                        print(z)
-                        print(self._labels[t][z])
                         id_l = np.where(np.array(self._labels[t][z])==_lab)[0][0]
                         OUTLINES[-1].append(self._Outlines[t][z][id_l])
                         MASKS[-1].append(self._Masks[t][z][id_l])
-            self.cells.append(Cell(lab, ZS, TIMES, OUTLINES, MASKS, self))
+            self.cells.append(Cell(self.currentcellid, lab, ZS, TIMES, OUTLINES, MASKS, self))
+            self.currentcellid+=1
 
     def _extract_unique_labels_and_max_label(self):
         _ = np.hstack(self.Labels)
@@ -1106,16 +1133,19 @@ class CellTracking(object):
         outlines = [[new_outline_sorted_highres]]
         masks = [[self._points_within_hull(new_outline_sorted_highres)]]
         self._extract_unique_labels_and_max_label()
-        self.cells.append(Cell(self.max_label+1, [[PACT.z]], [PACT.t], outlines, masks, self))
+        self.cells.append(Cell(self.currentcellid, self.max_label+1, [[PACT.z]], [PACT.t], outlines, masks, self))
+        self.currentcellid+=1
 
     def delete_cell(self, PACT):
         cells = [x[0] for x in PACT.list_of_cells]
+        cellids = []
         Zs    = [x[1] for x in PACT.list_of_cells]
         if len(cells) == 0:
             return
         for i,lab in enumerate(cells):
             z=Zs[i]
             cell  = self._get_cell(lab)
+            cellids.append(cell.id)
             tid   = cell.times.index(PACT.t)
             idrem = cell.zs[tid].index(z)
             cell.zs[tid].pop(idrem)
@@ -1124,6 +1154,10 @@ class CellTracking(object):
             cell._update(self)
             if cell._rem:
                 self._del_cell(lab)
+        for i,cellid in enumerate(np.unique(cellids)):
+            z=Zs[i]
+            cell  = self._get_cell(cellid=cellid)
+            cell.find_z_discontinuities(self, PACT.t)
         self.update_labels()
 
     def combine_cells_z(self, PACT):
@@ -1198,11 +1232,16 @@ class CellTracking(object):
         else:
             self.mitotic_events.append(mito_ev)
     
-    def _get_cell(self, lab):
-        for cell in self.cells:
-            if cell.label == lab:
-                return cell
-    
+    def _get_cell(self, lab=None, cellid=None):
+        if lab==None:
+            for cell in self.cells:
+                    if cell.id == cellid:
+                        return cell
+        else:
+            for cell in self.cells:
+                    if cell.label == lab:
+                        return cell
+
     def _del_cell(self, lab):
         idx = 0
         for idd, cell in enumerate(self.cells):
@@ -1210,18 +1249,18 @@ class CellTracking(object):
                 idx=idd
         self.cells.pop(idx)
   
-    def plot_axis(self, _ax, img, z, t, plot_outlines=True):
-        im = _ax.imshow(img)
-        self._imshows.append(im)
+    def plot_axis(self, _ax, img, z, pactid, t, plot_outlines=True):
+        im = _ax.imshow(img, vmin=0, vmax=255)
+        self._imshows[pactid].append(im)
         title = _ax.set_title("z = %d" %z)
-        self._titles.append(title)
+        self._titles[pactid].append(title)
         _ = _ax.axis(False)
         Outlines = self.Outlines[t][z]
         if plot_outlines:
             for cell, outline in enumerate(Outlines):
                 label = self.Labels[t][z][cell]
                 out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
-                self._outline_scatters.append(out_plot)
+                self._outline_scatters[pactid].append(out_plot)
                 
     def plot_tracking(self, windows=None):
         if windows==None:
@@ -1236,11 +1275,18 @@ class CellTracking(object):
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
-            self.PACTs.append(PlotActionCT(fig, ax, self))
+            self.PACTs.append(PlotActionCT(fig, ax, self, w))
             self.PACTs[w].zs = np.zeros_like(ax)
             zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
             t=0
             imgs   = self.stacks[t,:,:,:]
+
+            self._imshows.append([])
+            self._titles.append([])
+            self._outline_scatters.append([])
+            self._pos_scatters.append([])
+            self._annotations.append([])
+
             # Plot all our Zs in the corresponding round
             for z, id, round in counter:
                 # select current z plane
@@ -1252,7 +1298,7 @@ class CellTracking(object):
                 else:      
                     img = imgs[z,:,:]
                     self.PACTs[w].zs[idx1, idx2] = z
-                    self.plot_axis(ax[idx1, idx2], img, z, t)
+                    self.plot_axis(ax[idx1, idx2], img, z, w, t)
                     labs = self.Labels[t][z]
                     
                     for lab in labs:
@@ -1261,9 +1307,9 @@ class CellTracking(object):
                         zz, ys, xs = cell.centers[tid]
                         if zz == z:
                             pos = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                            self._pos_scatters.append(pos)
+                            self._pos_scatters[w].append(pos)
                             ano = ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
-                            self._annotations.append(ano)
+                            self._annotations[w].append(ano)
                             _ = ax[idx1, idx2].set_xticks([])
                             _ = ax[idx1, idx2].set_yticks([])
                             
@@ -1282,45 +1328,45 @@ class CellTracking(object):
             time_sliders[w].on_changed(self.PACTs[w].update_slider)
         plt.show()
 
-    def replot_axis(self, _ax, img, z, t, imid, plot_outlines=True):
-            self._imshows[imid].set_data(img)
-            self._titles[imid].set_text("z = %d" %z)
-            #_ = _ax.axis(False)
+    def replot_axis(self, _ax, img, z, t, pactid, imid, plot_outlines=True):
+            self._imshows[pactid][imid].set_data(img)
+            self._titles[pactid][imid].set_text("z = %d" %z)
             Outlines = self.Outlines[t][z]
             if plot_outlines:
                 for cell, outline in enumerate(Outlines):
                     label = self.Labels[t][z][cell]
                     out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
-                    self._outline_scatters.append(out_plot)
+                    self._outline_scatters[pactid].append(out_plot)
                     
     def replot_tracking(self, PACT, plot_outlines=True):
         t = PACT.t
+        pactid = PACT.id
         counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=PACT.cr)
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
         imgs   = self.stacks[t,:,:,:]
         # Plot all our Zs in the corresponding round
-        for sc in self._outline_scatters:
+        for sc in self._outline_scatters[pactid]:
             sc.remove()
-        for sc in self._pos_scatters:
+        for sc in self._pos_scatters[pactid]:
             sc.remove()
-        for ano in self._annotations:
+        for ano in self._annotations[pactid]:
             ano.remove()
-        self._outline_scatters = []
-        self._pos_scatters     = []
-        self._annotations      = []
+        self._outline_scatters[pactid] = []
+        self._pos_scatters[pactid]     = []
+        self._annotations[pactid]      = []
         for z, id, r in counter:
             # select current z plane
             idx1 = zidxs[0][id]
             idx2 = zidxs[1][id]
             if z == None:
                 img = np.zeros(self.stack_dims)
-                self._imshows[id].set_data(img)
-                self._titles[id].set_text("")
+                self._imshows[pactid][id].set_data(img)
+                self._titles[pactid][id].set_text("")
             else:      
                 img = imgs[z,:,:]
                 PACT.zs[idx1, idx2] = z
                 labs = self.Labels[t][z]
-                self.replot_axis(PACT.ax[idx1, idx2], img, z, t, id, plot_outlines=plot_outlines)
+                self.replot_axis(PACT.ax[idx1, idx2], img, z, t, pactid, id, plot_outlines=plot_outlines)
                 for lab in labs:
                     cell = self._get_cell(lab)
                     tid = cell.times.index(t)
@@ -1328,18 +1374,18 @@ class CellTracking(object):
                     if zz == z:
                         if [lab, PACT.t] in self.apoptotic_events:
                             _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="k")
-                            self._pos_scatters.append(_)
+                            self._pos_scatters[pactid].append(_)
                         else:
                             _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                            self._pos_scatters.append(_)
-                        ano = PACT.ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
-                        self._annotations.append(ano)              
+                            self._pos_scatters[pactid].append(_)
+                        anno = PACT.ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
+                        self._annotations[pactid].append(anno)              
                         
                         for mitoev in self.mitotic_events:
                             for cell in mitoev:
                                 if [lab, PACT.t]==cell:
                                     _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="red")
-                                    self._pos_scatters.append(_)
+                                    self._pos_scatters[pactid].append(_)
 
         plt.subplots_adjust(bottom=0.075)
 
@@ -1349,9 +1395,10 @@ class CellTracking(object):
 
     
 class PlotActionCT:
-    def __init__(self, fig, ax, CT):
+    def __init__(self, fig, ax, CT, id):
         self.fig=fig
         self.ax=ax
+        self.id=id
         self.plot_masks=CT.plot_masks
         self.CT=CT
         self.list_of_cells = []
