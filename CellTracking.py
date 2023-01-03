@@ -1179,7 +1179,6 @@ class CellTracking(object):
         tid_min_cell = cell_min.times.index(t)
         tid_max_cell = cell_max.times.index(t)
         zs_max_cell = cell_max.zs[tid_max_cell]
-        zs_min_cell = cell_min.zs[tid_min_cell]
 
         outlines_max_cell = cell_max.outlines[tid_max_cell]
         masks_max_cell    = cell_max.masks[tid_max_cell]
@@ -1608,8 +1607,8 @@ class PlotActionCT:
         self.get_size()
         if self.figheight < self.figwidth:
             width_or_height = self.figheight
-            scale1=90
-            scale2=70
+            scale1=110
+            scale2=90
         else:
             scale1=110
             scale2=90
