@@ -12,7 +12,8 @@ from copy import deepcopy, copy
 from matplotlib.widgets import Slider
 from collections import deque
 import gc
-
+import warnings
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 #plt.rcParams.update({'figure.max_open_warning': 0})
 
 LINE_UP = '\033[1A'
@@ -972,7 +973,8 @@ class CellTracking(object):
                     TIMES.append(t)
                     idd  = np.where(np.array(self.label_correspondance[t])[:,1]==lab)[0][0]
                     _lab = self.label_correspondance[t][idd][0]
-                    ZS.append(self._Zlabel_zs[t][_lab])
+                    _labid = self._Zlabel_ls[t].index(_lab)
+                    ZS.append(self._Zlabel_zs[t][_labid])
                     OUTLINES.append([])
                     MASKS.append([])
                     for z in ZS[-1]:
@@ -1400,7 +1402,6 @@ class CellTracking(object):
     def _assign_color_to_label(self):
         coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
         self._labels_color_id = [next(coloriter) for i in range(1000)]
-
     
 class PlotActionCT:
     def __init__(self, fig, ax, CT, id):
