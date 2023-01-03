@@ -1182,6 +1182,8 @@ class CellTracking(object):
             cell.masks[tid].pop(idrem)
             cell._update(self)
             if cell._rem:
+                idrem = cell.id
+                cellids.remove(idrem)
                 self._del_cell(lab)
         for i,cellid in enumerate(np.unique(cellids)):
             z=Zs[i]
@@ -1962,16 +1964,22 @@ class CellPicker_com_z():
                 for i ,mask in enumerate(self.PACT.CT.Masks[self.PACT.t][self.PACT.z]):
                     for point in mask:
                         if (picked_point==point).all():
+                            cont = True
                             z   = self.PACT.z
                             lab = self.PACT.CT.Labels[self.PACT.t][z][i]
-                            cell = [lab, z]
-                            if cell not in self.PACT.list_of_cells:
-                                if len(self.PACT.list_of_cells)==2:
-                                    self.PACT.CT.printfancy("ERROR: Can only combine two cells at one")
+                            cell = [lab, z, self.PACT.t]
+                            if len(self.PACT.list_of_cells)!=0:
+                                if cell[2]!=self.PACT.list_of_cells[0][2]:
+                                    self.PACT.CT.printfancy("ERROR: Pero como puedes ser tan medrugo? cells must be selected on same time")
+                                    cont = False
+                            if cont:
+                                if cell not in self.PACT.list_of_cells:
+                                    if len(self.PACT.list_of_cells)==2:
+                                        self.PACT.CT.printfancy("ERROR: Te odio perro sanchez. can only combine two cells at one")
+                                    else:
+                                        self.PACT.list_of_cells.append(cell)
                                 else:
-                                    self.PACT.list_of_cells.append(cell)
-                            else:
-                                self.PACT.list_of_cells.remove(cell)
+                                    self.PACT.list_of_cells.remove(cell)
                             self.PACT.update()
             # Select cell and store it   
 
@@ -2120,23 +2128,33 @@ class CellPicker_mit():
                 for i ,mask in enumerate(self.PACT.CT.Masks[self.PACT.t][self.PACT.z]):
                     for point in mask:
                         if (picked_point==point).all():
+                            cont=True
                             z   = self.PACT.z
                             lab = self.PACT.CT.Labels[self.PACT.t][z][i]
                             cell = [lab, self.PACT.t]
+                            if cell not in self.PACT.CT.mito_cells:
+                                if len(self.PACT.CT.mito_cells)==3:
+                                    self.PACT.CT.printfancy("ERROR: Eres un cabezaalberca. cannot select more than 3 cells")
+                                    cont=False
+                                if len(self.PACT.CT.mito_cells)!=0:
+                                    if cell[1]<=self.PACT.CT.mito_cells[0][1]:
+                                        self.PACT.CT.printfancy("ERROR: Desde que altura te caiste de pequeño? Check instructions for mitosis marking")
+                                        cont=False
                             idxtopop=[]
                             pop_cell=False
-                            for jj, _cell in enumerate(self.PACT.CT.mito_cells):
-                                _lab = _cell[0]
-                                _t   = _cell[1]
-                                if _lab == lab:
-                                    pop_cell=True
-                                    idxtopop.append(jj)
-                            if pop_cell:
-                                idxtopop.sort(reverse=True)
-                                for jj in idxtopop:
-                                    self.PACT.CT.mito_cells.pop(jj)
-                            else:
-                                self.PACT.CT.mito_cells.append(cell)
+                            if cont:
+                                for jj, _cell in enumerate(self.PACT.CT.mito_cells):
+                                    _lab = _cell[0]
+                                    _t   = _cell[1]
+                                    if _lab == lab:
+                                        pop_cell=True
+                                        idxtopop.append(jj)
+                                if pop_cell:
+                                    idxtopop.sort(reverse=True)
+                                    for jj in idxtopop:
+                                        self.PACT.CT.mito_cells.pop(jj)
+                                else:
+                                    self.PACT.CT.mito_cells.append(cell)
                             self.PACT.update()
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
