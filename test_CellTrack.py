@@ -34,7 +34,7 @@ CT = CellTracking( IMGS, model, embcode
                     , time_step=5)
 
 CT()
-CT.plot_tracking()
+
 idl=np.where(np.array(CT._Zlabel_ls[1])==34)[0][0]
 CT._Zlabel_zs[1][idl]
 

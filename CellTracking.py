@@ -1164,6 +1164,12 @@ class CellTracking(object):
         cells = [x[0] for x in PACT.list_of_cells]
         Zs    = [x[1] for x in PACT.list_of_cells]
         if len(cells)!=2: return
+                # Check if cells are contiguous in z
+        if abs(Zs[0]-Zs[1])==1:
+            pass
+        else:
+            self.printfancy("ERROR: cells must be contiguous over z")
+            return
         cell_min = self._get_cell(min(cells))
         cell_max = self._get_cell(max(cells))
         
@@ -1171,6 +1177,8 @@ class CellTracking(object):
         tid_min_cell = cell_min.times.index(t)
         tid_max_cell = cell_max.times.index(t)
         zs_max_cell = cell_max.zs[tid_max_cell]
+        zs_min_cell = cell_min.zs[tid_min_cell]
+
         outlines_max_cell = cell_max.outlines[tid_max_cell]
         masks_max_cell    = cell_max.masks[tid_max_cell]
         for zid, z in enumerate(zs_max_cell):
@@ -1903,8 +1911,9 @@ class CellPicker_com_z():
                             cell = [lab, z]
                             if cell not in self.PACT.list_of_cells:
                                 if len(self.PACT.list_of_cells)==2:
-                                    self.PACT.CT.printfancy("Can only combine two cells at one")
-                                self.PACT.list_of_cells.append(cell)
+                                    self.PACT.CT.printfancy("ERROR: Can only combine two cells at one")
+                                else:
+                                    self.PACT.list_of_cells.append(cell)
                             else:
                                 self.PACT.list_of_cells.remove(cell)
                             self.PACT.update()
