@@ -843,7 +843,7 @@ class CellTracking(object):
             gc.collect()
         
         self.cells = deepcopy(backup.cells)
-        self.update_CT_cell_attributes()
+        self._update_CT_cell_attributes()
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
         for PACT in self.PACTs:
@@ -994,8 +994,8 @@ class CellTracking(object):
         self.unique_labels_T = list([list(np.unique(np.hstack(self.Labels[i]))) for i in range(self.times)])
         self.unique_labels_T = [[int(x) for x in sublist] for sublist in self.unique_labels_T]
 
-    def order_labels(self):
-        self.update_CT_cell_attributes()
+    def _order_labels_t(self):
+        self._update_CT_cell_attributes()
         self._extract_unique_labels_and_max_label()
         self._extract_unique_labels_per_time()
         P = self.unique_labels_T
@@ -1016,15 +1016,38 @@ class CellTracking(object):
                     nmax += 1
         return P,Q,PQ
 
+    def _order_labels_z(self):
+        current_max_label=-1
+        for t in range(self.times):
+
+            ids    = []
+            zs     = []
+            for cell in self.cells:
+                # Check if the current time is the first time cell appears
+                if t in cell.times:
+                    if cell.times.index(t)==0:
+                        ids.append(cell.id)
+                        zs.append(cell.centers[0][0])
+
+            sortidxs = np.argsort(zs)
+            ids = np.array(ids)[sortidxs]
+
+            for i, id in enumerate(ids):
+                cell = self._get_cell(cellid = id)
+                current_max_label+=1
+                cell.label=current_max_label
+
     def update_labels(self):
-        old_labels, new_labels, correspondance = self.order_labels()
+        old_labels, new_labels, correspondance = self._order_labels_t()
         for cell in self.cells:
             cell.label = correspondance[cell.label]
-        self.update_CT_cell_attributes()
+
+        self._order_labels_z()
+        self._update_CT_cell_attributes()
         self._extract_unique_labels_and_max_label()
         self._extract_unique_labels_per_time()
 
-    def update_CT_cell_attributes(self):
+    def _update_CT_cell_attributes(self):
             self.Labels   = []
             self.Outlines = []
             self.Masks    = []
@@ -1172,6 +1195,7 @@ class CellTracking(object):
         else:
             self.printfancy("ERROR: cells must be contiguous over z")
             return
+            
         cell_min = self._get_cell(min(cells))
         cell_max = self._get_cell(max(cells))
         
@@ -1183,8 +1207,9 @@ class CellTracking(object):
 
         # check if cells have any overlap in their zs
         if any(i in zs_max_cell for i in zs_min_cell):
+            self.printfancy("ERROR: cells overlap in z")
             return
-            
+
         outlines_max_cell = cell_max.outlines[tid_max_cell]
         masks_max_cell    = cell_max.masks[tid_max_cell]
         for zid, z in enumerate(zs_max_cell):
@@ -1203,12 +1228,13 @@ class CellTracking(object):
         self.update_labels()
             
     def combine_cells_t(self):
+        # 2 cells selected
         if len(self.cells_to_combine)!=2:
             return
         cells = [x[0] for x in self.cells_to_combine]
         Ts    = [x[1] for x in self.cells_to_combine]
         
-        # Selected cells must be on different times
+        # 2 different times
         if len(np.unique(Ts))!=2:
             return
 
@@ -1217,6 +1243,11 @@ class CellTracking(object):
         cellmax = self._get_cell(maxlab)
         cellmin = self._get_cell(minlab)
         
+        # check time overlap
+        if any(i in cellmax.times for i in cellmin.times):
+            self.printfancy("ERROR: cells overlap in time")
+            return
+
         for tid, t in enumerate(cellmax.times):
             cellmin.times.append(t)
             cellmin.zs.append(cellmax.zs[tid])
