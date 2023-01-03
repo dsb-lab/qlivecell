@@ -15,6 +15,7 @@ import gc
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 #plt.rcParams.update({'figure.max_open_warning': 0})
+plt.rcParams['keymap.save'].remove('s')
 
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
@@ -922,9 +923,9 @@ class CellTracking(object):
 
                 Dists = np.ones((len(FinalLabels[t-1]), len(TLabels[t])))
                 for i in range(len(FinalLabels[t-1])):
-                    poscell1 = np.array(FinalCenters[t-1][i][1:])*np.array([0.2767553, 0.2767553])
+                    poscell1 = np.array(FinalCenters[t-1][i][1:])*np.array([self._xyresolution, self._xyresolution])
                     for j in range(len(TLabels[t])): 
-                        poscell2 = np.array(TCenters[t][j][1:])*np.array([0.2767553, 0.2767553])
+                        poscell2 = np.array(TCenters[t][j][1:])*np.array([self._xyresolution, self._xyresolution])
                         Dists[i,j] = np.linalg.norm(poscell1-poscell2)
                         if np.abs(FinalCenters[t-1][i][0] - TCenters[t][j][0])>2:
                             Dists[i,j] = 100.0
@@ -1153,6 +1154,9 @@ class CellTracking(object):
         if len(self.linebuilder.xs)<3:
             return
         new_outline = np.asarray([list(a) for a in zip(np.rint(self.linebuilder.xs).astype(np.int64), np.rint(self.linebuilder.ys).astype(np.int64))])
+        if np.max(new_outline)>self.stack_dims[0]:
+            self.printfancy("ERROR: drawing out of image")
+            return
         new_outline_sorted, _ = self._sort_point_sequence(new_outline)
         new_outline_sorted_highres = self._increase_point_resolution(new_outline_sorted)
         outlines = [[new_outline_sorted_highres]]
@@ -1458,7 +1462,7 @@ class PlotActionCT:
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
         self.get_size()
         actionsbox1 = "Possible actions:\n- d : delete cell\n- c : combine cells - z\n- m : mitotic events\n- z : undo previous action\n- q : quit plot"
-        actionsbox2 = "- ESC : visualization\n- A : add cell\n- C : combine cells - t\n- a : apoptotic event\n- Z : undo all actions\n- o : show/hide outlines"          
+        actionsbox2 = "- ESC : visualization\n- A : add cell\n- C : combine cells - t\n- a : apoptotic event\n- Z : undo all actions\n- s : show/hide outlines"          
         self.actionlist1 = self.fig.text(0.6, 0.98, actionsbox1, fontsize=1, ha='left', va='top')
         self.actionlist2 = self.fig.text(0.8, 0.98, actionsbox2, fontsize=1, ha='left', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
@@ -1496,7 +1500,7 @@ class PlotActionCT:
                 self.apoptosis()
             elif event.key == 'escape':
                 self.visualization()
-            elif event.key == 'o':
+            elif event.key == 's':
                 self.plot_outlines = not self.plot_outlines
                 self.visualization()
             elif event.key == 'z':
@@ -1512,7 +1516,26 @@ class PlotActionCT:
             self.update()
 
         else:
-            if event.key=='enter':
+            if event.key=='escape':
+                if self.current_state=="add":
+                    self.CT.linebuilder.stopit()
+                else:
+                    self.CP.stopit()
+                    delattr(self, 'CP')
+
+                for PACT in self.CT.PACTs:
+                    PACT.list_of_cells = []
+                    PACT.CT.cells_to_combine = []
+                    PACT.CT.mito_cells = []
+                    PACT.current_subplot=None
+                    PACT.current_state=None
+                    PACT.ax_sel=None
+                    PACT.z=None
+                    PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
+                    PACT.visualization()
+                    PACT.update()
+
+            elif event.key=='enter':
 
                 if self.current_state=="add":
                     if self.current_subplot==None:
@@ -1603,10 +1626,7 @@ class PlotActionCT:
                 self.current_state=None
                 self.ax_sel=None
                 self.z=None
-            else:
-                # We have to wait for the current action to finish
-                pass
-
+                
     # The function to be called anytime a slider's value changes
     def update_slider(self, t):
         self.t=t
