@@ -1195,13 +1195,7 @@ class CellTracking(object):
         cells = [x[0] for x in PACT.list_of_cells]
         Zs    = [x[1] for x in PACT.list_of_cells]
         if len(cells)!=2: return
-                # Check if cells are contiguous in z
-        if abs(Zs[0]-Zs[1])==1:
-            pass
-        else:
-            self.printfancy("ERROR: cells must be contiguous over z")
-            return
-            
+
         cell_min = self._get_cell(min(cells))
         cell_max = self._get_cell(max(cells))
         
@@ -1209,12 +1203,6 @@ class CellTracking(object):
         tid_min_cell = cell_min.times.index(t)
         tid_max_cell = cell_max.times.index(t)
         zs_max_cell = cell_max.zs[tid_max_cell]
-        zs_min_cell = cell_min.zs[tid_min_cell]
-
-        # check if cells have any overlap in their zs
-        if any(i in zs_max_cell for i in zs_min_cell):
-            self.printfancy("ERROR: cells overlap in z")
-            return
 
         outlines_max_cell = cell_max.outlines[tid_max_cell]
         masks_max_cell    = cell_max.masks[tid_max_cell]
@@ -1964,22 +1952,43 @@ class CellPicker_com_z():
                 for i ,mask in enumerate(self.PACT.CT.Masks[self.PACT.t][self.PACT.z]):
                     for point in mask:
                         if (picked_point==point).all():
-                            cont = True
                             z   = self.PACT.z
                             lab = self.PACT.CT.Labels[self.PACT.t][z][i]
                             cell = [lab, z, self.PACT.t]
+
+                            # check for errors in the cell selected
+                            if cell in self.PACT.list_of_cells:
+                                self.PACT.list_of_cells.remove(cell)
+                                self.PACT.update()
+                                return
                             if len(self.PACT.list_of_cells)!=0:
+                                if len(self.PACT.list_of_cells)==2:
+                                    self.PACT.CT.printfancy("ERROR: Te odio perro sanchez. can only combine two cells at one")
+                                    return
                                 if cell[2]!=self.PACT.list_of_cells[0][2]:
                                     self.PACT.CT.printfancy("ERROR: Pero como puedes ser tan medrugo? cells must be selected on same time")
-                                    cont = False
-                            if cont:
-                                if cell not in self.PACT.list_of_cells:
-                                    if len(self.PACT.list_of_cells)==2:
-                                        self.PACT.CT.printfancy("ERROR: Te odio perro sanchez. can only combine two cells at one")
-                                    else:
-                                        self.PACT.list_of_cells.append(cell)
-                                else:
-                                    self.PACT.list_of_cells.remove(cell)
+                                    return 
+                                Zs = [z, self.PACT.list_of_cells[0][1]]
+                                if not abs(Zs[0]-Zs[1])==1:
+                                    self.PACT.CT.printfancy("ERROR: cells must be contiguous over z")
+                                    return
+
+                                cells = [lab, self.PACT.list_of_cells[0][0]]
+                                cell_min = self._get_cell(min(cells))
+                                cell_max = self._get_cell(max(cells))
+                                t = self.t
+                                tid_min_cell = cell_min.times.index(t)
+                                tid_max_cell = cell_max.times.index(t)
+                                zs_max_cell = cell_max.zs[tid_max_cell]
+                                zs_min_cell = cell_min.zs[tid_min_cell]
+
+                                # check if cells have any overlap in their zs
+                                if any(i in zs_max_cell for i in zs_min_cell):
+                                    self.PACT.CT.printfancy("ERROR: cells overlap in z")
+                                    return
+                        
+                            # proceed with the selection
+                            self.PACT.list_of_cells.append(cell)
                             self.PACT.update()
             # Select cell and store it   
 
