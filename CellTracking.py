@@ -1179,7 +1179,12 @@ class CellTracking(object):
         tid_min_cell = cell_min.times.index(t)
         tid_max_cell = cell_max.times.index(t)
         zs_max_cell = cell_max.zs[tid_max_cell]
+        zs_min_cell = cell_min.zs[tid_min_cell]
 
+        # check if cells have any overlap in their zs
+        if any(i in zs_max_cell for i in zs_min_cell):
+            return
+            
         outlines_max_cell = cell_max.outlines[tid_max_cell]
         masks_max_cell    = cell_max.masks[tid_max_cell]
         for zid, z in enumerate(zs_max_cell):
