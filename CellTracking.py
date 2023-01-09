@@ -13,6 +13,14 @@ from matplotlib.widgets import Slider
 from collections import deque
 import gc
 import warnings
+from matplotlib.lines import Line2D
+from matplotlib.lines import lineStyles
+
+PLTLINESTYLES = list(lineStyles.keys())
+PLTMARKERS = list(Line2D.markers.keys())
+
+PLTMARKERS = ["", "o", "d", "s", "P", "*", "X" ,"p","|"]
+
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 #plt.rcParams.update({'figure.max_open_warning': 0})
 plt.rcParams['keymap.save'].remove('s')
@@ -1326,19 +1334,6 @@ class CellTracking(object):
                 out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
                 self._outline_scatters[pactid].append(out_plot)
 
-    def plot_cell_movement(self, plot_tracking=False):
-        if not hasattr(self.cells[0], 'disp'):
-            self.printfancy("ERROR: compute cell movement first using compute_cell_movement(mode)")
-            return
-        fig, ax = plt.subplots()
-        for cell in self.cells:
-            label = cell.label
-            c = self._masks_colors[self._labels_color_id[label]]
-            ax.plot(cell.times[1:], cell.disp, c=c, linewidth=2)               
-        plt.show()
-        if plot_tracking:
-            self.plot_tracking()
-
     def plot_tracking(self, windows=None):
         if windows==None:
             windows=self.plot_tracking_windows
@@ -1473,7 +1468,53 @@ class CellTracking(object):
     def compute_cell_movement(self, mode="xy"):
         for cell in self.cells:
             cell.compute_movement(mode)
-    
+
+    def compute_mean_cell_movement(self,mode="xy"):
+        self.compute_cell_movement(mode=mode)
+        nrm = np.zeros(self.times-1)
+        self.cell_movement = np.zeros(self.times-1)
+        for cell in self.cells:
+            time_ids = np.array(cell.times)[:-1]
+            nrm[time_ids]+=np.ones(len(time_ids))
+            self.cell_movement[time_ids]+=cell.disp
+        self.cell_movement /= nrm
+
+    def plot_cell_movement(self, plot_tracking=False):
+        if not hasattr(self.cells[0], 'disp'):
+            self.printfancy("ERROR: compute cell movement first using compute_cell_movement(mode)")
+            return
+        used_markers = []
+        fig, ax = plt.subplots(figsize=(10,10))
+        len_cmap = len(self._masks_colors)
+        counter  = 0
+        markerid = 0
+        for cell in self.cells:
+            label = cell.label
+            c = self._masks_colors[self._labels_color_id[label]]
+            m = PLTMARKERS[markerid+1]
+            if m not in used_markers: used_markers.append(m)
+            ax.plot(cell.times[1:], cell.disp, c=c, marker=m, linewidth=2, label="%d" %label)
+            counter+=1
+            if counter==len_cmap:
+                counter=0
+                markerid+=1  
+        ax.plot(range(1,self.times), self.cell_movement, c='k', linewidth=4, label="mean")
+        leg_patches = [Line2D([0], [0], color="k", lw=4, label="mean")]
+
+        for i, col in enumerate(self._masks_colors):
+            leg_patches.append(Line2D([0], [0], color=col, lw=2, label=str(i)))
+
+        count = 0
+        for i, m in enumerate(used_markers):
+            leg_patches.append(Line2D([0], [0], marker=m, color='k', label="+%d" %count, markersize=10))
+            count+=len_cmap
+        
+        ax.legend(handles=leg_patches, bbox_to_anchor=(1.04, 1))
+        plt.tight_layout()
+        plt.show()
+        if plot_tracking:
+            self.plot_tracking()
+
 class PlotActionCT:
     def __init__(self, fig, ax, CT, id):
         self.fig=fig
