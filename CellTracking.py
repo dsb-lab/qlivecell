@@ -1491,9 +1491,13 @@ class CellTracking(object):
             label_list=copy(self.unique_labels)
         
         used_markers = []
-        if hasattr(self, "ax_cellmovement"):
-            firstcall=False
-            self.ax_cellmovement.cla()
+        if hasattr(self, "fig_cellmovement"):
+            if plt.fignum_exists(self.fig_cellmovement.number):
+                firstcall=False
+                self.ax_cellmovement.cla()
+            else:
+                firstcall=True
+                self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
         else:
             firstcall=True
             self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
@@ -2306,7 +2310,7 @@ class CellPicker_CM():
                             idxtopop=[]
                             pop_cell=False
                             for jj, _cell in enumerate(self.PACM.label_list):
-                                _lab = _cell[0]
+                                _lab = _cell
                                 if _lab == lab:
                                     pop_cell=True
                                     idxtopop.append(jj)
@@ -2316,7 +2320,7 @@ class CellPicker_CM():
                                     self.PACM.label_list.pop(jj)
                             else:
                                 self.PACM.label_list.append(cell)
-                            self.PACM.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
+                            self.PACM.CT.plot_cell_movement(label_list=self.PACM.label_list, plot_mean=self.PACM.plot_mean, plot_tracking=False)
                             self.PACM.update()
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
