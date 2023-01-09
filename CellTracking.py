@@ -1533,7 +1533,7 @@ class CellTracking(object):
             #if any(l in label_list for l in range(count, count+10)):
             leg_patches.append(Line2D([0], [0], marker=m, color='k', label="+%d" %count, markersize=10))
             count+=len_cmap
-
+        
         self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.02, 1))
         self.fig_cellmovement.tight_layout()
         if firstcall:
