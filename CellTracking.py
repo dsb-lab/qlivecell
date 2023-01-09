@@ -1492,8 +1492,10 @@ class CellTracking(object):
         
         used_markers = []
         if hasattr(self, "ax_cellmovement"):
-            self.ax_cellmovement.clear()
+            firstcall=False
+            self.ax_cellmovement.cla()
         else:
+            firstcall=True
             self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
         
         len_cmap = len(self._masks_colors)
@@ -1529,8 +1531,9 @@ class CellTracking(object):
 
         self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.02, 1))
         self.fig_cellmovement.tight_layout()
-        if plot_tracking: self.plot_tracking(cell_movement=True)
-        else: plt.show()
+        if firstcall:
+            if plot_tracking: self.plot_tracking(cell_movement=True)
+            else: plt.show()
 
 class PlotActionCT:
     def __init__(self, fig, ax, CT, id):
@@ -2313,6 +2316,7 @@ class CellPicker_CM():
                                     self.PACM.label_list.pop(jj)
                             else:
                                 self.PACM.label_list.append(cell)
+                            self.PACM.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
                             self.PACM.update()
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
@@ -2339,7 +2343,7 @@ class PlotActionCellMovement:
         self.plot_mean=True
         self.label_list=[]
         self.update()
-        #self.CP = CellPicker_CM(self)
+        self.CP = CellPicker_CM(self)
 
     def __call__(self, event):
         if self.current_state==None:
@@ -2372,7 +2376,7 @@ class PlotActionCellMovement:
         if self.current_state=="SCL": self.current_state=None
 
     def update(self):
-        # REPLOT CELL MOVEMENT PLOT and then...
+
         self.get_size()
         scale=90
         if self.figheight < self.figwidth: width_or_height = self.figheight/scale
@@ -2381,6 +2385,7 @@ class PlotActionCellMovement:
         self.instructions.set(fontsize=width_or_height)
         plt.subplots_adjust(top=0.9,right=0.8)
         self.fig.canvas.draw_idle()
+        self.CT.fig_cellmovement.canvas.draw()
         self.fig.canvas.draw()
 
     def get_size(self):
