@@ -774,6 +774,31 @@ class Cell():
     def whereNotConsecutive(self, l):
         return [id+1 for id, val in enumerate(np.diff(l)) if val > 1]
 
+    def compute_movement(self, mode):
+        self.Z = []
+        self.Y = []
+        self.X = []
+        self.disp = []
+        z,ys,xs = self.centers[0]
+        self.Z.append(z)
+        self.Y.append(ys)
+        self.X.append(xs)
+        for t in range(1,len(self.times)):
+            z,ys,xs = self.centers[t]
+            self.Z.append(z)
+            self.Y.append(ys)
+            self.X.append(xs)
+            if mode=="xy":
+                self.disp.append(self.compute_distance_xy(self.X[t-1], self.X[t], self.Y[t-1], self.Y[t]))
+            elif mode=="xyz":
+                self.disp.append(self.compute_distance_xyz(self.X[t-1], self.X[t], self.Y[t-1], self.Y[t], self.Z[t-1], self.Z[t]))
+
+    def compute_distance_xy(self, x1, x2, y1, y2):
+        return np.sqrt((x2-x1)**2 + (y2-y1)**2)
+
+    def compute_distance_xyz(self, x1, x2, y1, y2, z1, z2):
+        return np.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+
 class CellTracking(object):
     def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None):
         self.embcode           = embcode
@@ -1300,7 +1325,20 @@ class CellTracking(object):
                 label = self.Labels[t][z][cell]
                 out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
                 self._outline_scatters[pactid].append(out_plot)
-                
+
+    def plot_cell_movement(self, plot_tracking=False):
+        if not hasattr(self.cells[0], 'disp'):
+            self.printfancy("ERROR: compute cell movement first using compute_cell_movement(mode)")
+            return
+        fig, ax = plt.subplots()
+        for cell in self.cells:
+            label = cell.label
+            c = self._masks_colors[self._labels_color_id[label]]
+            ax.plot(cell.times[1:], cell.disp, c=c, linewidth=2)               
+        plt.show()
+        if plot_tracking:
+            self.plot_tracking()
+
     def plot_tracking(self, windows=None):
         if windows==None:
             windows=self.plot_tracking_windows
@@ -1431,6 +1469,10 @@ class CellTracking(object):
     def _assign_color_to_label(self):
         coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
         self._labels_color_id = [next(coloriter) for i in range(1000)]
+    
+    def compute_cell_movement(self, mode="xy"):
+        for cell in self.cells:
+            cell.compute_movement(mode)
     
 class PlotActionCT:
     def __init__(self, fig, ax, CT, id):
@@ -1966,7 +2008,7 @@ class CellPicker_com_z():
                                     self.PACT.CT.printfancy("ERROR: Te odio perro sanchez. can only combine two cells at one")
                                     return
                                 if cell[2]!=self.PACT.list_of_cells[0][2]:
-                                    self.PACT.CT.printfancy("ERROR: Pero como puedes ser tan medrugo? cells must be selected on same time")
+                                    self.PACT.CT.printfancy("ERROR: Pero como puedes ser tan mendrugo? cells must be selected on same time")
                                     return 
                                 Zs = [z, self.PACT.list_of_cells[0][1]]
                                 if not abs(Zs[0]-Zs[1])==1:
