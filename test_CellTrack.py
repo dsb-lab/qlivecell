@@ -36,4 +36,5 @@ CT = CellTracking( IMGS, model, embcode
 CT()
 CT.compute_cell_movement(mode="xy")
 CT.compute_mean_cell_movement()
-CT.plot_cell_movement()
+CT.plot_cell_movement(plot_mean=True, plot_tracking=True)
+
