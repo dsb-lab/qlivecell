@@ -1479,10 +1479,14 @@ class CellTracking(object):
             self.cell_movement[time_ids]+=cell.disp
         self.cell_movement /= nrm
 
-    def plot_cell_movement(self, plot_tracking=False):
+    def plot_cell_movement(self, label_list=None, plot_mean=True, plot_tracking=False):
         if not hasattr(self.cells[0], 'disp'):
             self.printfancy("ERROR: compute cell movement first using compute_cell_movement(mode)")
             return
+        
+        if label_list is None:
+            label_list=copy(self.unique_labels)
+        
         used_markers = []
         fig, ax = plt.subplots(figsize=(10,10))
         len_cmap = len(self._masks_colors)
@@ -1490,27 +1494,34 @@ class CellTracking(object):
         markerid = 0
         for cell in self.cells:
             label = cell.label
-            c = self._masks_colors[self._labels_color_id[label]]
-            m = PLTMARKERS[markerid+1]
-            if m not in used_markers: used_markers.append(m)
-            ax.plot(cell.times[1:], cell.disp, c=c, marker=m, linewidth=2, label="%d" %label)
+            if label in label_list:
+                c = self._masks_colors[self._labels_color_id[label]]
+                m = PLTMARKERS[markerid]
+                if m not in used_markers: used_markers.append(m)
+                ax.plot(cell.times[1:], cell.disp, c=c, marker=m, linewidth=2, label="%d" %label)
             counter+=1
             if counter==len_cmap:
                 counter=0
                 markerid+=1  
-        ax.plot(range(1,self.times), self.cell_movement, c='k', linewidth=4, label="mean")
-        leg_patches = [Line2D([0], [0], color="k", lw=4, label="mean")]
+        if plot_mean:
+            ax.plot(range(1,self.times), self.cell_movement, c='k', linewidth=4, label="mean")
+            leg_patches = [Line2D([0], [0], color="k", lw=4, label="mean")]
+        else:
+            leg_patches = []
 
+        label_list_lastdigit = [int(str(l)[-1]) for l in label_list]
         for i, col in enumerate(self._masks_colors):
-            leg_patches.append(Line2D([0], [0], color=col, lw=2, label=str(i)))
+            if i in label_list_lastdigit:
+                leg_patches.append(Line2D([0], [0], color=col, lw=2, label=str(i)))
 
         count = 0
         for i, m in enumerate(used_markers):
+            #if any(l in label_list for l in range(count, count+10)):
             leg_patches.append(Line2D([0], [0], marker=m, color='k', label="+%d" %count, markersize=10))
             count+=len_cmap
-        
-        ax.legend(handles=leg_patches, bbox_to_anchor=(1.04, 1))
-        plt.tight_layout()
+
+        ax.legend(handles=leg_patches, bbox_to_anchor=(1.02, 1))
+        fig.tight_layout()
         plt.show()
         if plot_tracking:
             self.plot_tracking()
@@ -2250,3 +2261,76 @@ class CellPicker_mit():
                             self.PACT.update()
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
+
+class PlotActionCellMovement:
+    def __init__(self, fig, ax, CT, id):
+        self.fig=fig
+        self.ax=ax
+        self.id=id
+        self.plot_masks=CT.plot_masks
+        self.CT=CT
+        self.list_of_cells = []
+        self.act = fig.canvas.mpl_connect('key_press_event', self)
+        self.current_state=None
+        self.current_subplot = None
+        self.cr = 0
+        self.t =0
+        self.zs=[]
+        self.z = None
+        self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
+        groupsize  = self.CT.plot_layout[0] * self.CT.plot_layout[1]
+        self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
+        self.get_size()
+        self.instructions = self.fig.text(0.2, 0.98, "RIGHT CLICK TO SELECT/UNSELECT CELLS\nTO SHOW ON THE CELL MOVEMENT PLOT", fontsize=1, ha='left', va='top')
+        self.plot_outlines=True
+        self.update()
+
+    def __call__(self, event):
+        if event.key=="enter":
+            # SELECT/UNSELECT ALL CELLS
+            self.visualization()
+            self.update()
+        else:
+            pass
+                
+    # The function to be called anytime a slider's value changes
+    def update_slider(self, t):
+        self.t=t
+        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.update()
+
+    def onscroll(self, event):
+        if self.current_state == None:
+            self.current_state="SCL"
+        if event.button == 'up':
+            self.cr = self.cr - 1
+        elif event.button == 'down':
+            self.cr = self.cr + 1
+        self.cr = max(self.cr, 0)
+        self.cr = min(self.cr, self.max_round)
+        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.update()
+
+        if self.current_state=="SCL":
+            self.current_state=None
+
+    def update(self):
+        # REPLOT CELL MOVEMENT PLOT and then...
+        self.get_size()
+        scale=90
+        if self.figheight < self.figwidth:
+            width_or_height = self.figheight/scale
+        else:
+            width_or_height = self.figwidth/scale
+
+        self.instructions.set(fontsize=width_or_height)
+        self.title.set(fontsize=width_or_height)
+        plt.subplots_adjust(top=0.9,right=0.8)
+        self.fig.canvas.draw_idle()
+        self.fig.canvas.draw()
+
+    def get_size(self):
+        bboxfig = self.fig.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+        widthfig, heightfig = bboxfig.width*self.fig.dpi, bboxfig.height*self.fig.dpi
+        self.figwidth  = widthfig
+        self.figheight = heightfig

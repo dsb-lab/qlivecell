@@ -34,7 +34,6 @@ CT = CellTracking( IMGS, model, embcode
                     , time_step=5)
 
 CT()
-
 CT.compute_cell_movement(mode="xy")
 CT.compute_mean_cell_movement()
 CT.plot_cell_movement()
