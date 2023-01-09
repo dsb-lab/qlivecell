@@ -31,9 +31,8 @@ CT = CellTracking( IMGS, model, embcode
                     , neighbors_for_sequence_sorting=7
                     , plot_tracking_windows=1
                     , backup_steps=5
-                    , time_step=5)
+                    , time_step=5
+                    , cell_distance_axis="xz")
 
 CT()
-CT.compute_cell_movement(mode="xy")
-CT.compute_mean_cell_movement()
 CT.plot_cell_movement(plot_mean=True, plot_tracking=True)

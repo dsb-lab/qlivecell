@@ -808,7 +808,7 @@ class Cell():
         return np.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
 
 class CellTracking(object):
-    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None):
+    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy"):
         self.embcode           = embcode
         self.stacks            = stacks
         self._model            = model
@@ -833,6 +833,7 @@ class CellTracking(object):
         self._masks_colors     = self._masks_cmap.colors
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
+        self._cdaxis = cell_distance_axis
         self.cells_to_combine  = []
         self.mito_cells        = []
         self.apoptotic_events  = []
@@ -1468,12 +1469,12 @@ class CellTracking(object):
         coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
         self._labels_color_id = [next(coloriter) for i in range(1000)]
     
-    def compute_cell_movement(self, mode="xy"):
+    def compute_cell_movement(self):
         for cell in self.cells:
-            cell.compute_movement(mode)
+            cell.compute_movement(self._cdaxis)
 
-    def compute_mean_cell_movement(self,mode="xy"):
-        self.compute_cell_movement(mode=mode)
+    def compute_mean_cell_movement(self):
+        self.compute_cell_movement()
         nrm = np.zeros(self.times-1)
         self.cell_movement = np.zeros(self.times-1)
         for cell in self.cells:
@@ -1484,8 +1485,8 @@ class CellTracking(object):
 
     def plot_cell_movement(self, label_list=None, plot_mean=True, plot_tracking=True):
         if not hasattr(self.cells[0], 'disp'):
-            self.printfancy("ERROR: compute cell movement first using compute_cell_movement(mode)")
-            return
+            self.compute_cell_movement()
+            self.compute_mean_cell_movement()
         
         if label_list is None:
             label_list=copy(self.unique_labels)
