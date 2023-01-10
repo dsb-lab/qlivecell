@@ -18,9 +18,8 @@ from matplotlib.lines import lineStyles
 from matplotlib.ticker import MaxNLocator
 
 PLTLINESTYLES = list(lineStyles.keys())
-PLTMARKERS = list(Line2D.markers.keys())
 
-PLTMARKERS = ["", "o", "d", "s", "P", "*", "X" ,"p","|"]
+PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X" ,"p","^"]
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 #plt.rcParams.update({'figure.max_open_warning': 0})
@@ -1493,6 +1492,7 @@ class CellTracking(object):
             label_list=list(copy(self.unique_labels))
         
         used_markers = []
+        used_styles  = []
         if hasattr(self, "fig_cellmovement"):
             if plt.fignum_exists(self.fig_cellmovement.number):
                 firstcall=False
@@ -1505,20 +1505,30 @@ class CellTracking(object):
             self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
         
         len_cmap = len(self._masks_colors)
-        counter  = 0
+        len_ls   = len_cmap*len(PLTMARKERS)
+        countm   = 0
+        countls  = 0
         markerid = 0
+        linestyleid = 0
         for cell in self.cells:
             label = cell.label
             if label in label_list:
-                c = self._masks_colors[self._labels_color_id[label]]
-                m = PLTMARKERS[markerid]
+                c  = self._masks_colors[self._labels_color_id[label]]
+                m  = PLTMARKERS[markerid]
+                ls = PLTLINESTYLES[linestyleid]
                 if m not in used_markers: used_markers.append(m)
+                if ls not in used_styles: used_styles.append(ls)
                 tplot = [cell.times[i]*self._tstep for i in range(1,len(cell.times))]
-                self.ax_cellmovement.plot(tplot, cell.disp, c=c, marker=m, linewidth=2, label="%d" %label)
-            counter+=1
-            if counter==len_cmap:
-                counter=0
-                markerid+=1  
+                self.ax_cellmovement.plot(tplot, cell.disp, c=c, marker=m, linewidth=2, linestyle=ls,label="%d" %label)
+            countm+=1
+            countls+=1
+            if countm==len_cmap:
+                countm=0
+                markerid+=1
+                if markerid==len(PLTMARKERS): 
+                    markerid=0
+                    countls=0
+                    linestyleid+=1
         if plot_mean:
             tplot = [i*self._tstep for i in range(1,self.times)]
             self.ax_cellmovement.plot(tplot, self.cell_movement, c='k', linewidth=4, label="mean")
@@ -1533,10 +1543,14 @@ class CellTracking(object):
 
         count = 0
         for i, m in enumerate(used_markers):
-            #if any(l in label_list for l in range(count, count+10)):
             leg_patches.append(Line2D([0], [0], marker=m, color='k', label="+%d" %count, markersize=10))
             count+=len_cmap
-        
+
+        count = 0
+        for i, ls in enumerate(used_styles):
+            leg_patches.append(Line2D([0], [0], linestyle=ls, color='k', label="+%d" %count, linewidth=2))
+            count+=len_ls
+
         self.ax_cellmovement.set_ylabel("cell movement")
         self.ax_cellmovement.set_xlabel("time (min)")
         self.ax_cellmovement.xaxis.set_major_locator(MaxNLocator(integer=True))
