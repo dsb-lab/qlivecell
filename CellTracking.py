@@ -1286,8 +1286,39 @@ class CellTracking(object):
         self.update_labels()
 
     def separate_cells_t(self):
-        pass
-    
+        # 2 cells selected
+        if len(self.list_of_cells)!=2:
+            return
+        cells = [x[0] for x in self.list_of_cells]
+        Ts    = [x[1] for x in self.list_of_cells]
+
+        # 2 different times
+        if len(np.unique(Ts))!=2:
+            return
+
+        cell = self._get_cell(cells[0])
+        new_cell = deepcopy(cell)
+        
+        border=cell.times.index(max(Ts))
+
+        cell.zs       = cell.zs[:border]
+        cell.times    = cell.times[:border]
+        cell.outlines = cell.outlines[:border]
+        cell.masks    = cell.masks[:border]
+        cell._update(self)
+
+        new_cell.zs       = new_cell.zs[border:]
+        new_cell.times    = new_cell.times[border:]
+        new_cell.outlines = new_cell.outlines[border:]
+        new_cell.masks    = new_cell.masks[border:]
+        self._extract_unique_labels_and_max_label()
+        new_cell.label = self.max_label+1
+        new_cell.id=self.currentcellid
+        self.currentcellid+=1
+        new_cell._update(self)
+        self.cells.append(new_cell)
+        self.update_labels()
+
     def apoptosis(self, list_of_cells):
         for cell in list_of_cells:
             if cell not in self.apoptotic_events:
@@ -1344,6 +1375,7 @@ class CellTracking(object):
         self._outline_scatters = []
         self._pos_scatters     = []
         self._annotations      = []
+        self.list_of_cells=[]
 
         if cell_movement: windows=1
         for w in range(windows):
@@ -1634,7 +1666,7 @@ class PlotActionCT:
             elif event.key == 's':
                 self.CT.one_step_copy(self.t)
                 self.current_state="Sep"
-                self.separe_cells_t()
+                self.separate_cells_t()
             elif event.key == 'z':
                 self.CT.undo_corrections(all=False)
                 for PACT in self.CT.PACTs:
@@ -1765,6 +1797,7 @@ class PlotActionCT:
                         PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                         PACT.visualization()
                         PACT.update()
+
                 else:
                     self.visualization()
                     self.update()
@@ -1780,7 +1813,7 @@ class PlotActionCT:
         self.update()
 
     def onscroll(self, event):
-        if self.current_state in [None, "Com", "mit", "apo", "com"]:
+        if self.current_state in [None, "Com","Sep", "mit", "apo", "com"]:
             if self.current_state == None:
                 self.current_state="SCL"
             if event.button == 'up':
@@ -1797,8 +1830,9 @@ class PlotActionCT:
             self.current_state=None
 
     def update(self):
-        if self.current_state in ["apo","Com", "mit"]:
-            cells_to_plot=self.extract_unique_cell_time_list_of_cells()
+        if self.current_state in ["apo","Com", "mit", "Sep"]:
+            if self.current_state=="Sep": cells_to_plot = self.CT.list_of_cells
+            else: cells_to_plot=self.extract_unique_cell_time_list_of_cells()
             cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
         else:
             cells_to_plot = self.sort_list_of_cells()
@@ -1872,7 +1906,7 @@ class PlotActionCT:
                     self.ax_sel.add_patch(self.patch)
 
     def extract_unique_cell_time_list_of_cells(self):
-        if self.current_state=="Com":
+        if self.current_state in ["Com", "Sep"]:
             list_of_cells=self.CT.list_of_cells
         if self.current_state=="mit":
             list_of_cells=self.CT.mito_cells
@@ -1934,6 +1968,12 @@ class PlotActionCT:
         self.instructions.set(text="\nRigth-click to select cells to be combined", ha='left', x=0.2)
         self.fig.patch.set_facecolor((0.0,0.0,1.0,0.2))
         self.CP = CellPicker_com_z(self)
+    
+    def separate_cells_t(self):
+        self.title.set(text="COMBINE CELLS", ha='left', x=0.01)
+        self.instructions.set(text="\nRigth-click to select cells to be separated", ha='left', x=0.2)
+        self.fig.patch.set_facecolor((1.0,1.0,0, 0.2))        
+        self.CP = CellPicker_sep_t(self)
 
     def mitosis(self):
         self.title.set(text="DETECT MITOSIS", ha='left', x=0.01)
@@ -2199,7 +2239,7 @@ class CellPicker_com_t():
                             else:
                                 if lab not in np.array(self.PACT.CT.list_of_cells)[:,0]:
                                     if len(self.PACT.CT.list_of_cells)==2:
-                                        self.PACT.CT.printfancy("cannot combine more than 2 cells at once")
+                                        self.PACT.CT.printfancy("ERROR: cannot combine more than 2 cells at once")
                                     else:
                                         if self.PACT.t not in np.array(self.PACT.CT.list_of_cells)[:,1]:
                                             self.PACT.CT.list_of_cells.append(cell)
@@ -2207,6 +2247,77 @@ class CellPicker_com_t():
                                     self.PACT.CT.list_of_cells.remove(cell)
                             for PACT in self.PACT.CT.PACTs:
                                 if PACT.current_state=="Com":
+                                    PACT.update()
+
+    def stopit(self):
+        
+        # Stop this interaction with the plot 
+        self.canvas.mpl_disconnect(self.cid)
+
+class CellPicker_sep_t():
+    def __init__(self, PACT):
+        self.PACT  = PACT
+        self.cid = self.PACT.fig.canvas.mpl_connect('button_press_event', self)
+        self.canvas  = self.PACT.fig.canvas
+    def __call__(self, event):
+
+        # Button pressed is a mouse right-click (3)
+        if event.button==3:
+
+            # Check if the figure is a 2D layout
+            if isinstance(self.PACT.ax, np.ndarray):
+                axshape = self.PACT.ax.shape
+
+                # Get subplot of clicked point 
+                for i in range(axshape[0]):
+                        for j in range(axshape[1]):
+                                if event.inaxes==self.PACT.ax[i,j]:
+                                    self.PACT.current_subplot = [i,j]
+                                    self.PACT.ax_sel = self.PACT.ax[i,j]
+                                    self.PACT.z = self.PACT.zs[i,j]
+            else:
+                raise IndexError("Plot layout not supported")
+
+            # Check if the selection was inside a subplot at all
+            if event.inaxes!=self.PACT.ax_sel:
+                pass
+            # If so, proceed
+            else:
+
+                # Get point coordinates
+                x = np.rint(event.xdata).astype(np.int64)
+                y = np.rint(event.ydata).astype(np.int64)
+                picked_point = np.array([x, y])
+
+                # Check if the point is inside the mask of any cell
+                for i ,mask in enumerate(self.PACT.CT.Masks[self.PACT.t][self.PACT.z]):
+                    for point in mask:
+                        if (picked_point==point).all():
+                            z   = self.PACT.z
+                            lab = self.PACT.CT.Labels[self.PACT.t][z][i]
+                            cell = [lab, self.PACT.t]
+                            # Check if the cell is already on the list
+                            if len(self.PACT.CT.list_of_cells)==0:
+                                self.PACT.CT.list_of_cells.append(cell)
+                            
+                            else:
+                                
+                                if lab != self.PACT.CT.list_of_cells[0][0]:
+                                    self.PACT.CT.printfancy("ERROR: select same cell at a different time")
+                                    return
+                               
+                                else:
+                                    if self.PACT.t in np.array(self.PACT.CT.list_of_cells)[:,1]:
+                                        self.PACT.CT.list_of_cells.remove(cell)
+                                    else:
+                                        if len(self.PACT.CT.list_of_cells)==2: 
+                                            self.PACT.CT.printfancy("ERROR: cannot separate more than 2 times at once")
+                                            return
+                                        else:
+                                            self.PACT.CT.list_of_cells.append(cell)
+
+                            for PACT in self.PACT.CT.PACTs:
+                                if PACT.current_state=="Sep":
                                     PACT.update()
 
     def stopit(self):
