@@ -35,11 +35,4 @@ CT = CellTracking( IMGS, model, embcode
                     , cell_distance_axis="xy"
                     , mean_substraction_cell_movement=True)
 
-save_CT()
 CT()
-CT.plot_tracking()
-
-save_CT(CT, path="/home/pablo/Desktop/", filename="testCT", _del_plots=True)
-CTloaded = load_CT(path="/home/pablo/Desktop/", filename="testCT")
-CTloaded.plot_tracking()
-CTloaded.plot_cell_movement(plot_mean=True, plot_tracking=True, substract_mean=False)
