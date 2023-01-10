@@ -808,7 +808,7 @@ class Cell():
         return np.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
 
 class CellTracking(object):
-    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy"):
+    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", mean_substraction_cell_movement=False):
         self.embcode           = embcode
         self.stacks            = stacks
         self._model            = model
@@ -841,6 +841,7 @@ class CellTracking(object):
         self._backup_steps= backup_steps
         self.plot_tracking_windows=plot_tracking_windows
         self._tstep = time_step
+        self._mscm   = mean_substraction_cell_movement
         self._assign_color_to_label()
 
     def printfancy(self, string, finallength=70):
@@ -1482,10 +1483,21 @@ class CellTracking(object):
             nrm[time_ids]+=np.ones(len(time_ids))
             self.cell_movement[time_ids]+=cell.disp
         self.cell_movement /= nrm
+            
+    def cell_movement_substract_mean(self):
+        for cell in self.cells:
+                new_disp = []
+                for i,t in enumerate(cell.times[:-1]):
+                    new_val = cell.disp[i] - self.cell_movement[t]
+                    new_disp.append(new_val)
 
-    def plot_cell_movement(self, label_list=None, plot_mean=True, plot_tracking=True):
-        if not hasattr(self.cells[0], 'disp'):
-            self.compute_cell_movement()
+    def plot_cell_movement(self, label_list=None, plot_mean=True, plot_tracking=True, substract_mean=None):
+        if substract_mean in None: substract_mean=self._mscm
+
+        self.compute_cell_movement()
+        self.compute_mean_cell_movement()
+        if substract_mean:
+            self.cell_movement_substract_mean()
             self.compute_mean_cell_movement()
         
         if label_list is None:
@@ -1554,7 +1566,7 @@ class CellTracking(object):
         self.ax_cellmovement.set_ylabel("cell movement")
         self.ax_cellmovement.set_xlabel("time (min)")
         self.ax_cellmovement.xaxis.set_major_locator(MaxNLocator(integer=True))
-        self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.02, 1))
+        self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.04, 1))
         self.fig_cellmovement.tight_layout()
         if firstcall:
             if plot_tracking: self.plot_tracking(cell_movement=True)
