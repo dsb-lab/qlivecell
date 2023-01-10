@@ -18,6 +18,7 @@ from matplotlib.lines import lineStyles
 from matplotlib.ticker import MaxNLocator
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 plt.rcParams['keymap.save'].remove('s')
+plt.rcParams['keymap.zoom'][0]='º'
 
 PLTLINESTYLES = list(lineStyles.keys())
 PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X" ,"p","^"]
@@ -831,7 +832,7 @@ class CellTracking(object):
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self._cdaxis = cell_distance_axis
-        self.cells_to_combine  = []
+        self.list_of_cells  = []
         self.mito_cells        = []
         self.apoptotic_events  = []
         self.mitotic_events    = []
@@ -1255,10 +1256,10 @@ class CellTracking(object):
             
     def combine_cells_t(self):
         # 2 cells selected
-        if len(self.cells_to_combine)!=2:
+        if len(self.list_of_cells)!=2:
             return
-        cells = [x[0] for x in self.cells_to_combine]
-        Ts    = [x[1] for x in self.cells_to_combine]
+        cells = [x[0] for x in self.list_of_cells]
+        Ts    = [x[1] for x in self.list_of_cells]
         
         # 2 different times
         if len(np.unique(Ts))!=2:
@@ -1588,8 +1589,8 @@ class PlotActionCT:
         groupsize  = self.CT.plot_layout[0] * self.CT.plot_layout[1]
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
         self.get_size()
-        actionsbox1 = "Possible actions:\n- d : delete cell\n- c : combine cells - z\n- m : mitotic events\n- z : undo previous action\n- q : quit plot"
-        actionsbox2 = "- ESC : visualization\n- A : add cell\n- C : combine cells - t\n- a : apoptotic event\n- Z : undo all actions\n- s : show/hide outlines"          
+        actionsbox1 = "Possible actions:\n- d : delete cell\n- c : combine cells - z\n- m : mitotic events\n- z : undo previous action\n- s : separate cells - t\n- q : quit plot"
+        actionsbox2 = "- ESC : visualization\n- A : add cell\n- C : combine cells - t\n- a : apoptotic event\n- Z : undo all actions\n- o : show/hide outlines"          
         self.actionlist1 = self.fig.text(0.6, 0.98, actionsbox1, fontsize=1, ha='left', va='top')
         self.actionlist2 = self.fig.text(0.8, 0.98, actionsbox2, fontsize=1, ha='left', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
@@ -1627,9 +1628,13 @@ class PlotActionCT:
                 self.apoptosis()
             elif event.key == 'escape':
                 self.visualization()
-            elif event.key == 's':
+            elif event.key == 'o':
                 self.plot_outlines = not self.plot_outlines
                 self.visualization()
+            elif event.key == 's':
+                self.CT.one_step_copy(self.t)
+                self.current_state="Sep"
+                self.separe_cells_t()
             elif event.key == 'z':
                 self.CT.undo_corrections(all=False)
                 for PACT in self.CT.PACTs:
@@ -1652,7 +1657,7 @@ class PlotActionCT:
 
                 for PACT in self.CT.PACTs:
                     PACT.list_of_cells = []
-                    PACT.CT.cells_to_combine = []
+                    PACT.CT.list_of_cells = []
                     PACT.CT.mito_cells = []
                     PACT.current_subplot=None
                     PACT.current_state=None
@@ -1704,7 +1709,7 @@ class PlotActionCT:
                         PACT.current_state=None
                         PACT.ax_sel=None
                         PACT.z=None
-                        PACT.CT.cells_to_combine = []
+                        PACT.CT.list_of_cells = []
                         PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                         PACT.visualization()
                         PACT.update()
@@ -1719,6 +1724,20 @@ class PlotActionCT:
                         PACT.current_state=None
                         PACT.ax_sel=None
                         PACT.z=None
+                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
+                        PACT.visualization()
+                        PACT.update()
+
+                elif self.current_state=="Sep":
+                    self.CP.stopit()
+                    delattr(self, 'CP')
+                    self.CT.separate_cells_t()
+                    for PACT in self.CT.PACTs:
+                        PACT.current_subplot=None
+                        PACT.current_state=None
+                        PACT.ax_sel=None
+                        PACT.z=None
+                        PACT.CT.list_of_cells = []
                         PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                         PACT.visualization()
                         PACT.update()
@@ -1854,7 +1873,7 @@ class PlotActionCT:
 
     def extract_unique_cell_time_list_of_cells(self):
         if self.current_state=="Com":
-            list_of_cells=self.CT.cells_to_combine
+            list_of_cells=self.CT.list_of_cells
         if self.current_state=="mit":
             list_of_cells=self.CT.mito_cells
         elif self.current_state=="apo":
@@ -2175,17 +2194,17 @@ class CellPicker_com_t():
                             lab = self.PACT.CT.Labels[self.PACT.t][z][i]
                             cell = [lab, self.PACT.t]
                             # Check if the cell is already on the list
-                            if len(self.PACT.CT.cells_to_combine)==0:
-                                self.PACT.CT.cells_to_combine.append(cell)
+                            if len(self.PACT.CT.list_of_cells)==0:
+                                self.PACT.CT.list_of_cells.append(cell)
                             else:
-                                if lab not in np.array(self.PACT.CT.cells_to_combine)[:,0]:
-                                    if len(self.PACT.CT.cells_to_combine)==2:
+                                if lab not in np.array(self.PACT.CT.list_of_cells)[:,0]:
+                                    if len(self.PACT.CT.list_of_cells)==2:
                                         self.PACT.CT.printfancy("cannot combine more than 2 cells at once")
                                     else:
-                                        if self.PACT.t not in np.array(self.PACT.CT.cells_to_combine)[:,1]:
-                                            self.PACT.CT.cells_to_combine.append(cell)
+                                        if self.PACT.t not in np.array(self.PACT.CT.list_of_cells)[:,1]:
+                                            self.PACT.CT.list_of_cells.append(cell)
                                 else:
-                                    self.PACT.CT.cells_to_combine.remove(cell)
+                                    self.PACT.CT.list_of_cells.remove(cell)
                             for PACT in self.PACT.CT.PACTs:
                                 if PACT.current_state=="Com":
                                     PACT.update()
