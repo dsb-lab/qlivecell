@@ -1496,7 +1496,10 @@ class CellTracking(object):
         if substract_mean:
             self.cell_movement_substract_mean()
             self.compute_mean_cell_movement()
-        
+
+        ymax  = max([max(cell.disp) if len(cell.disp)>0 else 0 for cell in self.cells])+1
+        ymin  = min([min(cell.disp) if len(cell.disp)>0 else 0 for cell in self.cells])-1
+
         if label_list is None: label_list=list(copy(self.unique_labels))
         
         used_markers = []
@@ -1515,7 +1518,6 @@ class CellTracking(object):
         len_cmap = len(self._masks_colors)
         len_ls   = len_cmap*len(PLTMARKERS)
         countm   = 0
-        countls  = 0
         markerid = 0
         linestyleid = 0
         for cell in self.cells:
@@ -1529,13 +1531,11 @@ class CellTracking(object):
                 tplot = [cell.times[i]*self._tstep for i in range(1,len(cell.times))]
                 self.ax_cellmovement.plot(tplot, cell.disp, c=c, marker=m, linewidth=2, linestyle=ls,label="%d" %label)
             countm+=1
-            countls+=1
             if countm==len_cmap:
                 countm=0
                 markerid+=1
                 if markerid==len(PLTMARKERS): 
                     markerid=0
-                    countls=0
                     linestyleid+=1
         if plot_mean:
             tplot = [i*self._tstep for i in range(1,self.times)]
@@ -1563,6 +1563,7 @@ class CellTracking(object):
         self.ax_cellmovement.set_xlabel("time (min)")
         self.ax_cellmovement.xaxis.set_major_locator(MaxNLocator(integer=True))
         self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.04, 1))
+        self.ax_cellmovement.set_ylim(ymin,ymax)
         self.fig_cellmovement.tight_layout()
         if firstcall:
             if plot_tracking: self.plot_tracking(cell_movement=True)
