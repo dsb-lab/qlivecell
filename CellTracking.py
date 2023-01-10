@@ -16,14 +16,11 @@ import warnings
 from matplotlib.lines import Line2D
 from matplotlib.lines import lineStyles
 from matplotlib.ticker import MaxNLocator
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
+plt.rcParams['keymap.save'].remove('s')
 
 PLTLINESTYLES = list(lineStyles.keys())
-
 PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X" ,"p","^"]
-
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
-#plt.rcParams.update({'figure.max_open_warning': 0})
-plt.rcParams['keymap.save'].remove('s')
 
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
@@ -1475,7 +1472,6 @@ class CellTracking(object):
             cell.compute_movement(self._cdaxis)
 
     def compute_mean_cell_movement(self):
-        self.compute_cell_movement()
         nrm = np.zeros(self.times-1)
         self.cell_movement = np.zeros(self.times-1)
         for cell in self.cells:
@@ -1486,13 +1482,14 @@ class CellTracking(object):
             
     def cell_movement_substract_mean(self):
         for cell in self.cells:
-                new_disp = []
-                for i,t in enumerate(cell.times[:-1]):
-                    new_val = cell.disp[i] - self.cell_movement[t]
-                    new_disp.append(new_val)
+            new_disp = []
+            for i,t in enumerate(cell.times[:-1]):
+                new_val = cell.disp[i] - self.cell_movement[t]
+                new_disp.append(new_val)
+            cell.disp = new_disp
 
     def plot_cell_movement(self, label_list=None, plot_mean=True, plot_tracking=True, substract_mean=None):
-        if substract_mean in None: substract_mean=self._mscm
+        if substract_mean is None: substract_mean=self._mscm
 
         self.compute_cell_movement()
         self.compute_mean_cell_movement()
@@ -1500,8 +1497,7 @@ class CellTracking(object):
             self.cell_movement_substract_mean()
             self.compute_mean_cell_movement()
         
-        if label_list is None:
-            label_list=list(copy(self.unique_labels))
+        if label_list is None: label_list=list(copy(self.unique_labels))
         
         used_markers = []
         used_styles  = []
