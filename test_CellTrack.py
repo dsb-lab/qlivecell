@@ -32,7 +32,7 @@ CT = CellTracking( IMGS, model, embcode
                     , plot_tracking_windows=1
                     , backup_steps=5
                     , time_step=5
-                    , cell_distance_axis="xz")
+                    , cell_distance_axis="xy")
 
 CT()
 CT.plot_cell_movement(plot_mean=True, plot_tracking=True)

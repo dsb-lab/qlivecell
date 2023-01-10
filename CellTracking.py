@@ -15,6 +15,7 @@ import gc
 import warnings
 from matplotlib.lines import Line2D
 from matplotlib.lines import lineStyles
+from matplotlib.ticker import MaxNLocator
 
 PLTLINESTYLES = list(lineStyles.keys())
 PLTMARKERS = list(Line2D.markers.keys())
@@ -840,7 +841,7 @@ class CellTracking(object):
         self.mitotic_events    = []
         self._backup_steps= backup_steps
         self.plot_tracking_windows=plot_tracking_windows
-        self.tstep = time_step
+        self._tstep = time_step
         self._assign_color_to_label()
 
     def printfancy(self, string, finallength=70):
@@ -1489,7 +1490,7 @@ class CellTracking(object):
             self.compute_mean_cell_movement()
         
         if label_list is None:
-            label_list=copy(self.unique_labels)
+            label_list=list(copy(self.unique_labels))
         
         used_markers = []
         if hasattr(self, "fig_cellmovement"):
@@ -1512,13 +1513,15 @@ class CellTracking(object):
                 c = self._masks_colors[self._labels_color_id[label]]
                 m = PLTMARKERS[markerid]
                 if m not in used_markers: used_markers.append(m)
-                self.ax_cellmovement.plot(cell.times[1:], cell.disp, c=c, marker=m, linewidth=2, label="%d" %label)
+                tplot = [cell.times[i]*self._tstep for i in range(1,len(cell.times))]
+                self.ax_cellmovement.plot(tplot, cell.disp, c=c, marker=m, linewidth=2, label="%d" %label)
             counter+=1
             if counter==len_cmap:
                 counter=0
                 markerid+=1  
         if plot_mean:
-            self.ax_cellmovement.plot(range(1, self.times), self.cell_movement, c='k', linewidth=4, label="mean")
+            tplot = [i*self._tstep for i in range(1,self.times)]
+            self.ax_cellmovement.plot(tplot, self.cell_movement, c='k', linewidth=4, label="mean")
             leg_patches = [Line2D([0], [0], color="k", lw=4, label="mean")]
         else:
             leg_patches = []
@@ -1534,6 +1537,9 @@ class CellTracking(object):
             leg_patches.append(Line2D([0], [0], marker=m, color='k', label="+%d" %count, markersize=10))
             count+=len_cmap
         
+        self.ax_cellmovement.set_ylabel("cell movement")
+        self.ax_cellmovement.set_xlabel("time (min)")
+        self.ax_cellmovement.xaxis.set_major_locator(MaxNLocator(integer=True))
         self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.02, 1))
         self.fig_cellmovement.tight_layout()
         if firstcall:
@@ -1564,7 +1570,7 @@ class PlotActionCT:
         self.actionlist1 = self.fig.text(0.6, 0.98, actionsbox1, fontsize=1, ha='left', va='top')
         self.actionlist2 = self.fig.text(0.8, 0.98, actionsbox2, fontsize=1, ha='left', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
-        self.timetxt = self.fig.text(0.05, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
+        self.timetxt = self.fig.text(0.05, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
         self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n                     PRESS ENTER TO START", fontsize=1, ha='left', va='top')
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
         self.plot_outlines=True
@@ -1772,7 +1778,7 @@ class PlotActionCT:
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Cells\nSelected\n\n"+s)
         self.instructions.set(fontsize=width_or_height/scale2)
-        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
+        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
         self.title.set(fontsize=width_or_height/scale2)
         plt.subplots_adjust(top=0.9,right=0.8)
         self.fig.canvas.draw_idle()
@@ -2346,7 +2352,7 @@ class PlotActionCellMovement:
         self.get_size()
         self.instructions = self.fig.text(0.2, 0.98, "RIGHT CLICK TO SELECT/UNSELECT CELLS\nTO SHOW ON THE CELL MOVEMENT PLOT", fontsize=1, ha='left', va='top')
         self.plot_mean=True
-        self.label_list=[]
+        self.label_list=list(copy(self.CT.unique_labels))
         self.update()
         self.CP = CellPicker_CM(self)
 
@@ -2354,7 +2360,7 @@ class PlotActionCellMovement:
         if self.current_state==None:
             if event.key=="enter":
                 if len(self.label_list)>0: self.label_list=[]
-                else: self.label_list = copy(self.CT.unique_labels)
+                else: self.label_list = list(copy(self.CT.unique_labels))
                 self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
                 self.update()
             elif event.key=="m":
