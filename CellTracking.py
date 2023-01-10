@@ -15,15 +15,12 @@ import gc
 import warnings
 from matplotlib.lines import Line2D
 from matplotlib.lines import lineStyles
+from matplotlib.ticker import MaxNLocator
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
+plt.rcParams['keymap.save'].remove('s')
 
 PLTLINESTYLES = list(lineStyles.keys())
-PLTMARKERS = list(Line2D.markers.keys())
-
-PLTMARKERS = ["", "o", "d", "s", "P", "*", "X" ,"p","|"]
-
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
-#plt.rcParams.update({'figure.max_open_warning': 0})
-plt.rcParams['keymap.save'].remove('s')
+PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X" ,"p","^"]
 
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
@@ -808,7 +805,7 @@ class Cell():
         return np.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
 
 class CellTracking(object):
-    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None):
+    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", mean_substraction_cell_movement=False):
         self.embcode           = embcode
         self.stacks            = stacks
         self._model            = model
@@ -833,13 +830,15 @@ class CellTracking(object):
         self._masks_colors     = self._masks_cmap.colors
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
+        self._cdaxis = cell_distance_axis
         self.cells_to_combine  = []
         self.mito_cells        = []
         self.apoptotic_events  = []
         self.mitotic_events    = []
         self._backup_steps= backup_steps
         self.plot_tracking_windows=plot_tracking_windows
-        self.tstep = time_step
+        self._tstep = time_step
+        self._mscm   = mean_substraction_cell_movement
         self._assign_color_to_label()
 
     def printfancy(self, string, finallength=70):
@@ -1334,7 +1333,7 @@ class CellTracking(object):
                 out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
                 self._outline_scatters[pactid].append(out_plot)
 
-    def plot_tracking(self, windows=None):
+    def plot_tracking(self, windows=None, cell_movement=False):
         if windows==None:
             windows=self.plot_tracking_windows
         self.PACTs=[]
@@ -1344,10 +1343,13 @@ class CellTracking(object):
         self._outline_scatters = []
         self._pos_scatters     = []
         self._annotations      = []
+
+        if cell_movement: windows=1
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
-            self.PACTs.append(PlotActionCT(fig, ax, self, w))
+            if cell_movement: self.PACTs.append(PlotActionCellMovement(fig, ax, self, w))
+            else: self.PACTs.append(PlotActionCT(fig, ax, self, w))
             self.PACTs[w].zs = np.zeros_like(ax)
             zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
             t=0
@@ -1465,12 +1467,11 @@ class CellTracking(object):
         coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
         self._labels_color_id = [next(coloriter) for i in range(1000)]
     
-    def compute_cell_movement(self, mode="xy"):
+    def compute_cell_movement(self):
         for cell in self.cells:
-            cell.compute_movement(mode)
+            cell.compute_movement(self._cdaxis)
 
-    def compute_mean_cell_movement(self,mode="xy"):
-        self.compute_cell_movement(mode=mode)
+    def compute_mean_cell_movement(self):
         nrm = np.zeros(self.times-1)
         self.cell_movement = np.zeros(self.times-1)
         for cell in self.cells:
@@ -1478,33 +1479,67 @@ class CellTracking(object):
             nrm[time_ids]+=np.ones(len(time_ids))
             self.cell_movement[time_ids]+=cell.disp
         self.cell_movement /= nrm
+            
+    def cell_movement_substract_mean(self):
+        for cell in self.cells:
+            new_disp = []
+            for i,t in enumerate(cell.times[:-1]):
+                new_val = cell.disp[i] - self.cell_movement[t]
+                new_disp.append(new_val)
+            cell.disp = new_disp
 
-    def plot_cell_movement(self, label_list=None, plot_mean=True, plot_tracking=False):
-        if not hasattr(self.cells[0], 'disp'):
-            self.printfancy("ERROR: compute cell movement first using compute_cell_movement(mode)")
-            return
+    def plot_cell_movement(self, label_list=None, plot_mean=True, plot_tracking=True, substract_mean=None):
+        if substract_mean is None: substract_mean=self._mscm
+
+        self.compute_cell_movement()
+        self.compute_mean_cell_movement()
+        if substract_mean:
+            self.cell_movement_substract_mean()
+            self.compute_mean_cell_movement()
         
-        if label_list is None:
-            label_list=copy(self.unique_labels)
+        if label_list is None: label_list=list(copy(self.unique_labels))
         
         used_markers = []
-        fig, ax = plt.subplots(figsize=(10,10))
+        used_styles  = []
+        if hasattr(self, "fig_cellmovement"):
+            if plt.fignum_exists(self.fig_cellmovement.number):
+                firstcall=False
+                self.ax_cellmovement.cla()
+            else:
+                firstcall=True
+                self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
+        else:
+            firstcall=True
+            self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
+        
         len_cmap = len(self._masks_colors)
-        counter  = 0
+        len_ls   = len_cmap*len(PLTMARKERS)
+        countm   = 0
+        countls  = 0
         markerid = 0
+        linestyleid = 0
         for cell in self.cells:
             label = cell.label
             if label in label_list:
-                c = self._masks_colors[self._labels_color_id[label]]
-                m = PLTMARKERS[markerid]
+                c  = self._masks_colors[self._labels_color_id[label]]
+                m  = PLTMARKERS[markerid]
+                ls = PLTLINESTYLES[linestyleid]
                 if m not in used_markers: used_markers.append(m)
-                ax.plot(cell.times[1:], cell.disp, c=c, marker=m, linewidth=2, label="%d" %label)
-            counter+=1
-            if counter==len_cmap:
-                counter=0
-                markerid+=1  
+                if ls not in used_styles: used_styles.append(ls)
+                tplot = [cell.times[i]*self._tstep for i in range(1,len(cell.times))]
+                self.ax_cellmovement.plot(tplot, cell.disp, c=c, marker=m, linewidth=2, linestyle=ls,label="%d" %label)
+            countm+=1
+            countls+=1
+            if countm==len_cmap:
+                countm=0
+                markerid+=1
+                if markerid==len(PLTMARKERS): 
+                    markerid=0
+                    countls=0
+                    linestyleid+=1
         if plot_mean:
-            ax.plot(range(1,self.times), self.cell_movement, c='k', linewidth=4, label="mean")
+            tplot = [i*self._tstep for i in range(1,self.times)]
+            self.ax_cellmovement.plot(tplot, self.cell_movement, c='k', linewidth=4, label="mean")
             leg_patches = [Line2D([0], [0], color="k", lw=4, label="mean")]
         else:
             leg_patches = []
@@ -1516,15 +1551,22 @@ class CellTracking(object):
 
         count = 0
         for i, m in enumerate(used_markers):
-            #if any(l in label_list for l in range(count, count+10)):
             leg_patches.append(Line2D([0], [0], marker=m, color='k', label="+%d" %count, markersize=10))
             count+=len_cmap
 
-        ax.legend(handles=leg_patches, bbox_to_anchor=(1.02, 1))
-        fig.tight_layout()
-        plt.show()
-        if plot_tracking:
-            self.plot_tracking()
+        count = 0
+        for i, ls in enumerate(used_styles):
+            leg_patches.append(Line2D([0], [0], linestyle=ls, color='k', label="+%d" %count, linewidth=2))
+            count+=len_ls
+
+        self.ax_cellmovement.set_ylabel("cell movement")
+        self.ax_cellmovement.set_xlabel("time (min)")
+        self.ax_cellmovement.xaxis.set_major_locator(MaxNLocator(integer=True))
+        self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.04, 1))
+        self.fig_cellmovement.tight_layout()
+        if firstcall:
+            if plot_tracking: self.plot_tracking(cell_movement=True)
+            else: plt.show()
 
 class PlotActionCT:
     def __init__(self, fig, ax, CT, id):
@@ -1550,7 +1592,7 @@ class PlotActionCT:
         self.actionlist1 = self.fig.text(0.6, 0.98, actionsbox1, fontsize=1, ha='left', va='top')
         self.actionlist2 = self.fig.text(0.8, 0.98, actionsbox2, fontsize=1, ha='left', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
-        self.timetxt = self.fig.text(0.05, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
+        self.timetxt = self.fig.text(0.05, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
         self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n                     PRESS ENTER TO START", fontsize=1, ha='left', va='top')
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
         self.plot_outlines=True
@@ -1758,7 +1800,7 @@ class PlotActionCT:
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Cells\nSelected\n\n"+s)
         self.instructions.set(fontsize=width_or_height/scale2)
-        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT.tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
+        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
         self.title.set(fontsize=width_or_height/scale2)
         plt.subplots_adjust(top=0.9,right=0.8)
         self.fig.canvas.draw_idle()
@@ -2262,12 +2304,61 @@ class CellPicker_mit():
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
+class CellPicker_CM():
+    def __init__(self, PACM):
+        self.PACM  = PACM
+        self.cid = self.PACM.fig.canvas.mpl_connect('button_press_event', self)
+        self.canvas  = self.PACM.fig.canvas
+    def __call__(self, event):
+        if event.button==3:
+            if isinstance(self.PACM.ax, np.ndarray):
+                axshape = self.PACM.ax.shape
+                # Select ax 
+                for i in range(axshape[0]):
+                        for j in range(axshape[1]):
+                                if event.inaxes==self.PACM.ax[i,j]:
+                                    self.PACM.current_subplot = [i,j]
+                                    self.PACM.ax_sel = self.PACM.ax[i,j]
+                                    self.PACM.z = self.PACM.zs[i,j]
+            else:
+                self.PACM.ax_sel = self.PACM.ax
+
+            if event.inaxes!=self.PACM.ax_sel:
+                pass
+            else:
+                x = np.rint(event.xdata).astype(np.int64)
+                y = np.rint(event.ydata).astype(np.int64)
+                picked_point = np.array([x, y])
+                # Check if the point is inside the mask of any cell
+                for i ,mask in enumerate(self.PACM.CT.Masks[self.PACM.t][self.PACM.z]):
+                    for point in mask:
+                        if (picked_point==point).all():
+                            z   = self.PACM.z
+                            lab = self.PACM.CT.Labels[self.PACM.t][z][i]
+                            cell = lab
+                            idxtopop=[]
+                            pop_cell=False
+                            for jj, _cell in enumerate(self.PACM.label_list):
+                                _lab = _cell
+                                if _lab == lab:
+                                    pop_cell=True
+                                    idxtopop.append(jj)
+                            if pop_cell:
+                                idxtopop.sort(reverse=True)
+                                for jj in idxtopop:
+                                    self.PACM.label_list.pop(jj)
+                            else:
+                                self.PACM.label_list.append(cell)
+                            self.PACM.CT.plot_cell_movement(label_list=self.PACM.label_list, plot_mean=self.PACM.plot_mean, plot_tracking=False)
+                            self.PACM.update()
+    def stopit(self):
+        self.canvas.mpl_disconnect(self.cid)
+
 class PlotActionCellMovement:
     def __init__(self, fig, ax, CT, id):
         self.fig=fig
         self.ax=ax
         self.id=id
-        self.plot_masks=CT.plot_masks
         self.CT=CT
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
@@ -2282,51 +2373,52 @@ class PlotActionCellMovement:
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
         self.get_size()
         self.instructions = self.fig.text(0.2, 0.98, "RIGHT CLICK TO SELECT/UNSELECT CELLS\nTO SHOW ON THE CELL MOVEMENT PLOT", fontsize=1, ha='left', va='top')
-        self.plot_outlines=True
+        self.plot_mean=True
+        self.label_list=list(copy(self.CT.unique_labels))
         self.update()
+        self.CP = CellPicker_CM(self)
 
     def __call__(self, event):
-        if event.key=="enter":
-            # SELECT/UNSELECT ALL CELLS
-            self.visualization()
-            self.update()
-        else:
-            pass
-                
+        if self.current_state==None:
+            if event.key=="enter":
+                if len(self.label_list)>0: self.label_list=[]
+                else: self.label_list = list(copy(self.CT.unique_labels))
+                self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
+                self.update()
+            elif event.key=="m":
+                self.plot_mean = not self.plot_mean
+                self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
+                self.update()
+                    
     # The function to be called anytime a slider's value changes
     def update_slider(self, t):
         self.t=t
-        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.CT.replot_tracking(self, plot_outlines=True)
         self.update()
 
     def onscroll(self, event):
-        if self.current_state == None:
-            self.current_state="SCL"
-        if event.button == 'up':
-            self.cr = self.cr - 1
-        elif event.button == 'down':
-            self.cr = self.cr + 1
+        if self.current_state == None: self.current_state="SCL"
+        if event.button == 'up':       self.cr = self.cr - 1
+        elif event.button == 'down':   self.cr = self.cr + 1
+
         self.cr = max(self.cr, 0)
         self.cr = min(self.cr, self.max_round)
-        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.CT.replot_tracking(self, plot_outlines=True)
         self.update()
 
-        if self.current_state=="SCL":
-            self.current_state=None
+        if self.current_state=="SCL": self.current_state=None
 
     def update(self):
-        # REPLOT CELL MOVEMENT PLOT and then...
+
         self.get_size()
         scale=90
-        if self.figheight < self.figwidth:
-            width_or_height = self.figheight/scale
-        else:
-            width_or_height = self.figwidth/scale
+        if self.figheight < self.figwidth: width_or_height = self.figheight/scale
+        else: width_or_height = self.figwidth/scale
 
         self.instructions.set(fontsize=width_or_height)
-        self.title.set(fontsize=width_or_height)
         plt.subplots_adjust(top=0.9,right=0.8)
         self.fig.canvas.draw_idle()
+        self.CT.fig_cellmovement.canvas.draw()
         self.fig.canvas.draw()
 
     def get_size(self):
