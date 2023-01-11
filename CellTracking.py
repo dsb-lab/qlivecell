@@ -1214,14 +1214,17 @@ class CellTracking(object):
             cell.outlines[tid].pop(idrem)
             cell.masks[tid].pop(idrem)
             cell._update(self)
+            print(cell.times)
             if cell._rem:
+                print(cell.label)
                 idrem = cell.id
                 cellids.remove(idrem)
                 self._del_cell(lab)
         for i,cellid in enumerate(np.unique(cellids)):
             z=Zs[i]
             cell  = self._get_cell(cellid=cellid)
-            cell.find_z_discontinuities(self, PACT.t)
+            try: cell.find_z_discontinuities(self, PACT.t)
+            except ValueError: pass
         self.update_labels()
 
     def combine_cells_z(self, PACT):
