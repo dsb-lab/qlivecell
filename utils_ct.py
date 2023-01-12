@@ -44,7 +44,8 @@ def save_CT(CT, path=None, filename=None, _del_plots=True):
     pthsave = path+filename
     file_to_store = open(pthsave+".pickle", "wb")
     if _del_plots:
-        delattr(CT, 'PACTs')
+        if hasattr(CT, 'PACTs'):
+            delattr(CT, 'PACTs')
     pickle.dump(CT, file_to_store)
     file_to_store.close()
 

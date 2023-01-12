@@ -1214,9 +1214,7 @@ class CellTracking(object):
             cell.outlines[tid].pop(idrem)
             cell.masks[tid].pop(idrem)
             cell._update(self)
-            print(cell.times)
             if cell._rem:
-                print(cell.label)
                 idrem = cell.id
                 cellids.remove(idrem)
                 self._del_cell(lab)
@@ -1230,31 +1228,34 @@ class CellTracking(object):
     def combine_cells_z(self, PACT):
         cells = [x[0] for x in PACT.list_of_cells]
         Zs    = [x[1] for x in PACT.list_of_cells]
-        if len(cells)!=2: return
-
-        cell_min = self._get_cell(min(cells))
-        cell_max = self._get_cell(max(cells))
-        
         t = PACT.t
-        tid_min_cell = cell_min.times.index(t)
-        tid_max_cell = cell_max.times.index(t)
-        zs_max_cell = cell_max.zs[tid_max_cell]
 
-        outlines_max_cell = cell_max.outlines[tid_max_cell]
-        masks_max_cell    = cell_max.masks[tid_max_cell]
-        for zid, z in enumerate(zs_max_cell):
-            cell_min.zs[tid_min_cell].append(z)
-            cell_min.outlines[tid_min_cell].append(outlines_max_cell[zid])
-            cell_min.masks[tid_min_cell].append(masks_max_cell[zid])
-        cell_min._update(self)
+        cell1 = self._get_cell(cells[0])
+        tid_cell1 = cell1.times.index(t)
 
-        cell_max.times.pop(tid_max_cell)
-        cell_max.zs.pop(tid_max_cell)
-        cell_max.outlines.pop(tid_max_cell)
-        cell_max.masks.pop(tid_max_cell)
-        cell_max._update(self)
-        if cell_max._rem:
-            self._del_cell(max(cells))
+        for lab in cells[1:]:
+
+            cell2 = self._get_cell(lab)
+        
+            tid_cell2 = cell2.times.index(t)
+            zs_cell2 = cell2.zs[tid_cell2]
+
+            outlines_cell2 = cell2.outlines[tid_cell2]
+            masks_cell2    = cell2.masks[tid_cell2]
+
+            for zid, z in enumerate(zs_cell2):
+                cell1.zs[tid_cell1].append(z)
+                cell1.outlines[tid_cell1].append(outlines_cell2[zid])
+                cell1.masks[tid_cell1].append(masks_cell2[zid])
+            cell1._update(self)
+
+            cell2.times.pop(tid_cell2)
+            cell2.zs.pop(tid_cell2)
+            cell2.outlines.pop(tid_cell2)
+            cell2.masks.pop(tid_cell2)
+            cell2._update(self)
+            if cell2._rem:
+                self._del_cell(lab)
         self.update_labels()
             
     def combine_cells_t(self):
@@ -1624,13 +1625,11 @@ class PlotActionCT:
         groupsize  = self.CT.plot_layout[0] * self.CT.plot_layout[1]
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
         self.get_size()
-        actionsbox1 = "Possible actions:\n- d : delete cell\n- c : combine cells - z\n- m : mitotic events\n- z : undo previous action\n- s : separate cells - t\n- q : quit plot"
-        actionsbox2 = "- ESC : visualization\n- A : add cell\n- C : combine cells - t\n- a : apoptotic event\n- Z : undo all actions\n- o : show/hide outlines"          
-        self.actionlist1 = self.fig.text(0.6, 0.98, actionsbox1, fontsize=1, ha='left', va='top')
-        self.actionlist2 = self.fig.text(0.8, 0.98, actionsbox2, fontsize=1, ha='left', va='top')
+        actionsbox = "Possible actions: \n- ESC : visualization\n- A : add cell\n- d : delete cell\n- c : combine cells - z\n- C : combine cells - t\n- s : separate cells - t\n- a : apoptotic event\n- m : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- q : quit plot"
+        self.actionlist = self.fig.text(0.01, 0.8, actionsbox, fontsize=1, ha='left', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
         self.timetxt = self.fig.text(0.05, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
-        self.instructions = self.fig.text(0.2, 0.98, "ORDER OF ACTIONS: DELETE, COMBINE, MITO + APO\n                     PRESS ENTER TO START", fontsize=1, ha='left', va='top')
+        self.instructions = self.fig.text(0.2, 0.98, "PRESS ENTER TO START", fontsize=1, ha='left', va='top')
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
         self.plot_outlines=True
         self.update()
@@ -1852,14 +1851,13 @@ class PlotActionCT:
             scale1=110
             scale2=90
             width_or_height = self.figwidth
-        self.actionlist1.set(fontsize=width_or_height/scale1)
-        self.actionlist2.set(fontsize=width_or_height/scale1)
+        self.actionlist.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Cells\nSelected\n\n"+s)
         self.instructions.set(fontsize=width_or_height/scale2)
         self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
         self.title.set(fontsize=width_or_height/scale2)
-        plt.subplots_adjust(top=0.9,right=0.8)
+        plt.subplots_adjust(top=0.9,left=0.2)
         self.fig.canvas.draw_idle()
         self.fig.canvas.draw()
 
@@ -2155,41 +2153,43 @@ class CellPicker_com_z():
                             lab = self.PACT.CT.Labels[self.PACT.t][z][i]
                             cell = [lab, z, self.PACT.t]
 
-                            # check for errors in the cell selected
                             if cell in self.PACT.list_of_cells:
                                 self.PACT.list_of_cells.remove(cell)
                                 self.PACT.update()
                                 return
+                            
+                            # Check that times match among selected cells
                             if len(self.PACT.list_of_cells)!=0:
-                                if len(self.PACT.list_of_cells)==2:
-                                    self.PACT.CT.printfancy("ERROR: Te odio perro sanchez. can only combine two cells at one")
-                                    return
                                 if cell[2]!=self.PACT.list_of_cells[0][2]:
-                                    self.PACT.CT.printfancy("ERROR: Pero como puedes ser tan mendrugo? cells must be selected on same time")
+                                    self.PACT.CT.printfancy("ERROR: cells must be selected on same time")
                                     return 
-                                Zs = [z, self.PACT.list_of_cells[0][1]]
-                                if not abs(Zs[0]-Zs[1])==1:
+                                
+                                # check that planes selected are contiguous over z
+                                Zs = [x[1] for x in self.PACT.list_of_cells]
+                                Zs.append(z)
+                                Zs.sort()
+
+                                if any((Zs[i+1]-Zs[i])!=1 for i in range(len(Zs)-1)):
                                     self.PACT.CT.printfancy("ERROR: cells must be contiguous over z")
                                     return
-
-                                cells = [lab, self.PACT.list_of_cells[0][0]]
-                                cell_min = self._get_cell(min(cells))
-                                cell_max = self._get_cell(max(cells))
-                                t = self.t
-                                tid_min_cell = cell_min.times.index(t)
-                                tid_max_cell = cell_max.times.index(t)
-                                zs_max_cell = cell_max.zs[tid_max_cell]
-                                zs_min_cell = cell_min.zs[tid_min_cell]
-
+                                                                                                
                                 # check if cells have any overlap in their zs
-                                if any(i in zs_max_cell for i in zs_min_cell):
+                                labs = [x[0] for x in self.PACT.list_of_cells]
+                                labs.append(lab)
+                                ZS = []
+                                t = self.PACT.t
+                                for l in labs:
+                                    c = self.PACT.CT._get_cell(l)
+                                    tid = c.times.index(t)
+                                    ZS = ZS + c.zs[tid]
+                                
+                                if len(ZS) != len(set(ZS)):
                                     self.PACT.CT.printfancy("ERROR: cells overlap in z")
                                     return
-                        
+                            
                             # proceed with the selection
                             self.PACT.list_of_cells.append(cell)
                             self.PACT.update()
-            # Select cell and store it   
 
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
@@ -2550,7 +2550,7 @@ class PlotActionCellMovement:
         else: width_or_height = self.figwidth/scale
 
         self.instructions.set(fontsize=width_or_height)
-        plt.subplots_adjust(top=0.9,right=0.8)
+        plt.subplots_adjust(top=0.9,left=0.2)
         self.fig.canvas.draw_idle()
         self.CT.fig_cellmovement.canvas.draw()
         self.fig.canvas.draw()

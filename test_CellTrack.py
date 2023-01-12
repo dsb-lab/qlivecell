@@ -4,10 +4,10 @@ import os
 from CellTracking import *
 from utils_ct import *
 pth='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
-pthtosave='/home/pablo/Desktop/PhD/projects/Data/blastocysts/CellTrack/2h_claire_ERK-KTR_MKATE2/'
+pthtosave='/home/pablo/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_claire_ERK-KTR_MKATE2/'
 
 files = os.listdir(pth)
-emb = 10
+emb = 9
 embcode=files[emb][0:-4]
 IMGS   = [imread(pth+f)[0:2,:,1,:,:] for f in files[emb:emb+1]][0]
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
@@ -36,3 +36,8 @@ CT = CellTracking( IMGS, model, embcode
                     , mean_substraction_cell_movement=True)
 
 CT()
+#CT.plot_tracking()
+#save_CT(CT, pthtosave, embcode)
+#CTl = load_CT(pthtosave, embcode)
+
+
