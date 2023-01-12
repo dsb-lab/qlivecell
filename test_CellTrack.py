@@ -9,7 +9,7 @@ pthtosave='/home/pablo/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h
 files = os.listdir(pth)
 emb = 9
 embcode=files[emb][0:-4]
-IMGS   = [imread(pth+f)[0:10,:,1,:,:] for f in files[emb:emb+1]][0]
+IMGS   = [imread(pth+f)[0:2,:,1,:,:] for f in files[emb:emb+1]][0]
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
 #model  = models.Cellpose(gpu=True, model_type='nuclei')
 

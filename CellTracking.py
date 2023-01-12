@@ -1710,6 +1710,9 @@ class PlotActionCT:
         else:
             if event.key=='escape':
                 if self.current_state=="add":
+                    if hasattr(self, 'patch'):
+                        self.patch.set_visible(False)
+                        delattr(self, 'patch')
                     self.CT.linebuilder.stopit()
                 else:
                     self.CP.stopit()
@@ -1733,7 +1736,8 @@ class PlotActionCT:
                     if self.current_subplot==None:
                         pass
                     else:
-                        self.ax_sel.patches.remove(self.patch)
+                        self.patch.set_visible(False)
+                        delattr(self, 'patch')
                         self.CT.complete_add_cell(self)
                         self.CT.update_labels()
                         for PACT in self.CT.PACTs:
@@ -1920,12 +1924,12 @@ class PlotActionCT:
                     bbox = self.ax_sel.get_window_extent()
                     self.patch =mtp.patches.Rectangle((bbox.x0 - bbox.width*0.1, bbox.y0-bbox.height*0.1),
                                         bbox.width*1.2, bbox.height*1.2,
-                                        fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=-1,
+                                        fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=1000,
                                         transform=None, figure=self.fig)
                     self.fig.patches.extend([self.patch])
+                    #self.ax_sel.add_patch(self.patch)
                     self.instructions.set(text="Right click to add points\nPress ENTER when finished", ha='left', x=0.2)
                     self.update()
-                    self.ax_sel.add_patch(self.patch)
             else:
                 if self.current_subplot == None:
                     self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
@@ -1935,21 +1939,14 @@ class PlotActionCT:
                     i = self.current_subplot[0]
                     j = self.current_subplot[1]
                     self.ax_sel = self.ax[i,j]
-                    m, n = self.ax.shape
-                    bbox00 = self.ax[0, 0].get_window_extent()
-                    bbox01 = self.ax[0, 1].get_window_extent()
-                    bbox10 = self.ax[1, 0].get_window_extent()
-                    pad_h = 0 if n == 1 else bbox01.x0 - bbox00.x0 - bbox00.width
-                    pad_v = 0 if m == 1 else bbox00.y0 - bbox10.y0 - bbox10.height
                     bbox = self.ax_sel.get_window_extent()
-                    self.patch =mtp.patches.Rectangle((bbox.x0 - pad_h / 2, bbox.y0 - pad_v / 2),
-                                        bbox.width + pad_h, bbox.height + pad_v,
+                    self.patch =mtp.patches.Rectangle((bbox.x0 - bbox.width*0.1, bbox.y0-bbox.height*0.1),
+                                        bbox.width*1.2, bbox.height*1.2,
                                         fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=-1,
                                         transform=None, figure=self.fig)
                     self.fig.patches.extend([self.patch])
                     self.instructions.set(text="Right click to add points\nPress ENTER when finished", ha='left', x=0.2)
                     self.update()
-                    self.ax_sel.add_patch(self.patch)
 
     def extract_unique_cell_time_list_of_cells(self):
         if self.current_state in ["Com", "Sep"]:
@@ -2079,6 +2076,9 @@ class LineBuilder:
         if event.inaxes!=self.line.axes: 
             return
         if event.button==3:
+            if self.line.figure.canvas.toolbar.mode!="":
+                self.line.figure.canvas.mpl_disconnect(self.line.figure.canvas.toolbar._zoom_info.cid)
+                self.line.figure.canvas.toolbar.zoom()
             self.xs.append(event.xdata)
             self.ys.append(event.ydata)
             self.line.set_data(self.xs, self.ys)
@@ -2293,6 +2293,7 @@ class CellPicker_com_t():
                                             self.PACT.CT.list_of_cells.append(cell)
                                 else:
                                     if cell in self.PACT.CT.list_of_cells: self.PACT.CT.list_of_cells.remove(cell)
+                                    else: self.PACT.CT.printfancy("ERROR: cannot combine a cell with itself")
                             for PACT in self.PACT.CT.PACTs:
                                 if PACT.current_state=="Com":
                                     PACT.update()
