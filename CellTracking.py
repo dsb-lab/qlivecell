@@ -10,6 +10,7 @@ import random
 from scipy.spatial import cKDTree
 from copy import deepcopy, copy
 from matplotlib.widgets import Slider
+from matplotlib.transforms import TransformedPatchPath
 from collections import deque
 import gc
 import warnings
@@ -27,6 +28,18 @@ LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
 
 # This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
+class MySlider(Slider):
+    """My version of the slider."""
+    def __init__(self, *args, **kwargs):
+        Slider.__init__(self, *args, **kwargs)
+        ax = kwargs['ax']
+        vmin = kwargs['valmin']
+        vmax = kwargs['valmax']
+        vstp = kwargs['valstep']
+        colr = kwargs['initcolor']
+        for v in range(vmin+vstp, vmax, vstp):
+            vline = ax.axvline(v, 0, 1, color=colr, lw=1, clip_path=TransformedPatchPath(self.track))
+
 class CellSegmentation(object):
 
     def __init__(self, stack, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_masks=True, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7):
@@ -1227,7 +1240,6 @@ class CellTracking(object):
 
     def combine_cells_z(self, PACT):
         cells = [x[0] for x in PACT.list_of_cells]
-        Zs    = [x[1] for x in PACT.list_of_cells]
         t = PACT.t
 
         cell1 = self._get_cell(cells[0])
@@ -1373,7 +1385,7 @@ class CellTracking(object):
         if windows==None:
             windows=self.plot_tracking_windows
         self.PACTs=[]
-        time_sliders = []
+        self._time_sliders = []
         self._imshows  = []
         self._titles   = []
         self._outline_scatters = []
@@ -1427,16 +1439,19 @@ class CellTracking(object):
             plt.subplots_adjust(bottom=0.075)
             # Make a horizontal slider to control the frequency.
             axslide = fig.add_axes([0.12, 0.01, 0.8, 0.03])
-            time_slider = Slider(
+            sliderstr = "/%d" %(self.times -1)
+            time_slider = MySlider(
                 ax=axslide,
                 label='time',
+                initcolor='r',
                 valmin=0,
                 valmax=self.times-1,
                 valinit=0,
-                valstep=1
-            )
-            time_sliders.append(time_slider)
-            time_sliders[w].on_changed(self.PACTs[w].update_slider)
+                valstep=1,
+                valfmt="%d"+sliderstr
+                )
+            self._time_sliders.append(time_slider)
+            self._time_sliders[w].on_changed(self.PACTs[w].update_slider)
         plt.show()
 
     def replot_axis(self, _ax, img, z, t, pactid, imid, plot_outlines=True):
@@ -1615,6 +1630,9 @@ class PlotActionCT:
         self.CT=CT
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
+        self.ctrl_press   = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
+        self.ctrl_release = self.fig.canvas.mpl_connect('key_release_event', self.on_key_release)
+        self.ctrl_is_held = False
         self.current_state="START"
         self.current_subplot = None
         self.cr = 0
@@ -1633,6 +1651,14 @@ class PlotActionCT:
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
         self.plot_outlines=True
         self.update()
+
+    def on_key_press(self, event):
+        if event.key == 'control':
+            self.ctrl_is_held = True
+
+    def on_key_release(self, event):
+        if event.key == 'control':
+            self.ctrl_is_held = False
 
     def __call__(self, event):
         if self.current_state==None:
@@ -1815,21 +1841,40 @@ class PlotActionCT:
         self.update()
 
     def onscroll(self, event):
-        if self.current_state in [None, "Com","Sep", "mit", "apo", "com"]:
-            if self.current_state == None:
-                self.current_state="SCL"
-            if event.button == 'up':
-                self.cr = self.cr - 1
-            elif event.button == 'down':
-                self.cr = self.cr + 1
-            self.cr = max(self.cr, 0)
-            self.cr = min(self.cr, self.max_round)
-            self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
-            self.update()
+        if self.ctrl_is_held:
+            if self.current_state in [None, "Com","Sep", "mit", "apo", "com"]:
+                if self.current_state == None:
+                    self.current_state="SCL"
+                if event.button == 'up':
+                    self.t = self.t + 1
+                elif event.button == 'down':
+                    self.t = self.t - 1
+                self.t = max(self.t, 0)
+                self.t = min(self.t, self.CT.times-1)
+                self.CT._time_sliders[self.id].set_val(self.t)
+                #self.CT._time_sliders[self.id].canvas.draw()
+                self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                self.update()
+            else:
+                return
+            if self.current_state=="SCL":
+                self.current_state=None
         else:
-            return
-        if self.current_state=="SCL":
-            self.current_state=None
+            if self.current_state in [None, "Com","Sep", "mit", "apo", "com"]:
+                if self.current_state == None:
+                    self.current_state="SCL"
+                if event.button == 'up':
+                    self.cr = self.cr - 1
+                elif event.button == 'down':
+                    self.cr = self.cr + 1
+                self.cr = max(self.cr, 0)
+                self.cr = min(self.cr, self.max_round)
+                self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                self.update()
+            else:
+                return
+            if self.current_state=="SCL":
+                self.current_state=None
 
     def update(self):
         if self.current_state in ["apo","Com", "mit", "Sep"]:

@@ -46,6 +46,7 @@ def save_CT(CT, path=None, filename=None, _del_plots=True):
     if _del_plots:
         if hasattr(CT, 'PACTs'):
             delattr(CT, 'PACTs')
+            delattr(CT, '_time_sliders')
     pickle.dump(CT, file_to_store)
     file_to_store.close()
 
