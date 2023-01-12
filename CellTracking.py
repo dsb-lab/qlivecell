@@ -2292,7 +2292,7 @@ class CellPicker_com_t():
                                         if self.PACT.t not in np.array(self.PACT.CT.list_of_cells)[:,1]:
                                             self.PACT.CT.list_of_cells.append(cell)
                                 else:
-                                    self.PACT.CT.list_of_cells.remove(cell)
+                                    if cell in self.PACT.CT.list_of_cells: self.PACT.CT.list_of_cells.remove(cell)
                             for PACT in self.PACT.CT.PACTs:
                                 if PACT.current_state=="Com":
                                     PACT.update()
@@ -2541,6 +2541,9 @@ class PlotActionCellMovement:
         self.CT=CT
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
+        self.ctrl_press   = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
+        self.ctrl_release = self.fig.canvas.mpl_connect('key_release_event', self.on_key_release)
+        self.ctrl_is_held = False
         self.current_state=None
         self.current_subplot = None
         self.cr = 0
@@ -2576,16 +2579,30 @@ class PlotActionCellMovement:
         self.update()
 
     def onscroll(self, event):
-        if self.current_state == None: self.current_state="SCL"
-        if event.button == 'up':       self.cr = self.cr - 1
-        elif event.button == 'down':   self.cr = self.cr + 1
+        if self.ctrl_is_held:
+            if self.current_state == None: self.current_state="SCL"
+            if event.button == 'up': self.t = self.t + 1
+            elif event.button == 'down': self.t = self.t - 1
 
-        self.cr = max(self.cr, 0)
-        self.cr = min(self.cr, self.max_round)
-        self.CT.replot_tracking(self, plot_outlines=True)
-        self.update()
+            self.t = max(self.t, 0)
+            self.t = min(self.t, self.CT.times-1)
+            self.CT._time_sliders[self.id].set_val(self.t)
+            self.CT.replot_tracking(self, plot_outlines=True)
+            self.update()
 
-        if self.current_state=="SCL": self.current_state=None
+            if self.current_state=="SCL": self.current_state=None
+
+        else: 
+            if self.current_state == None: self.current_state="SCL"
+            if event.button == 'up':       self.cr = self.cr - 1
+            elif event.button == 'down':   self.cr = self.cr + 1
+
+            self.cr = max(self.cr, 0)
+            self.cr = min(self.cr, self.max_round)
+            self.CT.replot_tracking(self, plot_outlines=True)
+            self.update()
+
+            if self.current_state=="SCL": self.current_state=None
 
     def update(self):
 
