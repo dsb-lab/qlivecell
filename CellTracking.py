@@ -1646,8 +1646,8 @@ class PlotActionCT:
         actionsbox = "Possible actions: \n- ESC : visualization\n- A : add cell\n- d : delete cell\n- c : combine cells - z\n- C : combine cells - t\n- s : separate cells - t\n- a : apoptotic event\n- m : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- q : quit plot"
         self.actionlist = self.fig.text(0.01, 0.8, actionsbox, fontsize=1, ha='left', va='top')
         self.title = self.fig.suptitle("", x=0.01, ha='left', fontsize=1)
-        self.timetxt = self.fig.text(0.05, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
-        self.instructions = self.fig.text(0.2, 0.98, "PRESS ENTER TO START", fontsize=1, ha='left', va='top')
+        self.timetxt = self.fig.text(0.02, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
+        self.instructions = self.fig.text(0.4, 0.98, "PRESS ENTER TO START", fontsize=1, ha='left', va='top', bbox=dict(facecolor='black', alpha=0.4, edgecolor='black', pad=2))
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
         self.plot_outlines=True
         self.update()
@@ -1848,7 +1848,8 @@ class PlotActionCT:
         if self.ctrl_is_held:
             if self.current_state in [None, "Com","Sep", "mit", "apo", "com"]:
                 if self.current_state == None:
-                    self.current_state="SCL"
+                    pass
+                    #self.current_state="SCL"
                 if event.button == 'up':
                     self.t = self.t + 1
                 elif event.button == 'down':
@@ -1866,7 +1867,8 @@ class PlotActionCT:
         else:
             if self.current_state in [None, "Com","Sep", "mit", "apo", "com"]:
                 if self.current_state == None:
-                    self.current_state="SCL"
+                    pass
+                    #self.current_state="SCL"
                 if event.button == 'up':
                     self.cr = self.cr - 1
                 elif event.button == 'down':
@@ -1915,7 +1917,8 @@ class PlotActionCT:
         if isinstance(self.ax, np.ndarray):
             if len(self.ax.shape)==1:
                 if self.current_subplot == None:
-                    self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
+                    self.instructions.set(text="Double left-click to select Z-PLANE")
+                    self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
                     self.fig.patch.set_facecolor((0.0,1.0,0.0,0.2))
                     SP = SubplotPicker_add(self)
                 else:
@@ -1928,11 +1931,13 @@ class PlotActionCT:
                                         transform=None, figure=self.fig)
                     self.fig.patches.extend([self.patch])
                     #self.ax_sel.add_patch(self.patch)
-                    self.instructions.set(text="Right click to add points\nPress ENTER when finished", ha='left', x=0.2)
+                    self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
+                    self.instructions.set(text="Right click to add points. Press ENTER when finished")
                     self.update()
             else:
                 if self.current_subplot == None:
-                    self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
+                    self.instructions.set(text="Double left-click to select Z-PLANE")
+                    self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
                     self.fig.patch.set_facecolor((0.0,1.0,0.0,0.2))
                     SP = SubplotPicker_add(self)
                 else:
@@ -1945,7 +1950,8 @@ class PlotActionCT:
                                         fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=-1,
                                         transform=None, figure=self.fig)
                     self.fig.patches.extend([self.patch])
-                    self.instructions.set(text="Right click to add points\nPress ENTER when finished", ha='left', x=0.2)
+                    self.instructions.set(text="Right click to add points. Press ENTER when finished")
+                    self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
                     self.update()
 
     def extract_unique_cell_time_list_of_cells(self):
@@ -1996,46 +2002,53 @@ class PlotActionCT:
 
     def delete_cells(self):
         self.title.set(text="DELETE CELL", ha='left', x=0.01)
-        self.instructions.set(text="Right-click to delete cell on a plane\ndouble right-click to delete on all planes", ha='left', x=0.2)
+        self.instructions.set(text="Right-click to delete cell on a plane\nDouble right-click to delete on all planes")
+        self.instructions.set_backgroundcolor((1.0,0.0,0.0,0.4))
         self.fig.patch.set_facecolor((1.0,0.0,0.0,0.2))
         self.CP = CellPicker_del(self)
     
     def combine_cells_t(self):
         self.title.set(text="COMBINE CELLS", ha='left', x=0.01)
-        self.instructions.set(text="\nRigth-click to select cells to be combined", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((0.3,0.0,1.0,0.2))        
+        self.instructions.set(text="Rigth-click to select cells to be combined")
+        self.instructions.set_backgroundcolor((0.5,0.0,1.0,0.5))
+        self.fig.patch.set_facecolor((0.5,0.0,1.0,0.2))        
         self.CP = CellPicker_com_t(self)
 
     def combine_cells_z(self):
         self.title.set(text="COMBINE CELLS\nMODE", ha='left', x=0.01)
-        self.instructions.set(text="\nRigth-click to select cells to be combined", ha='left', x=0.2)
+        self.instructions.set(text="Rigth-click to select cells to be combined")
         self.fig.patch.set_facecolor((0.0,0.0,1.0,0.2))
+        self.instructions.set_backgroundcolor((0.0,0.0,1.0,0.4))
         self.CP = CellPicker_com_z(self)
     
     def separate_cells_t(self):
         self.title.set(text="COMBINE CELLS", ha='left', x=0.01)
-        self.instructions.set(text="\nRigth-click to select cells to be separated", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((1.0,1.0,0, 0.2))        
+        self.instructions.set(text="Rigth-click to select cells to be separated")
+        self.fig.patch.set_facecolor((1.0,1.0,0, 0.2)) 
+        self.instructions.set_backgroundcolor((1.0,1.0,0.0,0.4))       
         self.CP = CellPicker_sep_t(self)
 
     def mitosis(self):
         self.title.set(text="DETECT MITOSIS", ha='left', x=0.01)
-        self.instructions.set(text="Right-click to SELECT THE MOTHER (1)\nAND DAUGHTER (2) CELLS", ha='left', x=0.2)
+        self.instructions.set(text="Right-click to SELECT THE MOTHER (1) AND DAUGHTER (2) CELLS")
         self.fig.patch.set_facecolor((0.0,1.0,0.0,0.2))
+        self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
         self.CP = CellPicker_mit(self)
 
     def apoptosis(self):
         self.title.set(text="DETECT APOPTOSIS", ha='left', x=0.01)
-        self.instructions.set(text="DOUBLE LEFT-CLICK TO SELECT Z-PLANE", ha='left', x=0.2)
+        self.instructions.set(text="Double left-click to select Z-PLANE")
         self.fig.patch.set_facecolor((0.0,0.0,0.0,0.2))
+        self.instructions.set_backgroundcolor((0.0,0.0,0.0,0.4))
         self.CP = CellPicker_apo(self)
 
     def visualization(self):
         self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
         self.title.set(text="VISUALIZATION MODE", ha='left', x=0.01)
-        self.instructions.set(text="Chose one of the actions to change mode", ha='left', x=0.2)
-        self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))        
+        self.instructions.set(text="Chose one of the actions to change mode")
+        self.instructions.set_backgroundcolor((0.0,0.0,0.0,0.2))        
+        self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))
 
 class SubplotPicker_add():
     def __init__(self, PACT):
