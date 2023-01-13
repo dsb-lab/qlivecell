@@ -1,22 +1,25 @@
 import numpy as np
 import math
-from cellpose import utils as utilscp
-import matplotlib.pyplot as plt
-import re
-import matplotlib as mtp
-from matplotlib import cm
-import itertools
-import random
 from scipy.spatial import cKDTree
+from scipy.spatial import ConvexHull
+import random
 from copy import deepcopy, copy
-from matplotlib.widgets import Slider
-from matplotlib.transforms import TransformedPatchPath
+import itertools
 from collections import deque
 import gc
 import warnings
+
+from cellpose import utils as utilscp
+
+import matplotlib as mtp
+from matplotlib import cm
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+from matplotlib.transforms import TransformedPatchPath
 from matplotlib.lines import Line2D
 from matplotlib.lines import lineStyles
 from matplotlib.ticker import MaxNLocator
+
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 plt.rcParams['keymap.save'].remove('s')
 plt.rcParams['keymap.zoom'][0]='º'
@@ -1240,7 +1243,14 @@ class CellTracking(object):
             except ValueError: pass
         self.update_labels()
 
+    def join_cells(self, PACT):
+        cells = [x[0] for x in PACT.list_of_cells]
+        cells.sort()
+        t = PACT.t
+
     def combine_cells_z(self, PACT):
+        if len(PACT.list_of_cells)<2:
+            return
         cells = [x[0] for x in PACT.list_of_cells]
         cells.sort()
         t = PACT.t
@@ -1648,7 +1658,7 @@ class PlotActionCT:
         groupsize  = self.CT.plot_layout[0] * self.CT.plot_layout[1]
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
         self.get_size()
-        actionsbox = "Possible actions: \n- ESC : visualization\n- A : add cell\n- d : delete cell\n- c : combine cells - z\n- C : combine cells - t\n- s : separate cells - t\n- a : apoptotic event\n- m : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- q : quit plot"
+        actionsbox = "Possible actions: \n- ESC : visualization\n- A : add cell\n- d : delete cell\n- j : join cells\n- c : combine cells - z\n- C : combine cells - t\n- s : separate cells - t\n- a : apoptotic event\n- m : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- q : quit plot"
         self.actionlist = self.fig.text(0.01, 0.8, actionsbox, fontsize=1, ha='left', va='top')
         self.title = self.fig.text(0.02,0.96,"", ha='left', va='top', fontsize=1)
         self.timetxt = self.fig.text(0.02, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
@@ -1679,6 +1689,10 @@ class PlotActionCT:
                 self.CT.one_step_copy(self.t)
                 self.current_state="com"
                 self.combine_cells_z()
+            elif event.key == 'j':
+                self.CT.one_step_copy(self.t)
+                self.current_state="joi"
+                self.join_cells()
             elif event.key == 'm':
                 self.CT.one_step_copy(self.t)
                 self.current_state="mit"
@@ -1798,6 +1812,20 @@ class PlotActionCT:
                         PACT.visualization()
                         PACT.update()
 
+                elif self.current_state=="joi":
+                    self.CP.stopit()
+                    delattr(self, 'CP')
+                    self.CT.join_cells(self)
+                    for PACT in self.CT.PACTs:
+                        PACT.list_of_cells = []
+                        PACT.current_subplot=None
+                        PACT.current_state=None
+                        PACT.ax_sel=None
+                        PACT.z=None
+                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
+                        PACT.visualization()
+                        PACT.update()
+
                 elif self.current_state=="Sep":
                     self.CP.stopit()
                     delattr(self, 'CP')
@@ -1853,9 +1881,6 @@ class PlotActionCT:
     def onscroll(self, event):
         if self.ctrl_is_held:
             if self.current_state in [None, "Com","Sep", "mit", "apo", "com"]:
-                if self.current_state == None:
-                    pass
-                    #self.current_state="SCL"
                 if event.button == 'up':
                     self.t = self.t + 1
                 elif event.button == 'down':
@@ -1863,7 +1888,6 @@ class PlotActionCT:
                 self.t = max(self.t, 0)
                 self.t = min(self.t, self.CT.times-1)
                 self.CT._time_sliders[self.id].set_val(self.t)
-                #self.CT._time_sliders[self.id].canvas.draw()
                 self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
                 self.update()
             else:
@@ -1872,9 +1896,6 @@ class PlotActionCT:
                 self.current_state=None
         else:
             if self.current_state in [None, "Com","Sep", "mit", "apo", "com"]:
-                if self.current_state == None:
-                    pass
-                    #self.current_state="SCL"
                 if event.button == 'up':
                     self.cr = self.cr - 1
                 elif event.button == 'down':
@@ -1902,10 +1923,10 @@ class PlotActionCT:
         self.get_size()
         if self.figheight < self.figwidth:
             width_or_height = self.figheight
-            scale1=110
+            scale1=115
             scale2=90
         else:
-            scale1=110
+            scale1=115
             scale2=90
             width_or_height = self.figwidth
         self.actionlist.set(fontsize=width_or_height/scale1)
@@ -2012,6 +2033,20 @@ class PlotActionCT:
         self.instructions.set_backgroundcolor((1.0,0.0,0.0,0.4))
         self.fig.patch.set_facecolor((1.0,0.0,0.0,0.1))
         self.CP = CellPicker_del(self)
+
+    def join_cells(self):
+        self.title.set(text="JOIN CELLS", ha='left', x=0.01)
+        self.instructions.set(text="Rigth-click to select cells to be combined")
+        self.instructions.set_backgroundcolor((0.5,0.5,1.0,0.4))
+        self.fig.patch.set_facecolor((0.2,0.2,1.0,0.1))
+        self.CP = CellPicker_join(self)
+    
+    def combine_cells_z(self):
+        self.title.set(text="COMBINE CELLS MODE - z", ha='left', x=0.01)
+        self.instructions.set(text="Rigth-click to select cells to be combined")
+        self.instructions.set_backgroundcolor((0.0,0.0,1.0,0.4))
+        self.fig.patch.set_facecolor((0.0,0.0,1.0,0.1))
+        self.CP = CellPicker_com_z(self)
     
     def combine_cells_t(self):
         self.title.set(text="COMBINE CELLS MODE - t", ha='left', x=0.01)
@@ -2020,13 +2055,6 @@ class PlotActionCT:
         self.fig.patch.set_facecolor((1.0,0.0,1.0,0.1))        
         self.CP = CellPicker_com_t(self)
 
-    def combine_cells_z(self):
-        self.title.set(text="COMBINE CELLS MODE - z", ha='left', x=0.01)
-        self.instructions.set(text="Rigth-click to select cells to be combined")
-        self.instructions.set_backgroundcolor((0.0,0.0,1.0,0.4))
-        self.fig.patch.set_facecolor((0.0,0.0,1.0,0.1))
-        self.CP = CellPicker_com_z(self)
-    
     def separate_cells_t(self):
         self.title.set(text="SEPARATE CELLS - t", ha='left', x=0.01)
         self.instructions.set(text="Rigth-click to select cells to be separated")
@@ -2174,6 +2202,67 @@ class CellPicker_del():
                                         self.PACT.list_of_cells.append([lab, zz])
                             self.PACT.update()
             # Select cell and store it   
+
+    def stopit(self):
+        self.canvas.mpl_disconnect(self.cid)
+
+class CellPicker_join():
+    def __init__(self, PACT):
+        self.PACT  = PACT
+        self.cid = self.PACT.fig.canvas.mpl_connect('button_press_event', self)
+        self.canvas  = self.PACT.fig.canvas
+    def __call__(self, event):
+        if event.button==3:
+            if isinstance(self.PACT.ax, np.ndarray):
+                axshape = self.PACT.ax.shape
+                # Select ax 
+                if len(axshape)==1:
+                    for i in range(axshape[0]):
+                        if event.inaxes==self.PACT.ax[i]:
+                            self.PACT.current_subplot = [i]
+                            self.PACT.ax_sel = self.PACT.ax[i]
+                            self.PACT.z = self.PACT.zs[i]
+                else:
+                    for i in range(axshape[0]):
+                            for j in range(axshape[1]):
+                                    if event.inaxes==self.PACT.ax[i,j]:
+                                        self.PACT.current_subplot = [i,j]
+                                        self.PACT.ax_sel = self.PACT.ax[i,j]
+                                        self.PACT.z = self.PACT.zs[i,j]
+            else:
+                self.PACT.ax_sel = self.PACT.ax
+
+            if event.inaxes!=self.PACT.ax_sel:
+                pass
+            else:
+                x = np.rint(event.xdata).astype(np.int64)
+                y = np.rint(event.ydata).astype(np.int64)
+                picked_point = np.array([x, y])
+                for i ,mask in enumerate(self.PACT.CT.Masks[self.PACT.t][self.PACT.z]):
+                    for point in mask:
+                        if (picked_point==point).all():
+                            z   = self.PACT.z
+                            lab = self.PACT.CT.Labels[self.PACT.t][z][i]
+                            cell = [lab, z, self.PACT.t]
+
+                            if cell in self.PACT.list_of_cells:
+                                self.PACT.list_of_cells.remove(cell)
+                                self.PACT.update()
+                                return
+                            
+                            # Check that times match among selected cells
+                            if len(self.PACT.list_of_cells)!=0:
+                                if cell[2]!=self.PACT.list_of_cells[0][2]:
+                                    self.PACT.CT.printfancy("ERROR: cells must be selected on same time")
+                                    return 
+                            # Check that zs match among selected cells
+                            if len(self.PACT.list_of_cells)!=0:
+                                if cell[1]!=self.PACT.list_of_cells[0][1]:
+                                    self.PACT.CT.printfancy("ERROR: cells must be selected on same z")
+                                    return                             
+                            # proceed with the selection
+                            self.PACT.list_of_cells.append(cell)
+                            self.PACT.update()
 
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
