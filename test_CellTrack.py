@@ -9,7 +9,7 @@ pthtosave='/home/pablo/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h
 files = os.listdir(pth)
 emb = 9
 embcode=files[emb][0:-4]
-IMGS   = [imread(pth+f)[0:2,:,1,:,:] for f in files[emb:emb+1]][0]
+IMGS   = [imread(pth+f)[0:3,:,1,:,:] for f in files[emb:emb+1]][0]
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
 #model  = models.Cellpose(gpu=True, model_type='nuclei')
 
@@ -23,7 +23,7 @@ CT = CellTracking( IMGS, model, embcode
                     , use_full_matrix_to_compute_overlap=True
                     , z_neighborhood=2
                     , overlap_gradient_th=0.15
-                    , plot_layout=(2,3)
+                    , plot_layout=(2,2)
                     , plot_overlap=1
                     , plot_masks=False
                     , masks_cmap='tab10'
@@ -36,6 +36,6 @@ CT = CellTracking( IMGS, model, embcode
                     , mean_substraction_cell_movement=True)
 
 CT()
-#CT.plot_tracking()
+
 #save_CT(CT, pthtosave, embcode)
 #CTl = load_CT(pthtosave, embcode)
