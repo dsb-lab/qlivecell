@@ -1232,7 +1232,7 @@ class CellTracking(object):
                 idrem = cell.id
                 cellids.remove(idrem)
                 self._del_cell(lab)
-        print(np.unique(cellids))
+
         for i,cellid in enumerate(np.unique(cellids)):
             z=Zs[i]
             cell  = self._get_cell(cellid=cellid)
@@ -1242,6 +1242,7 @@ class CellTracking(object):
 
     def combine_cells_z(self, PACT):
         cells = [x[0] for x in PACT.list_of_cells]
+        cells.sort()
         t = PACT.t
 
         cell1 = self._get_cell(cells[0])
@@ -1271,7 +1272,7 @@ class CellTracking(object):
             if cell2._rem:
                 self._del_cell(lab)
         self.update_labels()
-            
+    
     def combine_cells_t(self):
         # 2 cells selected
         if len(self.list_of_cells)!=2:
