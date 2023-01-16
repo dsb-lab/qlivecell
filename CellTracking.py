@@ -2002,7 +2002,7 @@ class PlotActionCT:
                     self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
                     self.fig.patch.set_facecolor((0.0,1.0,0.0,0.1))
                     self.CP = SubplotPicker_add(self)
-                    print(self.fig.patches)
+
                 else:
                     i = self.current_subplot[0]
                     j = self.current_subplot[1]
@@ -2012,7 +2012,6 @@ class PlotActionCT:
                                         bbox.width*1.2, bbox.height*1.2,
                                         fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=-1,
                                         transform=None, figure=self.fig)
-                    print(self.fig.patches)
                     self.fig.patches.extend([self.patch])
                     self.instructions.set(text="Right click to add points. Press ENTER when finished")
                     self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
