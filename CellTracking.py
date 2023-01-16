@@ -1200,7 +1200,6 @@ class CellTracking(object):
         self.linebuilder = LineBuilder(line)
 
     def complete_add_cell(self, PACT):
-        self.linebuilder.stopit()
         if len(self.linebuilder.xs)<3:
             return
         new_outline = np.asarray([list(a) for a in zip(np.rint(self.linebuilder.xs).astype(np.int64), np.rint(self.linebuilder.ys).astype(np.int64))])
@@ -1763,16 +1762,14 @@ class PlotActionCT:
             if event.key=='escape':
                 if self.current_state=="add":
                     if hasattr(self, 'patch'):
-                        print("YOU YOU")
                         self.patch.set_visible(False)
                         delattr(self, 'patch')
+                        self.fig.patches.pop()
                     if hasattr(self.CT, 'linebuilder'):
-                        print("here")
                         self.CT.linebuilder.stopit()
-                else:
-                    print("or here")
-                    self.CP.stopit()
-                    delattr(self, 'CP')
+                        delattr(self.CT, 'linebuilder')
+                self.CP.stopit()
+                delattr(self, 'CP')
 
                 for PACT in self.CT.PACTs:
                     PACT.list_of_cells = []
@@ -1789,21 +1786,24 @@ class PlotActionCT:
             elif event.key=='enter':
 
                 if self.current_state=="add":
-                    if self.current_subplot==None:
-                        pass
-                    else:
+                    self.CP.stopit()
+                    delattr(self, 'CP')
+                    if self.current_subplot!=None:
                         self.patch.set_visible(False)
+                        self.fig.patches.pop()
                         delattr(self, 'patch')
+                        self.CT.linebuilder.stopit()
                         self.CT.complete_add_cell(self)
-                        for PACT in self.CT.PACTs:
-                            PACT.list_of_cells = []
-                            PACT.current_subplot=None
-                            PACT.current_state=None
-                            PACT.ax_sel=None
-                            PACT.z=None
-                            PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
-                            PACT.visualization()
-                            PACT.update()
+                        delattr(self.CT, 'linebuilder')
+                    for PACT in self.CT.PACTs:
+                        PACT.list_of_cells = []
+                        PACT.current_subplot=None
+                        PACT.current_state=None
+                        PACT.ax_sel=None
+                        PACT.z=None
+                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
+                        PACT.visualization()
+                        PACT.update()
 
                 if self.current_state=="del":
                     self.CP.stopit()
@@ -1982,7 +1982,7 @@ class PlotActionCT:
                     self.instructions.set(text="Double left-click to select Z-PLANE")
                     self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
                     self.fig.patch.set_facecolor((0.0,1.0,0.0,0.1))
-                    SP = SubplotPicker_add(self)
+                    self.CP = SubplotPicker_add(self)
                 else:
                     i = self.current_subplot
                     self.ax_sel = self.ax[i]
@@ -2001,7 +2001,8 @@ class PlotActionCT:
                     self.instructions.set(text="Double left-click to select Z-PLANE")
                     self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
                     self.fig.patch.set_facecolor((0.0,1.0,0.0,0.1))
-                    SP = SubplotPicker_add(self)
+                    self.CP = SubplotPicker_add(self)
+                    print(self.fig.patches)
                 else:
                     i = self.current_subplot[0]
                     j = self.current_subplot[1]
@@ -2011,6 +2012,7 @@ class PlotActionCT:
                                         bbox.width*1.2, bbox.height*1.2,
                                         fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=-1,
                                         transform=None, figure=self.fig)
+                    print(self.fig.patches)
                     self.fig.patches.extend([self.patch])
                     self.instructions.set(text="Right click to add points. Press ENTER when finished")
                     self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
@@ -2146,6 +2148,8 @@ class SubplotPicker_add():
                                     self.canvas.mpl_disconnect(self.cid)
                                     self.PACT.add_cells()
                                     self.PACT.CT.add_cell(self.PACT)
+    def stopit(self):
+        self.canvas.mpl_disconnect(self.cid)
 
 class LineBuilder:
     def __init__(self, line):
