@@ -1763,11 +1763,14 @@ class PlotActionCT:
             if event.key=='escape':
                 if self.current_state=="add":
                     if hasattr(self, 'patch'):
+                        print("YOU YOU")
                         self.patch.set_visible(False)
                         delattr(self, 'patch')
                     if hasattr(self.CT, 'linebuilder'):
+                        print("here")
                         self.CT.linebuilder.stopit()
                 else:
+                    print("or here")
                     self.CP.stopit()
                     delattr(self, 'CP')
 
