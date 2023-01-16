@@ -1142,8 +1142,9 @@ class CellTracking(object):
                     pidx=id
                     break
             if len(used_idxs)==a:
-                self.printfancy("Improve your point drawing, this is a bit embarrasing") 
-                self.PACT.visualization()
+                self.printfancy("ERROR: Improve your point drawing") 
+                for PACT in self.PACTs:
+                    PACT.visualization()
                 return
         return np.array(new_outline), used_idxs
 
@@ -1206,12 +1207,19 @@ class CellTracking(object):
         if np.max(new_outline)>self.stack_dims[0]:
             self.printfancy("ERROR: drawing out of image")
             return
-        new_outline_sorted, _ = self._sort_point_sequence(new_outline)
+        self.append_cell_from_outline(new_outline, PACT.z, PACT.t)
+        self.update_labels()
+
+    def append_cell_from_outline(self, outline, z, t, sort=True):
+        if sort:
+            new_outline_sorted, _ = self._sort_point_sequence(outline)
+        else:
+            new_outline_sorted = outline
         new_outline_sorted_highres = self._increase_point_resolution(new_outline_sorted)
         outlines = [[new_outline_sorted_highres]]
         masks = [[self._points_within_hull(new_outline_sorted_highres)]]
         self._extract_unique_labels_and_max_label()
-        self.cells.append(Cell(self.currentcellid, self.max_label+1, [[PACT.z]], [PACT.t], outlines, masks, self))
+        self.cells.append(Cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self))
         self.currentcellid+=1
 
     def delete_cell(self, PACT):
@@ -1244,9 +1252,36 @@ class CellTracking(object):
         self.update_labels()
 
     def join_cells(self, PACT):
-        cells = [x[0] for x in PACT.list_of_cells]
-        cells.sort()
-        t = PACT.t
+        labels, Zs, Ts = list(zip(*PACT.list_of_cells))
+        sortids = np.argsort(labels)
+        labels = np.array(labels)[sortids]
+        Zs    = np.array(Zs)[sortids]
+
+        if len(np.unique(Ts))!=1: return
+        if len(np.unique(Zs))!=1: return
+
+        t = Ts[0]
+        z = Zs[1]
+        cells = [self._get_cell(label=lab) for lab in labels]
+
+        cell = cells[0]
+        tid  = cell.times.index(t)
+        zid  = cell.zs[tid].index(z)
+        pre_outline = copy(cells[0].outlines[tid][zid])
+
+        for i, cell in enumerate(cells[1:]):
+            j = i+1
+            tid  = cell.times.index(t)
+            zid  = cell.zs[tid].index(z)
+            pre_outline = np.concatenate((pre_outline, cell.outlines[tid][zid]), axis=0)
+
+        self.delete_cell(PACT)
+
+        hull = ConvexHull(pre_outline)
+        outline = pre_outline[hull.vertices]
+        self.TEST = outline
+        self.append_cell_from_outline(outline, z, t, sort=False)
+        self.update_labels()
 
     def combine_cells_z(self, PACT):
         if len(PACT.list_of_cells)<2:
@@ -1364,14 +1399,14 @@ class CellTracking(object):
         else:
             self.mitotic_events.append(mito_ev)
     
-    def _get_cell(self, lab=None, cellid=None):
-        if lab==None:
+    def _get_cell(self, label=None, cellid=None):
+        if label==None:
             for cell in self.cells:
                     if cell.id == cellid:
                         return cell
         else:
             for cell in self.cells:
-                    if cell.label == lab:
+                    if cell.label == label:
                         return cell
         
         print("ERROR: cell not found, you should not be here...")
@@ -1717,13 +1752,11 @@ class PlotActionCT:
             elif event.key == 'z':
                 self.CT.undo_corrections(all=False)
                 for PACT in self.CT.PACTs:
-                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
-                self.visualization()
+                    PACT.visualization()
             elif event.key == 'Z':
                 self.CT.undo_corrections(all=True)
                 for PACT in self.CT.PACTs:
-                        PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
-                self.visualization()
+                    PACT.visualization()
             self.update()
 
         else:
@@ -1759,7 +1792,6 @@ class PlotActionCT:
                         self.patch.set_visible(False)
                         delattr(self, 'patch')
                         self.CT.complete_add_cell(self)
-                        self.CT.update_labels()
                         for PACT in self.CT.PACTs:
                             PACT.list_of_cells = []
                             PACT.current_subplot=None
