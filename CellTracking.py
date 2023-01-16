@@ -61,9 +61,9 @@ class CellSegmentation(object):
         self._zneigh             = z_neighborhood
         self._overlap_th         = overlap_gradient_th # is used to separed cells that could be consecutive on z
         self._max_label          = 0
-        self._masks_cmap_name    = masks_cmap
-        self._masks_cmap         = cm.get_cmap(self._masks_cmap_name)
-        self._masks_colors       = self._masks_cmap.colors
+        self._cmap_name         = masks_cmap
+        self._cmap         = cm.get_cmap(self._cmap_name)
+        self._label_colors       = self._cmap.colors
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self._assign_color_to_label()
@@ -581,7 +581,7 @@ class CellSegmentation(object):
                     self._Masks_to_plot_alphas[z][id2][id1] = 1
 
     def _assign_color_to_label(self):
-        coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
+        coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
         self._labels_color_id = [next(coloriter) for i in range(1000)]
 
     def plot_axis(self, _ax, img, z):
@@ -591,14 +591,14 @@ class CellSegmentation(object):
             xs = self.centersi[z][cell]
             ys = self.centersj[z][cell]
             label = self.labels[z][cell]
-            _ = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
+            _ = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
             _ = _ax.annotate(str(label), xy=(ys, xs), c="w")
             _ = _ax.scatter([ys], [xs], s=0.5, c="white")
             _ = _ax.axis(False)
 
         if self.pltmasks_bool:
             self.compute_Masks_to_plot()
-            _ = _ax.imshow(self._masks_cmap(self._Masks_to_plot[z], alpha=self._Masks_to_plot_alphas[z], bytes=True), cmap=self._masks_cmap_name)
+            _ = _ax.imshow(self._cmap(self._Masks_to_plot[z], alpha=self._Masks_to_plot_alphas[z], bytes=True), cmap=self._cmap_name)
         for lab in range(len(self.labels_centers)):
             zz = self.centers_positions[lab][0]
             ys = self.centers_positions[lab][1]
@@ -839,16 +839,16 @@ class CellTracking(object):
         self._zneigh           = z_neighborhood
         self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
         self.plot_masks        = plot_masks
-        self.plot_layout = plot_layout
-        self.plot_overlap= plot_overlap
+        self.plot_layout       = plot_layout
+        self.plot_overlap      = plot_overlap
         self.max_label         = 0
-        self._masks_cmap_name  = masks_cmap
-        self._masks_cmap       = cm.get_cmap(self._masks_cmap_name)
-        self._masks_colors     = self._masks_cmap.colors
+        self._cmap_name        = masks_cmap
+        self._cmap             = cm.get_cmap(self._cmap_name)
+        self._label_colors     = self._cmap.colors
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self._cdaxis = cell_distance_axis
-        self.list_of_cells  = []
+        self.list_of_cells     = []
         self.mito_cells        = []
         self.apoptotic_events  = []
         self.mitotic_events    = []
@@ -929,7 +929,7 @@ class CellTracking(object):
                                 , use_full_matrix_to_compute_overlap=self._fullmat
                                 , z_neighborhood=self._zneigh
                                 , overlap_gradient_th=self._overlap_th
-                                , masks_cmap=self._masks_cmap_name
+                                , masks_cmap=self._cmap_name
                                 , min_outline_length=self._min_outline_length
                                 , neighbors_for_sequence_sorting=self._nearest_neighs)
 
@@ -1416,9 +1416,25 @@ class CellTracking(object):
             if cell.label == lab:
                 idx=idd
         self.cells.pop(idx)
-  
+
+    def _compute_masks_stack(self):
+        t = self.times
+        z = self.slices
+        x,y = self.stack_dims
+        self._masks_stack = np.zeros((t,z,x,y,4))
+
+        for cell in self.cells:
+            color = np.append(self._label_colors[self._labels_color_id[cell.label]], 1)
+            for tid, tc in enumerate(cell.times):
+                for zid, zc in enumerate(cell.zs[tid]):
+                    mask = cell.masks[tid][zid]
+                    xids = mask[:,1]
+                    yids = mask[:,0]
+                    self._masks_stack[tc][zc][xids,yids]=np.array(color)
+
     def plot_axis(self, _ax, img, z, pactid, t, plot_outlines=True):
         im = _ax.imshow(img, vmin=0, vmax=255)
+        _ax.imshow(self._masks_stack[t][z])
         self._imshows[pactid].append(im)
         title = _ax.set_title("z = %d" %z)
         self._titles[pactid].append(title)
@@ -1427,7 +1443,7 @@ class CellTracking(object):
         if plot_outlines:
             for cell, outline in enumerate(Outlines):
                 label = self.Labels[t][z][cell]
-                out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
+                out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
                 self._outline_scatters[pactid].append(out_plot)
 
     def plot_tracking(self, windows=None, cell_movement=False):
@@ -1441,7 +1457,7 @@ class CellTracking(object):
         self._pos_scatters     = []
         self._annotations      = []
         self.list_of_cells=[]
-
+        self._compute_masks_stack()
         if cell_movement: windows=1
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
@@ -1510,7 +1526,7 @@ class CellTracking(object):
             if plot_outlines:
                 for cell, outline in enumerate(Outlines):
                     label = self.Labels[t][z][cell]
-                    out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._masks_colors[self._labels_color_id[label]]], s=0.5, cmap=self._masks_cmap_name)               
+                    out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
                     self._outline_scatters[pactid].append(out_plot)
                     
     def replot_tracking(self, PACT, plot_outlines=True):
@@ -1565,7 +1581,7 @@ class CellTracking(object):
         plt.subplots_adjust(bottom=0.075)
 
     def _assign_color_to_label(self):
-        coloriter = itertools.cycle([i for i in range(len(self._masks_colors))])
+        coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
         self._labels_color_id = [next(coloriter) for i in range(1000)]
     
     def compute_cell_movement(self):
@@ -1616,7 +1632,7 @@ class CellTracking(object):
             firstcall=True
             self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
         
-        len_cmap = len(self._masks_colors)
+        len_cmap = len(self._label_colors)
         len_ls   = len_cmap*len(PLTMARKERS)
         countm   = 0
         markerid = 0
@@ -1624,7 +1640,7 @@ class CellTracking(object):
         for cell in self.cells:
             label = cell.label
             if label in label_list:
-                c  = self._masks_colors[self._labels_color_id[label]]
+                c  = self._label_colors[self._labels_color_id[label]]
                 m  = PLTMARKERS[markerid]
                 ls = PLTLINESTYLES[linestyleid]
                 if m not in used_markers: used_markers.append(m)
@@ -1646,7 +1662,7 @@ class CellTracking(object):
             leg_patches = []
 
         label_list_lastdigit = [int(str(l)[-1]) for l in label_list]
-        for i, col in enumerate(self._masks_colors):
+        for i, col in enumerate(self._label_colors):
             if i in label_list_lastdigit:
                 leg_patches.append(Line2D([0], [0], color=col, lw=2, label=str(i)))
 
@@ -2445,7 +2461,6 @@ class CellPicker_com_t():
                                     PACT.update()
 
     def stopit(self):
-        
         # Stop this interaction with the plot 
         self.canvas.mpl_disconnect(self.cid)
 
