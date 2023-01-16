@@ -1409,7 +1409,7 @@ class CellTracking(object):
                     if cell.label == label:
                         return cell
         
-        print("ERROR: cell not found, you should not be here...")
+        self.printfancy("ERROR: cell not found, you should not be here...")
 
     def _del_cell(self, lab):
         idx = 0
