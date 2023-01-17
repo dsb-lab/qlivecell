@@ -45,7 +45,7 @@ class MySlider(Slider):
 
 class CellSegmentation(object):
 
-    def __init__(self, stack, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_masks=True, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7):
+    def __init__(self, stack, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7):
         self.embcode             = embcode
         self.stack               = stack
         self._model              = model
@@ -822,7 +822,7 @@ class Cell():
         return np.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
 
 class CellTracking(object):
-    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, plot_masks=True, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", mean_substraction_cell_movement=False):
+    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", mean_substraction_cell_movement=False):
         self.embcode           = embcode
         self.stacks            = stacks
         self._model            = model
@@ -838,7 +838,6 @@ class CellTracking(object):
         self._fullmat          = use_full_matrix_to_compute_overlap
         self._zneigh           = z_neighborhood
         self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
-        self.plot_masks        = plot_masks
         self.plot_layout       = plot_layout
         self.plot_overlap      = plot_overlap
         self.max_label         = 0
@@ -848,6 +847,7 @@ class CellTracking(object):
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self._cdaxis = cell_distance_axis
+        self.plot_masks = True
         self.list_of_cells     = []
         self.mito_cells        = []
         self.apoptotic_events  = []
@@ -1424,18 +1424,25 @@ class CellTracking(object):
         self._masks_stack = np.zeros((t,z,x,y,4))
 
         for cell in self.cells:
-            color = np.append(self._label_colors[self._labels_color_id[cell.label]], 1)
-            for tid, tc in enumerate(cell.times):
-                for zid, zc in enumerate(cell.zs[tid]):
-                    mask = cell.masks[tid][zid]
-                    xids = mask[:,1]
-                    yids = mask[:,0]
-                    self._masks_stack[tc][zc][xids,yids]=np.array(color)
+            self._set_masks_alphas(cell, True)
+
+    def _set_masks_alphas(self, cell, plot_mask):
+        if plot_mask: alpha=1
+        else: alpha = 0
+        color = np.append(self._label_colors[self._labels_color_id[cell.label]], alpha)
+        for tid, tc in enumerate(cell.times):
+            for zid, zc in enumerate(cell.zs[tid]):
+                mask = cell.masks[tid][zid]
+                xids = mask[:,1]
+                yids = mask[:,0]
+                self._masks_stack[tc][zc][xids,yids]=np.array(color)
 
     def plot_axis(self, _ax, img, z, pactid, t, plot_outlines=True):
         im = _ax.imshow(img, vmin=0, vmax=255)
-        _ax.imshow(self._masks_stack[t][z])
+        im_masks =_ax.imshow(self._masks_stack[t][z])
         self._imshows[pactid].append(im)
+        self._imshows_masks[pactid].append(im_masks)
+
         title = _ax.set_title("z = %d" %z)
         self._titles[pactid].append(title)
         _ = _ax.axis(False)
@@ -1452,6 +1459,7 @@ class CellTracking(object):
         self.PACTs=[]
         self._time_sliders = []
         self._imshows  = []
+        self._imshows_masks = []
         self._titles   = []
         self._outline_scatters = []
         self._pos_scatters     = []
@@ -1470,6 +1478,7 @@ class CellTracking(object):
             imgs   = self.stacks[t,:,:,:]
 
             self._imshows.append([])
+            self._imshows_masks.append([])
             self._titles.append([])
             self._outline_scatters.append([])
             self._pos_scatters.append([])
@@ -1521,6 +1530,7 @@ class CellTracking(object):
 
     def replot_axis(self, _ax, img, z, t, pactid, imid, plot_outlines=True):
             self._imshows[pactid][imid].set_data(img)
+            self._imshows_masks[pactid][imid].set_data(self._masks_stack[t][z])
             self._titles[pactid][imid].set_text("z = %d" %z)
             Outlines = self.Outlines[t][z]
             if plot_outlines:
@@ -1552,6 +1562,7 @@ class CellTracking(object):
             if z == None:
                 img = np.zeros(self.stack_dims)
                 self._imshows[pactid][id].set_data(img)
+                self._imshows_masks[pactid][id].set_data(self._masks_stack[t][z])
                 self._titles[pactid][id].set_text("")
             else:      
                 img = imgs[z,:,:]
@@ -1691,7 +1702,6 @@ class PlotActionCT:
         self.fig=fig
         self.ax=ax
         self.id=id
-        self.plot_masks=CT.plot_masks
         self.CT=CT
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
@@ -1708,13 +1718,14 @@ class PlotActionCT:
         groupsize  = self.CT.plot_layout[0] * self.CT.plot_layout[1]
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
         self.get_size()
-        actionsbox = "Possible actions: \n- ESC : visualization\n- A : add cell\n- d : delete cell\n- j : join cells\n- c : combine cells - z\n- C : combine cells - t\n- s : separate cells - t\n- a : apoptotic event\n- m : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- q : quit plot"
+        actionsbox = "Possible actions: \n- ESC : visualization\n- a : add cell\n- d : delete cell\n- j : join cells\n- c : combine cells - z\n- C : combine cells - t\n- s : separate cells - t\n- A : apoptotic event\n- M : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- m : show/hide outlines\n- q : quit plot"
         self.actionlist = self.fig.text(0.01, 0.8, actionsbox, fontsize=1, ha='left', va='top')
         self.title = self.fig.text(0.02,0.96,"", ha='left', va='top', fontsize=1)
         self.timetxt = self.fig.text(0.02, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
         self.instructions = self.fig.suptitle("PRESS ENTER TO START",y=0.98, fontsize=1, ha='center', va='top', bbox=dict(facecolor='black', alpha=0.4, edgecolor='black', pad=2))
         self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
         self.plot_outlines=True
+        self._pre_labs_to_plot = []
         self.update()
 
     def on_key_press(self, event):
@@ -1743,15 +1754,15 @@ class PlotActionCT:
                 self.CT.one_step_copy(self.t)
                 self.current_state="joi"
                 self.join_cells()
-            elif event.key == 'm':
+            elif event.key == 'M':
                 self.CT.one_step_copy(self.t)
                 self.current_state="mit"
                 self.mitosis()
-            if event.key == 'A':
+            if event.key == 'a':
                 self.CT.one_step_copy()
                 self.current_state="add"
                 self.add_cells()
-            elif event.key == 'a':
+            elif event.key == 'A':
                 self.CT.one_step_copy(self.t)
                 self.current_state="apo"
                 self.apoptosis()
@@ -1759,6 +1770,12 @@ class PlotActionCT:
                 self.visualization()
             elif event.key == 'o':
                 self.plot_outlines = not self.plot_outlines
+                self.visualization()
+            elif event.key == 'm':
+                if self.CT.plot_masks is None: self.CT.plot_masks = True
+                else: self.CT.plot_masks = not self.CT.plot_masks
+                for cell in self.CT.cells:
+                    self.CT._set_masks_alphas(cell, self.CT.plot_masks)
                 self.visualization()
             elif event.key == 's':
                 self.CT.one_step_copy(self.t)
@@ -1786,7 +1803,13 @@ class PlotActionCT:
                         delattr(self.CT, 'linebuilder')
                 self.CP.stopit()
                 delattr(self, 'CP')
-
+                if len(self.list_of_cells)>0: cells_to_unmask = copy(self.list_of_cells)
+                elif len(self.CT.list_of_cells)>0: cells_to_unmask = copy(self.CT.list_of_cells)
+                else: cells_to_unmask = []
+                for _cell in cells_to_unmask:
+                    lab = _cell[0]
+                    cell = self.CT._get_cell(label=lab)
+                    self.CT._set_masks_alphas(cell, False)
                 for PACT in self.CT.PACTs:
                     PACT.list_of_cells = []
                     PACT.CT.list_of_cells = []
@@ -1800,7 +1823,14 @@ class PlotActionCT:
                     PACT.update()
 
             elif event.key=='enter':
-
+                
+                if len(self.list_of_cells)>0: cells_to_unmask = copy(self.list_of_cells)
+                elif len(self.CT.list_of_cells)>0: cells_to_unmask = copy(self.CT.list_of_cells)
+                else: cells_to_unmask = []
+                for _cell in cells_to_unmask:
+                    lab = _cell[0]
+                    cell = self.CT._get_cell(label=lab)
+                    self.CT._set_masks_alphas(cell, False)
                 if self.current_state=="add":
                     self.CP.stopit()
                     delattr(self, 'CP')
@@ -1980,6 +2010,20 @@ class PlotActionCT:
             scale1=115
             scale2=90
             width_or_height = self.figwidth
+        
+        labs_to_plot = [x[0] for x in cells_to_plot]
+        for lab in labs_to_plot:
+            cell = self.CT._get_cell(label=lab)
+            self.CT._set_masks_alphas(cell, True)
+        
+        labs_to_remove = [l for l in self._pre_labs_to_plot if l not in labs_to_plot]
+
+        for lab in labs_to_remove:
+            cell = self.CT._get_cell(label=lab)
+            self.CT._set_masks_alphas(cell, False)
+
+        self._pre_labs_to_plot = labs_to_plot
+
         self.actionlist.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Cells\nSelected\n\n"+s)
@@ -2129,12 +2173,17 @@ class PlotActionCT:
         self.CP = CellPicker_apo(self)
 
     def visualization(self):
-        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.reploting()
         self.update()
         self.title.set(text="VISUALIZATION MODE", ha='left', x=0.01)
         self.instructions.set(text="Chose one of the actions to change mode")       
         self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))
         self.instructions.set_backgroundcolor((0.0,0.0,0.0,0.1)) 
+
+    def reploting(self):
+        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.fig.canvas.draw_idle()
+        self.fig.canvas.draw()
 
 class SubplotPicker_add():
     def __init__(self, PACT):
@@ -2255,6 +2304,7 @@ class CellPicker_del():
                                     for zz in zs:
                                         self.PACT.list_of_cells.append([lab, zz])
                             self.PACT.update()
+                            self.PACT.reploting()
             # Select cell and store it   
 
     def stopit(self):
@@ -2317,6 +2367,7 @@ class CellPicker_join():
                             # proceed with the selection
                             self.PACT.list_of_cells.append(cell)
                             self.PACT.update()
+                            self.PACT.reploting()
 
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
@@ -2363,6 +2414,7 @@ class CellPicker_com_z():
                             if cell in self.PACT.list_of_cells:
                                 self.PACT.list_of_cells.remove(cell)
                                 self.PACT.update()
+                                self.PACT.reploting()
                                 return
                             
                             # Check that times match among selected cells
@@ -2397,7 +2449,8 @@ class CellPicker_com_z():
                             # proceed with the selection
                             self.PACT.list_of_cells.append(cell)
                             self.PACT.update()
-
+                            self.PACT.update()
+                            self.PACT.reploting()
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
@@ -2459,6 +2512,7 @@ class CellPicker_com_t():
                             for PACT in self.PACT.CT.PACTs:
                                 if PACT.current_state=="Com":
                                     PACT.update()
+                                    PACT.reploting()
 
     def stopit(self):
         # Stop this interaction with the plot 
@@ -2529,6 +2583,7 @@ class CellPicker_sep_t():
                             for PACT in self.PACT.CT.PACTs:
                                 if PACT.current_state=="Sep":
                                     PACT.update()
+                                    PACT.reploting()
 
     def stopit(self):
         
@@ -2582,6 +2637,7 @@ class CellPicker_apo():
                             else:
                                 self.PACT.list_of_cells.append(cell)
                             self.PACT.update()
+                            self.PACT.reploting()
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
@@ -2642,6 +2698,7 @@ class CellPicker_mit():
                                 else:
                                     self.PACT.CT.mito_cells.append(cell)
                             self.PACT.update()
+                            self.PACT.reploting()
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
@@ -2692,6 +2749,7 @@ class CellPicker_CM():
                                 self.PACM.label_list.append(cell)
                             self.PACM.CT.plot_cell_movement(label_list=self.PACM.label_list, plot_mean=self.PACM.plot_mean, plot_tracking=False)
                             self.PACM.update()
+                            self.PACM.reploting()
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
