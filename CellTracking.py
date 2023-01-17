@@ -2759,7 +2759,6 @@ class CellPicker_CM():
                                 self.PACM.label_list.append(cell)
                             self.PACM.CT.plot_cell_movement(label_list=self.PACM.label_list, plot_mean=self.PACM.plot_mean, plot_tracking=False)
                             self.PACM.update()
-                            self.PACM.reploting()
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
@@ -2810,7 +2809,7 @@ class PlotActionCellMovement:
 
     def onscroll(self, event):
         if self.ctrl_is_held:
-            if self.current_state == None: self.current_state="SCL"
+            #if self.current_state == None: self.current_state="SCL"
             if event.button == 'up': self.t = self.t + 1
             elif event.button == 'down': self.t = self.t - 1
 
@@ -2823,7 +2822,7 @@ class PlotActionCellMovement:
             if self.current_state=="SCL": self.current_state=None
 
         else: 
-            if self.current_state == None: self.current_state="SCL"
+            #if self.current_state == None: self.current_state="SCL"
             if event.button == 'up':       self.cr = self.cr - 1
             elif event.button == 'down':   self.cr = self.cr + 1
 

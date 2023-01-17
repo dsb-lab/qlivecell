@@ -35,6 +35,6 @@ CT = CellTracking( IMGS, model, embcode
                     , mean_substraction_cell_movement=True)
 
 CT()
+CT.plot_cell_movement()
 #save_CT(CT, pthtosave, embcode)
 #CTl = load_CT(pthtosave, embcode)
-
