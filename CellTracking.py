@@ -894,6 +894,7 @@ class CellTracking(object):
         
         self.cells = deepcopy(backup.cells)
         self._update_CT_cell_attributes()
+        self._compute_masks_stack()
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
         for PACT in self.PACTs:
@@ -1096,6 +1097,7 @@ class CellTracking(object):
         self._update_CT_cell_attributes()
         self._extract_unique_labels_and_max_label()
         self._extract_unique_labels_per_time()
+        self._compute_masks_stack()
 
     def _update_CT_cell_attributes(self):
             self.Labels   = []
@@ -1424,7 +1426,7 @@ class CellTracking(object):
         self._masks_stack = np.zeros((t,z,x,y,4))
 
         for cell in self.cells:
-            self._set_masks_alphas(cell, True)
+            self._set_masks_alphas(cell, self.plot_masks)
 
     def _set_masks_alphas(self, cell, plot_mask):
         if plot_mask: alpha=1
@@ -1741,30 +1743,37 @@ class PlotActionCT:
             if event.key == 'd':
                 self.CT.one_step_copy(self.t)
                 self.current_state="del"
+                self.switch_masks(masks=False)
                 self.delete_cells()
             elif event.key == 'C':
                 self.CT.one_step_copy(self.t)
                 self.current_state="Com"
+                self.switch_masks(masks=False)
                 self.combine_cells_t()
             elif event.key == 'c':
                 self.CT.one_step_copy(self.t)
                 self.current_state="com"
+                self.switch_masks(masks=False)
                 self.combine_cells_z()
             elif event.key == 'j':
                 self.CT.one_step_copy(self.t)
                 self.current_state="joi"
+                self.switch_masks(masks=False)
                 self.join_cells()
             elif event.key == 'M':
                 self.CT.one_step_copy(self.t)
                 self.current_state="mit"
+                self.switch_masks(masks=False)
                 self.mitosis()
             if event.key == 'a':
                 self.CT.one_step_copy()
                 self.current_state="add"
+                self.switch_masks(masks=False)
                 self.add_cells()
             elif event.key == 'A':
                 self.CT.one_step_copy(self.t)
                 self.current_state="apo"
+                self.switch_masks(masks=False)
                 self.apoptosis()
             elif event.key == 'escape':
                 self.visualization()
@@ -1772,23 +1781,22 @@ class PlotActionCT:
                 self.plot_outlines = not self.plot_outlines
                 self.visualization()
             elif event.key == 'm':
-                if self.CT.plot_masks is None: self.CT.plot_masks = True
-                else: self.CT.plot_masks = not self.CT.plot_masks
-                for cell in self.CT.cells:
-                    self.CT._set_masks_alphas(cell, self.CT.plot_masks)
-                self.visualization()
+                self.switch_masks(masks=None)
             elif event.key == 's':
                 self.CT.one_step_copy(self.t)
                 self.current_state="Sep"
+                self.switch_masks(masks=False)
                 self.separate_cells_t()
             elif event.key == 'z':
                 self.CT.undo_corrections(all=False)
                 for PACT in self.CT.PACTs:
                     PACT.visualization()
+                    PACT.update()
             elif event.key == 'Z':
                 self.CT.undo_corrections(all=True)
                 for PACT in self.CT.PACTs:
                     PACT.visualization()
+                    PACT.update()
             self.update()
 
         else:
@@ -1803,13 +1811,6 @@ class PlotActionCT:
                         delattr(self.CT, 'linebuilder')
                 self.CP.stopit()
                 delattr(self, 'CP')
-                if len(self.list_of_cells)>0: cells_to_unmask = copy(self.list_of_cells)
-                elif len(self.CT.list_of_cells)>0: cells_to_unmask = copy(self.CT.list_of_cells)
-                else: cells_to_unmask = []
-                for _cell in cells_to_unmask:
-                    lab = _cell[0]
-                    cell = self.CT._get_cell(label=lab)
-                    self.CT._set_masks_alphas(cell, False)
                 for PACT in self.CT.PACTs:
                     PACT.list_of_cells = []
                     PACT.CT.list_of_cells = []
@@ -1823,14 +1824,6 @@ class PlotActionCT:
                     PACT.update()
 
             elif event.key=='enter':
-                
-                if len(self.list_of_cells)>0: cells_to_unmask = copy(self.list_of_cells)
-                elif len(self.CT.list_of_cells)>0: cells_to_unmask = copy(self.CT.list_of_cells)
-                else: cells_to_unmask = []
-                for _cell in cells_to_unmask:
-                    lab = _cell[0]
-                    cell = self.CT._get_cell(label=lab)
-                    self.CT._set_masks_alphas(cell, False)
                 if self.current_state=="add":
                     self.CP.stopit()
                     delattr(self, 'CP')
@@ -1842,6 +1835,7 @@ class PlotActionCT:
                         self.CT.complete_add_cell(self)
                         delattr(self.CT, 'linebuilder')
                     for PACT in self.CT.PACTs:
+                        PACT._pre_labs_to_plot = []
                         PACT.list_of_cells = []
                         PACT.current_subplot=None
                         PACT.current_state=None
@@ -1856,6 +1850,7 @@ class PlotActionCT:
                     delattr(self, 'CP')
                     self.CT.delete_cell(self)
                     for PACT in self.CT.PACTs:
+                        PACT._pre_labs_to_plot = []
                         PACT.list_of_cells = []
                         PACT.current_subplot=None
                         PACT.current_state=None
@@ -1870,6 +1865,7 @@ class PlotActionCT:
                     delattr(self, 'CP')
                     self.CT.combine_cells_t()
                     for PACT in self.CT.PACTs:
+                        PACT._pre_labs_to_plot = []
                         PACT.current_subplot=None
                         PACT.current_state=None
                         PACT.ax_sel=None
@@ -1884,6 +1880,7 @@ class PlotActionCT:
                     delattr(self, 'CP')
                     self.CT.combine_cells_z(self)
                     for PACT in self.CT.PACTs:
+                        PACT._pre_labs_to_plot = []
                         PACT.list_of_cells = []
                         PACT.current_subplot=None
                         PACT.current_state=None
@@ -1898,6 +1895,7 @@ class PlotActionCT:
                     delattr(self, 'CP')
                     self.CT.join_cells(self)
                     for PACT in self.CT.PACTs:
+                        PACT._pre_labs_to_plot = []
                         PACT.list_of_cells = []
                         PACT.current_subplot=None
                         PACT.current_state=None
@@ -1912,6 +1910,7 @@ class PlotActionCT:
                     delattr(self, 'CP')
                     self.CT.separate_cells_t()
                     for PACT in self.CT.PACTs:
+                        PACT._pre_labs_to_plot = []
                         PACT.current_subplot=None
                         PACT.current_state=None
                         PACT.ax_sel=None
@@ -1927,6 +1926,7 @@ class PlotActionCT:
                     self.CT.apoptosis(self.list_of_cells)
                     self.list_of_cells=[]
                     for PACT in self.CT.PACTs:
+                        PACT._pre_labs_to_plot = []
                         PACT.CT.replot_tracking(PACT, plot_outlines=self.plot_outlines)
                         PACT.visualization()
                         PACT.update()
@@ -1936,6 +1936,7 @@ class PlotActionCT:
                     delattr(self, 'CP')
                     self.CT.mitosis()
                     for PACT in self.CT.PACTs:
+                        PACT._pre_labs_to_plot = []
                         PACT.current_subplot=None
                         PACT.current_state=None
                         PACT.ax_sel=None
@@ -2123,6 +2124,15 @@ class PlotActionCT:
         self.figwidth  = widthfig
         self.figheight = heightfig
 
+    def switch_masks(self, masks=None):
+        if masks is None:
+            if self.CT.plot_masks is None: self.CT.plot_masks = True
+            else: self.CT.plot_masks = not self.CT.plot_masks
+        else: self.CT.plot_masks=masks
+        for cell in self.CT.cells:
+            self.CT._set_masks_alphas(cell, self.CT.plot_masks)
+        self.visualization()
+
     def delete_cells(self):
         self.title.set(text="DELETE CELL", ha='left', x=0.01)
         self.instructions.set(text="Right-click to delete cell on a plane\nDouble right-click to delete on all planes")
@@ -2173,8 +2183,8 @@ class PlotActionCT:
         self.CP = CellPicker_apo(self)
 
     def visualization(self):
-        self.reploting()
         self.update()
+        self.reploting()
         self.title.set(text="VISUALIZATION MODE", ha='left', x=0.01)
         self.instructions.set(text="Chose one of the actions to change mode")       
         self.fig.patch.set_facecolor((1.0,1.0,1.0,1.0))
