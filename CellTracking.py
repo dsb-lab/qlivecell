@@ -1564,7 +1564,7 @@ class CellTracking(object):
             if z == None:
                 img = np.zeros(self.stack_dims)
                 self._imshows[pactid][id].set_data(img)
-                self._imshows_masks[pactid][id].set_data(self._masks_stack[t][z])
+                self._imshows_masks[pactid][id].set_data(img)
                 self._titles[pactid][id].set_text("")
             else:      
                 img = imgs[z,:,:]
@@ -2800,7 +2800,15 @@ class PlotActionCellMovement:
                 self.plot_mean = not self.plot_mean
                 self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
                 self.update()
-                    
+
+    def on_key_press(self, event):
+        if event.key == 'control':
+            self.ctrl_is_held = True
+
+    def on_key_release(self, event):
+        if event.key == 'control':
+            self.ctrl_is_held = False
+            
     # The function to be called anytime a slider's value changes
     def update_slider(self, t):
         self.t=t
