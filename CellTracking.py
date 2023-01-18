@@ -1338,6 +1338,7 @@ class CellTracking(object):
         # check time overlap
         if any(i in cellmax.times for i in cellmin.times):
             self.printfancy("ERROR: cells overlap in time")
+            self.update_labels()
             return
 
         for tid, t in enumerate(cellmax.times):
