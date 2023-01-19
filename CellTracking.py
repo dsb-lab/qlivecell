@@ -20,6 +20,9 @@ from matplotlib.lines import Line2D
 from matplotlib.lines import lineStyles
 from matplotlib.ticker import MaxNLocator
 
+from tifffile import imwrite
+import subprocess
+
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 plt.rcParams['keymap.save'].remove('s')
 plt.rcParams['keymap.zoom'][0]='º'
@@ -822,7 +825,8 @@ class Cell():
         return np.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
 
 class CellTracking(object):
-    def __init__(self, stacks, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", mean_substraction_cell_movement=False):
+    def __init__(self, stacks, model, pthtosave, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", mean_substraction_cell_movement=False):
+        self.path_to_save      = pthtosave
         self.embcode           = embcode
         self.stacks            = stacks
         self._model            = model
@@ -831,6 +835,7 @@ class CellTracking(object):
         self._flow_th_cellpose = flow_th_cellpose
         self._distance_th_z    = distance_th_z
         self._xyresolution     = xyresolution
+        self._zresolution      = zresolution
         self.times             = np.shape(stacks)[0]
         self.slices            = np.shape(stacks)[1]
         self.stack_dims        = np.shape(stacks)[-2:]
@@ -879,9 +884,7 @@ class CellTracking(object):
         self._backupCT = backup_CellTrack(0, self)
         self.backups = deque([self._backupCT], self._backup_steps)
         self.printfancy("")
-        self.printfancy("Plotting...")
         plt.close("all")
-        self.plot_tracking()
         self.printfancy("")
         print("#######################    PROCESS FINISHED   #######################")
 
@@ -1456,7 +1459,7 @@ class CellTracking(object):
                 out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
                 self._outline_scatters[pactid].append(out_plot)
 
-    def plot_tracking(self, windows=None, cell_movement=False):
+    def plot_tracking(self, windows=None, cell_picker=False, mode=None):
         if windows==None:
             windows=self.plot_tracking_windows
         self.PACTs=[]
@@ -1469,11 +1472,11 @@ class CellTracking(object):
         self._annotations      = []
         self.list_of_cells=[]
         self._compute_masks_stack()
-        if cell_movement: windows=1
+        if cell_picker: windows=1
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
-            if cell_movement: self.PACTs.append(PlotActionCellMovement(fig, ax, self, w))
+            if cell_picker: self.PACTs.append(PlotActionCellPicker(fig, ax, self, w, mode=mode))
             else: self.PACTs.append(PlotActionCT(fig, ax, self, w))
             self.PACTs[w].zs = np.zeros_like(ax)
             zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
@@ -1697,8 +1700,55 @@ class CellTracking(object):
         self.ax_cellmovement.set_ylim(ymin,ymax)
         self.fig_cellmovement.tight_layout()
         if firstcall:
-            if plot_tracking: self.plot_tracking(cell_movement=True)
+            if plot_tracking: self.plot_tracking(cell_picker=True, mode="CM")
             else: plt.show()
+
+    def select_cells(self):
+        labels = []
+        self.plot_tracking(cell_picker=True)
+
+
+    def save_masks3D_stack(self, select_cells=False):
+        if select_cells:
+            pass
+        else:
+            labels = self.unique_labels
+        masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
+        for cell in self.cells:
+            if cell.label not in labels: continue
+            color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('float32')
+            for tid, tc in enumerate(cell.times):
+                for zid, zc in enumerate(cell.zs[tid]):
+                    mask = cell.masks[tid][zid]
+                    xids = mask[:,1]
+                    yids = mask[:,0]
+                    masks[tc][zc][0][xids,yids]=color[0]
+                    masks[tc][zc][1][xids,yids]=color[1]
+                    masks[tc][zc][2][xids,yids]=color[2]
+
+        imwrite(
+            self.path_to_save+self.embcode+"_masks.tiff",
+            masks,
+            imagej=True,
+            resolution=(1/self._xyresolution, 1/self._xyresolution),
+            photometric='rgb',
+            metadata={
+                'spacing': self._zresolution,
+                'unit': 'um',
+                #'finterval': 5,
+                'axes': 'TZCYX',
+            }
+        )
+    
+    def plot_masks3D_Imagej(self, verbose=False):
+        self.save_masks3D_stack()
+        file=self.embcode+"_masks.tiff"
+        pth=self.path_to_save
+        fullpath = pth+file
+        if verbose:
+            subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--ij2', '--console', '-macro', '/home/pablo/Desktop/PhD/projects/CellTracking/imj_3D.ijm', fullpath])
+        else:
+            subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--ij2', '--console', '-macro', '/home/pablo/Desktop/PhD/projects/CellTracking/imj_3D.ijm', fullpath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 class PlotActionCT:
     def __init__(self, fig, ax, CT, id):
@@ -2713,41 +2763,41 @@ class CellPicker_mit():
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
-class CellPicker_CM():
-    def __init__(self, PACM):
-        self.PACM  = PACM
-        self.cid = self.PACM.fig.canvas.mpl_connect('button_press_event', self)
-        self.canvas  = self.PACM.fig.canvas
+class CellPicker_CP():
+    def __init__(self, PACP):
+        self.PACP  = PACP
+        self.cid = self.PACP.fig.canvas.mpl_connect('button_press_event', self)
+        self.canvas  = self.PACP.fig.canvas
     def __call__(self, event):
         if event.button==3:
-            if isinstance(self.PACM.ax, np.ndarray):
-                axshape = self.PACM.ax.shape
+            if isinstance(self.PACP.ax, np.ndarray):
+                axshape = self.PACP.ax.shape
                 # Select ax 
                 for i in range(axshape[0]):
                         for j in range(axshape[1]):
-                                if event.inaxes==self.PACM.ax[i,j]:
-                                    self.PACM.current_subplot = [i,j]
-                                    self.PACM.ax_sel = self.PACM.ax[i,j]
-                                    self.PACM.z = self.PACM.zs[i,j]
+                                if event.inaxes==self.PACP.ax[i,j]:
+                                    self.PACP.current_subplot = [i,j]
+                                    self.PACP.ax_sel = self.PACP.ax[i,j]
+                                    self.PACP.z = self.PACP.zs[i,j]
             else:
-                self.PACM.ax_sel = self.PACM.ax
+                self.PACP.ax_sel = self.PACP.ax
 
-            if event.inaxes!=self.PACM.ax_sel:
+            if event.inaxes!=self.PACP.ax_sel:
                 pass
             else:
                 x = np.rint(event.xdata).astype(np.int64)
                 y = np.rint(event.ydata).astype(np.int64)
                 picked_point = np.array([x, y])
                 # Check if the point is inside the mask of any cell
-                for i ,mask in enumerate(self.PACM.CT.Masks[self.PACM.t][self.PACM.z]):
+                for i ,mask in enumerate(self.PACP.CT.Masks[self.PACP.t][self.PACP.z]):
                     for point in mask:
                         if (picked_point==point).all():
-                            z   = self.PACM.z
-                            lab = self.PACM.CT.Labels[self.PACM.t][z][i]
+                            z   = self.PACP.z
+                            lab = self.PACP.CT.Labels[self.PACP.t][z][i]
                             cell = lab
                             idxtopop=[]
                             pop_cell=False
-                            for jj, _cell in enumerate(self.PACM.label_list):
+                            for jj, _cell in enumerate(self.PACP.label_list):
                                 _lab = _cell
                                 if _lab == lab:
                                     pop_cell=True
@@ -2755,16 +2805,25 @@ class CellPicker_CM():
                             if pop_cell:
                                 idxtopop.sort(reverse=True)
                                 for jj in idxtopop:
-                                    self.PACM.label_list.pop(jj)
+                                    self.PACP.label_list.pop(jj)
                             else:
-                                self.PACM.label_list.append(cell)
-                            self.PACM.CT.plot_cell_movement(label_list=self.PACM.label_list, plot_mean=self.PACM.plot_mean, plot_tracking=False)
-                            self.PACM.update()
+                                self.PACP.label_list.append(cell)
+                            self.action()
+                            
+    def action(self):
+        self.PACP.update()
+
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
-class PlotActionCellMovement:
-    def __init__(self, fig, ax, CT, id):
+class CellPicker_CM(CellPicker_CP):
+
+    def action(self):
+        self.PACP.CT.plot_cell_movement(label_list=self.PACP.label_list, plot_mean=self.PACP.plot_mean, plot_tracking=False)
+        self.PACP.update()
+
+class PlotActionCellPicker:
+    def __init__(self, fig, ax, CT, id, mode):
         self.fig=fig
         self.ax=ax
         self.id=id
@@ -2788,18 +2847,24 @@ class PlotActionCellMovement:
         self.plot_mean=True
         self.label_list=list(copy(self.CT.unique_labels))
         self.update()
-        self.CP = CellPicker_CM(self)
+        self.mode = mode
+        if mode == "CP":
+            self.CP = CellPicker_CP(self)
+        elif mode == "CM":
+            self.CP = CellPicker_CM(self)
 
     def __call__(self, event):
         if self.current_state==None:
             if event.key=="enter":
                 if len(self.label_list)>0: self.label_list=[]
                 else: self.label_list = list(copy(self.CT.unique_labels))
-                self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
+                if self.mode == "CM":
+                    self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
                 self.update()
             elif event.key=="m":
                 self.plot_mean = not self.plot_mean
-                self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
+                if self.mode == "CM":
+                    self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
                 self.update()
 
     def on_key_press(self, event):
