@@ -42,5 +42,5 @@ CT()
 
 #save_CT(CT, pthtosave, embcode)
 CT.plot_tracking()
-#CT.plot_cell_movement()
+CT.plot_cell_movement()
 CT.plot_masks3D_Imagej(cell_selection=True, keep=False)

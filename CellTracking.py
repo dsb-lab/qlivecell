@@ -2085,7 +2085,7 @@ class PlotActionCT:
 
         self.actionlist.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(fontsize=width_or_height/scale1)
-        self.selected_cells.set(text="Cells\nSelected\n\n"+s)
+        self.selected_cells.set(text="Selection\n\n"+s)
         self.instructions.set(fontsize=width_or_height/scale2)
         self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
         self.title.set(fontsize=width_or_height/scale2)
@@ -2850,7 +2850,11 @@ class PlotActionCellPicker:
         groupsize  = self.CT.plot_layout[0] * self.CT.plot_layout[1]
         self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
         self.get_size()
-        self.instructions = self.fig.text(0.2, 0.98, "RIGHT CLICK TO SELECT/UNSELECT CELLS\nTO SHOW ON THE CELL MOVEMENT PLOT", fontsize=1, ha='left', va='top')
+        self.instructions = self.fig.text(0.2, 0.98, "RIGHT CLICK TO SELECT/UNSELECT CELLS", fontsize=1, ha='left', va='top')
+        self.selected_cells1 = self.fig.text(0.86, 0.89, "Selection\n\n", fontsize=1, ha='right', va='top')
+        self.selected_cells2 = self.fig.text(0.925, 0.89, "\n" , fontsize=1, ha='right', va='top')
+        self.selected_cells3 = self.fig.text(0.99, 0.89, "\n" , fontsize=1, ha='right', va='top')
+
         self.plot_mean=True
         self.label_list=[]
         self.mode = mode
@@ -2858,7 +2862,6 @@ class PlotActionCellPicker:
             self.CP = CellPicker_CP(self)
         elif mode == "CM":
             self.CP = CellPicker_CM(self)
-        self.selected_cells = self.fig.text(0.98, 0.89, "Selection", fontsize=1, ha='right', va='top')
         self.update()
 
     def __call__(self, event):
@@ -2914,16 +2917,25 @@ class PlotActionCellPicker:
             if self.current_state=="SCL": self.current_state=None
 
     def update(self):
-        cells_string = ["cell = "+str(x) for x in self.label_list]
-        s = "\n".join(cells_string)
+        cells_string1 = ["cell = "+str(x) for x in self.label_list if x<50]
+        cells_string2 = ["cell = "+str(x) for x in self.label_list if 50 <= x < 100]
+        cells_string3 = ["cell = "+str(x) for x in self.label_list if x >= 100]
+
+        s1 = "\n".join(cells_string1)
+        s2 = "\n".join(cells_string2)
+        s3 = "\n".join(cells_string3)
+
         self.get_size()
         scale=90
         if self.figheight < self.figwidth: width_or_height = self.figheight/scale
         else: width_or_height = self.figwidth/scale
-        self.selected_cells.set(text="Selection\n\n"+s)
-        self.selected_cells.set_fontsize(width_or_height/scale)
+
+        self.selected_cells1.set(text="Selection\n"+s1, fontsize=width_or_height*0.7)
+        self.selected_cells2.set(text="\n"+s2, fontsize=width_or_height*0.7)
+        self.selected_cells3.set(text="\n"+s3, fontsize=width_or_height*0.7)
+
         self.instructions.set(fontsize=width_or_height)
-        plt.subplots_adjust(top=0.9,left=0.2)
+        plt.subplots_adjust(right=0.75)
         self.fig.canvas.draw_idle()
         if self.mode == "CM": self.CT.fig_cellmovement.canvas.draw()
         self.fig.canvas.draw()
