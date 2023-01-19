@@ -8,7 +8,7 @@ import itertools
 from collections import deque
 import gc
 import warnings
-
+import os
 from cellpose import utils as utilscp
 
 import matplotlib as mtp
@@ -1700,19 +1700,20 @@ class CellTracking(object):
         self.ax_cellmovement.set_ylim(ymin,ymax)
         self.fig_cellmovement.tight_layout()
         if firstcall:
-            if plot_tracking: self.plot_tracking(cell_picker=True, mode="CM")
+            if plot_tracking: self.plot_tracking(windows=1, cell_picker=True, mode="CM")
             else: plt.show()
 
-    def select_cells(self):
-        labels = []
-        self.plot_tracking(cell_picker=True)
+    def _select_cells(self):
+        self.plot_tracking(windows=1, cell_picker=True, mode="CP")
+        self.PACTs[0].CP.stopit()
+        labels = copy(self.PACTs[0].label_list)
+        return labels
 
-
-    def save_masks3D_stack(self, select_cells=False):
-        if select_cells:
-            pass
+    def save_masks3D_stack(self, cell_selection=False):
+        if cell_selection:
+            labels = self._select_cells()
         else:
-            labels = self.unique_labels
+            labels = []
         masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
         for cell in self.cells:
             if cell.label not in labels: continue
@@ -1725,6 +1726,9 @@ class CellTracking(object):
                     masks[tc][zc][0][xids,yids]=color[0]
                     masks[tc][zc][1][xids,yids]=color[1]
                     masks[tc][zc][2][xids,yids]=color[2]
+        masks[0][0][0][0,0] = 255
+        masks[0][0][1][0,0] = 255
+        masks[0][0][2][0,0] = 255
 
         imwrite(
             self.path_to_save+self.embcode+"_masks.tiff",
@@ -1735,13 +1739,13 @@ class CellTracking(object):
             metadata={
                 'spacing': self._zresolution,
                 'unit': 'um',
-                #'finterval': 5,
+                'finterval': 300,
                 'axes': 'TZCYX',
             }
         )
     
-    def plot_masks3D_Imagej(self, verbose=False):
-        self.save_masks3D_stack()
+    def plot_masks3D_Imagej(self, verbose=False, cell_selection=False, keep=True):
+        self.save_masks3D_stack(cell_selection)
         file=self.embcode+"_masks.tiff"
         pth=self.path_to_save
         fullpath = pth+file
@@ -1749,6 +1753,9 @@ class CellTracking(object):
             subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--ij2', '--console', '-macro', '/home/pablo/Desktop/PhD/projects/CellTracking/imj_3D.ijm', fullpath])
         else:
             subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--ij2', '--console', '-macro', '/home/pablo/Desktop/PhD/projects/CellTracking/imj_3D.ijm', fullpath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        if not keep:
+            subprocess.run(["rm", fullpath])
 
 class PlotActionCT:
     def __init__(self, fig, ax, CT, id):
@@ -1776,7 +1783,7 @@ class PlotActionCT:
         self.title = self.fig.text(0.02,0.96,"", ha='left', va='top', fontsize=1)
         self.timetxt = self.fig.text(0.02, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
         self.instructions = self.fig.suptitle("PRESS ENTER TO START",y=0.98, fontsize=1, ha='center', va='top', bbox=dict(facecolor='black', alpha=0.4, edgecolor='black', pad=2))
-        self.selected_cells = self.fig.text(0.98, 0.89, "Cell\nSelection", fontsize=1, ha='right', va='top')
+        self.selected_cells = self.fig.text(0.98, 0.89, "Selection", fontsize=1, ha='right', va='top')
         self.plot_outlines=True
         self._pre_labs_to_plot = []
         self.update()
@@ -2845,26 +2852,25 @@ class PlotActionCellPicker:
         self.get_size()
         self.instructions = self.fig.text(0.2, 0.98, "RIGHT CLICK TO SELECT/UNSELECT CELLS\nTO SHOW ON THE CELL MOVEMENT PLOT", fontsize=1, ha='left', va='top')
         self.plot_mean=True
-        self.label_list=list(copy(self.CT.unique_labels))
-        self.update()
+        self.label_list=[]
         self.mode = mode
         if mode == "CP":
             self.CP = CellPicker_CP(self)
         elif mode == "CM":
             self.CP = CellPicker_CM(self)
+        self.selected_cells = self.fig.text(0.98, 0.89, "Selection", fontsize=1, ha='right', va='top')
+        self.update()
 
     def __call__(self, event):
         if self.current_state==None:
             if event.key=="enter":
                 if len(self.label_list)>0: self.label_list=[]
                 else: self.label_list = list(copy(self.CT.unique_labels))
-                if self.mode == "CM":
-                    self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
+                if self.mode == "CM": self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
                 self.update()
             elif event.key=="m":
                 self.plot_mean = not self.plot_mean
-                if self.mode == "CM":
-                    self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
+                if self.mode == "CM": self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
                 self.update()
 
     def on_key_press(self, event):
@@ -2908,16 +2914,18 @@ class PlotActionCellPicker:
             if self.current_state=="SCL": self.current_state=None
 
     def update(self):
-
+        cells_string = ["cell = "+str(x) for x in self.label_list]
+        s = "\n".join(cells_string)
         self.get_size()
         scale=90
         if self.figheight < self.figwidth: width_or_height = self.figheight/scale
         else: width_or_height = self.figwidth/scale
-
+        self.selected_cells.set(text="Selection\n\n"+s)
+        self.selected_cells.set_fontsize(width_or_height/scale)
         self.instructions.set(fontsize=width_or_height)
         plt.subplots_adjust(top=0.9,left=0.2)
         self.fig.canvas.draw_idle()
-        self.CT.fig_cellmovement.canvas.draw()
+        if self.mode == "CM": self.CT.fig_cellmovement.canvas.draw()
         self.fig.canvas.draw()
 
     def get_size(self):

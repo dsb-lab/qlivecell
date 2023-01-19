@@ -1,6 +1,6 @@
 fullpath = getArgument()
-run("Bio-Formats Windowless Importer", "open="+fullpath);
 //open(fullpath);
+run("Bio-Formats Windowless Importer", "open="+fullpath);
 imageName=getTitle(); 
 //print(imageName)
 selectImage(imageName)
