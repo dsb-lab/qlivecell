@@ -512,7 +512,7 @@ class CellSegmentation(object):
                     break
             if len(used_idxs)==a:
                 self.printfancy("Improve your point drawing, this is a bit embarrasing") 
-                self.PACT.visualization()
+                self.PACP.visualization()
                 return
         return np.array(new_outline), used_idxs
 
@@ -685,8 +685,8 @@ class CellTracking(object):
         self._compute_masks_stack()
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
-        for PACT in self.PACTs:
-            PACT.CT = self
+        for PACP in self.PACPs:
+            PACP.CT = self
         
         # Make sure there is always a backup on the list
         if len(self.backups)==0:
@@ -933,8 +933,8 @@ class CellTracking(object):
                     break
             if len(used_idxs)==a:
                 self.printfancy("ERROR: Improve your point drawing") 
-                for PACT in self.PACTs:
-                    PACT.visualization()
+                for PACP in self.PACPs:
+                    PACP.visualization()
                 return
         return np.array(new_outline), used_idxs
 
@@ -985,18 +985,18 @@ class CellTracking(object):
         pointsinside=np.array(pointsinside)
         return pointsinside
     
-    def add_cell(self, PACT):
-        line, = PACT.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
+    def add_cell(self, PACP):
+        line, = PACP.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
         self.linebuilder = LineBuilder(line)
 
-    def complete_add_cell(self, PACT):
+    def complete_add_cell(self, PACP):
         if len(self.linebuilder.xs)<3:
             return
         new_outline = np.asarray([list(a) for a in zip(np.rint(self.linebuilder.xs).astype(np.int64), np.rint(self.linebuilder.ys).astype(np.int64))])
         if np.max(new_outline)>self.stack_dims[0]:
             self.printfancy("ERROR: drawing out of image")
             return
-        self.append_cell_from_outline(new_outline, PACT.z, PACT.t)
+        self.append_cell_from_outline(new_outline, PACP.z, PACP.t)
         self.update_labels()
 
     def append_cell_from_outline(self, outline, z, t, sort=True):
@@ -1011,10 +1011,10 @@ class CellTracking(object):
         self.cells.append(Cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self))
         self.currentcellid+=1
 
-    def delete_cell(self, PACT):
-        cells = [x[0] for x in PACT.list_of_cells]
+    def delete_cell(self, PACP):
+        cells = [x[0] for x in PACP.list_of_cells]
         cellids = []
-        Zs    = [x[1] for x in PACT.list_of_cells]
+        Zs    = [x[1] for x in PACP.list_of_cells]
         if len(cells) == 0:
             return
         for i,lab in enumerate(cells):
@@ -1022,7 +1022,7 @@ class CellTracking(object):
             cell  = self._get_cell(lab)
             if cell.id not in (cellids):
                 cellids.append(cell.id)
-            tid   = cell.times.index(PACT.t)
+            tid   = cell.times.index(PACP.t)
             idrem = cell.zs[tid].index(z)
             cell.zs[tid].pop(idrem)
             cell.outlines[tid].pop(idrem)
@@ -1036,12 +1036,12 @@ class CellTracking(object):
         for i,cellid in enumerate(np.unique(cellids)):
             z=Zs[i]
             cell  = self._get_cell(cellid=cellid)
-            try: cell.find_z_discontinuities(self, PACT.t)
+            try: cell.find_z_discontinuities(self, PACP.t)
             except ValueError: pass
         self.update_labels()
 
-    def join_cells(self, PACT):
-        labels, Zs, Ts = list(zip(*PACT.list_of_cells))
+    def join_cells(self, PACP):
+        labels, Zs, Ts = list(zip(*PACP.list_of_cells))
         sortids = np.argsort(labels)
         labels = np.array(labels)[sortids]
         Zs    = np.array(Zs)[sortids]
@@ -1064,7 +1064,7 @@ class CellTracking(object):
             zid  = cell.zs[tid].index(z)
             pre_outline = np.concatenate((pre_outline, cell.outlines[tid][zid]), axis=0)
 
-        self.delete_cell(PACT)
+        self.delete_cell(PACP)
 
         hull = ConvexHull(pre_outline)
         outline = pre_outline[hull.vertices]
@@ -1072,12 +1072,12 @@ class CellTracking(object):
         self.append_cell_from_outline(outline, z, t, sort=False)
         self.update_labels()
 
-    def combine_cells_z(self, PACT):
-        if len(PACT.list_of_cells)<2:
+    def combine_cells_z(self, PACP):
+        if len(PACP.list_of_cells)<2:
             return
-        cells = [x[0] for x in PACT.list_of_cells]
+        cells = [x[0] for x in PACP.list_of_cells]
         cells.sort()
-        t = PACT.t
+        t = PACP.t
 
         cell1 = self._get_cell(cells[0])
         tid_cell1 = cell1.times.index(t)
@@ -1228,26 +1228,26 @@ class CellTracking(object):
                 yids = mask[:,0]
                 self._masks_stack[tc][zc][xids,yids]=np.array(color)
 
-    def plot_axis(self, _ax, img, z, pactid, t, plot_outlines=True):
+    def plot_axis(self, _ax, img, z, PACPid, t, plot_outlines=True):
         im = _ax.imshow(img, vmin=0, vmax=255)
         im_masks =_ax.imshow(self._masks_stack[t][z])
-        self._imshows[pactid].append(im)
-        self._imshows_masks[pactid].append(im_masks)
+        self._imshows[PACPid].append(im)
+        self._imshows_masks[PACPid].append(im_masks)
 
         title = _ax.set_title("z = %d" %z)
-        self._titles[pactid].append(title)
+        self._titles[PACPid].append(title)
         _ = _ax.axis(False)
         Outlines = self.Outlines[t][z]
         if plot_outlines:
             for cell, outline in enumerate(Outlines):
                 label = self.Labels[t][z][cell]
                 out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
-                self._outline_scatters[pactid].append(out_plot)
+                self._outline_scatters[PACPid].append(out_plot)
 
     def plot_tracking(self, windows=None, cell_picker=False, mode=None):
         if windows==None:
             windows=self.plot_tracking_windows
-        self.PACTs=[]
+        self.PACPs=[]
         self._time_sliders = []
         self._imshows  = []
         self._imshows_masks = []
@@ -1262,9 +1262,9 @@ class CellTracking(object):
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
-            if cell_picker: self.PACTs.append(PlotActionCellPicker(fig, ax, self, w, mode))
-            else: self.PACTs.append(PlotActionCT(fig, ax, self, w, None))
-            self.PACTs[w].zs = np.zeros_like(ax)
+            if cell_picker: self.PACPs.append(PlotActionCellPicker(fig, ax, self, w, mode))
+            else: self.PACPs.append(PlotActionCT(fig, ax, self, w, None))
+            self.PACPs[w].zs = np.zeros_like(ax)
             zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
             t=0
             imgs   = self.stacks[t,:,:,:]
@@ -1286,7 +1286,7 @@ class CellTracking(object):
                     pass
                 else:      
                     img = imgs[z,:,:]
-                    self.PACTs[w].zs[idx1, idx2] = z
+                    self.PACPs[w].zs[idx1, idx2] = z
                     self.plot_axis(ax[idx1, idx2], img, z, w, t)
                     labs = self.Labels[t][z]
                     
@@ -1317,69 +1317,69 @@ class CellTracking(object):
                 valfmt="%d"+sliderstr
                 )
             self._time_sliders.append(time_slider)
-            self._time_sliders[w].on_changed(self.PACTs[w].update_slider)
+            self._time_sliders[w].on_changed(self.PACPs[w].update_slider)
         plt.show()
 
-    def replot_axis(self, _ax, img, z, t, pactid, imid, plot_outlines=True):
-            self._imshows[pactid][imid].set_data(img)
-            self._imshows_masks[pactid][imid].set_data(self._masks_stack[t][z])
-            self._titles[pactid][imid].set_text("z = %d" %z)
+    def replot_axis(self, _ax, img, z, t, PACPid, imid, plot_outlines=True):
+            self._imshows[PACPid][imid].set_data(img)
+            self._imshows_masks[PACPid][imid].set_data(self._masks_stack[t][z])
+            self._titles[PACPid][imid].set_text("z = %d" %z)
             Outlines = self.Outlines[t][z]
             if plot_outlines:
                 for cell, outline in enumerate(Outlines):
                     label = self.Labels[t][z][cell]
                     out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
-                    self._outline_scatters[pactid].append(out_plot)
+                    self._outline_scatters[PACPid].append(out_plot)
                     
-    def replot_tracking(self, PACT, plot_outlines=True):
-        t = PACT.t
-        pactid = PACT.id
-        counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=PACT.cr)
+    def replot_tracking(self, PACP, plot_outlines=True):
+        t = PACP.t
+        PACPid = PACP.id
+        counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=PACP.cr)
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
         imgs   = self.stacks[t,:,:,:]
         # Plot all our Zs in the corresponding round
-        for sc in self._outline_scatters[pactid]:
+        for sc in self._outline_scatters[PACPid]:
             sc.remove()
-        for sc in self._pos_scatters[pactid]:
+        for sc in self._pos_scatters[PACPid]:
             sc.remove()
-        for ano in self._annotations[pactid]:
+        for ano in self._annotations[PACPid]:
             ano.remove()
-        self._outline_scatters[pactid] = []
-        self._pos_scatters[pactid]     = []
-        self._annotations[pactid]      = []
+        self._outline_scatters[PACPid] = []
+        self._pos_scatters[PACPid]     = []
+        self._annotations[PACPid]      = []
         for z, id, r in counter:
             # select current z plane
             idx1 = zidxs[0][id]
             idx2 = zidxs[1][id]
             if z == None:
                 img = np.zeros(self.stack_dims)
-                self._imshows[pactid][id].set_data(img)
-                self._imshows_masks[pactid][id].set_data(img)
-                self._titles[pactid][id].set_text("")
+                self._imshows[PACPid][id].set_data(img)
+                self._imshows_masks[PACPid][id].set_data(img)
+                self._titles[PACPid][id].set_text("")
             else:      
                 img = imgs[z,:,:]
-                PACT.zs[idx1, idx2] = z
+                PACP.zs[idx1, idx2] = z
                 labs = self.Labels[t][z]
-                self.replot_axis(PACT.ax[idx1, idx2], img, z, t, pactid, id, plot_outlines=plot_outlines)
+                self.replot_axis(PACP.ax[idx1, idx2], img, z, t, PACPid, id, plot_outlines=plot_outlines)
                 for lab in labs:
                     cell = self._get_cell(lab)
                     tid = cell.times.index(t)
                     zz, ys, xs = cell.centers[tid]
                     if zz == z:
-                        if [lab, PACT.t] in self.apoptotic_events:
-                            _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="k")
-                            self._pos_scatters[pactid].append(_)
+                        if [lab, PACP.t] in self.apoptotic_events:
+                            _ = PACP.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="k")
+                            self._pos_scatters[PACPid].append(_)
                         else:
-                            _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
-                            self._pos_scatters[pactid].append(_)
-                        anno = PACT.ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
-                        self._annotations[pactid].append(anno)              
+                            _ = PACP.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                            self._pos_scatters[PACPid].append(_)
+                        anno = PACP.ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
+                        self._annotations[PACPid].append(anno)              
                         
                         for mitoev in self.mitotic_events:
                             for cell in mitoev:
-                                if [lab, PACT.t]==cell:
-                                    _ = PACT.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="red")
-                                    self._pos_scatters[pactid].append(_)
+                                if [lab, PACP.t]==cell:
+                                    _ = PACP.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="red")
+                                    self._pos_scatters[PACPid].append(_)
 
         plt.subplots_adjust(bottom=0.075)
 
@@ -1491,8 +1491,8 @@ class CellTracking(object):
 
     def _select_cells(self):
         self.plot_tracking(windows=1, cell_picker=True, mode="CP")
-        self.PACTs[0].CP.stopit()
-        labels = copy(self.PACTs[0].label_list)
+        self.PACPs[0].CP.stopit()
+        labels = copy(self.PACPs[0].label_list)
         return labels
 
     def save_masks3D_stack(self, cell_selection=False):
