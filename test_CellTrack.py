@@ -1,10 +1,7 @@
 from cellpose.io import imread
 from cellpose import models
+from CellTracking import CellTracking
 import os
-from CellTracking import *
-from utils_ct import *
-import os
-
 home = os.path.expanduser('~')
 path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
 path_save=home+'/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_claire_ERK-KTR_MKATE2/'
@@ -41,6 +38,6 @@ CT = CellTracking( IMGS, model, path_save, embcode
 CT()
 
 #save_CT(CT, pthtosave, embcode)
-CT.plot_tracking()
+#CT.plot_tracking()
 CT.plot_cell_movement()
-CT.plot_masks3D_Imagej(cell_selection=True, keep=False)
+#CT.plot_masks3D_Imagej(cell_selection=True, keep=False)
