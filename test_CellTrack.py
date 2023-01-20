@@ -1,11 +1,7 @@
 from cellpose.io import imread
 from cellpose import models
+from CellTracking import CellTracking
 import os
-from CellTracking import *
-from utils_ct import *
-import os
-import sys
-#sys.path.append('/path/to/application/app/folder')
 home = os.path.expanduser('~')
 path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
 path_save=home+'/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_claire_ERK-KTR_MKATE2/'
