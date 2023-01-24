@@ -38,6 +38,6 @@ CT = CellTracking( IMGS, model, path_save, embcode
 CT()
 
 #save_CT(CT, pthtosave, embcode)
-CT.plot_tracking()
-#CT.plot_cell_movement()
-CT.plot_masks3D_Imagej(cell_selection=True, keep=False)
+CT.plot_tracking(windows=1, plot_layout=(2,3), plot_overlap=2, masks_cmap='tab10')
+CT.plot_cell_movement(plot_layout=(2,3), plot_overlap=2, masks_cmap='tab10')
+CT.plot_masks3D_Imagej(verbose=False, cell_selection=True, plot_layout=(2,3), plot_overlap=2, masks_cmap='tab10', keep=False)

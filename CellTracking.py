@@ -1248,24 +1248,31 @@ class CellTracking(object):
                     , plot_layout=(2,2)
                     , plot_overlap=1
                     , cell_picker=False
+                    , masks_cmap=None
                     , mode=None):
 
         if windows==None: windows=self.plot_tracking_windows
-        if plot_layout==None: plot_layout=self.plot_layout
-        else: self.plot_layout=plot_layout
-        if plot_overlap==None: plot_overlap=self.plot_overlap
-        else: self.plot_overlap=plot_overlap
-        self.PACPs=[]
-        self._time_sliders = []
-        self._imshows  = []
-        self._imshows_masks = []
-        self._titles   = []
+        if plot_layout is not None: self.plot_layout=plot_layout
+        if plot_overlap is not None: self.plot_overlap=plot_overlap
+        if masks_cmap is not None:
+            self._cmap_name    = masks_cmap
+            self._cmap         = cm.get_cmap(self._cmap_name)
+            self._label_colors = self._cmap.colors
+            self._assign_color_to_label()
+        
+        self._compute_masks_stack()
+        self.plot_masks=True
+        
+        self.PACPs             = []
+        self._time_sliders     = []
+        self._imshows          = []
+        self._imshows_masks    = []
+        self._titles           = []
         self._outline_scatters = []
         self._pos_scatters     = []
         self._annotations      = []
-        self.list_of_cells=[]
-        self._compute_masks_stack()
-        self.plot_masks=True
+        self.list_of_cellsm    = []
+        
         if cell_picker: windows=1
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
@@ -1416,9 +1423,17 @@ class CellTracking(object):
                 new_disp.append(new_val)
             cell.disp = new_disp
 
-    def plot_cell_movement(self, label_list=None, plot_mean=True, plot_tracking=True, substract_mean=None):
+    def plot_cell_movement(self
+                         , label_list=None
+                         , plot_mean=True
+                         , substract_mean=None
+                         , plot_tracking=True
+                         , plot_layout=None
+                         , plot_overlap=None
+                         , masks_cmap=None):
+        
         if substract_mean is None: substract_mean=self._mscm
-
+        
         self.compute_cell_movement()
         self.compute_mean_cell_movement()
         if substract_mean:
@@ -1493,19 +1508,30 @@ class CellTracking(object):
         self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.04, 1))
         self.ax_cellmovement.set_ylim(ymin,ymax)
         self.fig_cellmovement.tight_layout()
+        
         if firstcall:
-            if plot_tracking: self.plot_tracking(windows=1, cell_picker=True, mode="CM")
+            if plot_tracking:
+                self.plot_tracking(windows=1, cell_picker=True, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, mode="CM")
             else: plt.show()
 
-    def _select_cells(self):
-        self.plot_tracking(windows=1, cell_picker=True, mode="CP")
+    def _select_cells(self
+                    , plot_layout=None
+                    , plot_overlap=None
+                    , masks_cmap=None):
+        
+        self.plot_tracking(windows=1, cell_picker=True, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, mode="CP")
         self.PACPs[0].CP.stopit()
         labels = copy(self.PACPs[0].label_list)
         return labels
 
-    def save_masks3D_stack(self, cell_selection=False):
+    def save_masks3D_stack(self
+                         , cell_selection=False
+                         , plot_layout=None
+                         , plot_overlap=None
+                         , masks_cmap=None):
+        
         if cell_selection:
-            labels = self._select_cells()
+            labels = self._select_cells(plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap)
         else:
             labels = []
         masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
@@ -1538,8 +1564,15 @@ class CellTracking(object):
             }
         )
     
-    def plot_masks3D_Imagej(self, verbose=False, cell_selection=False, keep=True):
-        self.save_masks3D_stack(cell_selection)
+    def plot_masks3D_Imagej(self
+                          , verbose=False
+                          , cell_selection=False
+                          , plot_layout=None
+                          , plot_overlap=None
+                          , masks_cmap=None
+                          , keep=True):
+        
+        self.save_masks3D_stack(cell_selection, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap)
         file=self.embcode+"_masks.tiff"
         pth=self.path_to_save
         fullpath = pth+file
