@@ -1244,9 +1244,17 @@ class CellTracking(object):
                 out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
                 self._outline_scatters[PACPid].append(out_plot)
 
-    def plot_tracking(self, windows=None, cell_picker=False, mode=None):
-        if windows==None:
-            windows=self.plot_tracking_windows
+    def plot_tracking(self, windows=None
+                    , plot_layout=(2,2)
+                    , plot_overlap=1
+                    , cell_picker=False
+                    , mode=None):
+
+        if windows==None: windows=self.plot_tracking_windows
+        if plot_layout==None: plot_layout=self.plot_layout
+        else: self.plot_layout=plot_layout
+        if plot_overlap==None: plot_overlap=self.plot_overlap
+        else: self.plot_overlap=plot_overlap
         self.PACPs=[]
         self._time_sliders = []
         self._imshows  = []

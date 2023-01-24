@@ -7,7 +7,7 @@ path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_
 path_save=home+'/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_claire_ERK-KTR_MKATE2/'
 
 files = os.listdir(path_data)
-emb = 9
+emb = 10
 embcode=files[emb][0:-4]
 IMGS   = [imread(path_data+f)[0:2,:,1,:,:] for f in files[emb:emb+1]][0]
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
@@ -38,6 +38,6 @@ CT = CellTracking( IMGS, model, path_save, embcode
 CT()
 
 #save_CT(CT, pthtosave, embcode)
-#CT.plot_tracking()
-CT.plot_cell_movement()
-#CT.plot_masks3D_Imagej(cell_selection=True, keep=False)
+CT.plot_tracking()
+#CT.plot_cell_movement()
+CT.plot_masks3D_Imagej(cell_selection=True, keep=False)
