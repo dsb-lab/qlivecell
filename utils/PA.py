@@ -551,9 +551,9 @@ class PlotActionCellPicker(PlotAction):
         else: width_or_height = self.figwidth/scale
 
         self.label_list.sort()
-        cells_string1 = ["cell = "+str(x) for x in self.label_list if x<50]
-        cells_string2 = ["cell = "+str(x) for x in self.label_list if 50 <= x < 100]
-        cells_string3 = ["cell = "+str(x) for x in self.label_list if x >= 100]
+        cells_string1 = ["cell = "+"{x:d}".format(x=int(x)) for x in self.label_list if x<50]
+        cells_string2 = ["cell = "+"{x:d}".format(x=int(x)) for x in self.label_list if 50 <= x < 100]
+        cells_string3 = ["cell = "+"{x:d}".format(x=int(x)) for x in self.label_list if x >= 100]
 
         s1 = "\n".join(cells_string1)
         s2 = "\n".join(cells_string2)

@@ -1437,7 +1437,9 @@ class CellTracking(object):
                          , movement_computation_method=None):
         
         if movement_computation_method is None: movement_computation_method=self._movement_computation_method
+        else: self._movement_computation_method=movement_computation_method
         if substract_mean is None: substract_mean=self._mscm
+        else: self._mscm=substract_mean
         
         self.compute_cell_movement(movement_computation_method)
         self.compute_mean_cell_movement()
