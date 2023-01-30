@@ -56,10 +56,10 @@ class LineBuilder:
         self.line.remove()
 
 class CellPicker():
-    def __init__(self, PACT):
-        self.PACT  = PACT
-        self.cid = self.PACT.fig.canvas.mpl_connect('button_press_event', self)
-        self.canvas  = self.PACT.fig.canvas
+    def __init__(self, PACP):
+        self.PACP  = PACP
+        self.cid = self.PACP.fig.canvas.mpl_connect('button_press_event', self)
+        self.canvas  = self.PACP.fig.canvas
     
     def __call__(self, event):
         if event.button==3:
