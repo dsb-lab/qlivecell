@@ -35,6 +35,8 @@ from utils.PA import *
 from utils.extraclasses import MySlider, backup_CellTrack, Cell
 from utils.iters import plotRound
 from utils.utils_ct import *
+from utils.utils_ct import save_CT
+from utils.utils_ct import load_CT
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 plt.rcParams['keymap.save'].remove('s')
@@ -610,7 +612,7 @@ class CellSegmentation(object):
                 _ = _ax.scatter([ys], [xs], s=3.0, c="k")
 
 class CellTracking(object):
-    def __init__(self, stacks, model, pthtosave, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", mean_substraction_cell_movement=False):
+    def __init__(self, stacks, model, pthtosave, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False):
         self.path_to_save      = pthtosave
         self.embcode           = embcode
         self.stacks            = stacks
@@ -637,6 +639,7 @@ class CellTracking(object):
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self._cdaxis = cell_distance_axis
+        self._movement_computation_method = movement_computation_method
         self.plot_masks = True
         self.list_of_cells     = []
         self.mito_cells        = []
@@ -1402,9 +1405,9 @@ class CellTracking(object):
         coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
         self._labels_color_id = [next(coloriter) for i in range(1000)]
     
-    def compute_cell_movement(self):
+    def compute_cell_movement(self, movement_computation_method):
         for cell in self.cells:
-            cell.compute_movement(self._cdaxis)
+            cell.compute_movement(self._cdaxis, movement_computation_method)
 
     def compute_mean_cell_movement(self):
         nrm = np.zeros(self.times-1)
@@ -1430,11 +1433,13 @@ class CellTracking(object):
                          , plot_tracking=True
                          , plot_layout=None
                          , plot_overlap=None
-                         , masks_cmap=None):
+                         , masks_cmap=None
+                         , movement_computation_method=None):
         
+        if movement_computation_method is None: movement_computation_method=self._movement_computation_method
         if substract_mean is None: substract_mean=self._mscm
         
-        self.compute_cell_movement()
+        self.compute_cell_movement(movement_computation_method)
         self.compute_mean_cell_movement()
         if substract_mean:
             self.cell_movement_substract_mean()

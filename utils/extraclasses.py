@@ -49,11 +49,15 @@ class Cell():
         self.centersi = []
         self.centersj = []
         self.centers  = []
+        self.centers_all = []
         self.centers_weight = []
+        self.centers_all_weight = []
         # Loop over each z-level
         for tid, t in enumerate(self.times):
             self.centersi.append([])
             self.centersj.append([])
+            self.centers_all.append([])
+            self.centers_all_weight.append([])
             for zid, z in enumerate(self.zs[tid]):
                 mask = self.masks[tid][zid]
                 # Current xy plane with the intensity of fluorescence 
@@ -64,6 +68,9 @@ class Cell():
                 ys = np.average(mask[:,0], weights=img[mask[:,1], mask[:,0]])
                 self.centersi[tid].append(xs)
                 self.centersj[tid].append(ys)
+                self.centers_all[tid].append([z,ys,xs])
+                self.centers_all_weight[tid].append(np.sum(img[mask[:,1], mask[:,0]]))
+
                 if len(self.centers) < tid+1:
                     self.centers.append([z,ys,xs])
                     self.centers_weight.append(np.sum(img[mask[:,1], mask[:,0]]))
@@ -145,28 +152,63 @@ class Cell():
     def whereNotConsecutive(self, l):
         return [id+1 for id, val in enumerate(np.diff(l)) if val > 1]
 
-    def compute_movement(self, mode):
+    def compute_movement(self, mode, method):
+        self.extract_XYZ_positions()
+        self.extract_all_XYZ_positions()
+
+        if method == "center":
+            self._compute_movement_center(mode)
+        
+        elif method=="all_to_all":
+            self._compute_movement_all_to_all(mode)
+    
+    def extract_XYZ_positions(self):
         self.Z = []
         self.Y = []
         self.X = []
-        self.disp = []
-        z,ys,xs = self.centers[0]
-        self.Z.append(z)
-        self.Y.append(ys)
-        self.X.append(xs)
-        for t in range(1,len(self.times)):
+        for t in range(len(self.times)):
             z,ys,xs = self.centers[t]
             self.Z.append(z)
             self.Y.append(ys)
             self.X.append(xs)
+
+    def extract_all_XYZ_positions(self):
+        self.Z_all = []
+        self.Y_all = []
+        self.X_all = []
+        for t in range(len(self.times)):
+            self.Z_all.append([])
+            self.Y_all.append([])
+            self.X_all.append([])
+            for plane, point in enumerate(self.centers_all[t]):
+                self.Z_all[t].append(point[0])
+                self.Y_all[t].append(point[1])
+                self.X_all[t].append(point[2])
+
+    def _compute_movement_center(self, mode):
+        self.disp = []
+        for t in range(1,len(self.times)):
             if mode=="xy":
                 self.disp.append(self.compute_distance_xy(self.X[t-1], self.X[t], self.Y[t-1], self.Y[t]))
             elif mode=="xyz":
                 self.disp.append(self.compute_distance_xyz(self.X[t-1], self.X[t], self.Y[t-1], self.Y[t], self.Z[t-1], self.Z[t]))
 
+    def _compute_movement_all_to_all(self, mode):
+        self.disp = []
+        for t in range(1,len(self.times)):
+            self.disp.append(0)
+            ndisp = 0
+            for i in range(len(self.zs[t-1])):
+                for j in range(len(self.zs[t])):
+                    ndisp += 1
+                    if mode=="xy":
+                        self.disp[t-1] += self.compute_distance_xy(self.X_all[t-1][i], self.X_all[t][j], self.Y_all[t-1][i], self.Y_all[t][j])
+                    elif mode=="xyz":
+                        self.disp[t-1] += self.compute_distance_xyz(self.X_all[t-1][i], self.X_all[t][j], self.Y_all[t-1][i], self.Y_all[t][j], self.Z_all[t-1][i], self.Z_all[t][j])
+            self.disp[t-1] /= ndisp
+    
     def compute_distance_xy(self, x1, x2, y1, y2):
         return np.sqrt((x2-x1)**2 + (y2-y1)**2)
 
     def compute_distance_xyz(self, x1, x2, y1, y2, z1, z2):
         return np.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
-
