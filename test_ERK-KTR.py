@@ -1,5 +1,9 @@
 from cellpose.io import imread
 from cellpose import models
+
+import sys
+sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")
+
 from CellTracking import CellTracking
 from CellTracking import load_CT
 import os
