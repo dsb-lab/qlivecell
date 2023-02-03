@@ -21,43 +21,33 @@ cells = load_CT(path_save, embcode)
 f = embcode+'.tif'
 IMGS_ERK   = imread(path_data+f)[:4,:,0,:,:]
 IMGS_SEG   = imread(path_data+f)[:4,:,1,:,:]
-cell  = cells[0]
-
-start = time.time()
-for cell in cells:
-    print("lab =", cell.label)
-    donut = ERKKTR_donut(cell, innerpad=4, outterpad=3, donut_width=5, inhull_method="delaunay")
-end = time.time()
-print(end - start)
 
 t = 0
 z = 1
-img = IMGS_SEG[t,z] 
-tid = cell.times.index(t)
-zid = cell.zs[tid].index(z)
-outline = cell.outlines[tid][zid]
-mask    = cell.masks[tid][zid]
 
-nuc_mask = donut.nuclei_masks[tid][zid]
-nuc_outline = donut.nuclei_outlines[tid][zid]
-don_mask = donut.donut_masks[tid][zid]
+for cell in cells:
+    ERKKTR_donut(cell, innerpad=8, outterpad=3, donut_width=5, inhull_method="delaunay")
+    None
 
 fig, ax = plt.subplots()
-#ax.imshow(img)
-ax.scatter(outline[:,0], outline[:,1], s=5, c='k')
-ax.scatter(nuc_outline[:,0], nuc_outline[:,1], s=5)
-ax.scatter(nuc_mask[:,0], nuc_mask[:,1],s=1)
-plt.show()
+for cell in cells:
+    print(cell.label)
+    donut = cell.ERKKTR_donut
+    img = IMGS_SEG[t,z] 
+    if t not in cell.times: continue
+    tid = cell.times.index(t)
+    if z not in cell.zs[tid]: continue
+    zid = cell.zs[tid].index(z)
+    outline = cell.outlines[tid][zid]
+    mask    = cell.masks[tid][zid]
 
-fig, ax = plt.subplots()
-#ax.imshow(img)
+    nuc_mask = donut.nuclei_masks[tid][zid]
+    nuc_outline = donut.nuclei_outlines[tid][zid]
+    don_mask = donut.donut_masks[tid][zid]
 
-# ax.scatter(donut.maskout[:,0], donut.maskout[:,1],s=1, c='red')
-# ax.scatter(donut.maskin[:,0], donut.maskin[:,1],s=1, c='green')
-
-ax.scatter(outline[:,0], outline[:,1], s=10, c='k')
-ax.scatter(donut.inneroutline[:,0], donut.inneroutline[:,1], s=10, c='k')
-ax.scatter(donut.outteroutline[:,0], donut.outteroutline[:,1], s=10, c='k')
-ax.scatter(don_mask[:,0], don_mask[:,1],s=1, c='red')
-
+    #ax.imshow(img)
+    ax.scatter(outline[:,0], outline[:,1], s=10, c='k')
+    ax.scatter(nuc_mask[:,0], nuc_mask[:,1],s=5, c='green')
+    ax.scatter(don_mask[:,0], don_mask[:,1],s=5, c='red')
+    None
 plt.show()

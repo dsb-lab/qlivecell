@@ -14,7 +14,7 @@ class ERKKTR_donut():
         self.outpad = outterpad
         self.dwidht = donut_width
         self._min_outline_length = min_outline_length
-        self.cell  = deepcopy(cell)
+        self.cell  = cell
         if inhull_method=="delaunay": self._inhull=self._inhull_Delaunay
         elif inhull_method=="cross": self._inhull=self._inhull_cross
         elif inhull_method=="linprog": self._inhull=self._inhull_linprog
@@ -22,6 +22,7 @@ class ERKKTR_donut():
         
         self.compute_donut_masks()
         self.compute_nuclei_mask()
+        cell.ERKKTR_donut = self
     
     def compute_nuclei_mask(self):
         self.nuclei_masks = deepcopy(self.cell.masks)
@@ -50,8 +51,6 @@ class ERKKTR_donut():
                     inneroutline, midx, midy = self._expand_hull(outline, inc=self.outpad)
                     outteroutline, midx, midy = self._expand_hull(outline, inc=self.outpad+self.dwidht)
                     
-                    inneroutline = outline
-                    outteroutline = outline
                     inneroutline=self._increase_point_resolution(inneroutline)
                     outteroutline=self._increase_point_resolution(outteroutline)
                     
@@ -67,14 +66,12 @@ class ERKKTR_donut():
                     
                     maskin = self._points_within_hull(hull_in, inneroutline)
                     maskout= self._points_within_hull(hull_out, outteroutline)
-                    
-                    a = maskout
-                    b = maskin
+
                     m1_rows = maskout.view([('', maskout.dtype)] * maskout.shape[1])
                     m2_rows = maskin.view([('', maskin.dtype)] * maskin.shape[1])
                     mask = np.setdiff1d(m1_rows, m2_rows).view(maskout.dtype).reshape(-1, maskout.shape[1])
+
                     self.donut_masks[tid][zid] = np.array(mask)
-                    self.donut_masks[tid][zid] = self.donut_masks[tid][zid]
 
     def _sort_point_sequence(self, outline, neighbors=7):
         min_dists, min_dist_idx = cKDTree(outline).query(outline,neighbors)
@@ -138,14 +135,12 @@ class ERKKTR_donut():
         miny = min(outline[:,0])
         xrange=range(minx, maxx)
         yrange=range(miny, maxy)
-        p = [0,0]
         for i in yrange:
-            p[0]=i
             for j in xrange:
-                p[1]=j
+                p = [i,j]
                 if self._inhull(hull, p): pointsinside.append(p)
-        pointsinside=np.array(pointsinside)
-        return pointsinside
+
+        return np.array(pointsinside)
 
     def _increase_point_resolution(self, outline):
         rounds = np.ceil(np.log2(self._min_outline_length/len(outline))).astype('int32')
