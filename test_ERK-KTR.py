@@ -23,10 +23,15 @@ IMGS_ERK   = imread(path_data+f)[:4,:,0,:,:]
 IMGS_SEG   = imread(path_data+f)[:4,:,1,:,:]
 cell  = cells[0]
 
-donut = ERKKTR_donut(cell, innerpad=4, outterpad=3, donut_width=5, inhull_method="delaunay")
+start = time.time()
+for cell in cells:
+    print("lab =", cell.label)
+    donut = ERKKTR_donut(cell, innerpad=4, outterpad=3, donut_width=5, inhull_method="delaunay")
+end = time.time()
+print(end - start)
 
 t = 0
-z = 0
+z = 1
 img = IMGS_SEG[t,z] 
 tid = cell.times.index(t)
 zid = cell.zs[tid].index(z)
@@ -56,4 +61,3 @@ ax.scatter(donut.outteroutline[:,0], donut.outteroutline[:,1], s=10, c='k')
 ax.scatter(don_mask[:,0], don_mask[:,1],s=1, c='red')
 
 plt.show()
-

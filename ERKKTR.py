@@ -31,41 +31,50 @@ class ERKKTR_donut():
                     outline = self.cell.outlines[tid][zid]
                     newoutline, midx, midy = self._expand_hull(outline, inc=-self.inpad)
                     newoutline=self._increase_point_resolution(newoutline)
-                    hull = ConvexHull(newoutline)
-                    newoutline = newoutline[hull.vertices]
+                    _hull = ConvexHull(newoutline)
+                    newoutline = newoutline[_hull.vertices]
+                    hull = Delaunay(newoutline)
+                    
                     self.nuclei_outlines[tid][zid] = np.array(newoutline).astype('int32')
-                    self.nuclei_masks[tid][zid] = self._points_within_hull(self.nuclei_outlines[tid][zid])
+                    self.nuclei_masks[tid][zid] = self._points_within_hull(hull, self.nuclei_outlines[tid][zid])
     
     def compute_donut_masks(self):
         self.donut_masks  = deepcopy(self.cell.masks)
         for tid, t in enumerate(self.cell.times):
                 for zid, z in enumerate(self.cell.zs[tid]):
                     outline = self.cell.outlines[tid][zid]
+                    hull = ConvexHull(outline)
+                    outline = outline[hull.vertices]
+                    outline = np.array(outline).astype('int32')
+                    
                     inneroutline, midx, midy = self._expand_hull(outline, inc=self.outpad)
                     outteroutline, midx, midy = self._expand_hull(outline, inc=self.outpad+self.dwidht)
+                    
+                    inneroutline = outline
+                    outteroutline = outline
                     inneroutline=self._increase_point_resolution(inneroutline)
                     outteroutline=self._increase_point_resolution(outteroutline)
                     
-                    hull_in = ConvexHull(inneroutline)
-                    inneroutline = inneroutline[hull_in.vertices]
+                    _hull_in = ConvexHull(inneroutline)
+                    inneroutline = inneroutline[_hull_in.vertices]
                     inneroutline = np.array(inneroutline).astype('int32')
-                    hull_out = ConvexHull(outteroutline)
-                    outteroutline = outteroutline[hull_out.vertices]
+                    hull_in = Delaunay(inneroutline)
+     
+                    _hull_out = ConvexHull(outteroutline)
+                    outteroutline = outteroutline[_hull_out.vertices]
                     outteroutline = np.array(outteroutline).astype('int32')
-                    if t==0:
-                        if z==0:
-                            self.inneroutline  = inneroutline
-                            self.outteroutline = outteroutline
-                            self.maskin = self._points_within_hull(inneroutline)
-                            self.maskout= self._points_within_hull(outteroutline)
-                    maskin = self._points_within_hull(inneroutline)
-                    maskout= self._points_within_hull(outteroutline)
+                    hull_out = Delaunay(outteroutline)
+                    
+                    maskin = self._points_within_hull(hull_in, inneroutline)
+                    maskout= self._points_within_hull(hull_out, outteroutline)
+                    
                     a = maskout
                     b = maskin
-                    a1_rows = a.view([('', a.dtype)] * a.shape[1])
-                    a2_rows = b.view([('', b.dtype)] * b.shape[1])
-                    mask = np.setdiff1d(a1_rows, a2_rows).view(a.dtype).reshape(-1, a.shape[1])
+                    m1_rows = maskout.view([('', maskout.dtype)] * maskout.shape[1])
+                    m2_rows = maskin.view([('', maskin.dtype)] * maskin.shape[1])
+                    mask = np.setdiff1d(m1_rows, m2_rows).view(maskout.dtype).reshape(-1, maskout.shape[1])
                     self.donut_masks[tid][zid] = np.array(mask)
+                    self.donut_masks[tid][zid] = self.donut_masks[tid][zid]
 
     def _sort_point_sequence(self, outline, neighbors=7):
         min_dists, min_dist_idx = cKDTree(outline).query(outline,neighbors)
@@ -108,25 +117,7 @@ class ERKKTR_donut():
             newoutline.append(newp)
         return np.array(newoutline), midpointx, midpointy
 
-    def _inhull_linprog(self, outline, x):
-        n_points = len(outline)
-        n_dim = len(x)
-        c = np.zeros(n_points)
-        A = np.r_[outline.T,np.ones((1,n_points))]
-        b = np.r_[x, np.ones(1)]
-        lp = linprog(c, A_eq=A, b_eq=b)
-        return lp.success
-
-    def _inhull_cross(self, outline, point):
-        for idx in range(1, len(outline)):
-            ori = np.array(outline[idx - 1])
-            va  = outline[idx] - ori
-            vb  = point - ori
-            if np.cross(va, vb) < 0:
-                return False
-        return True
-
-    def _inhull_Delaunay(self, outline, p):
+    def _inhull_Delaunay(self, hull, p):
         """
         Test if points in `p` are in `hull`
 
@@ -135,11 +126,10 @@ class ERKKTR_donut():
         coordinates of `M` points in `K`dimensions for which Delaunay triangulation
         will be computed
         """
-        hull = Delaunay(outline)
-
+        
         return hull.find_simplex(p)>=0
 
-    def _points_within_hull(self, outline):
+    def _points_within_hull(self, hull, outline):
         # With this function we compute the points contained within a hull or outline.
         pointsinside=[]
         maxx = max(outline[:,1])
@@ -148,11 +138,12 @@ class ERKKTR_donut():
         miny = min(outline[:,0])
         xrange=range(minx, maxx)
         yrange=range(miny, maxy)
-
+        p = [0,0]
         for i in yrange:
+            p[0]=i
             for j in xrange:
-                p = [i,j]
-                if self._inhull(outline, p): pointsinside.append(p)
+                p[1]=j
+                if self._inhull(hull, p): pointsinside.append(p)
         pointsinside=np.array(pointsinside)
         return pointsinside
 
