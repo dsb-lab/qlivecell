@@ -25,6 +25,9 @@ IMGS_SEG   = imread(path_data+f)[:4,:,1,:,:]
 t = 0
 z = 1
 
+def adjust_cell_borders(cells):
+    for cell in cells:
+        
 for cell in cells:
     ERKKTR_donut(cell, innerpad=8, outterpad=3, donut_width=5, inhull_method="delaunay")
     None
