@@ -47,12 +47,12 @@ def save_CT(CT, path=None, filename=None, _del_plots=True):
         if hasattr(CT, 'PACPs'):
             delattr(CT, 'PACPs')
             delattr(CT, '_time_sliders')
-    pickle.dump(CT, file_to_store)
+    pickle.dump(CT.cells, file_to_store)
     file_to_store.close()
 
 def load_CT(path=None, filename=None):
     pthsave = path+filename
     file_to_store = open(pthsave+".pickle", "rb")
-    _CT = pickle.load(file_to_store)
+    cells = pickle.load(file_to_store)
     file_to_store.close()
-    return _CT
+    return cells
