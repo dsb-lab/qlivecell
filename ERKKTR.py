@@ -41,6 +41,10 @@ class ERKKTR_donut():
     
     def compute_donut_masks(self):
         self.donut_masks  = deepcopy(self.cell.masks)
+        self.donut_outer_mask = deepcopy(self.cell.masks)
+        self.donut_outlines_in = deepcopy(self.cell.outlines)
+        self.donut_outlines_out = deepcopy(self.cell.outlines)
+
         for tid, t in enumerate(self.cell.times):
                 for zid, z in enumerate(self.cell.zs[tid]):
                     outline = self.cell.outlines[tid][zid]
@@ -71,6 +75,9 @@ class ERKKTR_donut():
                     m2_rows = maskin.view([('', maskin.dtype)] * maskin.shape[1])
                     mask = np.setdiff1d(m1_rows, m2_rows).view(maskout.dtype).reshape(-1, maskout.shape[1])
 
+                    self.donut_outlines_in[tid][zid]  = inneroutline
+                    self.donut_outlines_out[tid][zid] = outteroutline
+                    self.donut_outer_mask[tid][zid] = np.array(maskout) 
                     self.donut_masks[tid][zid] = np.array(mask)
 
     def _sort_point_sequence(self, outline, neighbors=7):
