@@ -49,10 +49,17 @@ def save_CT(CT, path=None, filename=None, _del_plots=True):
             delattr(CT, '_time_sliders')
     pickle.dump(CT.cells, file_to_store)
     file_to_store.close()
+    file_to_store = open(pthsave+"_info.pickle", "wb")
+    CT.CT_info(CT)
+    pickle.dump(CT.CT_info, file_to_store)
+    file_to_store.close()
 
 def load_CT(path=None, filename=None):
     pthsave = path+filename
     file_to_store = open(pthsave+".pickle", "rb")
     cells = pickle.load(file_to_store)
     file_to_store.close()
-    return cells
+    file_to_store = open(pthsave+"_info.pickle", "rb")
+    CT_info = pickle.load(file_to_store)
+    file_to_store.close()
+    return cells, CT_info

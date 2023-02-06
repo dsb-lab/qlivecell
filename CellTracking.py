@@ -48,6 +48,21 @@ PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X" ,"p","^"]
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
 
+class CellTracking_info():
+    def __init__(self, CT):
+        self.__call__(CT)
+    
+    def __call__(self, CT):
+        self.xyresolution = CT._xyresolution 
+        self.zresolution  = CT._zresolution
+        self.times        = CT.times
+        self.slices       = CT.slices
+        self.stack_dims   = CT.stack_dims
+        self.time_step    = CT._tstep
+        self.apo_cells    = CT.apoptotic_events
+        self.mito_cells   = CT.mitotic_events
+
+
 class CellSegmentation(object):
 
     def __init__(self, stack, model, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7):
@@ -650,6 +665,7 @@ class CellTracking(object):
         self._tstep = time_step
         self._mscm   = mean_substraction_cell_movement
         self._assign_color_to_label()
+        self.CT_info = CellTracking_info(self)
         
     def printfancy(self, string, finallength=70):
         new_str = "#   "+string
