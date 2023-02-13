@@ -212,3 +212,18 @@ class Cell():
 
     def compute_distance_xyz(self, x1, x2, y1, y2, z1, z2):
         return np.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+    
+    def compute_distance_cell(self, cell, t, z, axis='xy'):
+        t1 = self.times.index(t)
+        z1 = self.zs[t1].index(z)
+        x1 = self.X_all[t1][z1]
+        y1 = self.Y_all[t1][z1]
+
+        t2 = cell.times.index(t)
+        z2 = cell.zs[t2].index(z)
+        x2 = cell.X_all[t2][z2]
+        y2 = cell.Y_all[t2][z2]
+        
+        if axis == 'xy': return self.compute_distance_xy(x1, x2, y1, y2)
+        elif axis == 'xyz': return self.compute_distance_xyz(x1, x2, y1, y2, z, z)
+        else: return 'ERROR'

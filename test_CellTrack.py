@@ -14,10 +14,6 @@ IMGS   = [imread(path_data+f)[:3,:,1,:,:] for f in files[emb:emb+1]][0]
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
 #model  = models.Cellpose(gpu=True, model_type='nuclei')
 
-class SegmentationParameters():
-    def __init__(self):
-        pass
-
 CT = CellTracking( IMGS, model, path_save, embcode
                     , trainedmodel=True
                     , channels=[0,0]
@@ -42,7 +38,9 @@ CT = CellTracking( IMGS, model, path_save, embcode
                     , mean_substraction_cell_movement=False)
 
 CT()
-
+# CT.plot_tracking()
+# CT.plot_cell_movement()
+# CT.plot_masks3D_Imagej(cell_selection=True)
 save_CT(CT, path_save, embcode)
 cells, CT_info = load_CT(path_save, embcode)
 #CT.plot_tracking(windows=1, plot_layout=(2,2), plot_overlap=1, masks_cmap='tab10')
