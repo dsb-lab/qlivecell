@@ -14,9 +14,9 @@ import time
 home = os.path.expanduser('~')
 path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
 path_save=home+'/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_claire_ERK-KTR_MKATE2/'
-
+emb=4
 files = os.listdir(path_save)
-emb +=1
+#emb +=1
 embcode=files[emb].split('.')[0]
 if "_info" in embcode: 
     embcode=embcode[0:-5]
@@ -31,7 +31,7 @@ for cell in cells:
     cell.extract_all_XYZ_positions()
 
 for cell in cells:
-    ERKKTR_donut(cell, innerpad=3, outterpad=1, donut_width=8, inhull_method="delaunay")
+    ERKKTR_donut(cell, innerpad=3, outterpad=1, donut_width=5, inhull_method="delaunay")
 
 for _, t in enumerate(range(CT_info.times)):
     for _, z in enumerate(range(CT_info.slices)):
@@ -97,13 +97,13 @@ for _, t in enumerate(range(CT_info.times)):
                 if len(oi_mc_intersection)!=0:
                     new_oi = get_only_unique(np.vstack((oi_inn, oi_mc_intersection)))
                     new_oi = cell_i.ERKKTR_donut.sort_points_counterclockwise(new_oi)
-                    cell_i.ERKKTR_donut.donut_outlines_in[ti][zi] = new_oi
+                    cell_i.ERKKTR_donut.donut_outlines_in[ti][zi] = deepcopy(new_oi)
                 
                 oj_mc_intersection   = intersect2D(oj_inn, maskout_intersection)
                 if len(oj_mc_intersection)!=0:
                     new_oj = get_only_unique(np.vstack((oj_inn, oj_mc_intersection)))
                     new_oj = cell_j.ERKKTR_donut.sort_points_counterclockwise(new_oj)
-                    cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc] = new_oj
+                    cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc] = deepcopy(new_oj)
 
 for cell in cells:
     cell.ERKKTR_donut.compute_donut_masks()
