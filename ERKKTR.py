@@ -276,7 +276,7 @@ class ERKKTR():
                     cell.ERKKTR_donut.donut_masks[tid][zid] = deepcopy(new_don_mask)
             ## Check if there is overlap between nuc and donut masks
 
-    def plot_donuts(self, IMGS_SEG, IMGS_ERK, t, z):
+    def plot_donuts(self, IMGS_SEG, IMGS_ERK, t, z, plot_outlines=True, plot_nuclei=True, plot_donut=True):
         fig, ax = plt.subplots(1,2,figsize=(15,15))
         for cell in self.cells:
             donut = cell.ERKKTR_donut
@@ -297,18 +297,23 @@ class ERKKTR():
             don_outline_out = donut.donut_outlines_out[tid][zid]
 
             ax[0].imshow(imgseg)
-            #ax[0].scatter(outline[:,0], outline[:,1], s=1, c='k', alpha=0.1)
-            ax[0].scatter(nuc_mask[:,0], nuc_mask[:,1],s=1, c='green', alpha=0.1)
-            #ax[0].plot(don_outline_in[:,0], don_outline_in[:,1], marker='o', c='blue')
-            #ax[0].plot(don_outline_out[:,0], don_outline_out[:,1],marker='o', c='orange')
-            ax[0].scatter(don_mask[:,0], don_mask[:,1],s=1, c='red', alpha=0.1)
-
             ax[1].imshow(imgerk)
-            #ax[1].scatter(outline[:,0], outline[:,1], s=1, c='k', alpha=0.1)
-            ax[1].scatter(nuc_mask[:,0], nuc_mask[:,1],s=1, c='green', alpha=0.1)
-            #ax[1].plot(don_outline_in[:,0], don_outline_in[:,1], marker='o', c='blue')
-            #ax[1].plot(don_outline_out[:,0], don_outline_out[:,1],marker='o', c='orange')
-            ax[1].scatter(don_mask[:,0], don_mask[:,1],s=1, c='red', alpha=0.1)
+
+            if plot_outlines:
+                ax[0].scatter(outline[:,0], outline[:,1], s=1, c='k', alpha=0.5)
+                ax[0].plot(don_outline_in[:,0], don_outline_in[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
+                ax[0].plot(don_outline_out[:,0], don_outline_out[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
+                ax[1].scatter(outline[:,0], outline[:,1], s=1, c='k', alpha=0.5)
+                ax[1].plot(don_outline_in[:,0], don_outline_in[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
+                ax[1].plot(don_outline_out[:,0], don_outline_out[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
+
+            if plot_nuclei:
+                ax[1].scatter(nuc_mask[:,0], nuc_mask[:,1],s=1, c='green', alpha=0.1)
+                ax[0].scatter(nuc_mask[:,0], nuc_mask[:,1],s=1, c='green', alpha=0.1)
+
+            if plot_donut:
+                ax[1].scatter(don_mask[:,0], don_mask[:,1],s=1, c='red', alpha=0.1)
+                ax[0].scatter(don_mask[:,0], don_mask[:,1],s=1, c='red', alpha=0.1)
 
         plt.tight_layout()
         plt.show()
