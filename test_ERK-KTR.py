@@ -26,4 +26,4 @@ IMGS_SEG   = imread(path_data+f)[:4,:,1,:,:]
 cells, CT_info = load_CT(path_save, embcode)
 erkktr = ERKKTR(cells, CT_info, innerpad=1, outterpad=2, donut_width=4)
 erkktr.create_donuts()
-erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, 0, 15, plot_outlines=True, plot_nuclei=True, plot_donut=False)
+erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, 0, 14, plot_outlines=False, plot_nuclei=True, plot_donut=False)

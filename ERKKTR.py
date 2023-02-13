@@ -31,43 +31,45 @@ class ERKKTR_donut():
         self.nuclei_masks = deepcopy(self.cell.masks)
         self.nuclei_outlines = deepcopy(self.cell.outlines)
         for tid, t in enumerate(self.cell.times):
-                for zid, z in enumerate(self.cell.zs[tid]):
-                    outline = self.cell.outlines[tid][zid]
-                    newoutline, midx, midy = self._expand_hull(outline, inc=-self.inpad)
-                    newoutline=self._increase_point_resolution(newoutline)
-                    _hull = ConvexHull(newoutline)
-                    newoutline = newoutline[_hull.vertices]
-                    hull = Delaunay(newoutline)
-                    
-                    self.nuclei_outlines[tid][zid] = np.array(newoutline).astype('int32')
-                    self.nuclei_masks[tid][zid] = self._points_within_hull(hull, self.nuclei_outlines[tid][zid])
+            if t >0: continue
+            for zid, z in enumerate(self.cell.zs[tid]):
+                outline = self.cell.outlines[tid][zid]
+                newoutline, midx, midy = self._expand_hull(outline, inc=-self.inpad)
+                newoutline=self._increase_point_resolution(newoutline)
+                _hull = ConvexHull(newoutline)
+                newoutline = newoutline[_hull.vertices]
+                hull = Delaunay(newoutline)
+                
+                self.nuclei_outlines[tid][zid] = np.array(newoutline).astype('int32')
+                self.nuclei_masks[tid][zid] = self._points_within_hull(hull, self.nuclei_outlines[tid][zid])
     
     def compute_donut_outlines(self):
         self.donut_outlines_in = deepcopy(self.cell.outlines)
         self.donut_outlines_out = deepcopy(self.cell.outlines)
         for tid, t in enumerate(self.cell.times):
-                for zid, z in enumerate(self.cell.zs[tid]):
-                    outline = self.cell.outlines[tid][zid]
-                    hull = ConvexHull(outline)
-                    outline = outline[hull.vertices]
-                    outline = np.array(outline).astype('int32')
-                    
-                    inneroutline, midx, midy = self._expand_hull(outline, inc=self.outpad)
-                    outteroutline, midx, midy = self._expand_hull(outline, inc=self.outpad+self.dwidht)
-                    
-                    inneroutline=self._increase_point_resolution(inneroutline)
-                    outteroutline=self._increase_point_resolution(outteroutline)
-                    
-                    _hull_in = ConvexHull(inneroutline)
-                    inneroutline = inneroutline[_hull_in.vertices]
-                    inneroutline = np.array(inneroutline).astype('int32')
-     
-                    _hull_out = ConvexHull(outteroutline)
-                    outteroutline = outteroutline[_hull_out.vertices]
-                    outteroutline = np.array(outteroutline).astype('int32')
-                  
-                    self.donut_outlines_in[tid][zid]  = inneroutline
-                    self.donut_outlines_out[tid][zid] = outteroutline
+            if t>0: continue
+            for zid, z in enumerate(self.cell.zs[tid]):
+                outline = self.cell.outlines[tid][zid]
+                hull = ConvexHull(outline)
+                outline = outline[hull.vertices]
+                outline = np.array(outline).astype('int32')
+                
+                inneroutline, midx, midy = self._expand_hull(outline, inc=self.outpad)
+                outteroutline, midx, midy = self._expand_hull(outline, inc=self.outpad+self.dwidht)
+                
+                inneroutline=self._increase_point_resolution(inneroutline)
+                outteroutline=self._increase_point_resolution(outteroutline)
+                
+                _hull_in = ConvexHull(inneroutline)
+                inneroutline = inneroutline[_hull_in.vertices]
+                inneroutline = np.array(inneroutline).astype('int32')
+    
+                _hull_out = ConvexHull(outteroutline)
+                outteroutline = outteroutline[_hull_out.vertices]
+                outteroutline = np.array(outteroutline).astype('int32')
+                
+                self.donut_outlines_in[tid][zid]  = inneroutline
+                self.donut_outlines_out[tid][zid] = outteroutline
                     
     def compute_donut_masks(self):
         self.donut_masks  = deepcopy(self.cell.masks)
@@ -75,8 +77,9 @@ class ERKKTR_donut():
         self.donut_inner_mask = deepcopy(self.cell.masks)
 
         for tid, t in enumerate(self.cell.times):
-                for zid, z in enumerate(self.cell.zs[tid]):
-                    self.compute_donut_mask(tid, zid)
+            if t>0: continue
+            for zid, z in enumerate(self.cell.zs[tid]):
+                self.compute_donut_mask(tid, zid)
 
     def compute_donut_mask(self, tid, zid):
         inneroutline  = self.donut_outlines_in[tid][zid]
@@ -192,6 +195,7 @@ class ERKKTR():
 
     def correct_cell_to_cell_overlap(self):
         for _, t in enumerate(range(self.info.times)):
+            if t>0: continue
             for _, z in enumerate(range(self.info.slices)):
                 for cell_i in self.cells:
                     distances   = []
@@ -267,6 +271,7 @@ class ERKKTR():
         for cell in self.cells:
             cell.ERKKTR_donut.compute_donut_masks()
             for tid, t in enumerate(cell.times):
+                if t>0: continue
                 for zid, z in enumerate(cell.zs[tid]):
                     don_mask = cell.ERKKTR_donut.donut_masks[tid][zid]
                     nuc_mask = cell.ERKKTR_donut.nuclei_masks[tid][zid]
