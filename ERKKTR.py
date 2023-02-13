@@ -8,6 +8,8 @@ from scipy.optimize import linprog
 
 from numpy import random
 
+from utils_ERKKTR import sefdiff2D, sort_xy
+
 class ERKKTR_donut():
     def __init__(self, cell, innerpad=1, outterpad=1, donut_width=1, min_outline_length=100, inhull_method="delaunay"):
         self.inpad  = innerpad
@@ -20,6 +22,7 @@ class ERKKTR_donut():
         elif inhull_method=="linprog": self._inhull=self._inhull_linprog
         else: self._inhull=self._inhull_Delaunay
         
+        self.compute_donut_outlines()
         self.compute_donut_masks()
         self.compute_nuclei_mask()
         cell.ERKKTR_donut = self
@@ -39,12 +42,9 @@ class ERKKTR_donut():
                     self.nuclei_outlines[tid][zid] = np.array(newoutline).astype('int32')
                     self.nuclei_masks[tid][zid] = self._points_within_hull(hull, self.nuclei_outlines[tid][zid])
     
-    def compute_donut_masks(self):
-        self.donut_masks  = deepcopy(self.cell.masks)
-        self.donut_outer_mask = deepcopy(self.cell.masks)
+    def compute_donut_outlines(self):
         self.donut_outlines_in = deepcopy(self.cell.outlines)
         self.donut_outlines_out = deepcopy(self.cell.outlines)
-
         for tid, t in enumerate(self.cell.times):
                 for zid, z in enumerate(self.cell.zs[tid]):
                     outline = self.cell.outlines[tid][zid]
@@ -61,46 +61,44 @@ class ERKKTR_donut():
                     _hull_in = ConvexHull(inneroutline)
                     inneroutline = inneroutline[_hull_in.vertices]
                     inneroutline = np.array(inneroutline).astype('int32')
-                    hull_in = Delaunay(inneroutline)
      
                     _hull_out = ConvexHull(outteroutline)
                     outteroutline = outteroutline[_hull_out.vertices]
                     outteroutline = np.array(outteroutline).astype('int32')
-                    hull_out = Delaunay(outteroutline)
-                    
-                    maskin = self._points_within_hull(hull_in, inneroutline)
-                    maskout= self._points_within_hull(hull_out, outteroutline)
-
-                    m1_rows = maskout.view([('', maskout.dtype)] * maskout.shape[1])
-                    m2_rows = maskin.view([('', maskin.dtype)] * maskin.shape[1])
-                    mask = np.setdiff1d(m1_rows, m2_rows).view(maskout.dtype).reshape(-1, maskout.shape[1])
-
+                  
                     self.donut_outlines_in[tid][zid]  = inneroutline
                     self.donut_outlines_out[tid][zid] = outteroutline
-                    self.donut_outer_mask[tid][zid] = np.array(maskout) 
-                    self.donut_masks[tid][zid] = np.array(mask)
+                    
+    def compute_donut_masks(self):
+        self.donut_masks  = deepcopy(self.cell.masks)
+        self.donut_outer_mask = deepcopy(self.cell.masks)
+        self.donut_inner_mask = deepcopy(self.cell.masks)
 
-    def _sort_point_sequence(self, outline, neighbors=7):
-        min_dists, min_dist_idx = cKDTree(outline).query(outline,neighbors)
-        min_dists = min_dists[:,1:]
-        min_dist_idx = min_dist_idx[:,1:]
-        new_outline = []
-        used_idxs   = []
-        pidx = random.choice(range(len(outline)))
-        new_outline.append(outline[pidx])
-        used_idxs.append(pidx)
-        while len(new_outline)<len(outline):
-            a = len(used_idxs)
-            for id in min_dist_idx[pidx,:]:
-                if id not in used_idxs:
-                    new_outline.append(outline[id])
-                    used_idxs.append(id)
-                    pidx=id
-                    break
-            if len(used_idxs)==a:
-                print("ERROR")
-                return
-        return np.array(new_outline), used_idxs
+        for tid, t in enumerate(self.cell.times):
+                for zid, z in enumerate(self.cell.zs[tid]):
+                    self.compute_donut_mask(tid, zid)
+
+    def compute_donut_mask(self, tid, zid):
+        inneroutline  = self.donut_outlines_in[tid][zid]
+        outteroutline = self.donut_outlines_out[tid][zid]
+        hull_in  = Delaunay(inneroutline)
+        hull_out = Delaunay(outteroutline)
+        
+        maskin = self._points_within_hull(hull_in, inneroutline)
+        maskout= self._points_within_hull(hull_out, outteroutline)
+
+        mask = sefdiff2D(maskout, maskin)
+        self.donut_outer_mask[tid][zid] = np.array(maskout) 
+        self.donut_inner_mask[tid][zid] = np.array(maskin) 
+        self.donut_masks[tid][zid] = np.array(mask)
+        
+    def sort_points_counterclockwise(self, points):
+        x = points[:, 1]
+        y = points[:, 0]
+        xsorted, ysorted = sort_xy(x, y)
+        points[:, 1] = xsorted
+        points[:, 0] = ysorted
+        return points
 
     def _expand_hull(self, outline, inc=1):
         newoutline = []
