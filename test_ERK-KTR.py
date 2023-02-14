@@ -26,4 +26,25 @@ IMGS_SEG   = imread(path_data+f)[:4,:,1,:,:]
 cells, CT_info = load_CT(path_save, embcode)
 erkktr = ERKKTR(cells, CT_info, innerpad=1, outterpad=2, donut_width=4)
 erkktr.create_donuts()
-erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, 0, 14, plot_outlines=False, plot_nuclei=True, plot_donut=False)
+
+t = 0
+z = 14
+img = IMGS_ERK[t][z] 
+
+erkdonutdist  = []
+erknucleidist = []
+CN = []
+
+for lab in [25, 26, 29]:
+    erkdonutdist_new, erknucleidist_new, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
+    erkdonutdist = np.append(erkdonutdist, erkdonutdist_new)
+    erknucleidist = np.append(erknucleidist, erknucleidist_new)
+    CN.append(cn)
+
+fig ,ax = plt.subplots(1, 2)
+ax[0].hist(erkdonutdist,bins=100)
+ax[1].hist(erknucleidist,bins=100)
+
+plt.show()
+
+erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, label=None)
