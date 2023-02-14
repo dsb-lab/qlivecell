@@ -281,9 +281,50 @@ class ERKKTR():
                     cell.ERKKTR_donut.donut_masks[tid][zid] = deepcopy(new_don_mask)
             ## Check if there is overlap between nuc and donut masks
 
-    def plot_donuts(self, IMGS_SEG, IMGS_ERK, t, z, plot_outlines=True, plot_nuclei=True, plot_donut=True):
+    def _get_cell(self, label=None, cellid=None):
+        if label==None:
+            for cell in self.cells:
+                    if cell.id == cellid:
+                        return cell
+        else:
+            for cell in self.cells:
+                    if cell.label == label:
+                        return cell
+
+
+    def get_donut_erk(self, img, label, t, z, th=0):
+
+        cell = self._get_cell(label=label)
+        tid  = cell.times.index(t)
+        zid  = cell.zs[tid].index(z) 
+
+        donut = cell.ERKKTR_donut.donut_masks[tid][zid]
+        img_cell = np.zeros_like(img)
+        xids = donut[:,1]
+        yids = donut[:,0]
+        img_cell[xids, yids] = img[xids, yids]
+        erkdonutdist = img[xids, yids]
+
+
+        nuclei = cell.ERKKTR_donut.nuclei_masks[tid][zid]
+        img_cell = np.zeros_like(img)
+        xids = nuclei[:,1]
+        yids = nuclei[:,0]
+        img_cell[xids, yids] = img[xids, yids]
+        erknucleidist = img[xids, yids]
+
+        erkdonutdist  = [x for x in erkdonutdist if x > th]
+        erknucleidist = [x for x in erknucleidist if x > th]
+
+        return erkdonutdist, erknucleidist, np.mean(erkdonutdist)/np.mean(erknucleidist)
+
+
+    def plot_donuts(self, IMGS_SEG, IMGS_ERK, t, z, label=None, plot_outlines=True, plot_nuclei=True, plot_donut=True):
         fig, ax = plt.subplots(1,2,figsize=(15,15))
+        
         for cell in self.cells:
+            if label is not None: 
+                if cell.label != label: continue
             donut = cell.ERKKTR_donut
             imgseg = IMGS_SEG[t,z]
             imgerk = IMGS_ERK[t,z]  
