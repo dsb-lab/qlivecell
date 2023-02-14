@@ -40,3 +40,15 @@ def sort_xy(x, y):
     y_sorted = y[mask]
 
     return x_sorted, y_sorted
+
+def extract_ICM_TE_labels(cells, t, z):
+    TE  = []
+    ICM = []
+    for cell in cells:
+        if t not in cell.times: continue
+        tid = cell.times.index(t)
+        if z not in cell.zs[tid]: continue
+        zid = cell.zs[tid].index(z)
+        if np.array(cell.centers_all[tid][zid][1:]).astype('int32') in outline: TE.append(cell.label)
+        else: ICM.append(cell.label)
+    return ICM, TE

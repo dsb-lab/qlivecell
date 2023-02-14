@@ -8,7 +8,7 @@ from scipy.optimize import linprog
 
 from numpy import random
 
-from utils_ERKKTR import sefdiff2D, sort_xy, intersect2D, get_only_unique
+from utils_ERKKTR import sefdiff2D, sort_xy, intersect2D, get_only_unique, extract_ICM_TE_labels
 
 class ERKKTR_donut():
     def __init__(self, cell, innerpad=1, outterpad=1, donut_width=1, min_outline_length=100, inhull_method="delaunay"):

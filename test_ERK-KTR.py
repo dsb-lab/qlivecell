@@ -1,5 +1,4 @@
 from cellpose.io import imread
-from cellpose import models
 
 import sys
 sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")
@@ -28,23 +27,49 @@ erkktr = ERKKTR(cells, CT_info, innerpad=1, outterpad=2, donut_width=4)
 erkktr.create_donuts()
 
 t = 0
-z = 14
+z = 20
 img = IMGS_ERK[t][z] 
+centers = []
 
-erkdonutdist  = []
-erknucleidist = []
-CN = []
+for cell in erkktr.cells:
+    if t not in cell.times: continue
+    tid = cell.times.index(t)
+    if z not in cell.zs[tid]: continue
+    zid = cell.zs[tid].index(z)
+    centers.append(cell.centers_all[tid][zid])
 
-for lab in [25, 26, 29]:
-    erkdonutdist_new, erknucleidist_new, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
-    erkdonutdist = np.append(erkdonutdist, erkdonutdist_new)
-    erknucleidist = np.append(erknucleidist, erknucleidist_new)
-    CN.append(cn)
+centers = [cen[1:] for cen in centers if cen[0]==z]
+centers = np.array(centers)
+hull = ConvexHull(centers)
+outline = centers[hull.vertices]
+outline = np.array(outline).astype('int32')
 
-fig ,ax = plt.subplots(1, 2)
-ax[0].hist(erkdonutdist,bins=100)
-ax[1].hist(erknucleidist,bins=100)
+ICM, TE = extract_ICM_TE_labels(erkktr.cells, t, z)
+
+ICM_derk = []
+ICM_nerk = []
+ICM_CN = []
+for lab in ICM:
+    erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
+    ICM_derk = np.append(ICM_derk, erkd)
+    ICM_nerk = np.append(ICM_nerk, erkn)
+    ICM_CN.append(cn)
+
+TE_derk  = []
+TE_nerk  = []
+TE_CN = []
+for lab in TE:
+    erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
+    TE_derk = np.append(TE_derk, erkd)
+    TE_nerk = np.append(TE_nerk, erkn)
+    TE_CN.append(cn)
+
+fig, ax = plt.subplots(2,2)
+ax[0,0].hist(ICM_derk, bins=100)
+ax[0,1].hist(ICM_nerk, bins=100)
+ax[1,0].hist(TE_derk, bins=100)
+ax[1,1].hist(TE_nerk, bins=100)
 
 plt.show()
 
-erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, label=None)
+
