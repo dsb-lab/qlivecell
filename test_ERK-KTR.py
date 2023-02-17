@@ -72,4 +72,4 @@ ax[1,1].hist(TE_nerk, bins=100)
 
 plt.show()
 
-
+erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_donut=False)
