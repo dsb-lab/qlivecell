@@ -197,7 +197,6 @@ class ERKKTR():
         for _, t in enumerate(range(self.info.times)):
             if t>0: continue
             for _, z in enumerate(range(self.info.slices)):
-                if z>0:continue
                 for cell_i in self.cells:
                     distances   = []
                     cells_close = []
