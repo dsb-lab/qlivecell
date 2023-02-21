@@ -27,9 +27,9 @@ class ERKKTR_donut():
         self.nuclei_masks = deepcopy(self.cell.masks)
         self.nuclei_outlines = deepcopy(self.cell.outlines)
         for tid, t in enumerate(self.cell.times):
-            #if t !=0: continue
+            if t !=0: continue
             for zid, z in enumerate(self.cell.zs[tid]):
-                #if z!=20: continue
+                if z!=20: continue
                 outline = self.cell.outlines[tid][zid]
                 newoutline, midx, midy = self._expand_hull(outline, inc=-self.inpad)
                 newoutline=self._increase_point_resolution(newoutline)
@@ -44,9 +44,9 @@ class ERKKTR_donut():
         self.donut_outlines_in = deepcopy(self.cell.outlines)
         self.donut_outlines_out = deepcopy(self.cell.outlines)
         for tid, t in enumerate(self.cell.times):
-            #if t!=0: continue
+            if t!=0: continue
             for zid, z in enumerate(self.cell.zs[tid]):
-                #if z!=20: continue
+                if z!=20: continue
                 outline = self.cell.outlines[tid][zid]
                 hull = ConvexHull(outline)
                 outline = outline[hull.vertices]
@@ -75,9 +75,9 @@ class ERKKTR_donut():
         self.donut_inner_mask = deepcopy(self.cell.masks)
 
         for tid, t in enumerate(self.cell.times):
-            #if t!=0: continue
+            if t!=0: continue
             for zid, z in enumerate(self.cell.zs[tid]):
-                #if z!=20: continue
+                if z!=20: continue
                 self.compute_donut_mask(tid, zid)
 
     def compute_donut_mask(self, tid, zid):
@@ -191,15 +191,15 @@ class ERKKTR():
         for cell in self.cells:
             ERKKTR_donut(cell, innerpad=3, outterpad=1, donut_width=5, min_outline_length=self.min_outline_length, inhull_method="delaunay")
         
-        self.correct_cell_to_cell_overlap()
-        self.correct_donut_embryo_overlap(EmbSeg)
-        self.correct_donut_nuclei_overlap()
+        # self.correct_cell_to_cell_overlap()
+        # self.correct_donut_embryo_overlap(EmbSeg)
+        # self.correct_donut_nuclei_overlap()
 
     def correct_cell_to_cell_overlap(self):
         for _, t in enumerate(range(self.times)):
-            #if t!=0: continue
+            if t!=0: continue
             for _, z in enumerate(range(self.slices)):
-                #if z!=20:continue
+                if z!=20:continue
                 for cell_i in self.cells:
                     distances   = []
                     cells_close = []
@@ -282,9 +282,9 @@ class ERKKTR():
         for cell in self.cells:
             cell.ERKKTR_donut.compute_donut_masks()
             for tid, t in enumerate(cell.times):
-                #if t!=0: continue
+                if t!=0: continue
                 for zid, z in enumerate(cell.zs[tid]):
-                    #if z!=20: continue
+                    if z!=20: continue
                     don_mask = cell.ERKKTR_donut.donut_masks[tid][zid]
                     nuc_mask = cell.masks[tid][zid]
                     masks_intersection = intersect2D(don_mask, nuc_mask)
@@ -294,9 +294,9 @@ class ERKKTR():
 
     def correct_donut_embryo_overlap(self, EmbSeg):
         for _, t in enumerate(range(self.times)):
-            #if t!=0: continue
+            if t!=0: continue
             for _, z in enumerate(range(self.slices)):
-                #if z!=20:continue
+                if z!=20:continue
                 for cell in self.cells:
 
                     if t not in cell.times: continue
@@ -433,15 +433,15 @@ class EmbryoSegmentation():
     
     def __call__(self):
         for tid, t in enumerate(range(self.times)):
-            #if t!=0: continue
+            if t!=0: continue
             
             self.Embmask.append([])
             self.Backmask.append([])
             for zid, z in enumerate(range(self.slices)):
-                # if z!=20:
-                #     self.Embmask[-1].append([])
-                #     self.Backmask[-1].append([])
-                #     continue
+                if z!=20:
+                    self.Embmask[-1].append([])
+                    self.Backmask[-1].append([])
+                    continue
 
                 image = self.IMGS[tid][zid]
 
