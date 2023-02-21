@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.spatial import ConvexHull
+from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
+from copy import deepcopy
 
 def intersect2D(a, b):
   """
@@ -117,3 +119,32 @@ def convolve2D(image, kernel, padding=0, strides=1):
                     break
 
     return output
+
+def segment_embryo(image, ksize=5, ksigma=3, binths=8, checkerboard_size=6, num_inter=100, smoothing=5):
+    kernel = gkernel(ksize, ksigma)
+    convimage  = convolve2D(image, kernel, padding=10)
+    cut=int((convimage.shape[0] - image.shape[0])/2)
+    convimage=convimage[cut:-cut, cut:-cut]
+    binimage = (convimage > binths)*1
+
+    # Morphological ACWE
+
+    init_ls = checkerboard_level_set(binimage.shape, checkerboard_size)
+    ls = morphological_chan_vese(binimage, num_iter=num_inter, init_level_set=init_ls,
+                                smoothing=smoothing)
+
+    s = image.shape[0]
+    idxs = np.array([[y,x] for x in range(s) for y in range(s) if ls[x,y]==1])
+    backmask=deepcopy(idxs)
+    idxs = np.array([[y,x] for x in range(s) for y in range(s) if ls[x,y]!=1])
+    embmask = deepcopy(idxs)
+
+    background  = np.zeros_like(image)
+    for p in backmask: 
+        background[p[1], p[0]] = image[p[1], p[0]]
+
+    emb_segment  = np.zeros_like(image)
+    for p in embmask: 
+        emb_segment[p[1], p[0]] = image[p[1], p[0]]
+    
+    return emb_segment, background, ls, embmask, backmask

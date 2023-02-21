@@ -19,19 +19,26 @@ if "_info" in embcode:
     embcode=embcode[0:-5]
 
 f = embcode+'.tif'
-IMGS_ERK   = imread(path_data+f)[:4,:,0,:,:]
-IMGS_SEG   = imread(path_data+f)[:4,:,1,:,:]
+
+IMGS_ERK   = imread(path_data+f)[:1,:,0,:,:]
+IMGS_SEG   = imread(path_data+f)[:1,:,1,:,:]
 
 cells, CT_info = load_CT(path_save, embcode)
-erkktr = ERKKTR(cells, CT_info, innerpad=1, outterpad=2, donut_width=4)
-erkktr.create_donuts()
+# EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=7, checkerboard_size=6, num_inter=100, smoothing=5)
+# EmbSeg()
+erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100)
+erkktr.create_donuts(EmbSeg)
 
 t = 0
-z = 20
+z = 10
+
+EmbSeg.plot_segmentation(t,z)
+erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=None)
+
+
 img = IMGS_ERK[t][z] 
 
 ICM, TE = extract_ICM_TE_labels(erkktr.cells, t, z)
-
 
 ICM_derk = []
 ICM_nerk = []
@@ -59,4 +66,3 @@ ax[1,1].hist(TE_nerk, bins=100)
 
 plt.show()
 
-erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_donut=True)
