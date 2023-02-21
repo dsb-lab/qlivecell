@@ -29,22 +29,9 @@ erkktr.create_donuts()
 t = 0
 z = 20
 img = IMGS_ERK[t][z] 
-centers = []
-
-for cell in erkktr.cells:
-    if t not in cell.times: continue
-    tid = cell.times.index(t)
-    if z not in cell.zs[tid]: continue
-    zid = cell.zs[tid].index(z)
-    centers.append(cell.centers_all[tid][zid])
-
-centers = [cen[1:] for cen in centers if cen[0]==z]
-centers = np.array(centers)
-hull = ConvexHull(centers)
-outline = centers[hull.vertices]
-outline = np.array(outline).astype('int32')
 
 ICM, TE = extract_ICM_TE_labels(erkktr.cells, t, z)
+
 
 ICM_derk = []
 ICM_nerk = []
@@ -72,4 +59,4 @@ ax[1,1].hist(TE_nerk, bins=100)
 
 plt.show()
 
-
+erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_donut=True)
