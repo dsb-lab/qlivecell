@@ -2,7 +2,7 @@ import numpy as np
 from scipy.spatial import ConvexHull
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 from copy import deepcopy
-
+import pickle
 def intersect2D(a, b):
   """
   Find row intersection between 2D numpy arrays, a and b.
@@ -148,3 +148,19 @@ def segment_embryo(image, ksize=5, ksigma=3, binths=8, checkerboard_size=6, num_
         emb_segment[p[1], p[0]] = image[p[1], p[0]]
     
     return emb_segment, background, ls, embmask, backmask
+
+
+def save_ES(ES, path=None, filename=None):
+    pthsave = path+filename
+    file_to_store = open(pthsave+"_ES.pickle", "wb")
+
+    pickle.dump(ES, file_to_store)
+    file_to_store.close()
+    
+def load_ES(path=None, filename=None):
+    pthsave = path+filename
+    file_to_store = open(pthsave+"_ES.pickle", "rb")
+    ES = pickle.load(file_to_store)
+    file_to_store.close()
+
+    return ES
