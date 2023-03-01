@@ -27,19 +27,18 @@ IMGS_SEG   = imread(path_data+f)[:1,:,1,:,:]
 cells, CT_info = load_CT(path_save, embcode)
 
 t = 0
-z = 15
+z = 10
 
-EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,7], checkerboard_size=6, num_inter=100, smoothing=5, trange=range(t+1), zrange=range(z,z+1))
+EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,5], checkerboard_size=6, num_inter=100, smoothing=5, trange=range(t+1), zrange=range(z,z+1))
 EmbSeg()
-EmbSeg.plot_segmentation(t,z)
+EmbSeg.plot_segmentation(t, z, extra_IMGS=IMGS_SEG)
 
 
-# save_ES(EmbSeg, path_save, embcode)
-# EmbSeg = load_ES(path_save, embcode)
-# erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100)
-# erkktr.create_donuts(EmbSeg)
-
-# erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
+save_ES(EmbSeg, path_save, embcode)
+EmbSeg = load_ES(path_save, embcode)
+erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100)
+erkktr.create_donuts(EmbSeg)
+erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
 
 # img = IMGS_ERK[t][z] 
 
