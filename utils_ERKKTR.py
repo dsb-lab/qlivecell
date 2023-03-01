@@ -3,6 +3,7 @@ from scipy.spatial import ConvexHull
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 from copy import deepcopy
 import pickle
+
 def intersect2D(a, b):
   """
   Find row intersection between 2D numpy arrays, a and b.
@@ -96,7 +97,6 @@ def convolve2D(image, kernel, padding=0, strides=1):
     if padding != 0:
         imagePadded = np.zeros((image.shape[0] + padding*2, image.shape[1] + padding*2))
         imagePadded[int(padding):int(-1 * padding), int(padding):int(-1 * padding)] = image
-        print(imagePadded)
     else:
         imagePadded = image
 
