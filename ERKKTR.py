@@ -4,7 +4,7 @@ from copy import deepcopy
 from scipy.spatial import Delaunay,ConvexHull
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 
-from utils_ERKKTR import sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES
+from utils_ERKKTR import sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, load_cells_info
 
 class ERKKTR_donut():
     def __init__(self, cell, innerpad=1, outterpad=1, donut_width=1, min_outline_length=50, inhull_method="delaunay"):
@@ -177,7 +177,7 @@ class ERKKTR():
         self.min_outline_length = min_outline_length
         self.times  = IMGS.shape[0]
         self.slices = IMGS.shape[1]
-        self.cells  = deepcopy(cells)
+        self.cells  = cells
 
     def __call__(self):
         pass
@@ -194,8 +194,8 @@ class ERKKTR():
         self.correct_cell_to_cell_overlap()
         for cell in self.cells:
             cell.ERKKTR_donut.compute_donut_masks()
-        #self.correct_donut_embryo_overlap(EmbSeg)
-        #self.correct_donut_nuclei_overlap()
+        self.correct_donut_embryo_overlap(EmbSeg)
+        self.correct_donut_nuclei_overlap()
 
     def correct_cell_to_cell_overlap(self):
         for _, t in enumerate(range(self.times)):

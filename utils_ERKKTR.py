@@ -96,7 +96,6 @@ def convolve2D(image, kernel, padding=0, strides=1):
     if padding != 0:
         imagePadded = np.zeros((image.shape[0] + padding*2, image.shape[1] + padding*2))
         imagePadded[int(padding):int(-1 * padding), int(padding):int(-1 * padding)] = image
-        print(imagePadded)
     else:
         imagePadded = image
 
@@ -162,5 +161,20 @@ def load_ES(path=None, filename=None):
     file_to_store = open(pthsave+"_ES.pickle", "rb")
     ES = pickle.load(file_to_store)
     file_to_store.close()
-
     return ES
+
+def save_cells(CT, path=None, filename=None):
+    pthsave = path+filename
+    file_to_store = open(pthsave+".pickle", "wb")
+    pickle.dump(CT.cells, file_to_store)
+    file_to_store.close()
+
+def load_cells_info(path=None, filename=None):
+    pthsave = path+filename
+    file_to_store = open(pthsave+".pickle", "rb")
+    cells = pickle.load(file_to_store)
+    file_to_store.close()
+    file_to_store = open(pthsave+"_info.pickle", "rb")
+    CT_info = pickle.load(file_to_store)
+    file_to_store.close()
+    return cells, CT_info
