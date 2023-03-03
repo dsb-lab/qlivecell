@@ -417,7 +417,7 @@ class ERKKTR():
         plt.show()
 
 class EmbryoSegmentation():
-    def __init__(self, IMGS, ksize=5, ksigma=3, binths=8, checkerboard_size=6, num_inter=100, smoothing=5):
+    def __init__(self, IMGS, ksize=5, ksigma=3, binths=8, checkerboard_size=6, num_inter=100, smoothing=5, trange=None, zrange=None):
         self.IMGS = IMGS
         self.Emb  = np.zeros_like(IMGS)
         self.Back = np.zeros_like(IMGS)
@@ -426,47 +426,60 @@ class EmbryoSegmentation():
         self.Backmask = []
         self.times  = IMGS.shape[0]
         self.slices = IMGS.shape[1]
+
+
+        if trange is None: self.trange=range(self.times)
+        else: self.trange=trange
+        if zrange is None: self.zrange=range(self.slices)
+        else:self.zrange=zrange
         self.ksize=ksize
         self.ksigma=ksigma
-        self.binths=binths
+        if type(binths) == list: 
+            if len(binths) == 2: self.binths = np.linspace(binths[0], binths[1], num=self.slices)
+            else: self.binths = binths
+        else: self.binths = [binths for i in range(self.slices)]
         self.checkerboard_size=checkerboard_size
         self.num_inter=num_inter
         self.smoothing=smoothing
     
     def __call__(self):
         for tid, t in enumerate(range(self.times)):
-            # if t!=0: continue
-            
+            print("time =",t)
             self.Embmask.append([])
             self.Backmask.append([])
             for zid, z in enumerate(range(self.slices)):
-                # if z!=20:
-                #     self.Embmask[-1].append([])
-                #     self.Backmask[-1].append([])
-                #     continue
+                print("z =",z)
 
                 image = self.IMGS[tid][zid]
+                
+                if t in self.trange:
+                    if z in self.zrange:
+                        emb, back, ls, embmask, backmask = self.segment_embryo(image, self.binths[zid])
 
-                emb, back, ls, embmask, backmask = self.segment_embryo(image)
+                        self.LS[tid][zid] = ls
 
-                self.LS[tid][zid] = ls
+                        self.Emb[tid][zid] = emb 
+                        self.Back[tid][zid]= back
 
-                self.Emb[tid][zid] = emb 
-                self.Back[tid][zid]= back
-
-                self.Embmask[-1].append(embmask)
-                self.Backmask[-1].append(backmask)
+                        self.Embmask[-1].append(embmask)
+                        self.Backmask[-1].append(backmask)
+                    else:
+                        self.Embmask[-1].append([])
+                        self.Backmask[-1].append([])
+                else:
+                    self.Embmask[-1].append([])
+                    self.Backmask[-1].append([])
 
         self.Embmask  = np.array(self.Embmask)
         self.Backmask = np.array(self.Backmask)
         return
 
-    def segment_embryo(self, image):
+    def segment_embryo(self, image, binths):
         kernel = gkernel(self.ksize, self.ksigma)
         convimage  = convolve2D(image, kernel, padding=10)
         cut=int((convimage.shape[0] - image.shape[0])/2)
         convimage=convimage[cut:-cut, cut:-cut]
-        binimage = (convimage > self.binths)*1
+        binimage = (convimage > binths)*1
 
         # Morphological ACWE
 
@@ -476,18 +489,30 @@ class EmbryoSegmentation():
 
         s = image.shape[0]
         idxs = np.array([[y,x] for x in range(s) for y in range(s) if ls[x,y]==1])
-        embmask=deepcopy(idxs)
+        mask1=deepcopy(idxs)
         idxs = np.array([[y,x] for x in range(s) for y in range(s) if ls[x,y]!=1])
-        backmask = deepcopy(idxs)
+        mask2 = deepcopy(idxs)
 
-        background  = np.zeros_like(image)
-        for p in backmask: 
-            background[p[1], p[0]] = image[p[1], p[0]]
+        img1  = np.zeros_like(image)
+        for p in mask1: 
+            img1[p[1], p[0]] = image[p[1], p[0]]
 
-        emb_segment  = np.zeros_like(image)
-        for p in embmask: 
-            emb_segment[p[1], p[0]] = image[p[1], p[0]]
-        
+        img2  = np.zeros_like(image)
+        for p in mask2: 
+            img2[p[1], p[0]] = image[p[1], p[0]]
+
+        # The Morphological ACWE sometines asigns the embryo mask as 0s and others as 1s. 
+        # Selecting the mask with higher mean fluorescence makes the decision robust.
+        if np.mean(img1) > np.mean(img2):
+            embmask = mask1
+            emb_segment = img1
+            backmask = mask2
+            background = img2
+        else:
+            embmask = mask2
+            emb_segment = img2
+            backmask = mask1
+            background = img1
         return emb_segment, background, ls, embmask, backmask
 
     def plot_segmentation(self, t, z, compute=False):
@@ -509,7 +534,7 @@ class EmbryoSegmentation():
         ax[1].imshow(background)
         ax[1].set_axis_off()
         ax[1].contour(ls, [0.5], colors='r')
-        ax[1].scatter(embmask[:,0], embmask[:,1], s=0.1, c='red')
+        #ax[1].scatter(embmask[:,0], embmask[:,1], s=0.1, c='red')
         ax[1].set_title("Morphological ACWE - background", fontsize=12)
 
         #fig.tight_layout()
