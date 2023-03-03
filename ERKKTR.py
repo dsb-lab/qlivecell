@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 from scipy.spatial import Delaunay,ConvexHull
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
-
+import time
 from utils_ERKKTR import sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES
 
 class ERKKTR_donut():
@@ -55,8 +55,8 @@ class ERKKTR_donut():
                 inneroutline, midx, midy = self._expand_hull(outline, inc=self.outpad)
                 outteroutline, midx, midy = self._expand_hull(outline, inc=self.outpad+self.dwidht)
                 
-                inneroutline=self._increase_point_resolution(inneroutline)
-                outteroutline=self._increase_point_resolution(outteroutline)
+                #inneroutline=self._increase_point_resolution(inneroutline)
+                #outteroutline=self._increase_point_resolution(outteroutline)
                 
                 _hull_in = ConvexHull(inneroutline)
                 inneroutline = inneroutline[_hull_in.vertices]
@@ -192,8 +192,6 @@ class ERKKTR():
             ERKKTR_donut(cell, innerpad=3, outterpad=1, donut_width=5, min_outline_length=self.min_outline_length, inhull_method="delaunay")
         
         self.correct_cell_to_cell_overlap()
-        for cell in self.cells:
-            cell.ERKKTR_donut.compute_donut_masks()
         self.correct_donut_embryo_overlap(EmbSeg)
         self.correct_donut_nuclei_overlap()
 

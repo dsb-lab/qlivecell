@@ -33,39 +33,47 @@ EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,5], checkerb
 EmbSeg()
 EmbSeg.plot_segmentation(t, z, extra_IMGS=IMGS_SEG)
 
+# save_ES(EmbSeg, path_save, embcode)
 
-save_ES(EmbSeg, path_save, embcode)
-EmbSeg = load_ES(path_save, embcode)
+# EmbSeg = load_ES(path_save, embcode)
+
+
 erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100)
+
+import time
+tt = time.time()
 erkktr.create_donuts(EmbSeg)
-erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
+elapsed = time.time() - tt
+print("TIME =", elapsed)
 
-# img = IMGS_ERK[t][z] 
+erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_outlines=False, plot_donut=True, EmbSeg=EmbSeg)
 
-# ICM, TE = extract_ICM_TE_labels(erkktr.cells, t, z)
+img = IMGS_ERK[t][z] 
 
-# ICM_derk = []
-# ICM_nerk = []
-# ICM_CN = []
-# for lab in ICM:
-#     erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
-#     ICM_derk = np.append(ICM_derk, erkd)
-#     ICM_nerk = np.append(ICM_nerk, erkn)
-#     ICM_CN.append(cn)
+ICM, TE = extract_ICM_TE_labels(erkktr.cells, t, z)
 
-# TE_derk  = []
-# TE_nerk  = []
-# TE_CN = []
-# for lab in TE:
-#     erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
-#     TE_derk = np.append(TE_derk, erkd)
-#     TE_nerk = np.append(TE_nerk, erkn)
-#     TE_CN.append(cn)
+ICM_derk = []
+ICM_nerk = []
+ICM_CN = []
+for lab in ICM:
+    erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
+    ICM_derk = np.append(ICM_derk, erkd)
+    ICM_nerk = np.append(ICM_nerk, erkn)
+    ICM_CN.append(cn)
 
-# fig, ax = plt.subplots(2,2)
-# ax[0,0].hist(ICM_derk, bins=100)
-# ax[0,1].hist(ICM_nerk, bins=100)
-# ax[1,0].hist(TE_derk, bins=100)
-# ax[1,1].hist(TE_nerk, bins=100)
+TE_derk  = []
+TE_nerk  = []
+TE_CN = []
+for lab in TE:
+    erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
+    TE_derk = np.append(TE_derk, erkd)
+    TE_nerk = np.append(TE_nerk, erkn)
+    TE_CN.append(cn)
 
-# plt.show()
+fig, ax = plt.subplots(2,2)
+ax[0,0].hist(ICM_derk, bins=100)
+ax[0,1].hist(ICM_nerk, bins=100)
+ax[1,0].hist(TE_derk, bins=100)
+ax[1,1].hist(TE_nerk, bins=100)
+
+plt.show()
