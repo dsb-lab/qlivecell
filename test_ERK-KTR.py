@@ -27,46 +27,53 @@ IMGS_SEG   = imread(path_data+f)[:1,:,1,:,:]
 cells, CT_info = load_CT(path_save, embcode)
 
 t = 0
-z = 15
+z = 10
 
-EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,7], checkerboard_size=6, num_inter=100, smoothing=5, trange=range(t+1), zrange=range(z,z+1))
+EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,5], checkerboard_size=6, num_inter=100, smoothing=5, trange=range(t+1), zrange=range(z,z+1))
 EmbSeg()
-EmbSeg.plot_segmentation(t,z)
-
+EmbSeg.plot_segmentation(t, z, extra_IMGS=IMGS_SEG)
 
 # save_ES(EmbSeg, path_save, embcode)
+
 # EmbSeg = load_ES(path_save, embcode)
-# erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100)
-# erkktr.create_donuts(EmbSeg)
 
-# erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
 
-# img = IMGS_ERK[t][z] 
+erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100)
 
-# ICM, TE = extract_ICM_TE_labels(erkktr.cells, t, z)
+import time
+tt = time.time()
+erkktr.create_donuts(EmbSeg)
+elapsed = time.time() - tt
+print("TIME =", elapsed)
 
-# ICM_derk = []
-# ICM_nerk = []
-# ICM_CN = []
-# for lab in ICM:
-#     erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
-#     ICM_derk = np.append(ICM_derk, erkd)
-#     ICM_nerk = np.append(ICM_nerk, erkn)
-#     ICM_CN.append(cn)
+erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_outlines=False, plot_donut=True, EmbSeg=EmbSeg)
 
-# TE_derk  = []
-# TE_nerk  = []
-# TE_CN = []
-# for lab in TE:
-#     erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
-#     TE_derk = np.append(TE_derk, erkd)
-#     TE_nerk = np.append(TE_nerk, erkn)
-#     TE_CN.append(cn)
+img = IMGS_ERK[t][z] 
 
-# fig, ax = plt.subplots(2,2)
-# ax[0,0].hist(ICM_derk, bins=100)
-# ax[0,1].hist(ICM_nerk, bins=100)
-# ax[1,0].hist(TE_derk, bins=100)
-# ax[1,1].hist(TE_nerk, bins=100)
+ICM, TE = extract_ICM_TE_labels(erkktr.cells, t, z)
 
-# plt.show()
+ICM_derk = []
+ICM_nerk = []
+ICM_CN = []
+for lab in ICM:
+    erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
+    ICM_derk = np.append(ICM_derk, erkd)
+    ICM_nerk = np.append(ICM_nerk, erkn)
+    ICM_CN.append(cn)
+
+TE_derk  = []
+TE_nerk  = []
+TE_CN = []
+for lab in TE:
+    erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
+    TE_derk = np.append(TE_derk, erkd)
+    TE_nerk = np.append(TE_nerk, erkn)
+    TE_CN.append(cn)
+
+fig, ax = plt.subplots(2,2)
+ax[0,0].hist(ICM_derk, bins=100)
+ax[0,1].hist(ICM_nerk, bins=100)
+ax[1,0].hist(TE_derk, bins=100)
+ax[1,1].hist(TE_nerk, bins=100)
+
+plt.show()

@@ -55,8 +55,8 @@ class ERKKTR_donut():
                 inneroutline, midx, midy = self._expand_hull(outline, inc=self.outpad)
                 outteroutline, midx, midy = self._expand_hull(outline, inc=self.outpad+self.dwidht)
                 
-                inneroutline=self._increase_point_resolution(inneroutline)
-                outteroutline=self._increase_point_resolution(outteroutline)
+                #inneroutline=self._increase_point_resolution(inneroutline)
+                #outteroutline=self._increase_point_resolution(outteroutline)
                 
                 _hull_in = ConvexHull(inneroutline)
                 inneroutline = inneroutline[_hull_in.vertices]
@@ -192,8 +192,6 @@ class ERKKTR():
             ERKKTR_donut(cell, innerpad=3, outterpad=1, donut_width=5, min_outline_length=self.min_outline_length, inhull_method="delaunay")
         
         self.correct_cell_to_cell_overlap()
-        for cell in self.cells:
-            cell.ERKKTR_donut.compute_donut_masks()
         self.correct_donut_embryo_overlap(EmbSeg)
         self.correct_donut_nuclei_overlap()
 
@@ -515,7 +513,7 @@ class EmbryoSegmentation():
             background = img1
         return emb_segment, background, ls, embmask, backmask
 
-    def plot_segmentation(self, t, z, compute=False):
+    def plot_segmentation(self, t, z, compute=False, extra_IMGS=None):
         if compute:
             image = self.IMGS[t][z]
             emb_segment, background, ls, embmask, backmask = self.segment_embryo(image)
@@ -525,7 +523,14 @@ class EmbryoSegmentation():
             embmask     = self.Embmask[t][z]
             backmask    = self.Backmask[t][z]
             ls          = self.LS[t][z]
-        fig, ax = plt.subplots(1,2,figsize=(12, 6))
+        
+        if extra_IMGS is None: fig, ax = plt.subplots(1,2,figsize=(12, 6))
+        else: 
+            fig, ax = plt.subplots(1,3,figsize=(18, 6))
+            ax[2].imshow(extra_IMGS[t][z])
+            ax[2].set_axis_off()
+            ax[2].contour(ls, [0.5], colors='r')
+            ax[2].set_title("nuclear channel", fontsize=12)
         ax[0].imshow(emb_segment)
         ax[0].set_axis_off()
         ax[0].contour(ls, [0.5], colors='r')
