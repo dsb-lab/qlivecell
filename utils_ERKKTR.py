@@ -164,10 +164,10 @@ def load_ES(path=None, filename=None):
     file_to_store.close()
     return ES
 
-def save_cells(CT, path=None, filename=None):
+def save_cells(cells, path=None, filename=None):
     pthsave = path+filename
     file_to_store = open(pthsave+".pickle", "wb")
-    pickle.dump(CT.cells, file_to_store)
+    pickle.dump(cells, file_to_store)
     file_to_store.close()
 
 def load_cells_info(path=None, filename=None):
