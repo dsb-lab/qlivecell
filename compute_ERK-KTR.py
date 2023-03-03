@@ -1,5 +1,4 @@
 from cellpose.io import imread
-import pickle
 import sys
 sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")
 
@@ -21,8 +20,8 @@ if "_info" in embcode:
 
 f = embcode+'.tif'
 
-IMGS_ERK   = imread(path_data+f)[:1,:,0,:,:]
-IMGS_SEG   = imread(path_data+f)[:1,:,1,:,:]
+IMGS_ERK   = imread(path_data+f)[:,:,0,:,:]
+IMGS_SEG   = imread(path_data+f)[:,:,1,:,:]
 
 cells, CT_info = load_CT(path_save, embcode)
 EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=7, checkerboard_size=6, num_inter=100, smoothing=5, trange=range(1))
