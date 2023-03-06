@@ -6,6 +6,8 @@ from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 
 from utils_ERKKTR import sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, load_cells_info
 
+import multiprocessing as mp
+
 class ERKKTR_donut():
     def __init__(self, cell, innerpad=1, outterpad=1, donut_width=1, min_outline_length=50, inhull_method="delaunay"):
         self.inpad  = innerpad
@@ -13,6 +15,7 @@ class ERKKTR_donut():
         self.dwidht = donut_width
         self._min_outline_length = min_outline_length
         self.cell  = cell
+        print("label =",cell.label)
         if inhull_method=="delaunay": self._inhull=self._inhull_Delaunay
         elif inhull_method=="cross": self._inhull=self._inhull_cross
         elif inhull_method=="linprog": self._inhull=self._inhull_linprog
@@ -188,115 +191,124 @@ class ERKKTR():
         if innerpad is None: innerpad = self.inpad
         if outterpad is None: outterpad = self.outpad
         if donut_width is None: donut_width = self.dwidht
-        for cell in self.cells:
-            ERKKTR_donut(cell, innerpad=3, outterpad=1, donut_width=5, min_outline_length=self.min_outline_length, inhull_method="delaunay")
+        pool = mp.Pool(mp.cpu_count())
+        _ = [pool.apply_async(ERKKTR_donut, args=(cell, 3,1,5,self.min_outline_length,"delaunay")) for cell in self.cells]
+        pool.close()
+        pool.join()
         
         self.correct_cell_to_cell_overlap()
-        self.correct_donut_embryo_overlap(EmbSeg)
-        self.correct_donut_nuclei_overlap()
+        #self.correct_donut_embryo_overlap(EmbSeg)
+        #self.correct_donut_nuclei_overlap()
 
     def correct_cell_to_cell_overlap(self):
         for _, t in enumerate(range(self.times)):
-            # if t!=0: continue
-            for _, z in enumerate(range(self.slices)):
-                # if z!=20:continue
-                for cell_i in self.cells:
-                    distances   = []
-                    cells_close = []
-                    if t not in cell_i.times: continue
-                    ti = cell_i.times.index(t)
-                    if z not in cell_i.zs[ti]: continue
-                    zi = cell_i.zs[ti].index(z)
+            self.correct_cell_to_cell_overlap_z(t)
 
-                    for cell_j in self.cells:
-                        if t not in cell_j.times: continue
-                        tj = cell_j.times.index(t)
-                        if z not in cell_j.zs[tj]: continue
-                        if cell_i.label == cell_j.label: continue
-                        # If passes all the checks, compute distance between cells
-                        dist = cell_i.compute_distance_cell(cell_j, t, z, axis='xy')
-                        if dist < 100.0: 
-                            distances.append(dist)
-                            cells_close.append(cell_j)
+    def correct_cell_to_cell_overlap_z(self, t):
+        for _, z in enumerate(range(self.slices)):
+            # if z!=20:continue
+            for cell_i in self.cells:
+                distances   = []
+                cells_close = []
+                if t not in cell_i.times: continue
+                ti = cell_i.times.index(t)
+                if z not in cell_i.zs[ti]: continue
+                zi = cell_i.zs[ti].index(z)
 
-                    # Now for the the closest ones we check for overlaping
-                    oi_out = cell_i.ERKKTR_donut.donut_outlines_out[ti][zi]
-                    oi_out = cell_i.ERKKTR_donut._increase_point_resolution(oi_out)
+                for cell_j in self.cells:
+                    if t not in cell_j.times: continue
+                    tj = cell_j.times.index(t)
+                    if z not in cell_j.zs[tj]: continue
+                    if cell_i.label == cell_j.label: continue
+                    # If passes all the checks, compute distance between cells
+                    dist = cell_i.compute_distance_cell(cell_j, t, z, axis='xy')
+                    if dist < 100.0: 
+                        distances.append(dist)
+                        cells_close.append(cell_j)
 
-                    oi_inn = cell_i.ERKKTR_donut.donut_outlines_in[ti][zi]
-                    oi_inn = cell_i.ERKKTR_donut._increase_point_resolution(oi_inn)
+                # Now for the the closest ones we check for overlaping
+                oi_out = cell_i.ERKKTR_donut.donut_outlines_out[ti][zi]
+                oi_out = cell_i.ERKKTR_donut._increase_point_resolution(oi_out)
 
-                    maskout_cell_i = cell_i.ERKKTR_donut.donut_outer_mask[ti][zi]
-                    maskout_cell_i = np.vstack((maskout_cell_i, oi_out))
+                oi_inn = cell_i.ERKKTR_donut.donut_outlines_in[ti][zi]
+                oi_inn = cell_i.ERKKTR_donut._increase_point_resolution(oi_inn)
 
-                    # For each of the close cells, compute intersection of outer donut masks
+                maskout_cell_i = cell_i.ERKKTR_donut.donut_outer_mask[ti][zi]
+                maskout_cell_i = np.vstack((maskout_cell_i, oi_out))
+
+                # For each of the close cells, compute intersection of outer donut masks
+                
+                for j, cell_j in enumerate(cells_close):
+                    tcc = cell_j.times.index(t)
+                    zcc = cell_j.zs[tcc].index(z)
+                    maskout_cell_j = cell_j.ERKKTR_donut.donut_outer_mask[tcc][zcc]
                     
-                    for j, cell_j in enumerate(cells_close):
-                        tcc = cell_j.times.index(t)
-                        zcc = cell_j.zs[tcc].index(z)
-                        maskout_cell_j = cell_j.ERKKTR_donut.donut_outer_mask[tcc][zcc]
+                    oj_out = cell_j.ERKKTR_donut.donut_outlines_out[tcc][zcc]
+                    oj_out = cell_j.ERKKTR_donut._increase_point_resolution(oj_out)
+
+                    maskout_cell_j = np.vstack((maskout_cell_j, oj_out))
+                    
+                    maskout_intersection = intersect2D(maskout_cell_i, maskout_cell_j)
+                    if len(maskout_intersection)==0: continue
+
+                    # Check intersection with OUTTER outline
+
+                    # Get intersection between outline and the masks intersection 
+                    # These are the points to be removed from the ouline
+                    oi_mc_intersection   = intersect2D(oi_out, maskout_intersection)
+                    if len(oi_mc_intersection)!=0:
+                        new_oi = get_only_unique(np.vstack((oi_out, oi_mc_intersection)))
+                        new_oi = cell_i.ERKKTR_donut.sort_points_counterclockwise(new_oi)
+                        cell_i.ERKKTR_donut.donut_outlines_out[ti][zi] = deepcopy(new_oi)
                         
-                        oj_out = cell_j.ERKKTR_donut.donut_outlines_out[tcc][zcc]
-                        oj_out = cell_j.ERKKTR_donut._increase_point_resolution(oj_out)
-
-                        maskout_cell_j = np.vstack((maskout_cell_j, oj_out))
+                    oj_mc_intersection   = intersect2D(oj_out, maskout_intersection)
+                    if len(oj_mc_intersection)!=0:
+                        new_oj = get_only_unique(np.vstack((oj_out, oj_mc_intersection)))
+                        new_oj = cell_j.ERKKTR_donut.sort_points_counterclockwise(new_oj)
+                        cell_j.ERKKTR_donut.donut_outlines_out[tcc][zcc] = deepcopy(new_oj)
                         
-                        maskout_intersection = intersect2D(maskout_cell_i, maskout_cell_j)
-                        if len(maskout_intersection)==0: continue
+                    # Check intersection with INNER outline
+                    oj_inn = cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc]
+                    oj_inn = cell_j.ERKKTR_donut._increase_point_resolution(oj_inn)
 
-                        # Check intersection with OUTTER outline
-
-                        # Get intersection between outline and the masks intersection 
-                        # These are the points to be removed from the ouline
-                        oi_mc_intersection   = intersect2D(oi_out, maskout_intersection)
-                        if len(oi_mc_intersection)!=0:
-                            new_oi = get_only_unique(np.vstack((oi_out, oi_mc_intersection)))
-                            new_oi = cell_i.ERKKTR_donut.sort_points_counterclockwise(new_oi)
-                            cell_i.ERKKTR_donut.donut_outlines_out[ti][zi] = deepcopy(new_oi)
-                            
-                        oj_mc_intersection   = intersect2D(oj_out, maskout_intersection)
-                        if len(oj_mc_intersection)!=0:
-                            new_oj = get_only_unique(np.vstack((oj_out, oj_mc_intersection)))
-                            new_oj = cell_j.ERKKTR_donut.sort_points_counterclockwise(new_oj)
-                            cell_j.ERKKTR_donut.donut_outlines_out[tcc][zcc] = deepcopy(new_oj)
-                            
-                        # Check intersection with INNER outline
-                        oj_inn = cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc]
-                        oj_inn = cell_j.ERKKTR_donut._increase_point_resolution(oj_inn)
-
-                        # Get intersection between outline and the masks intersection 
-                        # These are the points to be removed from the ouline
-                        oi_mc_intersection   = intersect2D(oi_inn, maskout_intersection)
-                        if len(oi_mc_intersection)!=0:
-                            new_oi = get_only_unique(np.vstack((oi_inn, oi_mc_intersection)))
-                            new_oi = cell_i.ERKKTR_donut.sort_points_counterclockwise(new_oi)
-                            cell_i.ERKKTR_donut.donut_outlines_in[ti][zi] = deepcopy(new_oi)
-                        
-                        oj_mc_intersection   = intersect2D(oj_inn, maskout_intersection)
-                        if len(oj_mc_intersection)!=0:
-                            new_oj = get_only_unique(np.vstack((oj_inn, oj_mc_intersection)))
-                            new_oj = cell_j.ERKKTR_donut.sort_points_counterclockwise(new_oj)
-                            cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc] = deepcopy(new_oj)
+                    # Get intersection between outline and the masks intersection 
+                    # These are the points to be removed from the ouline
+                    oi_mc_intersection   = intersect2D(oi_inn, maskout_intersection)
+                    if len(oi_mc_intersection)!=0:
+                        new_oi = get_only_unique(np.vstack((oi_inn, oi_mc_intersection)))
+                        new_oi = cell_i.ERKKTR_donut.sort_points_counterclockwise(new_oi)
+                        cell_i.ERKKTR_donut.donut_outlines_in[ti][zi] = deepcopy(new_oi)
+                    
+                    oj_mc_intersection   = intersect2D(oj_inn, maskout_intersection)
+                    if len(oj_mc_intersection)!=0:
+                        new_oj = get_only_unique(np.vstack((oj_inn, oj_mc_intersection)))
+                        new_oj = cell_j.ERKKTR_donut.sort_points_counterclockwise(new_oj)
+                        cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc] = deepcopy(new_oj)
 
     def correct_donut_nuclei_overlap(self):
-        for cell in self.cells:
-            cell.ERKKTR_donut.compute_donut_masks()
-            for tid, t in enumerate(cell.times):
-                # if t!=0: continue
-                for zid, z in enumerate(cell.zs[tid]):
-                    # if z!=20: continue
-                    don_mask = cell.ERKKTR_donut.donut_masks[tid][zid]
-                    nuc_mask = cell.masks[tid][zid]
-                    masks_intersection = intersect2D(don_mask, nuc_mask)
-                    if len(masks_intersection)==0: continue
-                    new_don_mask = get_only_unique(np.vstack((don_mask, masks_intersection)))
-                    cell.ERKKTR_donut.donut_masks[tid][zid] = deepcopy(new_don_mask)
+        pool = mp.Pool(mp.cpu_count())
+        _ = [pool.apply_async(self.correct_donut_nuclei_overlap_c, args=cell) for cell in self.cells]
+        pool.close()
+        pool.join()
+        return None
+
+    def correct_donut_nuclei_overlap_c(self, cell):
+        print("label =",cell.label)
+        cell.ERKKTR_donut.compute_donut_masks()
+        for tid, t in enumerate(cell.times):
+            for zid, z in enumerate(cell.zs[tid]):
+                don_mask = cell.ERKKTR_donut.donut_masks[tid][zid]
+                nuc_mask = cell.masks[tid][zid]
+                masks_intersection = intersect2D(don_mask, nuc_mask)
+                if len(masks_intersection)==0: continue
+                new_don_mask = get_only_unique(np.vstack((don_mask, masks_intersection)))
+                cell.ERKKTR_donut.donut_masks[tid][zid] = deepcopy(new_don_mask)
 
     def correct_donut_embryo_overlap(self, EmbSeg):
         for _, t in enumerate(range(self.times)):
-            # if t!=0: continue
+
             for _, z in enumerate(range(self.slices)):
-                # if z!=20:continue
+
                 for cell in self.cells:
 
                     if t not in cell.times: continue
@@ -327,6 +339,9 @@ class ERKKTR():
                     # Check intersection with INNER outline
 
                     oi_mc_intersection   = intersect2D(oi_inn, maskout_intersection)
+                    print(cell.label)
+                    print(t)
+                    print(z)
                     new_oi = cell.ERKKTR_donut.sort_points_counterclockwise(oi_mc_intersection)
                     cell.ERKKTR_donut.donut_outlines_in[ti][zi] = deepcopy(new_oi)
 
@@ -369,6 +384,7 @@ class ERKKTR():
         fig, ax = plt.subplots(1,2,figsize=(15,15))
         
         for cell in self.cells:
+            if cell.label!=1: continue
             if label is not None: 
                 if cell.label != label: continue
             donut = cell.ERKKTR_donut
@@ -445,36 +461,48 @@ class EmbryoSegmentation():
             print("time =",t)
             self.Embmask.append([])
             self.Backmask.append([])
-            for zid, z in enumerate(range(self.slices)):
-                print("z =",z)
+            self.results=[]
+            pool = mp.Pool(mp.cpu_count())
+            for zid,z in enumerate(range(self.slices)):
+                pool.apply_async(self.compute_emb_masks_z, args=(t, z, tid, zid), callback=self.collect_result)
+            pool.close()
+            pool.join()
+            self.results.sort(key=lambda x: x[0])
+            for result in self.results:
+                zid, ls, emb, back, embmask, backmask = result
+                if len(ls)!=0:
+                    self.LS[tid][zid] = ls
 
-                image = self.IMGS[tid][zid]
+                    self.Emb[tid][zid] = emb 
+                    self.Back[tid][zid]= back
                 
-                if t in self.trange:
-                    if z in self.zrange:
-                        emb, back, ls, embmask, backmask = self.segment_embryo(image, self.binths[zid])
-
-                        self.LS[tid][zid] = ls
-
-                        self.Emb[tid][zid] = emb 
-                        self.Back[tid][zid]= back
-
-                        self.Embmask[-1].append(embmask)
-                        self.Backmask[-1].append(backmask)
-                    else:
-                        self.Embmask[-1].append([])
-                        self.Backmask[-1].append([])
-                else:
-                    self.Embmask[-1].append([])
-                    self.Backmask[-1].append([])
-
+                self.Embmask[-1].append(embmask)
+                self.Backmask[-1].append(backmask)
         self.Embmask  = np.array(self.Embmask)
         self.Backmask = np.array(self.Backmask)
         return
 
+    def collect_result(self, result):
+        self.results.append(result)
+
+    def compute_emb_masks_z(self,t,z,tid,zid):
+        print("z =",z)
+
+        image = self.IMGS[tid][zid]
+        if t in self.trange:
+            if z in self.zrange:
+                emb, back, ls, embmask, backmask = self.segment_embryo(image, self.binths[zid])
+                result=(zid,ls, emb, back, embmask, backmask)
+            else:
+                 result=(zid,[],[],[],[],[])
+        else:
+             result=(zid,[],[],[],[],[])
+        
+        return result
+
     def segment_embryo(self, image, binths):
         kernel = gkernel(self.ksize, self.ksigma)
-        convimage  = convolve2D(image, kernel, padding=10)
+        convimage = convolve2D(image, kernel, padding=10)
         cut=int((convimage.shape[0] - image.shape[0])/2)
         convimage=convimage[cut:-cut, cut:-cut]
         binimage = (convimage > binths)*1
@@ -492,16 +520,27 @@ class EmbryoSegmentation():
         mask2 = deepcopy(idxs)
 
         img1  = np.zeros_like(image)
+        int1  = 0
+        nint1 = 0
         for p in mask1: 
             img1[p[1], p[0]] = image[p[1], p[0]]
+            int1+=image[p[1], p[0]]
+            nint1+=1
 
         img2  = np.zeros_like(image)
+        int2  = 0
+        nint2 = 0
         for p in mask2: 
             img2[p[1], p[0]] = image[p[1], p[0]]
+            int2+=image[p[1], p[0]]
+            nint2+=1
 
+        int1/=nint1
+        int2/=nint2
         # The Morphological ACWE sometines asigns the embryo mask as 0s and others as 1s. 
-        # Selecting the mask with higher mean fluorescence makes the decision robust.
-        if np.mean(img1) > np.mean(img2):
+        # Selecting the mask with higher mean fluorescence makes the decision robust
+
+        if int1 > int2:
             embmask = mask1
             emb_segment = img1
             backmask = mask2
@@ -534,12 +573,13 @@ class EmbryoSegmentation():
         ax[0].imshow(emb_segment)
         ax[0].set_axis_off()
         ax[0].contour(ls, [0.5], colors='r')
+        ax[0].scatter(embmask[:,0], embmask[:,1], s=0.1, c='red', alpha=0.1)
         ax[0].set_title("Morphological ACWE - mask", fontsize=12)
 
         ax[1].imshow(background)
         ax[1].set_axis_off()
         ax[1].contour(ls, [0.5], colors='r')
-        #ax[1].scatter(embmask[:,0], embmask[:,1], s=0.1, c='red')
+        ax[1].scatter(backmask[:,0], backmask[:,1], s=0.1, c='red', alpha=0.1)
         ax[1].set_title("Morphological ACWE - background", fontsize=12)
 
         #fig.tight_layout()
