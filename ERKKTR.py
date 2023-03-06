@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 from scipy.spatial import Delaunay,ConvexHull
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
-
+import time
 from utils_ERKKTR import sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, load_cells_info
 
 import multiprocessing as mp
@@ -15,24 +15,25 @@ class ERKKTR_donut():
         self.dwidht = donut_width
         self._min_outline_length = min_outline_length
         self.cell  = cell
-        print("label =",cell.label)
         if inhull_method=="delaunay": self._inhull=self._inhull_Delaunay
         elif inhull_method=="cross": self._inhull=self._inhull_cross
         elif inhull_method=="linprog": self._inhull=self._inhull_linprog
-        else: self._inhull=self._inhull_Delaunay
-        
+        else: self._inhull=self._inhull_Delaunay  
+        print(self.cell.label)
         self.compute_donut_outlines()
+        print("outlines done")
         self.compute_donut_masks()
+        print("donut done")
         self.compute_nuclei_mask()
-        cell.ERKKTR_donut = self
+        print("nuc done")
+        print("doneteeee")
+        return self
     
     def compute_nuclei_mask(self):
         self.nuclei_masks = deepcopy(self.cell.masks)
         self.nuclei_outlines = deepcopy(self.cell.outlines)
         for tid, t in enumerate(self.cell.times):
-            # if t !=0: continue
             for zid, z in enumerate(self.cell.zs[tid]):
-                # if z!=20: continue
                 outline = self.cell.outlines[tid][zid]
                 newoutline, midx, midy = self._expand_hull(outline, inc=-self.inpad)
                 newoutline=self._increase_point_resolution(newoutline)
@@ -47,9 +48,7 @@ class ERKKTR_donut():
         self.donut_outlines_in = deepcopy(self.cell.outlines)
         self.donut_outlines_out = deepcopy(self.cell.outlines)
         for tid, t in enumerate(self.cell.times):
-            # if t!=0: continue
             for zid, z in enumerate(self.cell.zs[tid]):
-                # if z!=20: continue
                 outline = self.cell.outlines[tid][zid]
                 hull = ConvexHull(outline)
                 outline = outline[hull.vertices]
@@ -73,14 +72,12 @@ class ERKKTR_donut():
                 self.donut_outlines_out[tid][zid] = outteroutline
                     
     def compute_donut_masks(self):
+        
         self.donut_masks  = deepcopy(self.cell.masks)
         self.donut_outer_mask = deepcopy(self.cell.masks)
         self.donut_inner_mask = deepcopy(self.cell.masks)
-
         for tid, t in enumerate(self.cell.times):
-            # if t!=0: continue
             for zid, z in enumerate(self.cell.zs[tid]):
-                # if z!=20: continue
                 self.compute_donut_mask(tid, zid)
 
     def compute_donut_mask(self, tid, zid):
@@ -182,8 +179,11 @@ class ERKKTR():
         self.slices = IMGS.shape[1]
         self.cells  = cells
 
-    def __call__(self):
-        pass
+    def execute_erkktr(self, c, cell, innerpad, outterpad, donut_width, min_outline_length):
+        return (c, ERKKTR_donut(cell, innerpad, outterpad, donut_width, min_outline_length, "delaunay"))
+
+    def collect_result(self, result):
+        self.results.append(result)
 
     def create_donuts(self, EmbSeg, innerpad=None, outterpad=None, donut_width=None):
         for cell in self.cells:
@@ -191,12 +191,22 @@ class ERKKTR():
         if innerpad is None: innerpad = self.inpad
         if outterpad is None: outterpad = self.outpad
         if donut_width is None: donut_width = self.dwidht
-        pool = mp.Pool(mp.cpu_count())
-        _ = [pool.apply_async(ERKKTR_donut, args=(cell, 3,1,5,self.min_outline_length,"delaunay")) for cell in self.cells]
+        start = time.time()
+
+        self.results=[]
+        pool = mp.Pool(5)
+        for c, cell in enumerate(self.cells):
+            pool.apply_async(execute_erkktr, args=(c, cell, innerpad, outterpad, donut_width, self.min_outline_length), callback=self.collect_result)
         pool.close()
         pool.join()
-        
-        self.correct_cell_to_cell_overlap()
+
+        end = time.time()
+        print(end - start)
+
+        self.results.sort(key=lambda x: x[0])
+        for result in self.results:
+            pass
+        #self.correct_cell_to_cell_overlap()
         #self.correct_donut_embryo_overlap(EmbSeg)
         #self.correct_donut_nuclei_overlap()
 
@@ -384,7 +394,6 @@ class ERKKTR():
         fig, ax = plt.subplots(1,2,figsize=(15,15))
         
         for cell in self.cells:
-            if cell.label!=1: continue
             if label is not None: 
                 if cell.label != label: continue
             donut = cell.ERKKTR_donut
@@ -573,15 +582,18 @@ class EmbryoSegmentation():
         ax[0].imshow(emb_segment)
         ax[0].set_axis_off()
         ax[0].contour(ls, [0.5], colors='r')
-        ax[0].scatter(embmask[:,0], embmask[:,1], s=0.1, c='red', alpha=0.1)
+        #ax[0].scatter(embmask[:,0], embmask[:,1], s=0.1, c='red', alpha=0.1)
         ax[0].set_title("Morphological ACWE - mask", fontsize=12)
 
         ax[1].imshow(background)
         ax[1].set_axis_off()
         ax[1].contour(ls, [0.5], colors='r')
-        ax[1].scatter(backmask[:,0], backmask[:,1], s=0.1, c='red', alpha=0.1)
+        #ax[1].scatter(backmask[:,0], backmask[:,1], s=0.1, c='red', alpha=0.1)
         ax[1].set_title("Morphological ACWE - background", fontsize=12)
 
         #fig.tight_layout()
         plt.show()
 
+
+def execute_erkktr(c, cell, innerpad, outterpad, donut_width, min_outline_length):
+    return (c, ERKKTR_donut(cell, innerpad, outterpad, donut_width, min_outline_length, "delaunay"))
