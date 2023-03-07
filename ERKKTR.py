@@ -206,19 +206,21 @@ class ERKKTR():
                 self.collect_result(result)
         else:
             pool = mp.Pool(threads,maxtasksperchild=1)
-            for c, cell in enumerate(self.cells):
-                pool.apply_async(self.execute_erkktr, args=(c, cell, innerpad, outterpad, donut_width, self.min_outline_length), callback=self.collect_result)
+            # for c, cell in enumerate(self.cells):
+            #     pool.apply_async(self.execute_erkktr, args=(c, cell, innerpad, outterpad, donut_width, self.min_outline_length), callback=self.collect_result)
+            pool.starmap_async(self.execute_erkktr, [(c, cell, innerpad, outterpad, donut_width, self.min_outline_length) for c,cell in enumerate(self.cells)], callback=self.collect_result)
             pool.close()
-            pool.join()
-
+            pool.join()        
+            self.results = self.results[0]
+            
         self.results.sort(key=lambda x: x[0])
-        # for c, cell in enumerate(self.cells):
-        #     erkktr = self.results[c][1]
-        #     cell.ERKKTR_donut = erkktr
-        #self.correct_cell_to_cell_overlap()
-        #self.correct_donut_embryo_overlap(EmbSeg)
-        #self.correct_donut_nuclei_overlap()
-
+        for c, cell in enumerate(self.cells):
+            result = self.results[c]
+            cell.ERKKTR_donut = result[1]
+        self.correct_cell_to_cell_overlap()
+        self.correct_donut_embryo_overlap(EmbSeg)
+        self.correct_donut_nuclei_overlap()
+ 
     def correct_cell_to_cell_overlap(self):
         for t in range(self.times):
             self.correct_cell_to_cell_overlap_z(t)
@@ -306,6 +308,7 @@ class ERKKTR():
 
     def correct_donut_nuclei_overlap(self):
         for cell in self.cells:
+            print(cell.label)
             self.correct_donut_nuclei_overlap_c(cell) 
 
     def correct_donut_nuclei_overlap_c(self, cell):
@@ -354,9 +357,6 @@ class ERKKTR():
                     # Check intersection with INNER outline
 
                     oi_mc_intersection   = intersect2D(oi_inn, maskout_intersection)
-                    print(cell.label)
-                    print(t)
-                    print(z)
                     new_oi = cell.ERKKTR_donut.sort_points_counterclockwise(oi_mc_intersection)
                     cell.ERKKTR_donut.donut_outlines_in[ti][zi] = deepcopy(new_oi)
 

@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     EmbSeg = load_ES(path_save, embcode)
 
-    erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100, mp_threads=10)
+    erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100, mp_threads='all')
     erkktr.create_donuts(EmbSeg)
 
     erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, 0, 15, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
@@ -39,3 +39,5 @@ if __name__ == '__main__':
     # save_cells(erkktr.cells, path_save, embcode)
     # save_ES(EmbSeg, path_save, embcode)
 
+erkktr.correct_donut_nuclei_overlap()
+erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, 0, 15, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
