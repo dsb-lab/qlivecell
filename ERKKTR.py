@@ -6,8 +6,6 @@ from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 import time
 from utils_ERKKTR import sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, load_cells_info
 
-import multiprocessing as mp
-
 class ERKKTR_donut():
     def __init__(self, cell, innerpad=1, outterpad=1, donut_width=1, min_outline_length=50, inhull_method="delaunay"):
         self.inpad  = innerpad
@@ -21,14 +19,10 @@ class ERKKTR_donut():
         else: self._inhull=self._inhull_Delaunay  
         print(self.cell.label)
         self.compute_donut_outlines()
-        print("outlines done")
         self.compute_donut_masks()
-        print("donut done")
         self.compute_nuclei_mask()
-        print("nuc done")
-        print("doneteeee")
-        return self
-    
+        print("done ", self.cell.label)
+        
     def compute_nuclei_mask(self):
         self.nuclei_masks = deepcopy(self.cell.masks)
         self.nuclei_outlines = deepcopy(self.cell.outlines)
@@ -170,7 +164,7 @@ class ERKKTR_donut():
         return newoutline_new
 
 class ERKKTR():
-    def __init__(self, IMGS, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=50):
+    def __init__(self, IMGS, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=50, mp_threads=None):
         self.inpad  = innerpad
         self.outpad = outterpad
         self.dwidht = donut_width
@@ -178,6 +172,11 @@ class ERKKTR():
         self.times  = IMGS.shape[0]
         self.slices = IMGS.shape[1]
         self.cells  = cells
+        if mp_threads is not None: 
+            global mp
+            import multiprocessing as mp
+        if mp_threads == "all": self._threads=mp.cpu_count()-1
+        else: self._threads = mp_threads
 
     def execute_erkktr(self, c, cell, innerpad, outterpad, donut_width, min_outline_length):
         return (c, ERKKTR_donut(cell, innerpad, outterpad, donut_width, min_outline_length, "delaunay"))
@@ -185,33 +184,43 @@ class ERKKTR():
     def collect_result(self, result):
         self.results.append(result)
 
-    def create_donuts(self, EmbSeg, innerpad=None, outterpad=None, donut_width=None):
+    def create_donuts(self, EmbSeg, innerpad=None, outterpad=None, donut_width=None, change_threads=False):
         for cell in self.cells:
             cell.extract_all_XYZ_positions()
         if innerpad is None: innerpad = self.inpad
         if outterpad is None: outterpad = self.outpad
         if donut_width is None: donut_width = self.dwidht
-        start = time.time()
-
+        if (self._threads==None and change_threads!=False): 
+            global mp
+            import multiprocessing as mp
+        if change_threads is False: threads = self._threads
+        else:
+            if change_threads == "all": threads=mp.cpu_count()-1
+            else: threads = change_threads
+        
         self.results=[]
-        pool = mp.Pool(5)
-        for c, cell in enumerate(self.cells):
-            pool.apply_async(execute_erkktr, args=(c, cell, innerpad, outterpad, donut_width, self.min_outline_length), callback=self.collect_result)
-        pool.close()
-        pool.join()
-
-        end = time.time()
-        print(end - start)
+        
+        if threads is None:
+            for c, cell in enumerate(self.cells):
+                result=self.execute_erkktr(c, cell, innerpad, outterpad, donut_width, self.min_outline_length)
+                self.collect_result(result)
+        else:
+            pool = mp.Pool(threads,maxtasksperchild=1)
+            for c, cell in enumerate(self.cells):
+                pool.apply_async(self.execute_erkktr, args=(c, cell, innerpad, outterpad, donut_width, self.min_outline_length), callback=self.collect_result)
+            pool.close()
+            pool.join()
 
         self.results.sort(key=lambda x: x[0])
-        for result in self.results:
-            pass
+        # for c, cell in enumerate(self.cells):
+        #     erkktr = self.results[c][1]
+        #     cell.ERKKTR_donut = erkktr
         #self.correct_cell_to_cell_overlap()
         #self.correct_donut_embryo_overlap(EmbSeg)
         #self.correct_donut_nuclei_overlap()
 
     def correct_cell_to_cell_overlap(self):
-        for _, t in enumerate(range(self.times)):
+        for t in range(self.times):
             self.correct_cell_to_cell_overlap_z(t)
 
     def correct_cell_to_cell_overlap_z(self, t):
@@ -296,14 +305,10 @@ class ERKKTR():
                         cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc] = deepcopy(new_oj)
 
     def correct_donut_nuclei_overlap(self):
-        pool = mp.Pool(mp.cpu_count())
-        _ = [pool.apply_async(self.correct_donut_nuclei_overlap_c, args=cell) for cell in self.cells]
-        pool.close()
-        pool.join()
-        return None
+        for cell in self.cells:
+            self.correct_donut_nuclei_overlap_c(cell) 
 
     def correct_donut_nuclei_overlap_c(self, cell):
-        print("label =",cell.label)
         cell.ERKKTR_donut.compute_donut_masks()
         for tid, t in enumerate(cell.times):
             for zid, z in enumerate(cell.zs[tid]):
@@ -440,7 +445,7 @@ class ERKKTR():
         plt.show()
 
 class EmbryoSegmentation():
-    def __init__(self, IMGS, ksize=5, ksigma=3, binths=8, checkerboard_size=6, num_inter=100, smoothing=5, trange=None, zrange=None):
+    def __init__(self, IMGS, ksize=5, ksigma=3, binths=8, checkerboard_size=6, num_inter=100, smoothing=5, trange=None, zrange=None, mp_threads=None):
         self.IMGS = IMGS
         self.Emb  = np.zeros_like(IMGS)
         self.Back = np.zeros_like(IMGS)
@@ -449,7 +454,12 @@ class EmbryoSegmentation():
         self.Backmask = []
         self.times  = IMGS.shape[0]
         self.slices = IMGS.shape[1]
-
+        
+        if mp_threads is not None: 
+            global mp
+            import multiprocessing as mp
+        if mp_threads == "all": self._threads=mp.cpu_count()-1
+        else: self._threads = mp_threads
 
         if trange is None: self.trange=range(self.times)
         else: self.trange=trange
@@ -471,11 +481,16 @@ class EmbryoSegmentation():
             self.Embmask.append([])
             self.Backmask.append([])
             self.results=[]
-            pool = mp.Pool(mp.cpu_count())
-            for zid,z in enumerate(range(self.slices)):
-                pool.apply_async(self.compute_emb_masks_z, args=(t, z, tid, zid), callback=self.collect_result)
-            pool.close()
-            pool.join()
+            if self._threads is None:
+                for zid,z in enumerate(range(self.slices)):
+                    result = self.compute_emb_masks_z(t, z, tid, zid)
+                    self.collect_result(result)
+            else:
+                pool = mp.Pool(self._threads)
+                for zid,z in enumerate(range(self.slices)):
+                    pool.apply_async(self.compute_emb_masks_z, args=(t, z, tid, zid), callback=self.collect_result)
+                pool.close()
+                pool.join()
             self.results.sort(key=lambda x: x[0])
             for result in self.results:
                 zid, ls, emb, back, embmask, backmask = result
