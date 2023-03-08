@@ -223,14 +223,28 @@ class ERKKTR():
                 task_queue.put(task)
             
             # Start worker processes
+            ps = []
             for i in range(self._threads):
                 p = mp.Process(target=self.execute_erkktr_paralel_worker, args=(task_queue, done_queue))
                 p.start()
+                ps.append(p)
 
             eds = [done_queue.get() for t in TASKS]
+
+            # Tell child processes to stop
+            for i in range(self._threads):
+                print(ps[i].is_alive)
+
+
             # Tell child processes to stop
             for i in range(self._threads):
                 task_queue.put('STOP')
+                ps[i].terminate()
+
+            # Tell child processes to stop
+            for i in range(self._threads):
+                print(ps[i].is_alive)
+
 
             for ed in eds:
                 lab  = ed.cell.label
