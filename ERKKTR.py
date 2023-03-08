@@ -17,11 +17,9 @@ class ERKKTR_donut():
         elif inhull_method=="cross": self._inhull=self._inhull_cross
         elif inhull_method=="linprog": self._inhull=self._inhull_linprog
         else: self._inhull=self._inhull_Delaunay  
-        print(self.cell.label)
         self.compute_donut_outlines()
         self.compute_donut_masks()
         self.compute_nuclei_mask()
-        print("done ", self.cell.label)
         
     def compute_nuclei_mask(self):
         self.nuclei_masks = deepcopy(self.cell.masks)
@@ -178,11 +176,18 @@ class ERKKTR():
         if mp_threads == "all": self._threads=mp.cpu_count()-1
         else: self._threads = mp_threads
 
-    def execute_erkktr(self, c, cell, innerpad, outterpad, donut_width, min_outline_length):
-        return (c, ERKKTR_donut(cell, innerpad, outterpad, donut_width, min_outline_length, "delaunay"))
+    def execute_erkktr_paralel_worker(self, input, output):
 
-    def collect_result(self, result):
-        self.results.append(result)
+        # The input are the arguments of the function
+
+        # The output is the ERKKTR_donut class
+        
+        for func, args in iter(input.get, 'STOP'):
+            result = func(*args)
+            output.put(result)
+
+    def execute_erkktr(self, c, innerpad, outterpad, donut_width, min_outline_length):
+        return ERKKTR_donut(self.cells[c], innerpad, outterpad, donut_width, min_outline_length, "delaunay")
 
     def create_donuts(self, EmbSeg, innerpad=None, outterpad=None, donut_width=None, change_threads=False):
         for cell in self.cells:
@@ -198,29 +203,43 @@ class ERKKTR():
             if change_threads == "all": threads=mp.cpu_count()-1
             else: threads = change_threads
         
-        self.results=[]
-        
         if threads is None:
             for c, cell in enumerate(self.cells):
-                result=self.execute_erkktr(c, cell, innerpad, outterpad, donut_width, self.min_outline_length)
+                result=self.execute_erkktr(c, innerpad, outterpad, donut_width, self.min_outline_length)
                 self.collect_result(result)
+            self.results.sort(key=lambda x: x[0])
+            for c, cell in enumerate(self.cells):
+                result = self.results[c]
+                cell.ERKKTR_donut = result[1]
         else:
-            self.pool = mp.Pool(threads,maxtasksperchild=1)
-            # for c, cell in enumerate(self.cells):
-            #     pool.apply_async(self.execute_erkktr, args=(c, cell, innerpad, outterpad, donut_width, self.min_outline_length), callback=self.collect_result)
-            self.pool.starmap_async(self.execute_erkktr, [(c, cell, innerpad, outterpad, donut_width, self.min_outline_length) for c,cell in enumerate(self.cells)], callback=self.collect_result)
-            self.pool.close()
-            self.pool.join()        
-            self.results = self.results[0]
+
+            TASKS = [(self.execute_erkktr, (c, innerpad, outterpad, donut_width, self.min_outline_length)) for c in range(len(self.cells))]
+
+            task_queue = mp.Queue()
+            done_queue = mp.Queue()
+
+            # Submit tasks
+            for task in TASKS:
+                task_queue.put(task)
             
-        self.results.sort(key=lambda x: x[0])
-        for c, cell in enumerate(self.cells):
-            result = self.results[c]
-            cell.ERKKTR_donut = result[1]
-        self.correct_cell_to_cell_overlap()
-        self.correct_donut_embryo_overlap(EmbSeg)
-        print("NOW OR NEVER")
-        self.correct_donut_nuclei_overlap()
+            # Start worker processes
+            for i in range(self._threads):
+                p = mp.Process(target=self.execute_erkktr_paralel_worker, args=(task_queue, done_queue))
+                p.start()
+
+            eds = [done_queue.get() for t in TASKS]
+            # Tell child processes to stop
+            for i in range(self._threads):
+                task_queue.put('STOP')
+
+            for ed in eds:
+                lab  = ed.cell.label
+                cell = self._get_cell(lab)
+                cell.ERKKTR_donut = ed
+
+        # self.correct_donut_embryo_overlap(EmbSeg)
+        # print("NOW OR NEVER")
+        # self.correct_donut_nuclei_overlap()
  
     def correct_cell_to_cell_overlap(self):
         for t in range(self.times):

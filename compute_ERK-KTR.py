@@ -12,7 +12,7 @@ if __name__ == '__main__':
     home = os.path.expanduser('~')
     path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
     path_save=home+'/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_claire_ERK-KTR_MKATE2/'
-    emb=15
+    emb=14
     files = os.listdir(path_save)
 
     embcode=files[emb].split('.')[0]
