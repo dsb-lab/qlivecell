@@ -205,12 +205,12 @@ class ERKKTR():
                 result=self.execute_erkktr(c, cell, innerpad, outterpad, donut_width, self.min_outline_length)
                 self.collect_result(result)
         else:
-            pool = mp.Pool(threads,maxtasksperchild=1)
+            self.pool = mp.Pool(threads,maxtasksperchild=1)
             # for c, cell in enumerate(self.cells):
             #     pool.apply_async(self.execute_erkktr, args=(c, cell, innerpad, outterpad, donut_width, self.min_outline_length), callback=self.collect_result)
-            pool.starmap_async(self.execute_erkktr, [(c, cell, innerpad, outterpad, donut_width, self.min_outline_length) for c,cell in enumerate(self.cells)], callback=self.collect_result)
-            pool.close()
-            pool.join()        
+            self.pool.starmap_async(self.execute_erkktr, [(c, cell, innerpad, outterpad, donut_width, self.min_outline_length) for c,cell in enumerate(self.cells)], callback=self.collect_result)
+            self.pool.close()
+            self.pool.join()        
             self.results = self.results[0]
             
         self.results.sort(key=lambda x: x[0])
@@ -219,6 +219,7 @@ class ERKKTR():
             cell.ERKKTR_donut = result[1]
         self.correct_cell_to_cell_overlap()
         self.correct_donut_embryo_overlap(EmbSeg)
+        print("NOW OR NEVER")
         self.correct_donut_nuclei_overlap()
  
     def correct_cell_to_cell_overlap(self):
@@ -307,9 +308,15 @@ class ERKKTR():
                         cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc] = deepcopy(new_oj)
 
     def correct_donut_nuclei_overlap(self):
-        for cell in self.cells:
-            print(cell.label)
-            self.correct_donut_nuclei_overlap_c(cell) 
+        if self._threads is None:
+            pass
+        else:
+            _ = self.pool.map_async(self.correct_donut_nuclei_overlap_c, self.cells)
+            self.pool.close()
+            self.pool.join()        
+        # for cell in self.cells:
+        #     print(cell.label)
+        #     self.correct_donut_nuclei_overlap_c(cell) 
 
     def correct_donut_nuclei_overlap_c(self, cell):
         cell.ERKKTR_donut.compute_donut_masks()
@@ -321,6 +328,7 @@ class ERKKTR():
                 if len(masks_intersection)==0: continue
                 new_don_mask = get_only_unique(np.vstack((don_mask, masks_intersection)))
                 cell.ERKKTR_donut.donut_masks[tid][zid] = deepcopy(new_don_mask)
+                return None
 
     def correct_donut_embryo_overlap(self, EmbSeg):
         for _, t in enumerate(range(self.times)):

@@ -38,6 +38,3 @@ if __name__ == '__main__':
 
     # save_cells(erkktr.cells, path_save, embcode)
     # save_ES(EmbSeg, path_save, embcode)
-
-erkktr.correct_donut_nuclei_overlap()
-erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, 0, 15, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
