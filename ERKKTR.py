@@ -492,14 +492,12 @@ class EmbryoSegmentation():
         if t in self.trange:
             if z in self.zrange:
                 emb, back, ls, embmask, backmask = self.segment_embryo(image, self.binths[zid])
-                result=(zid,ls, emb, back, embmask, backmask)
+                return (zid,ls, emb, back, embmask, backmask)
             else:
-                 result=(zid,[],[],[],[],[])
+                return (zid,[],[],[],[],[])
         else:
-             result=(zid,[],[],[],[],[])
+            return (zid,[],[],[],[],[])
         
-        return result
-
     def segment_embryo(self, image, binths):
         kernel = gkernel(self.ksize, self.ksigma)
         convimage = convolve2D(image, kernel, padding=10)
