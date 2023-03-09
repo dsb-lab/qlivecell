@@ -4,7 +4,7 @@ from copy import deepcopy
 from scipy.spatial import Delaunay,ConvexHull
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 import time
-from utils_ERKKTR import sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, load_cells_info
+from utils_ERKKTR import multiprocess, sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, load_cells_info
 
 class ERKKTR_donut():
     def __init__(self, cell, innerpad=1, outterpad=1, donut_width=1, min_outline_length=50, inhull_method="delaunay"):
@@ -16,7 +16,7 @@ class ERKKTR_donut():
         if inhull_method=="delaunay": self._inhull=self._inhull_Delaunay
         elif inhull_method=="cross": self._inhull=self._inhull_cross
         elif inhull_method=="linprog": self._inhull=self._inhull_linprog
-        else: self._inhull=self._inhull_Delaunay  
+        else: self._inhull=self._inhull_Delaunay
         self.compute_donut_outlines()
         self.compute_donut_masks()
         self.compute_nuclei_mask()
@@ -203,50 +203,16 @@ class ERKKTR():
             if change_threads == "all": threads=mp.cpu_count()-1
             else: threads = change_threads
         
+        # Check for multi or single processing
         if threads is None:
             for c, cell in enumerate(self.cells):
-                result=self.execute_erkktr(c, innerpad, outterpad, donut_width, self.min_outline_length)
-                self.collect_result(result)
-            self.results.sort(key=lambda x: x[0])
-            for c, cell in enumerate(self.cells):
-                result = self.results[c]
-                cell.ERKKTR_donut = result[1]
+                cell.ERKKTR_donut=self.execute_erkktr(c, innerpad, outterpad, donut_width, self.min_outline_length)
         else:
 
             TASKS = [(self.execute_erkktr, (c, innerpad, outterpad, donut_width, self.min_outline_length)) for c in range(len(self.cells))]
-
-            task_queue = mp.Queue()
-            done_queue = mp.Queue()
-
-            # Submit tasks
-            for task in TASKS:
-                task_queue.put(task)
-            
-            # Start worker processes
-            ps = []
-            for i in range(self._threads):
-                p = mp.Process(target=self.execute_erkktr_paralel_worker, args=(task_queue, done_queue))
-                p.start()
-                ps.append(p)
-
-            eds = [done_queue.get() for t in TASKS]
-
-            # Tell child processes to stop
-            for i in range(self._threads):
-                print(ps[i].is_alive)
-
-
-            # Tell child processes to stop
-            for i in range(self._threads):
-                task_queue.put('STOP')
-                ps[i].terminate()
-
-            # Tell child processes to stop
-            for i in range(self._threads):
-                print(ps[i].is_alive)
-
-
-            for ed in eds:
+            results = multiprocess(self._threads, self.execute_erkktr_paralel_worker, TASKS)
+            # Post processing of outputs
+            for ed in results:
                 lab  = ed.cell.label
                 cell = self._get_cell(lab)
                 cell.ERKKTR_donut = ed

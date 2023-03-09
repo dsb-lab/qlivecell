@@ -3,7 +3,7 @@ from scipy.spatial import ConvexHull
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 from copy import deepcopy
 import pickle
-
+import multiprocessing as mp
 def intersect2D(a, b):
   """
   Find row intersection between 2D numpy arrays, a and b.
@@ -179,3 +179,35 @@ def load_cells_info(path=None, filename=None):
     CT_info = pickle.load(file_to_store)
     file_to_store.close()
     return cells, CT_info
+
+def multiprocess(threads, worker, TASKS):
+    
+    task_queue = mp.Queue()
+    done_queue = mp.Queue()
+
+    # Submit tasks
+    for task in TASKS:
+        task_queue.put(task)
+    
+    # Start worker processes
+    ps = []
+    for i in range(threads):
+        p = mp.Process(target=worker, args=(task_queue, done_queue))
+        p.start()
+        ps.append(p)
+
+    results = [done_queue.get() for t in TASKS]
+
+    # Tell child processes to stop
+    for i in range(threads):
+        
+        # Send STOP signal to our task queue
+        task_queue.put('STOP')
+        
+        # Terminate process
+        ps[i].terminate()
+        
+        # Process must be joined after is terminated, otherwise is a zombie process 
+        ps[i].join()
+
+    return results
