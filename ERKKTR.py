@@ -195,9 +195,6 @@ class ERKKTR():
         if innerpad is None: innerpad = self.inpad
         if outterpad is None: outterpad = self.outpad
         if donut_width is None: donut_width = self.dwidht
-        if (self._threads==None and change_threads!=False): 
-            global mp
-            import multiprocessing as mp
         if change_threads is False: threads = self._threads
         else:
             if change_threads == "all": threads=mp.cpu_count()-1
@@ -306,16 +303,9 @@ class ERKKTR():
                         new_oj = cell_j.ERKKTR_donut.sort_points_counterclockwise(new_oj)
                         cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc] = deepcopy(new_oj)
 
-    def correct_donut_nuclei_overlap(self):
-        if self._threads is None:
-            pass
-        else:
-            _ = self.pool.map_async(self.correct_donut_nuclei_overlap_c, self.cells)
-            self.pool.close()
-            self.pool.join()        
-        # for cell in self.cells:
-        #     print(cell.label)
-        #     self.correct_donut_nuclei_overlap_c(cell) 
+    def correct_donut_nuclei_overlap(self):     
+        for cell in self.cells:
+            self.correct_donut_nuclei_overlap_c(cell) 
 
     def correct_donut_nuclei_overlap_c(self, cell):
         cell.ERKKTR_donut.compute_donut_masks()
@@ -450,6 +440,7 @@ class ERKKTR():
 
         plt.tight_layout()
         plt.show()
+
 
 class EmbryoSegmentation():
     def __init__(self, IMGS, ksize=5, ksigma=3, binths=8, checkerboard_size=6, num_inter=100, smoothing=5, trange=None, zrange=None, mp_threads=None):

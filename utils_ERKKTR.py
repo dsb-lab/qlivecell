@@ -4,6 +4,7 @@ from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 from copy import deepcopy
 import pickle
 import multiprocessing as mp
+
 def intersect2D(a, b):
   """
   Find row intersection between 2D numpy arrays, a and b.
