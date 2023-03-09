@@ -181,6 +181,16 @@ def load_cells_info(path=None, filename=None):
     file_to_store.close()
     return cells, CT_info
 
+def worker(input, output):
+
+    # The input are the arguments of the function
+
+    # The output is the ERKKTR_donut class
+    
+    for func, args in iter(input.get, 'STOP'):
+        result = func(*args)
+        output.put(result)
+        
 def multiprocess(threads, worker, TASKS):
     
     task_queue = mp.Queue()

@@ -4,7 +4,7 @@ from copy import deepcopy
 from scipy.spatial import Delaunay,ConvexHull
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 import time
-from utils_ERKKTR import multiprocess, sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, load_cells_info
+from utils_ERKKTR import worker, multiprocess, sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, load_cells_info
 
 class ERKKTR_donut():
     def __init__(self, cell, innerpad=1, outterpad=1, donut_width=1, min_outline_length=50, inhull_method="delaunay"):
@@ -176,16 +176,6 @@ class ERKKTR():
         if mp_threads == "all": self._threads=mp.cpu_count()-1
         else: self._threads = mp_threads
 
-    def execute_erkktr_paralel_worker(self, input, output):
-
-        # The input are the arguments of the function
-
-        # The output is the ERKKTR_donut class
-        
-        for func, args in iter(input.get, 'STOP'):
-            result = func(*args)
-            output.put(result)
-
     def execute_erkktr(self, c, innerpad, outterpad, donut_width, min_outline_length):
         return ERKKTR_donut(self.cells[c], innerpad, outterpad, donut_width, min_outline_length, "delaunay")
 
@@ -207,7 +197,7 @@ class ERKKTR():
         else:
 
             TASKS = [(self.execute_erkktr, (c, innerpad, outterpad, donut_width, self.min_outline_length)) for c in range(len(self.cells))]
-            results = multiprocess(self._threads, self.execute_erkktr_paralel_worker, TASKS)
+            results = multiprocess(self._threads, worker, TASKS)
             # Post processing of outputs
             for ed in results:
                 lab  = ed.cell.label
@@ -608,5 +598,3 @@ class EmbryoSegmentation():
         plt.show()
 
 
-def execute_erkktr(c, cell, innerpad, outterpad, donut_width, min_outline_length):
-    return (c, ERKKTR_donut(cell, innerpad, outterpad, donut_width, min_outline_length, "delaunay"))
