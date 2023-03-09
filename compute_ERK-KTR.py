@@ -12,8 +12,8 @@ if __name__ == '__main__':
     home = os.path.expanduser('~')
     path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
     path_save=home+'/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_claire_ERK-KTR_MKATE2/'
-    emb=15
-    files = os.listdir(path_save)
+    emb=10
+    files = os.listdir(path_data)
 
     embcode=files[emb].split('.')[0]
     if "_info" in embcode: 
@@ -31,10 +31,11 @@ if __name__ == '__main__':
 
     EmbSeg = load_ES(path_save, embcode)
 
-    erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100, mp_threads='all')
+    erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100, mp_threads=10)
     erkktr.create_donuts(EmbSeg)
 
     erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, 0, 15, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
 
     # save_cells(erkktr.cells, path_save, embcode)
     # save_ES(EmbSeg, path_save, embcode)
+    
