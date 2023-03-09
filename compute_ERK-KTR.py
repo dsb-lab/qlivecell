@@ -8,6 +8,7 @@ from CellTracking import load_CT
 from ERKKTR import *
 import os
 
+
 if __name__ == '__main__':
     home = os.path.expanduser('~')
     path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
