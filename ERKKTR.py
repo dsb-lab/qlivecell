@@ -4,7 +4,7 @@ from copy import deepcopy
 from scipy.spatial import Delaunay,ConvexHull
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 import time
-from utils_ERKKTR import sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, load_cells_info
+from utils_ERKKTR import multiprocess, sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, load_cells_info
 
 class ERKKTR_donut():
     def __init__(self, cell, innerpad=1, outterpad=1, donut_width=1, min_outline_length=50, inhull_method="delaunay"):
@@ -16,12 +16,10 @@ class ERKKTR_donut():
         if inhull_method=="delaunay": self._inhull=self._inhull_Delaunay
         elif inhull_method=="cross": self._inhull=self._inhull_cross
         elif inhull_method=="linprog": self._inhull=self._inhull_linprog
-        else: self._inhull=self._inhull_Delaunay  
-        print(self.cell.label)
+        else: self._inhull=self._inhull_Delaunay
         self.compute_donut_outlines()
         self.compute_donut_masks()
         self.compute_nuclei_mask()
-        print("done ", self.cell.label)
         
     def compute_nuclei_mask(self):
         self.nuclei_masks = deepcopy(self.cell.masks)
@@ -178,11 +176,18 @@ class ERKKTR():
         if mp_threads == "all": self._threads=mp.cpu_count()-1
         else: self._threads = mp_threads
 
-    def execute_erkktr(self, c, cell, innerpad, outterpad, donut_width, min_outline_length):
-        return (c, ERKKTR_donut(cell, innerpad, outterpad, donut_width, min_outline_length, "delaunay"))
+    def execute_erkktr_paralel_worker(self, input, output):
 
-    def collect_result(self, result):
-        self.results.append(result)
+        # The input are the arguments of the function
+
+        # The output is the ERKKTR_donut class
+        
+        for func, args in iter(input.get, 'STOP'):
+            result = func(*args)
+            output.put(result)
+
+    def execute_erkktr(self, c, innerpad, outterpad, donut_width, min_outline_length):
+        return ERKKTR_donut(self.cells[c], innerpad, outterpad, donut_width, min_outline_length, "delaunay")
 
     def create_donuts(self, EmbSeg, innerpad=None, outterpad=None, donut_width=None, change_threads=False):
         for cell in self.cells:
@@ -190,35 +195,29 @@ class ERKKTR():
         if innerpad is None: innerpad = self.inpad
         if outterpad is None: outterpad = self.outpad
         if donut_width is None: donut_width = self.dwidht
-        if (self._threads==None and change_threads!=False): 
-            global mp
-            import multiprocessing as mp
         if change_threads is False: threads = self._threads
         else:
             if change_threads == "all": threads=mp.cpu_count()-1
             else: threads = change_threads
         
-        self.results=[]
-        
+        # Check for multi or single processing
         if threads is None:
             for c, cell in enumerate(self.cells):
-                result=self.execute_erkktr(c, cell, innerpad, outterpad, donut_width, self.min_outline_length)
-                self.collect_result(result)
+                cell.ERKKTR_donut=self.execute_erkktr(c, innerpad, outterpad, donut_width, self.min_outline_length)
         else:
-            pool = mp.Pool(threads,maxtasksperchild=1)
-            for c, cell in enumerate(self.cells):
-                pool.apply_async(self.execute_erkktr, args=(c, cell, innerpad, outterpad, donut_width, self.min_outline_length), callback=self.collect_result)
-            pool.close()
-            pool.join()
 
-        self.results.sort(key=lambda x: x[0])
-        # for c, cell in enumerate(self.cells):
-        #     erkktr = self.results[c][1]
-        #     cell.ERKKTR_donut = erkktr
-        #self.correct_cell_to_cell_overlap()
-        #self.correct_donut_embryo_overlap(EmbSeg)
-        #self.correct_donut_nuclei_overlap()
+            TASKS = [(self.execute_erkktr, (c, innerpad, outterpad, donut_width, self.min_outline_length)) for c in range(len(self.cells))]
+            results = multiprocess(self._threads, self.execute_erkktr_paralel_worker, TASKS)
+            # Post processing of outputs
+            for ed in results:
+                lab  = ed.cell.label
+                cell = self._get_cell(lab)
+                cell.ERKKTR_donut = ed
 
+        # self.correct_donut_embryo_overlap(EmbSeg)
+        # print("NOW OR NEVER")
+        # self.correct_donut_nuclei_overlap()
+ 
     def correct_cell_to_cell_overlap(self):
         for t in range(self.times):
             self.correct_cell_to_cell_overlap_z(t)
@@ -304,7 +303,7 @@ class ERKKTR():
                         new_oj = cell_j.ERKKTR_donut.sort_points_counterclockwise(new_oj)
                         cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc] = deepcopy(new_oj)
 
-    def correct_donut_nuclei_overlap(self):
+    def correct_donut_nuclei_overlap(self):     
         for cell in self.cells:
             self.correct_donut_nuclei_overlap_c(cell) 
 
@@ -318,6 +317,7 @@ class ERKKTR():
                 if len(masks_intersection)==0: continue
                 new_don_mask = get_only_unique(np.vstack((don_mask, masks_intersection)))
                 cell.ERKKTR_donut.donut_masks[tid][zid] = deepcopy(new_don_mask)
+                return None
 
     def correct_donut_embryo_overlap(self, EmbSeg):
         for _, t in enumerate(range(self.times)):
@@ -354,9 +354,6 @@ class ERKKTR():
                     # Check intersection with INNER outline
 
                     oi_mc_intersection   = intersect2D(oi_inn, maskout_intersection)
-                    print(cell.label)
-                    print(t)
-                    print(z)
                     new_oi = cell.ERKKTR_donut.sort_points_counterclockwise(oi_mc_intersection)
                     cell.ERKKTR_donut.donut_outlines_in[ti][zi] = deepcopy(new_oi)
 
@@ -443,6 +440,7 @@ class ERKKTR():
 
         plt.tight_layout()
         plt.show()
+
 
 class EmbryoSegmentation():
     def __init__(self, IMGS, ksize=5, ksigma=3, binths=8, checkerboard_size=6, num_inter=100, smoothing=5, trange=None, zrange=None, mp_threads=None):

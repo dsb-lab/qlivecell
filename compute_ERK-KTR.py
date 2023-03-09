@@ -12,8 +12,8 @@ if __name__ == '__main__':
     home = os.path.expanduser('~')
     path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
     path_save=home+'/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_claire_ERK-KTR_MKATE2/'
-    emb=15
-    files = os.listdir(path_save)
+    emb=10
+    files = os.listdir(path_data)
 
     embcode=files[emb].split('.')[0]
     if "_info" in embcode: 
@@ -38,4 +38,4 @@ if __name__ == '__main__':
 
     # save_cells(erkktr.cells, path_save, embcode)
     # save_ES(EmbSeg, path_save, embcode)
-
+    
