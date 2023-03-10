@@ -12,21 +12,23 @@ class ERKKTR_donut():
         self.outpad = outterpad
         self.dwidht = donut_width
         self._min_outline_length = min_outline_length
-        self.cell  = cell
         if inhull_method=="delaunay": self._inhull=self._inhull_Delaunay
         elif inhull_method=="cross": self._inhull=self._inhull_cross
         elif inhull_method=="linprog": self._inhull=self._inhull_linprog
         else: self._inhull=self._inhull_Delaunay
-        self.compute_donut_outlines()
-        self.compute_donut_masks()
-        self.compute_nuclei_mask()
+        self.cell_label = cell.label
+        print(cell.label)
+        self.compute_donut_outlines(cell)
+        self.compute_donut_masks(cell)
+        self.compute_nuclei_mask(cell)
+        print("done", cell.label)
         
-    def compute_nuclei_mask(self):
-        self.nuclei_masks = deepcopy(self.cell.masks)
-        self.nuclei_outlines = deepcopy(self.cell.outlines)
-        for tid, t in enumerate(self.cell.times):
-            for zid, z in enumerate(self.cell.zs[tid]):
-                outline = self.cell.outlines[tid][zid]
+    def compute_nuclei_mask(self, cell):
+        self.nuclei_masks = deepcopy(cell.masks)
+        self.nuclei_outlines = deepcopy(cell.outlines)
+        for tid, t in enumerate(cell.times):
+            for zid, z in enumerate(cell.zs[tid]):
+                outline = cell.outlines[tid][zid]
                 newoutline, midx, midy = self._expand_hull(outline, inc=-self.inpad)
                 newoutline=self._increase_point_resolution(newoutline)
                 _hull = ConvexHull(newoutline)
@@ -36,12 +38,12 @@ class ERKKTR_donut():
                 self.nuclei_outlines[tid][zid] = np.array(newoutline).astype('int32')
                 self.nuclei_masks[tid][zid] = self._points_within_hull(hull, self.nuclei_outlines[tid][zid])
     
-    def compute_donut_outlines(self):
-        self.donut_outlines_in = deepcopy(self.cell.outlines)
-        self.donut_outlines_out = deepcopy(self.cell.outlines)
-        for tid, t in enumerate(self.cell.times):
-            for zid, z in enumerate(self.cell.zs[tid]):
-                outline = self.cell.outlines[tid][zid]
+    def compute_donut_outlines(self, cell):
+        self.donut_outlines_in = deepcopy(cell.outlines)
+        self.donut_outlines_out = deepcopy(cell.outlines)
+        for tid, t in enumerate(cell.times):
+            for zid, z in enumerate(cell.zs[tid]):
+                outline = cell.outlines[tid][zid]
                 hull = ConvexHull(outline)
                 outline = outline[hull.vertices]
                 outline = np.array(outline).astype('int32')
@@ -63,13 +65,13 @@ class ERKKTR_donut():
                 self.donut_outlines_in[tid][zid]  = inneroutline
                 self.donut_outlines_out[tid][zid] = outteroutline
                     
-    def compute_donut_masks(self):
+    def compute_donut_masks(self, cell):
         
-        self.donut_masks  = deepcopy(self.cell.masks)
-        self.donut_outer_mask = deepcopy(self.cell.masks)
-        self.donut_inner_mask = deepcopy(self.cell.masks)
-        for tid, t in enumerate(self.cell.times):
-            for zid, z in enumerate(self.cell.zs[tid]):
+        self.donut_masks  = deepcopy(cell.masks)
+        self.donut_outer_mask = deepcopy(cell.masks)
+        self.donut_inner_mask = deepcopy(cell.masks)
+        for tid, t in enumerate(cell.times):
+            for zid, z in enumerate(cell.zs[tid]):
                 self.compute_donut_mask(tid, zid)
 
     def compute_donut_mask(self, tid, zid):
@@ -197,13 +199,15 @@ class ERKKTR():
             results = multiprocess(self._threads, worker, TASKS)
             # Post processing of outputs
             for ed in results:
-                lab  = ed.cell.label
+                lab  = ed.cell_label
                 cell = self._get_cell(lab)
                 cell.ERKKTR_donut = ed
 
-        self.correct_donut_embryo_overlap(EmbSeg)
+        # self.correct_cell_to_cell_overlap()
+        # self.correct_donut_embryo_overlap(EmbSeg)
         # print("NOW OR NEVER")
         # self.correct_donut_nuclei_overlap()
+        return
  
     def correct_cell_to_cell_overlap(self):
         for t in range(self.times):
@@ -289,59 +293,75 @@ class ERKKTR():
                     new_oj = cell_j.ERKKTR_donut.sort_points_counterclockwise(new_oj)
                     cell_j.ERKKTR_donut.donut_outlines_in[tcc][zcc] = deepcopy(new_oj)
 
-    def correct_donut_nuclei_overlap(self):     
-        for cell in self.cells:
-            self.correct_donut_nuclei_overlap_c(cell) 
-
-    def correct_donut_nuclei_overlap_c(self, cell):
-        cell.ERKKTR_donut.compute_donut_masks()
-        for tid, t in enumerate(cell.times):
-            for zid, z in enumerate(cell.zs[tid]):
-                don_mask = cell.ERKKTR_donut.donut_masks[tid][zid]
-                nuc_mask = cell.masks[tid][zid]
+    def correct_donut_nuclei_overlap(self):
+        if self._threads is None:     
+            for c, cell in enumerate(self.cells):
+                self.correct_donut_nuclei_overlap_c(c)
+        else:
+            TASKS = [(self.correct_donut_nuclei_overlap_c, (c, )) for c,cell in enumerate(self.cells)]
+            _ = multiprocess(self._threads, worker, TASKS)
+            
+    def correct_donut_nuclei_overlap_c(self, c):
+        print(self.cells[c].label)
+        self.cells[c].ERKKTR_donut.compute_donut_masks()
+        for tid, t in enumerate(self.cells[c].times):
+            for zid, z in enumerate(self.cells[c].zs[tid]):
+                don_mask = self.cells[c].ERKKTR_donut.donut_masks[tid][zid]
+                nuc_mask = self.cells[c].masks[tid][zid]
                 masks_intersection = intersect2D(don_mask, nuc_mask)
                 if len(masks_intersection)==0: continue
                 new_don_mask = get_only_unique(np.vstack((don_mask, masks_intersection)))
-                cell.ERKKTR_donut.donut_masks[tid][zid] = deepcopy(new_don_mask)
+                self.cells[c].ERKKTR_donut.donut_masks[tid][zid] = deepcopy(new_don_mask)
                 return None
 
     def correct_donut_embryo_overlap(self, EmbSeg):
+        # self.EmbSeg = EmbSeg
         for _, t in enumerate(range(self.times)):
 
             for _, z in enumerate(range(self.slices)):
-
-                for cell in self.cells:
-
-                    if t not in cell.times: continue
-                    ti = cell.times.index(t)
-                    if z not in cell.zs[ti]: continue
-                    zi = cell.zs[ti].index(z)
-
-                    oi_out = cell.ERKKTR_donut.donut_outlines_out[ti][zi]
-
-                    oi_inn = cell.ERKKTR_donut.donut_outlines_in[ti][zi]
-
-                    maskout_cell = cell.ERKKTR_donut.donut_outer_mask[ti][zi]
-                    maskout_cell = np.vstack((maskout_cell, oi_out))
-
-                    # For each of the close cells, compute intersection of outer donut masks
+                print("z =", z)
+                if self._threads is None: 
+                     for c, cell in enumerate(self.cells):
+                        self.correct_donut_embryo_overlap_c(t, z, c, c, False)
+                else:
+                    TASKS = [(self.correct_donut_embryo_overlap_c, (t, z, c, c, True)) for c,cell in enumerate(self.cells)]
+                    # results = multiprocess(self._threads, worker, TASKS)
                     
-                    mask_emb = EmbSeg.Embmask[t][z]
-                    
-                    maskout_intersection = intersect2D(maskout_cell, mask_emb)
-                    if len(maskout_intersection)==0: continue
+    def correct_donut_embryo_overlap_c(self, t, z, c, cell, MP):
+        print(c)
+        # if t not in cell.times: return None
+        # ti = cell.times.index(t)
+        # if z not in cell.zs[ti]: return None
+        # zi = cell.zs[ti].index(z)
 
-                    # Check intersection with OUTTER outline
+        # oi_out = cell.ERKKTR_donut.donut_outlines_out[ti][zi]
 
-                    oi_mc_intersection   = intersect2D(oi_out, maskout_intersection)
-                    new_oi = cell.ERKKTR_donut.sort_points_counterclockwise(oi_mc_intersection)
-                    cell.ERKKTR_donut.donut_outlines_out[ti][zi] = deepcopy(new_oi)
+        # oi_inn = cell.ERKKTR_donut.donut_outlines_in[ti][zi]
 
-                    # Check intersection with INNER outline
+        # maskout_cell = cell.ERKKTR_donut.donut_outer_mask[ti][zi]
+        # maskout_cell = np.vstack((maskout_cell, oi_out))
 
-                    oi_mc_intersection   = intersect2D(oi_inn, maskout_intersection)
-                    new_oi = cell.ERKKTR_donut.sort_points_counterclockwise(oi_mc_intersection)
-                    cell.ERKKTR_donut.donut_outlines_in[ti][zi] = deepcopy(new_oi)
+        # # For each of the close cells, compute intersection of outer donut masks
+        
+        # mask_emb = self.EmbSeg.Embmask[t][z]
+        
+        # maskout_intersection = intersect2D(maskout_cell, mask_emb)
+        # if len(maskout_intersection)==0: ([],[])
+
+        # # Check intersection with OUTTER outline
+
+        # oi_mc_intersection   = intersect2D(oi_out, maskout_intersection)
+        # new_oi_out = cell.ERKKTR_donut.sort_points_counterclockwise(oi_mc_intersection)
+        # if not MP: cell.ERKKTR_donut.donut_outlines_out[ti][zi] = new_oi_out
+
+        # # Check intersection with INNER outline
+
+        # oi_mc_intersection   = intersect2D(oi_inn, maskout_intersection)
+        # new_oi_in = cell.ERKKTR_donut.sort_points_counterclockwise(oi_mc_intersection)
+        # if not MP: cell.ERKKTR_donut.donut_outlines_in[ti][zi] = new_oi_in
+        # else: return (c, new_oi_out, new_oi_in)
+        
+        return None
 
     def _get_cell(self, label=None, cellid=None):
         if label==None:
