@@ -4,6 +4,7 @@ from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 from copy import deepcopy
 import pickle
 import multiprocessing as mp
+import time 
 
 def intersect2D(a, b):
   """
@@ -201,24 +202,25 @@ def multiprocess(threads, worker, TASKS):
         task_queue.put(task)
     
     # Start worker processes
-    ps = []
     for i in range(threads):
         p = mp.Process(target=worker, args=(task_queue, done_queue))
         p.start()
-        ps.append(p)
 
     results = [done_queue.get() for t in TASKS]
 
     # Tell child processes to stop
-    for i in range(threads):
-        
-        # Send STOP signal to our task queue
-        task_queue.put('STOP')
-        
-        # Terminate process
-        ps[i].terminate()
-        
-        # Process must be joined after is terminated, otherwise is a zombie process 
-        ps[i].join()
+
+    iii=0
+    while len(mp.active_children())>0:
+        if iii!=0: print("iter =", iii)
+        for process in mp.active_children():
+            # Send STOP signal to our task queue
+            task_queue.put('STOP')
+
+            # Terminate process
+            process.terminate()
+            process.join()
+        time.sleep(0.5)
+        iii+=1
 
     return results
