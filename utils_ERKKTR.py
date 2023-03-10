@@ -75,6 +75,14 @@ def extract_ICM_TE_labels(cells, t, z):
         else: ICM.append(cell.label)
     return ICM, TE
 
+def sort_points_counterclockwise(points):
+    x = points[:, 1]
+    y = points[:, 0]
+    xsorted, ysorted = sort_xy(x, y)
+    points[:, 1] = xsorted
+    points[:, 0] = ysorted
+    return points
+
 def gkernel(size, sigma):
     x, y = np.mgrid[-size//2 + 1:size//2 + 1, -size//2 + 1:size//2 + 1]
     g = np.exp(-((x**2 + y**2)/(2.0*sigma**2)))
@@ -182,6 +190,19 @@ def load_cells_info(path=None, filename=None):
     file_to_store.close()
     return cells, CT_info
 
+def save_donuts(ES, path=None, filename=None):
+    pthsave = path+filename
+    file_to_store = open(pthsave+"_donuts.pickle", "wb")
+    pickle.dump(ES, file_to_store)
+    file_to_store.close()
+
+def load_donuts(path=None, filename=None):
+    pthsave = path+filename
+    file_to_store = open(pthsave+"_donuts.pickle", "rb")
+    donuts = pickle.load(file_to_store)
+    file_to_store.close()
+    return donuts
+
 def worker(input, output):
 
     # The input are the arguments of the function
@@ -192,11 +213,17 @@ def worker(input, output):
         result = func(*args)
         output.put(result)
         
-def multiprocess(threads, worker, TASKS):
+def multiprocess(threads, worker, TASKS, daemon=None):
+    
+    task_queue, done_queue = multiprocess_start(threads, worker, TASKS, daemon=None)
+    results = multiprocess_get_results(done_queue, TASKS)
+    multiprocess_end(task_queue)
+    return results
+
+def multiprocess_start(threads, worker, TASKS, daemon=None):
     
     task_queue = mp.Queue()
     done_queue = mp.Queue()
-
     # Submit tasks
     for task in TASKS:
         task_queue.put(task)
@@ -204,15 +231,17 @@ def multiprocess(threads, worker, TASKS):
     # Start worker processes
     for i in range(threads):
         p = mp.Process(target=worker, args=(task_queue, done_queue))
+        if daemon is not None: p.daemon=daemon
         p.start()
 
-    results = [done_queue.get() for t in TASKS]
+    return task_queue, done_queue
 
+def multiprocess_end(task_queue):
     # Tell child processes to stop
 
     iii=0
     while len(mp.active_children())>0:
-        if iii!=0: print("iter =", iii)
+        if iii!=0: time.sleep(0.1)
         for process in mp.active_children():
             # Send STOP signal to our task queue
             task_queue.put('STOP')
@@ -220,7 +249,20 @@ def multiprocess(threads, worker, TASKS):
             # Terminate process
             process.terminate()
             process.join()
-        time.sleep(0.5)
-        iii+=1
+        iii+=1    
+        
+
+def multiprocess_add_tasks(task_queue, TASKS):
+
+    # Submit tasks
+    for task in TASKS:
+        task_queue.put(task)
+
+    return task_queue
+
+
+def multiprocess_get_results(done_queue, TASKS):
+    
+    results = [done_queue.get() for t in TASKS]
 
     return results
