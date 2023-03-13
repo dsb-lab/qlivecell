@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     # erkktr = load_donuts(path_save, embcode)
     start = time.time()
-    erkktr = ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=6, min_outline_length=100, cell_distance_th=70.0, mp_threads=15)
+    erkktr = ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=8, min_outline_length=100, cell_distance_th=200.0, mp_threads=15)
     erkktr.create_donuts(cells, EmbSeg)
     end = time.time()
     print(end - start)

@@ -296,13 +296,13 @@ class ERKKTR():
                 self.Donuts.append(ed)
 
         print("Running donut corrections...")
-        print("...corecting cell-cell overlap")
+        print("...correcting cell-cell overlap")
         self.correct_cell_to_cell_overlap(cells)
         print("...correcting donut-embryo overlap")
         self.correct_donut_embryo_overlap(cells, EmbSeg)
         print("...correcting nuclei-donut overlap and computing masks")
         self.correct_donut_nuclei_overlap(cells)
-        print("...Corrections finished")
+        print("...corrections finished")
         return
     
     def correct_cell_to_cell_overlap(self, cells):
@@ -330,7 +330,6 @@ class ERKKTR():
             for cell_j_id, cell_j in enumerate(Cells):
                 tj = cell_j.times.index(t)
                 if cell_i.label == cell_j.label: continue
-
                 dist = cell_i.compute_distance_cell(cell_j, t, z, axis='xy')
                 if dist < dist_th: 
                     cells_close.append(cell_j_id)
@@ -450,7 +449,7 @@ class ERKKTR():
             for d, donut in enumerate(self.Donuts):
                 cell = self._get_cell(cells, donut.cell_label)
                 donut.compute_donut_masks(cell.masks)
-                self.correct_donut_nuclei_overlap_c(donut, cell, cell.masks)
+                self.correct_donut_nuclei_overlap_c(donut, cell.masks)
         else:
             TASKS = []
             for d, donut in enumerate(self.Donuts):
