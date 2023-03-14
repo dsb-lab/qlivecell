@@ -308,32 +308,29 @@ class ERKKTR():
     def correct_cell_to_cell_overlap(self, cells):
         for _, t in enumerate(range(self.times)):
             for _, z in enumerate(range(self.slices)):
-                Donuts = []
                 Cells  = []
                 for cell in cells:
                     if t not in cell.times: continue
                     ti = cell.times.index(t)
                     if z not in cell.zs[ti]: continue
-                    Donuts.append(self._get_donut(cell.label))
                     Cells.append(cell)
-                self.correct_cell_to_cell_overlap_z(Cells, Donuts, t, z, self._dist_th)
+                self.correct_cell_to_cell_overlap_z(Cells, t, z, self._dist_th)
         return
 
-    def correct_cell_to_cell_overlap_z(self, Cells, Donuts, t, z, dist_th):
+    def correct_cell_to_cell_overlap_z(self, Cells, t, z, dist_th):
 
-        for cell_i_id, cell_i in enumerate(Cells):
-            donut_i = Donuts[cell_i_id]
+        for cell_i in Cells:
+            donut_i = self._get_donut(cell_i.label)
             cells_close = []
             ti = cell_i.times.index(t)
             zi = cell_i.zs[ti].index(z)
 
             for cell_j_id, cell_j in enumerate(Cells):
-                tj = cell_j.times.index(t)
                 if cell_i.label == cell_j.label: continue
                 dist = cell_i.compute_distance_cell(cell_j, t, z, axis='xy')
                 if dist < dist_th: 
+                    print(dist)
                     cells_close.append(cell_j_id)
-            
             if len(cells_close)==0: continue
             # Now for the the closest ones we check for overlaping
             oi_out = donut_i.donut_outlines_out[ti][zi]
@@ -348,7 +345,9 @@ class ERKKTR():
             # For each of the close cells, compute intersection of outer donut masks
             
             for cell_j_id in cells_close:
-                donut_j = Donuts[cell_j_id]
+                cell_j  = Cells[cell_j_id]
+                donut_j = self._get_donut(Cells[cell_j_id].label)
+                
                 tcc = cell_j.times.index(t)
                 zcc = cell_j.zs[tcc].index(z)
                 maskout_cell_j = donut_j.donut_outer_mask[tcc][zcc]
@@ -370,13 +369,14 @@ class ERKKTR():
                     new_oi = get_only_unique(np.vstack((oi_out, oi_mc_intersection)))
                     new_oi = donut_i.sort_points_counterclockwise(new_oi)
                     donut_i.donut_outlines_out[ti][zi] = deepcopy(new_oi)
-                    
+                
                 oj_mc_intersection   = intersect2D(oj_out, maskout_intersection)
                 if len(oj_mc_intersection)!=0:
                     new_oj = get_only_unique(np.vstack((oj_out, oj_mc_intersection)))
                     new_oj = donut_j.sort_points_counterclockwise(new_oj)
-                    donut_j.donut_outlines_out[tcc][zcc] = deepcopy(new_oj)
                     
+                    donut_j.donut_outlines_out[tcc][zcc] = deepcopy(new_oj)
+                
                 # Check intersection with INNER outline
                 oj_inn = donut_j.donut_outlines_in[tcc][zcc]
                 oj_inn = donut_j._increase_point_resolution(oj_inn)
@@ -538,13 +538,18 @@ class ERKKTR():
 
         return erkdonutdist, erknucleidist, np.mean(erkdonutdist)/np.mean(erknucleidist)
 
-    def plot_donuts(self, cells, IMGS_SEG, IMGS_ERK, t, z, label=None, plot_outlines=True, plot_nuclei=True, plot_donut=True, EmbSeg=None):
+    def plot_donuts(self, cells, IMGS_SEG, IMGS_ERK, t, z, labels='all', plot_outlines=True, plot_nuclei=True, plot_donut=True, EmbSeg=None):
         fig, ax = plt.subplots(1,2,figsize=(15,15))
+        imgseg = IMGS_SEG[t,z]
+        imgerk = IMGS_ERK[t,z]
         
+        ax[0].imshow(imgseg)
+        ax[1].imshow(imgerk)
+        
+        if labels == 'all':
+            labels = [cell.label for cell in cells]
         for donut in self.Donuts:
-            if label is not None: 
-                if donut.cell_label != label: continue
-            
+            if donut.cell_label not in labels: continue
             cell = self._get_cell(cells, label=donut.cell_label)
 
             if t not in cell.times: continue
@@ -552,8 +557,6 @@ class ERKKTR():
             if z not in cell.zs[tid]: continue
             zid = cell.zs[tid].index(z)
 
-            imgseg = IMGS_SEG[t,z]
-            imgerk = IMGS_ERK[t,z]
 
             outline = cell.outlines[tid][zid]
             mask    = cell.masks[tid][zid]
@@ -565,8 +568,6 @@ class ERKKTR():
             don_outline_in  = donut.donut_outlines_in[tid][zid]
             don_outline_out = donut.donut_outlines_out[tid][zid]
 
-            ax[0].imshow(imgseg)
-            ax[1].imshow(imgerk)
 
             if plot_outlines:
                 ax[0].scatter(outline[:,0], outline[:,1], s=1, c='k', alpha=0.5)
@@ -583,6 +584,16 @@ class ERKKTR():
             if plot_donut:
                 ax[1].scatter(don_mask[:,0], don_mask[:,1],s=1, c='red', alpha=0.1)
                 ax[0].scatter(don_mask[:,0], don_mask[:,1],s=1, c='red', alpha=0.1)
+            
+            xs = cell.centersi[tid][zid]
+            ys = cell.centersj[tid][zid]
+            label = cell.label
+            ax[0].annotate(str(label), xy=(ys, xs), c="w")
+            ax[0].scatter([ys], [xs], s=0.5, c="white")
+            ax[0].axis(False)
+            ax[1].annotate(str(label), xy=(ys, xs), c="w")
+            ax[1].scatter([ys], [xs], s=0.5, c="white")
+            ax[1].axis(False)
             
         if EmbSeg is not None:
             ax[1].scatter(EmbSeg.Embmask[t][z][:,0], EmbSeg.Embmask[t][z][:,1],s=1, c='blue', alpha=0.05)
@@ -738,7 +749,7 @@ class EmbryoSegmentation():
             embmask     = self.Embmask[t][z]
             backmask    = self.Backmask[t][z]
             ls          = self.LS[t][z]
-        
+            
         if extra_IMGS is None: fig, ax = plt.subplots(1,2,figsize=(12, 6))
         else: 
             fig, ax = plt.subplots(1,3,figsize=(18, 6))
@@ -760,4 +771,5 @@ class EmbryoSegmentation():
 
         #fig.tight_layout()
         plt.show()
+
 

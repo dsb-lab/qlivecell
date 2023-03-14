@@ -13,7 +13,7 @@ if __name__ == '__main__':
     home = os.path.expanduser('~')
     path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
     path_save=home+'/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_claire_ERK-KTR_MKATE2/'
-    emb=16
+    emb=10
     files = os.listdir(path_data)
 
     embcode=files[emb].split('.')[0]
@@ -35,10 +35,11 @@ if __name__ == '__main__':
 
     # erkktr = load_donuts(path_save, embcode)
     start = time.time()
-    erkktr = ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=8, min_outline_length=100, cell_distance_th=200.0, mp_threads=15)
+    erkktr = ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=8, min_outline_length=100, cell_distance_th=100.0, mp_threads=12)
     erkktr.create_donuts(cells, EmbSeg)
     end = time.time()
     print(end - start)
 
-    erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, 0, 15, plot_nuclei=False, plot_outlines=False, plot_donut=True, EmbSeg=EmbSeg)
+    erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, 0, 13, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
     # save_donuts(erkktr, path_save, embcode)
+
