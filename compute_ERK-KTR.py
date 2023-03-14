@@ -42,4 +42,3 @@ if __name__ == '__main__':
 
     # erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, 0, 10, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
     # # save_donuts(erkktr, path_save, embcode)
-
