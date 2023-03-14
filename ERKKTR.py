@@ -208,19 +208,19 @@ def recompute_donut_masks(label, cell_masks, out_outlines, in_outlines):
     donut_inner_mask = deepcopy(cell_masks)
     for tid in range(len(donut_masks)):
         for zid in range(len(donut_masks[tid])):
-            d_m, d_o_m, d_i_m = recompute_donut_mask(tid, zid, out_outlines, in_outlines)
+            d_m, d_o_m, d_i_m = recompute_donut_mask(tid, zid, out_outlines, in_outlines, label)
             donut_masks[tid][zid] = d_m
             donut_outer_mask[tid][zid] = d_o_m
             donut_inner_mask[tid][zid] = d_i_m
     return (label, donut_masks, donut_outer_mask, donut_inner_mask)
 
-def recompute_donut_mask(tid, zid, donut_outlines_out, donut_outlines_in):
+def recompute_donut_mask(tid, zid, donut_outlines_out, donut_outlines_in, label):
     inneroutline  = donut_outlines_in[tid][zid]
     outteroutline = donut_outlines_out[tid][zid]
 
     hull_in  = Delaunay(inneroutline)
     hull_out = Delaunay(outteroutline)
-    
+
     maskin = points_within_hull(hull_in, inneroutline)
     maskout= points_within_hull(hull_out, outteroutline)
 
@@ -329,7 +329,6 @@ class ERKKTR():
                 if cell_i.label == cell_j.label: continue
                 dist = cell_i.compute_distance_cell(cell_j, t, z, axis='xy')
                 if dist < dist_th: 
-                    print(dist)
                     cells_close.append(cell_j_id)
             if len(cells_close)==0: continue
             # Now for the the closest ones we check for overlaping
