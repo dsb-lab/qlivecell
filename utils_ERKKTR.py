@@ -5,6 +5,9 @@ from copy import deepcopy
 import pickle
 import multiprocessing as mp
 import time 
+import warnings 
+
+np.seterr(all='warn')
 
 def intersect2D(a, b):
   """
@@ -32,21 +35,29 @@ def sefdiff2D(a, b):
     mask = np.setdiff1d(a_rows, b_rows).view(a.dtype).reshape(-1, a.shape[1])
     return mask
 
-def sort_xy(x, y):
+def sort_xy(x, y, ang_tolerance = 0.2):
 
     x0 = np.mean(x)
     y0 = np.mean(y)
-
     r = np.sqrt((x-x0)**2 + (y-y0)**2)
 
-    angles = np.where((y-y0) > 0, np.arccos((x-x0)/r), 2*np.pi-np.arccos((x-x0)/r))
+    warnings.filterwarnings('error')
+    with warnings.catch_warnings():
+        try:
+            _angles = np.arccos((x-x0)/r)
+            angles = [_angles[xid] + np.pi if _x > x0 else _angles[xid] for xid, _x in enumerate(x)]
+        except RuntimeWarning:
+            return (x,y, False)
 
     mask = np.argsort(angles)
 
     x_sorted = x[mask]
     y_sorted = y[mask]
 
-    return x_sorted, y_sorted
+    Difs = [np.abs(ang1 - ang2) for aid1, ang1 in enumerate(angles) for aid2, ang2 in enumerate(angles[aid1+1:]) if aid1 != aid2]
+    difs = np.nanmean(Difs)
+    if difs > ang_tolerance: return (x_sorted, y_sorted, True)
+    else: return (x_sorted, y_sorted, False)
 
 def extract_ICM_TE_labels(cells, t, z):
     centers = []
@@ -78,10 +89,10 @@ def extract_ICM_TE_labels(cells, t, z):
 def sort_points_counterclockwise(points):
     x = points[:, 1]
     y = points[:, 0]
-    xsorted, ysorted = sort_xy(x, y)
+    xsorted, ysorted, tolerance_bool = sort_xy(x, y)
     points[:, 1] = xsorted
     points[:, 0] = ysorted
-    return points
+    return points, tolerance_bool
 
 def gkernel(size, sigma):
     x, y = np.mgrid[-size//2 + 1:size//2 + 1, -size//2 + 1:size//2 + 1]
