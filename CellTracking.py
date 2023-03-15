@@ -25,7 +25,7 @@ from copy import deepcopy, copy
 
 from tifffile import imwrite
 import subprocess
-
+import time 
 import gc
 
 # Import files from repo utils
@@ -306,7 +306,7 @@ class CellSegmentation(object):
         # Data re-structuring to correct possible alignment of contiguous cells along the z axis. 
         self._Zlabel_l = []
         self._Zlabel_z = []
-        for z in range(30):
+        for z in range(self.slices):
             for l in self.labels[z]:
                 if l not in self._Zlabel_l:
                     self._Zlabel_l.append(l)
@@ -1281,7 +1281,7 @@ class CellTracking(object):
         
         self._compute_masks_stack()
         self.plot_masks=True
-        
+        self._contacion = 0
         self.PACPs             = []
         self._time_sliders     = []
         self._imshows          = []
@@ -1355,15 +1355,30 @@ class CellTracking(object):
         plt.show()
 
     def replot_axis(self, _ax, img, z, t, PACPid, imid, plot_outlines=True):
-            self._imshows[PACPid][imid].set_data(img)
-            self._imshows_masks[PACPid][imid].set_data(self._masks_stack[t][z])
-            self._titles[PACPid][imid].set_text("z = %d" %z)
-            Outlines = self.Outlines[t][z]
-            if plot_outlines:
-                for cell, outline in enumerate(Outlines):
-                    label = self.Labels[t][z][cell]
-                    out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
-                    self._outline_scatters[PACPid].append(out_plot)
+        print(self._contacion)
+        start = time.time()
+        self._imshows[PACPid][imid].set_data(img)
+        end = time.time()
+        print(end - start)
+        start = time.time()
+        self._imshows_masks[PACPid][imid].set_data(self._masks_stack[t][z])
+        end = time.time()
+        print(end - start)
+        self._titles[PACPid][imid].set_text("z = %d" %z)
+        start = time.time()
+        Outlines = self.Outlines[t][z]
+        end = time.time()
+        print(end - start)
+        start = time.time()
+        if plot_outlines:
+            for cell, outline in enumerate(Outlines):
+                label = self.Labels[t][z][cell]
+                # Concatenar outlines y colores para evitar el loop
+                out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
+                self._outline_scatters[PACPid].append(out_plot)
+        end = time.time()
+        print(end - start)
+        self._contacion +=1
                     
     def replot_tracking(self, PACP, plot_outlines=True):
         t = PACP.t
