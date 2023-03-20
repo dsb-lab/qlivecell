@@ -42,7 +42,7 @@ class PlotAction():
     # The function to be called anytime a slider's value changes
     def update_slider(self, t):
         self.t=t
-        self.CT.replot_tracking(self, plot_outlines=True)
+        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
 
     def onscroll(self, event):
@@ -54,7 +54,7 @@ class PlotAction():
             self.t = max(self.t, 0)
             self.t = min(self.t, self.CT.times-1)
             self.CT._time_sliders[self.id].set_val(self.t)
-            self.CT.replot_tracking(self, plot_outlines=True)
+            self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
             self.update()
 
             if self.current_state=="SCL": self.current_state=None
@@ -67,7 +67,7 @@ class PlotAction():
             self.cr = max(self.cr, 0)
             self.cr = min(self.cr, self.max_round)
             start = time.time()
-            self.CT.replot_tracking(self, plot_outlines=True)
+            self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
             end = time.time()
             print("REPLOT", end - start)
             start = time.time()
@@ -373,7 +373,7 @@ class PlotActionCT(PlotAction):
         self.fig.subplots_adjust(top=0.9,left=0.2)
         start = time.time()
         self.fig.canvas.draw_idle()
-        self.fig.canvas.draw()
+        #self.fig.canvas.draw()
         end = time.time()
         print("draw inside update", end - start)
 
