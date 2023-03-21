@@ -915,25 +915,12 @@ class CellTracking(object):
         for cell in self.cells:
             cell.label = correspondance[cell.label]
 
-        self.printfancy("")
         self._order_labels_z()
-        self.printfancy("ordered labels z")
-        self.printfancy("")
         self._update_CT_cell_attributes()
-        self.printfancy("updated ct cell attributes")
-        self.printfancy("")
         self._extract_unique_labels_and_max_label()
-        self.printfancy("extracted labels and max label")
-        self.printfancy("")
         self._extract_unique_labels_per_time()
-        self.printfancy("label per time")
-        self.printfancy("")
         self._compute_masks_stack()
-        self.printfancy("masks computed")
-        self.printfancy("")
         self._compute_outlines_stack()
-        self.printfancy("outlines computed")
-        self.printfancy("")
 
     def _update_CT_cell_attributes(self):
             self.Labels   = []
@@ -1297,7 +1284,6 @@ class CellTracking(object):
         self._outlines_stack = np.zeros((t,z,x,y,4))
         total_cells = len(self.cells)
         for c, cell in enumerate(self.cells):
-            print("cells left =",total_cells - c)
             self._set_outlines_alphas(cell, True, increse_width)
             
     def _set_outlines_alphas(self, cell, plot_outline, increse_width):
