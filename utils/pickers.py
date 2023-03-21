@@ -86,7 +86,7 @@ class CellPicker():
         x = np.rint(event.xdata).astype(np.int64)
         y = np.rint(event.ydata).astype(np.int64)
         picked_point = np.array([x, y])
-        return picked_point
+        return np.rint(picked_point / self.PACP.CT.dim_change).astype('int32')
     
     def _get_cell(self, event):
         picked_point = self._get_point(event)
@@ -97,7 +97,7 @@ class CellPicker():
                     lab = self.PACP.CT.Labels[self.PACP.t][z][i]
                     return lab, z
         return None, None
-    
+     
     def _action(self, event):
         self._get_cell(event)
         self._update()

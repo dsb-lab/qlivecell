@@ -662,7 +662,6 @@ class CellTracking(object):
         self._cdaxis = cell_distance_axis
         self._movement_computation_method = movement_computation_method
         self.plot_masks = True
-        self.plot_outlines = True
         self.list_of_cells     = []
         self.mito_cells        = []
         self.apoptotic_events  = []
@@ -689,9 +688,15 @@ class CellTracking(object):
         
     def __call__(self):
         self.cell_segmentation()
+        self.printfancy("")
         self.cell_tracking()
+        self.printfancy("tracking completed")
+        self.printfancy("")
         self.init_cells()
+        self.printfancy("cells initialised")
         self.update_labels()
+        self.printfancy("")
+        self.printfancy("labels updated")
         self.backupCT  = backup_CellTrack(0, self)
         self._backupCT = backup_CellTrack(0, self)
         self.backups = deque([self._backupCT], self._backup_steps)
@@ -910,12 +915,25 @@ class CellTracking(object):
         for cell in self.cells:
             cell.label = correspondance[cell.label]
 
+        self.printfancy("")
         self._order_labels_z()
+        self.printfancy("ordered labels z")
+        self.printfancy("")
         self._update_CT_cell_attributes()
+        self.printfancy("updated ct cell attributes")
+        self.printfancy("")
         self._extract_unique_labels_and_max_label()
+        self.printfancy("extracted labels and max label")
+        self.printfancy("")
         self._extract_unique_labels_per_time()
+        self.printfancy("label per time")
+        self.printfancy("")
         self._compute_masks_stack()
+        self.printfancy("masks computed")
+        self.printfancy("")
         self._compute_outlines_stack()
+        self.printfancy("outlines computed")
+        self.printfancy("")
 
     def _update_CT_cell_attributes(self):
             self.Labels   = []
@@ -1022,7 +1040,7 @@ class CellTracking(object):
     def complete_add_cell(self, PACP):
         if len(self.linebuilder.xs)<3:
             return
-        new_outline = np.asarray([list(a) for a in zip(np.rint(self.linebuilder.xs).astype(np.int64), np.rint(self.linebuilder.ys).astype(np.int64))])
+        new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(self.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(self.linebuilder.ys) / self.dim_change).astype(np.int64))])
         if np.max(new_outline)>self.plot_stack_dims[0]:
             self.printfancy("ERROR: drawing out of image")
             return
@@ -1260,37 +1278,37 @@ class CellTracking(object):
                 
     def point_neighbors(self, outline):
         self.stack_dims[0]
-        valids = {(x,y) for x in range(self.stack_dims[0]) for y in range (self.stack_dims[0])} 
-        neighs=[(dx,dy) for dx in range(-self._neigh_index, self._neigh_index+1) for dy in range(-self._neigh_index, self._neigh_index+1) if (dx,dy)!=(0,0)] 
+        neighs=[[dx,dy] for dx in range(-self._neigh_index, self._neigh_index+1) for dy in range(-self._neigh_index, self._neigh_index+1)] 
         extra_outline = []
         for p in outline:
-            neighs_p = self.voisins(neighs, valids, p)
+            neighs_p = self.voisins(neighs, p[0], p[1])
             extra_outline = extra_outline + neighs_p
         extra_outline = np.array(extra_outline)
         outline = np.append(outline, extra_outline, axis=0)
-        return outline
+        return np.unique(outline, axis=0)
         
     # based on https://stackoverflow.com/questions/29912408/finding-valid-neighbor-indices-in-2d-array    
-    def voisins(self, neighs, valids, p): return [[p[0]+dx,p[1]+dy] for (dx,dy) in neighs  if (p[0]+dx,p[1]+dy) in valids]
+    def voisins(self, neighs,x,y): return [[x+dx,y+dy] for (dx,dy) in neighs]
  
-    def _compute_outlines_stack(self):
+    def _compute_outlines_stack(self, increse_width=True):
         t = self.times
         z = self.slices
         x,y = self.plot_stack_dims
         self._outlines_stack = np.zeros((t,z,x,y,4))
-
-        for cell in self.cells:
-            self._set_outlines_alphas(cell, self.plot_outlines)
+        total_cells = len(self.cells)
+        for c, cell in enumerate(self.cells):
+            print("cells left =",total_cells - c)
+            self._set_outlines_alphas(cell, True, increse_width)
             
-    def _set_outlines_alphas(self, cell, plot_outline):
+    def _set_outlines_alphas(self, cell, plot_outline, increse_width):
         if plot_outline: alpha=1
         else: alpha = 0
         
         color = np.append(self._label_colors[self._labels_color_id[cell.label]], alpha)
         for tid, tc in enumerate(cell.times):
             for zid, zc in enumerate(cell.zs[tid]):
-                outline = cell.outlines[tid][zid]
-                outline = self.point_neighbors(outline)
+                outline = np.unique(cell.outlines[tid][zid], axis=0)
+                if increse_width: outline = self.point_neighbors(outline)
                 xids = np.rint(outline[:,1]*self.dim_change).astype('int32')
                 yids = np.rint(outline[:,0]*self.dim_change).astype('int32')
                 self._outlines_stack[tc][zc][xids,yids]=np.array(color)
@@ -1313,12 +1331,18 @@ class CellTracking(object):
                     , cell_picker=False
                     , masks_cmap=None
                     , mode=None
-                    , outline_width=None):
+                    , plot_outline_width=None
+                    , plot_stack_dims=None):
 
         if windows==None: windows=self.plot_tracking_windows
         if plot_layout is not None: self.plot_layout=plot_layout
         if plot_overlap is not None: self.plot_overlap=plot_overlap
-        if outline_width is not None: self._neigh_index = outline_width
+        if plot_outline_width is not None: self._neigh_index = plot_outline_width
+        if plot_stack_dims is not None: 
+            self.plot_stack_dims = plot_stack_dims
+            self.dim_change = plot_stack_dims[0] / self.stack_dims[0]
+            self._plot_xyresolution= self._xyresolution * self.dim_change
+            
         if masks_cmap is not None:
             self._cmap_name    = masks_cmap
             self._cmap         = cm.get_cmap(self._cmap_name)
@@ -1333,10 +1357,9 @@ class CellTracking(object):
             self.plot_stacks = self.stacks
         
         self.plot_masks=True
-        self.plot_outlines = True
         
         self._compute_masks_stack()
-        self._compute_outlines_stack()
+        self._compute_outlines_stack(increse_width=True)
 
         self.PACPs             = []
         self._time_sliders     = []

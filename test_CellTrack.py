@@ -11,10 +11,10 @@ path_save=home+'/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_clair
 # path_data=home+'/Downloads/'
 
 files = os.listdir(path_data)
-emb = 1
+emb = 10
 embcode=files[emb].split('.')[0]
-# IMGS   = np.array([[imread(path_data+f)[:,0,:,:] for f in files[emb:emb+1]][0]])
-IMGS   = [imread(path_data+f)[:1,:10,1,:,:] for f in files[emb:emb+1]][0]
+# IMGS   = np.array([[imread(path_data+f)[0:10,0,:,:] for f in files[emb:emb+1]][0]])
+IMGS   = [imread(path_data+f)[:1,:,1,:,:] for f in files[emb:emb+1]][0]
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
 #model  = models.Cellpose(gpu=True, model_type='nuclei')
 
@@ -25,7 +25,7 @@ CT = CellTracking(IMGS, model, path_save, embcode
                     , flow_th_cellpose=0.4
                     , distance_th_z=3.0
                     , xyresolution=0.2767553 # microns per pixel
-                    , zresolution =2
+                    , zresolution =3
                     , relative_overlap=False
                     , use_full_matrix_to_compute_overlap=True
                     , z_neighborhood=2
@@ -41,10 +41,10 @@ CT = CellTracking(IMGS, model, path_save, embcode
                     , cell_distance_axis="xy"
                     , movement_computation_method="center"
                     , mean_substraction_cell_movement=False
-                    , plot_stack_dims = (512, 512)
-                    , plot_outline_width=2)
+                    , plot_stack_dims = (256, 256)
+                    , plot_outline_width=1)
 
 CT()
-CT.plot_tracking()
+CT.plot_tracking(plot_stack_dims = (512, 512))
 # CT.plot_cell_movement()
 # CT.plot_masks3D_Imagej(cell_selection=False)
