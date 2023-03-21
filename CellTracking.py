@@ -40,6 +40,8 @@ from utils.utils_ct import save_CT
 from utils.utils_ct import load_CT
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
+warnings.simplefilter("ignore", UserWarning)
+
 plt.rcParams['keymap.save'].remove('s')
 plt.rcParams['keymap.zoom'][0]='º'
 

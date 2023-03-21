@@ -5,19 +5,15 @@ from CellTracking import save_CT, load_CT
 import os
 import numpy as np
 home = os.path.expanduser('~')
-path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
-path_save=home+'/Desktop/PhD/projects/Data/blastocysts/CellTrackObjects/2h_claire_ERK-KTR_MKATE2/'
-
-# path_data=home+'/Downloads/'
+path_data=home+'/Desktop/PhD/projects/Data/gastruloids/movies/joshi/competition/F3_A12-WT/'
+path_save=home+'/Desktop/PhD/projects/Data/gastruloids/CellTrackObjects/joshi/competition/F3_A12-WT/'
 
 files = os.listdir(path_data)
-emb = 10
+emb = 0
 embcode=files[emb].split('.')[0]
-# IMGS   = np.array([[imread(path_data+f)[0:10,0,:,:] for f in files[emb:emb+1]][0]])
-IMGS   = [imread(path_data+f)[:1,:,1,:,:] for f in files[emb:emb+1]][0]
+IMGS   = np.array([[imread(path_data+f)[:,0,:,:] for f in files[emb:emb+1]][0]])
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
 #model  = models.Cellpose(gpu=True, model_type='nuclei')
-
 
 CT = CellTracking(IMGS, model, path_save, embcode
                     , trainedmodel=True
@@ -45,6 +41,6 @@ CT = CellTracking(IMGS, model, path_save, embcode
                     , plot_outline_width=1)
 
 CT()
-CT.plot_tracking(plot_stack_dims = (512, 512))
+CT.plot_tracking(plot_stack_dims = (256, 256))
 # CT.plot_cell_movement()
 # CT.plot_masks3D_Imagej(cell_selection=False)
