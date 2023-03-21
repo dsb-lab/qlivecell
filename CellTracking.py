@@ -18,6 +18,7 @@ from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
 from matplotlib import cm
 import matplotlib.pyplot as plt
+import cv2
 
 from collections import deque
 
@@ -602,7 +603,7 @@ class CellSegmentation(object):
 
     def _assign_color_to_label(self):
         coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
-        self._labels_color_id = [next(coloriter) for i in range(1000)]
+        self._labels_color_id = [next(coloriter) for i in range(3000)]
 
     def plot_axis(self, _ax, img, z):
         _ = _ax.imshow(img)
@@ -627,7 +628,7 @@ class CellSegmentation(object):
                 _ = _ax.scatter([ys], [xs], s=3.0, c="k")
 
 class CellTracking(object):
-    def __init__(self, stacks, model, pthtosave, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False):
+    def __init__(self, stacks, model, pthtosave, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=(512, 512), plot_outline_width=1):
         self.path_to_save      = pthtosave
         self.embcode           = embcode
         self.stacks            = stacks
@@ -641,6 +642,11 @@ class CellTracking(object):
         self.times             = np.shape(stacks)[0]
         self.slices            = np.shape(stacks)[1]
         self.stack_dims        = np.shape(stacks)[-2:]
+        self.plot_stack_dims   = plot_stack_dims
+        
+        # We assume that both dimension have the same resolution
+        self.dim_change = plot_stack_dims[0] / self.stack_dims[0]
+        self._plot_xyresolution= self._xyresolution * self.dim_change
         self._relative         = relative_overlap
         self._fullmat          = use_full_matrix_to_compute_overlap
         self._zneigh           = z_neighborhood
@@ -664,6 +670,7 @@ class CellTracking(object):
         self.plot_tracking_windows=plot_tracking_windows
         self._tstep = time_step
         self._mscm   = mean_substraction_cell_movement
+        self._neigh_index = plot_outline_width
         self._assign_color_to_label()
         self.CT_info = CellTracking_info(self)
         
@@ -681,9 +688,15 @@ class CellTracking(object):
         
     def __call__(self):
         self.cell_segmentation()
+        self.printfancy("")
         self.cell_tracking()
+        self.printfancy("tracking completed")
+        self.printfancy("")
         self.init_cells()
+        self.printfancy("cells initialised")
         self.update_labels()
+        self.printfancy("")
+        self.printfancy("labels updated")
         self.backupCT  = backup_CellTrack(0, self)
         self._backupCT = backup_CellTrack(0, self)
         self.backups = deque([self._backupCT], self._backup_steps)
@@ -702,6 +715,8 @@ class CellTracking(object):
         self.cells = deepcopy(backup.cells)
         self._update_CT_cell_attributes()
         self._compute_masks_stack()
+        self._compute_outlines_stack()
+
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
         for PACP in self.PACPs:
@@ -905,6 +920,7 @@ class CellTracking(object):
         self._extract_unique_labels_and_max_label()
         self._extract_unique_labels_per_time()
         self._compute_masks_stack()
+        self._compute_outlines_stack()
 
     def _update_CT_cell_attributes(self):
             self.Labels   = []
@@ -1011,8 +1027,8 @@ class CellTracking(object):
     def complete_add_cell(self, PACP):
         if len(self.linebuilder.xs)<3:
             return
-        new_outline = np.asarray([list(a) for a in zip(np.rint(self.linebuilder.xs).astype(np.int64), np.rint(self.linebuilder.ys).astype(np.int64))])
-        if np.max(new_outline)>self.stack_dims[0]:
+        new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(self.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(self.linebuilder.ys) / self.dim_change).astype(np.int64))])
+        if np.max(new_outline)>self.plot_stack_dims[0]:
             self.printfancy("ERROR: drawing out of image")
             return
         self.append_cell_from_outline(new_outline, PACP.z, PACP.t)
@@ -1230,7 +1246,7 @@ class CellTracking(object):
     def _compute_masks_stack(self):
         t = self.times
         z = self.slices
-        x,y = self.stack_dims
+        x,y = self.plot_stack_dims
         self._masks_stack = np.zeros((t,z,x,y,4))
 
         for cell in self.cells:
@@ -1243,51 +1259,100 @@ class CellTracking(object):
         for tid, tc in enumerate(cell.times):
             for zid, zc in enumerate(cell.zs[tid]):
                 mask = cell.masks[tid][zid]
-                xids = mask[:,1]
-                yids = mask[:,0]
+                xids = np.rint(mask[:,1]*self.dim_change).astype('int32')
+                yids = np.rint(mask[:,0]*self.dim_change).astype('int32')
                 self._masks_stack[tc][zc][xids,yids]=np.array(color)
+                
+    def point_neighbors(self, outline):
+        self.stack_dims[0]
+        neighs=[[dx,dy] for dx in range(-self._neigh_index, self._neigh_index+1) for dy in range(-self._neigh_index, self._neigh_index+1)] 
+        extra_outline = []
+        for p in outline:
+            neighs_p = self.voisins(neighs, p[0], p[1])
+            extra_outline = extra_outline + neighs_p
+        extra_outline = np.array(extra_outline)
+        outline = np.append(outline, extra_outline, axis=0)
+        return np.unique(outline, axis=0)
+        
+    # based on https://stackoverflow.com/questions/29912408/finding-valid-neighbor-indices-in-2d-array    
+    def voisins(self, neighs,x,y): return [[x+dx,y+dy] for (dx,dy) in neighs]
+ 
+    def _compute_outlines_stack(self, increse_width=True):
+        t = self.times
+        z = self.slices
+        x,y = self.plot_stack_dims
+        self._outlines_stack = np.zeros((t,z,x,y,4))
+        total_cells = len(self.cells)
+        for c, cell in enumerate(self.cells):
+            self._set_outlines_alphas(cell, True, increse_width)
+            
+    def _set_outlines_alphas(self, cell, plot_outline, increse_width):
+        if plot_outline: alpha=1
+        else: alpha = 0
+        
+        color = np.append(self._label_colors[self._labels_color_id[cell.label]], alpha)
+        for tid, tc in enumerate(cell.times):
+            for zid, zc in enumerate(cell.zs[tid]):
+                outline = np.unique(cell.outlines[tid][zid], axis=0)
+                if increse_width: outline = self.point_neighbors(outline)
+                xids = np.rint(outline[:,1]*self.dim_change).astype('int32')
+                yids = np.rint(outline[:,0]*self.dim_change).astype('int32')
+                self._outlines_stack[tc][zc][xids,yids]=np.array(color)
 
-    def plot_axis(self, _ax, img, z, PACPid, t, plot_outlines=True):
+    def plot_axis(self, _ax, img, z, PACPid, t):
         im = _ax.imshow(img, vmin=0, vmax=255)
         im_masks =_ax.imshow(self._masks_stack[t][z])
+        im_outlines = _ax.imshow(self._outlines_stack[t][z])
         self._imshows[PACPid].append(im)
         self._imshows_masks[PACPid].append(im_masks)
+        self._imshows_outlines[PACPid].append(im_outlines)
 
         title = _ax.set_title("z = %d" %z)
         self._titles[PACPid].append(title)
         _ = _ax.axis(False)
-        Outlines = self.Outlines[t][z]
-        if plot_outlines:
-            for cell, outline in enumerate(Outlines):
-                label = self.Labels[t][z][cell]
-                out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
-                self._outline_scatters[PACPid].append(out_plot)
 
     def plot_tracking(self, windows=None
                     , plot_layout=(2,2)
                     , plot_overlap=1
                     , cell_picker=False
                     , masks_cmap=None
-                    , mode=None):
+                    , mode=None
+                    , plot_outline_width=None
+                    , plot_stack_dims=None):
 
         if windows==None: windows=self.plot_tracking_windows
         if plot_layout is not None: self.plot_layout=plot_layout
         if plot_overlap is not None: self.plot_overlap=plot_overlap
+        if plot_outline_width is not None: self._neigh_index = plot_outline_width
+        if plot_stack_dims is not None: 
+            self.plot_stack_dims = plot_stack_dims
+            self.dim_change = plot_stack_dims[0] / self.stack_dims[0]
+            self._plot_xyresolution= self._xyresolution * self.dim_change
+            
         if masks_cmap is not None:
             self._cmap_name    = masks_cmap
             self._cmap         = cm.get_cmap(self._cmap_name)
             self._label_colors = self._cmap.colors
             self._assign_color_to_label()
+        if self.dim_change != 1:
+            self.plot_stacks = np.zeros((self.times, self.slices, self.plot_stack_dims[0], self.plot_stack_dims[1]))
+            for t in range(self.times):
+                for z in range(self.slices):
+                    self.plot_stacks[t, z] = cv2.resize(self.stacks[t,z], self.plot_stack_dims)
+        else:
+            self.plot_stacks = self.stacks
+        
+        self.plot_masks=True
         
         self._compute_masks_stack()
-        self.plot_masks=True
-        self._contacion = 0
+        self._compute_outlines_stack(increse_width=True)
+
         self.PACPs             = []
         self._time_sliders     = []
         self._imshows          = []
         self._imshows_masks    = []
+        self._imshows_outlines = []
         self._titles           = []
-        self._outline_scatters = []
         self._pos_scatters     = []
         self._annotations      = []
         self.list_of_cellsm    = []
@@ -1301,17 +1366,17 @@ class CellTracking(object):
             self.PACPs[w].zs = np.zeros_like(ax)
             zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
             t=0
-            imgs   = self.stacks[t,:,:,:]
+            imgs   = self.plot_stacks[t,:,:,:]
 
             self._imshows.append([])
             self._imshows_masks.append([])
+            self._imshows_outlines.append([])
             self._titles.append([])
-            self._outline_scatters.append([])
             self._pos_scatters.append([])
             self._annotations.append([])
 
             # Plot all our Zs in the corresponding round
-            for z, id, round in counter:
+            for z, id, _round in counter:
                 # select current z plane
                 idx1 = zidxs[0][id]
                 idx2 = zidxs[1][id]
@@ -1328,6 +1393,8 @@ class CellTracking(object):
                         cell = self._get_cell(lab)
                         tid = cell.times.index(t)
                         zz, ys, xs = cell.centers[tid]
+                        xs = round(xs*self.dim_change)
+                        ys = round(ys*self.dim_change)
                         if zz == z:
                             pos = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
                             self._pos_scatters[w].append(pos)
@@ -1355,45 +1422,24 @@ class CellTracking(object):
         plt.show()
 
     def replot_axis(self, _ax, img, z, t, PACPid, imid, plot_outlines=True):
-        print(self._contacion)
-        start = time.time()
         self._imshows[PACPid][imid].set_data(img)
-        end = time.time()
-        print(end - start)
-        start = time.time()
         self._imshows_masks[PACPid][imid].set_data(self._masks_stack[t][z])
-        end = time.time()
-        print(end - start)
+        if plot_outlines: self._imshows_outlines[PACPid][imid].set_data(self._outlines_stack[t][z])
+        else: self._imshows_outlines[PACPid][imid].set_data(np.zeros_like(self._outlines_stack[t][z]))
         self._titles[PACPid][imid].set_text("z = %d" %z)
-        start = time.time()
-        Outlines = self.Outlines[t][z]
-        end = time.time()
-        print(end - start)
-        start = time.time()
-        if plot_outlines:
-            for cell, outline in enumerate(Outlines):
-                label = self.Labels[t][z][cell]
-                # Concatenar outlines y colores para evitar el loop
-                out_plot = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
-                self._outline_scatters[PACPid].append(out_plot)
-        end = time.time()
-        print(end - start)
-        self._contacion +=1
                     
     def replot_tracking(self, PACP, plot_outlines=True):
+        
         t = PACP.t
         PACPid = PACP.id
         counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=PACP.cr)
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
-        imgs   = self.stacks[t,:,:,:]
+        imgs   = self.plot_stacks[t,:,:,:]
         # Plot all our Zs in the corresponding round
-        for sc in self._outline_scatters[PACPid]:
-            sc.remove()
         for sc in self._pos_scatters[PACPid]:
             sc.remove()
         for ano in self._annotations[PACPid]:
             ano.remove()
-        self._outline_scatters[PACPid] = []
         self._pos_scatters[PACPid]     = []
         self._annotations[PACPid]      = []
         for z, id, r in counter:
@@ -1401,9 +1447,10 @@ class CellTracking(object):
             idx1 = zidxs[0][id]
             idx2 = zidxs[1][id]
             if z == None:
-                img = np.zeros(self.stack_dims)
+                img = np.zeros(self.plot_stack_dims)
                 self._imshows[PACPid][id].set_data(img)
                 self._imshows_masks[PACPid][id].set_data(img)
+                self._imshows_outlines[PACPid][id].set_data(img)
                 self._titles[PACPid][id].set_text("")
             else:      
                 img = imgs[z,:,:]
@@ -1414,6 +1461,8 @@ class CellTracking(object):
                     cell = self._get_cell(lab)
                     tid = cell.times.index(t)
                     zz, ys, xs = cell.centers[tid]
+                    xs = round(xs*self.dim_change)
+                    ys = round(ys*self.dim_change)
                     if zz == z:
                         if [lab, PACP.t] in self.apoptotic_events:
                             _ = PACP.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="k")
@@ -1434,7 +1483,7 @@ class CellTracking(object):
 
     def _assign_color_to_label(self):
         coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
-        self._labels_color_id = [next(coloriter) for i in range(1000)]
+        self._labels_color_id = [next(coloriter) for i in range(3000)]
     
     def compute_cell_movement(self, movement_computation_method):
         for cell in self.cells:
@@ -1571,7 +1620,7 @@ class CellTracking(object):
         if cell_selection:
             labels = self._select_cells(plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap)
         else:
-            labels = []
+            labels = self.unique_labels
         masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
         for cell in self.cells:
             if cell.label not in labels: continue
