@@ -68,12 +68,8 @@ class PlotAction():
             self.cr = min(self.cr, self.max_round)
             start = time.time()
             self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
-            end = time.time()
-            print("REPLOT", end - start)
-            start = time.time()
             self.update()
-            end = time.time()
-            print("UPDATE", end - start)
+
 
             if self.current_state=="SCL": self.current_state=None
             
@@ -371,11 +367,8 @@ class PlotActionCT(PlotAction):
         self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
         self.title.set(fontsize=width_or_height/scale2)
         self.fig.subplots_adjust(top=0.9,left=0.2)
-        start = time.time()
         self.fig.canvas.draw_idle()
         #self.fig.canvas.draw()
-        end = time.time()
-        print("draw inside update", end - start)
 
     def add_cells(self):
         self.title.set(text="ADD CELL MODE", ha='left', x=0.01)
