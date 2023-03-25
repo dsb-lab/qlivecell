@@ -1009,7 +1009,7 @@ class CellTracking(object):
         if len(self.linebuilder.xs)<3:
             return
         new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(self.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(self.linebuilder.ys) / self.dim_change).astype(np.int64))])
-        if np.max(new_outline)>self.plot_stack_dims[0]:
+        if np.max(new_outline)>self.stack_dims[0]:
             self.printfancy("ERROR: drawing out of image")
             return
         self.append_cell_from_outline(new_outline, PACP.z, PACP.t)
@@ -1293,17 +1293,17 @@ class CellTracking(object):
         _ = _ax.axis(False)
 
     def plot_tracking(self, windows=None
-                    , plot_layout=(2,2)
-                    , plot_overlap=1
+                    , plot_layout=None
+                    , plot_overlap=None
                     , cell_picker=False
                     , masks_cmap=None
-                    , mode=None
                     , plot_outline_width=None
                     , plot_stack_dims=None):
 
         if windows==None: windows=self.plot_tracking_windows
         if plot_layout is not None: self.plot_layout=plot_layout
         if plot_overlap is not None: self.plot_overlap=plot_overlap
+        if self.plot_layout[0]*self.plot_layout[1]==1: self.plot_overlap=0
         if plot_outline_width is not None: self._neigh_index = plot_outline_width
         if plot_stack_dims is not None: 
             self.plot_stack_dims = plot_stack_dims

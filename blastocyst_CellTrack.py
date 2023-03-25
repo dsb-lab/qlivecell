@@ -41,7 +41,7 @@ CT = CellTracking(IMGS, model, path_save, embcode
                     , plot_outline_width=1)
 
 CT()
-CT.plot_tracking(plot_stack_dims = (256, 256), plot_layout=(1,1))
+CT.plot_tracking(plot_stack_dims = (512, 512), plot_layout=(1,1))
 # CT.plot_cell_movement()
 # CT.plot_masks3D_Imagej(cell_selection=False)
 
