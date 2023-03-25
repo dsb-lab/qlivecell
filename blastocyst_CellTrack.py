@@ -26,7 +26,7 @@ CT = CellTracking(IMGS, model, path_save, embcode
                     , use_full_matrix_to_compute_overlap=True
                     , z_neighborhood=2
                     , overlap_gradient_th=0.15
-                    , plot_layout=(2,2)
+                    , plot_layout=(1,1)
                     , plot_overlap=1
                     , masks_cmap='tab10'
                     , min_outline_length=200
@@ -41,6 +41,7 @@ CT = CellTracking(IMGS, model, path_save, embcode
                     , plot_outline_width=1)
 
 CT()
-CT.plot_tracking(plot_stack_dims = (256, 256))
+CT.plot_tracking(plot_stack_dims = (256, 256), plot_layout=(1,1))
 # CT.plot_cell_movement()
 # CT.plot_masks3D_Imagej(cell_selection=False)
+
