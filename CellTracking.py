@@ -607,27 +607,6 @@ class CellSegmentation(object):
         coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
         self._labels_color_id = [next(coloriter) for i in range(3000)]
 
-    def plot_axis(self, _ax, img, z):
-        _ = _ax.imshow(img)
-        _ = _ax.set_title("z = %d" %z)
-        for cell, outline in enumerate(self.Outlines[z]):
-            xs = self.centersi[z][cell]
-            ys = self.centersj[z][cell]
-            label = self.labels[z][cell]
-            _ = _ax.scatter(outline[:,0], outline[:,1], c=[self._label_colors[self._labels_color_id[label]]], s=0.5, cmap=self._cmap_name)               
-            _ = _ax.annotate(str(label), xy=(ys, xs), c="w")
-            _ = _ax.scatter([ys], [xs], s=0.5, c="white")
-            _ = _ax.axis(False)
-
-        if self.pltmasks_bool:
-            self.compute_Masks_to_plot()
-            _ = _ax.imshow(self._cmap(self._Masks_to_plot[z], alpha=self._Masks_to_plot_alphas[z], bytes=True), cmap=self._cmap_name)
-        for lab in range(len(self.labels_centers)):
-            zz = self.centers_positions[lab][0]
-            ys = self.centers_positions[lab][1]
-            xs = self.centers_positions[lab][2]
-            if zz==z:
-                _ = _ax.scatter([ys], [xs], s=3.0, c="k")
 
 class CellTracking(object):
     def __init__(self, stacks, model, pthtosave, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=(512, 512), plot_outline_width=1):
@@ -1362,6 +1341,7 @@ class CellTracking(object):
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
+            
             if cell_picker: self.PACPs.append(PlotActionCellPicker(fig, ax, self, w, mode))
             else: self.PACPs.append(PlotActionCT(fig, ax, self, w, None))
             self.PACPs[w].zs = np.zeros_like(ax)
