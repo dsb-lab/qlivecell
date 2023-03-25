@@ -1297,6 +1297,7 @@ class CellTracking(object):
                     , plot_overlap=None
                     , cell_picker=False
                     , masks_cmap=None
+                    , mode=None
                     , plot_outline_width=None
                     , plot_stack_dims=None):
 
