@@ -4,29 +4,18 @@ class SubplotPicker_add():
     def __init__(self, PACP):
         self.PACP  = PACP
         self.cid = self.PACP.fig.canvas.mpl_connect('button_press_event', self)
-        self.axshape = self.PACP.ax.shape
         self.canvas  = self.PACP.fig.canvas
 
     def __call__(self, event):
         if event.dblclick == True:
             if event.button==1:
-                if len(self.axshape)==1:
-                    for i in range(self.axshape[0]):
-                        if event.inaxes==self.PACP.ax[i]:
-                            self.PACP.current_subplot = i
-                            self.PACP.z = self.PACP.zs[i]
-                            self.canvas.mpl_disconnect(self.cid)
-                            self.PACP.add_cells()
-                            self.PACP.CT.add_cell(self.PACP)
-                else:
-                    for i in range(self.axshape[0]):
-                        for j in range(self.axshape[1]):
-                                if event.inaxes==self.PACP.ax[i,j]:
-                                    self.PACP.current_subplot = [i,j]
-                                    self.PACP.z = self.PACP.zs[i,j]
-                                    self.canvas.mpl_disconnect(self.cid)
-                                    self.PACP.add_cells()
-                                    self.PACP.CT.add_cell(self.PACP)
+                for id, ax in enumerate(self.PACP.ax):
+                    if event.inaxes==ax:
+                        self.PACP.current_subplot = id
+                        self.PACP.z = self.PACP.zs[id]
+                        self.canvas.mpl_disconnect(self.cid)
+                        self.PACP.add_cells()
+                        self.PACP.CT.add_cell(self.PACP)
     
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
@@ -70,17 +59,11 @@ class CellPicker():
         self.canvas.mpl_disconnect(self.cid)
     
     def _get_axis(self, event):
-        if isinstance(self.PACP.ax, np.ndarray):
-            axshape = self.PACP.ax.shape
-            # Select ax 
-            for i in range(axshape[0]):
-                    for j in range(axshape[1]):
-                            if event.inaxes==self.PACP.ax[i,j]:
-                                self.PACP.current_subplot = [i,j]
-                                self.PACP.ax_sel = self.PACP.ax[i,j]
-                                self.PACP.z = self.PACP.zs[i,j]
-        else:
-            self.PACP.ax_sel = self.PACP.ax
+        for id, ax in enumerate(self.PACP.ax):
+            if event.inaxes==ax:
+                self.PACP.current_subplot = id
+                self.PACP.ax_sel = ax
+                self.PACP.z = self.PACP.zs[id]
     
     def _get_point(self, event):
         x = np.rint(event.xdata).astype(np.int64)

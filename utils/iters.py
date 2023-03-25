@@ -41,10 +41,9 @@ class plotRound:
         self.overlap    = overlap
         self.layout     = layout
         self.groupsize  = self.layout[0] * self.layout[1]
-        
+        if self.groupsize==1: self.overlap=0
         self.current = (self.groupsize*round -1)-(self.overlap*round)
         self.currentonround = -1
-
         self.rounds     = math.ceil((self.totalsize)/(self.groupsize-self.overlap))
         self.currentround = round
         if self.rounds == 1:

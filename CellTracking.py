@@ -632,6 +632,7 @@ class CellTracking(object):
         self._fullmat          = use_full_matrix_to_compute_overlap
         self._zneigh           = z_neighborhood
         self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
+        if not hasattr(plot_layout, '__iter__'): raise # Need to revise this error 
         self.plot_layout       = plot_layout
         self.plot_overlap      = plot_overlap
         self.max_label         = 0
@@ -1008,7 +1009,7 @@ class CellTracking(object):
         if len(self.linebuilder.xs)<3:
             return
         new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(self.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(self.linebuilder.ys) / self.dim_change).astype(np.int64))])
-        if np.max(new_outline)>self.plot_stack_dims[0]:
+        if np.max(new_outline)>self.stack_dims[0]:
             self.printfancy("ERROR: drawing out of image")
             return
         self.append_cell_from_outline(new_outline, PACP.z, PACP.t)
@@ -1292,17 +1293,17 @@ class CellTracking(object):
         _ = _ax.axis(False)
 
     def plot_tracking(self, windows=None
-                    , plot_layout=(2,2)
-                    , plot_overlap=1
+                    , plot_layout=None
+                    , plot_overlap=None
                     , cell_picker=False
                     , masks_cmap=None
-                    , mode=None
                     , plot_outline_width=None
                     , plot_stack_dims=None):
 
         if windows==None: windows=self.plot_tracking_windows
         if plot_layout is not None: self.plot_layout=plot_layout
         if plot_overlap is not None: self.plot_overlap=plot_overlap
+        if self.plot_layout[0]*self.plot_layout[1]==1: self.plot_overlap=0
         if plot_outline_width is not None: self._neigh_index = plot_outline_width
         if plot_stack_dims is not None: 
             self.plot_stack_dims = plot_stack_dims
@@ -1341,6 +1342,8 @@ class CellTracking(object):
         for w in range(windows):
             counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
             fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
+            if not hasattr(ax, '__iter__'): ax = np.array([ax])
+            ax = ax.flatten()
             
             if cell_picker: self.PACPs.append(PlotActionCellPicker(fig, ax, self, w, mode))
             else: self.PACPs.append(PlotActionCT(fig, ax, self, w, None))
@@ -1359,15 +1362,13 @@ class CellTracking(object):
             # Plot all our Zs in the corresponding round
             for z, id, _round in counter:
                 # select current z plane
-                idx1 = zidxs[0][id]
-                idx2 = zidxs[1][id]
-                ax[idx1,idx2].axis(False)
+                ax[id].axis(False)
                 if z == None:
                     pass
                 else:      
                     img = imgs[z,:,:]
-                    self.PACPs[w].zs[idx1, idx2] = z
-                    self.plot_axis(ax[idx1, idx2], img, z, w, t)
+                    self.PACPs[w].zs[id] = z
+                    self.plot_axis(ax[id], img, z, w, t)
                     labs = self.Labels[t][z]
                     
                     for lab in labs:
@@ -1377,12 +1378,12 @@ class CellTracking(object):
                         xs = round(xs*self.dim_change)
                         ys = round(ys*self.dim_change)
                         if zz == z:
-                            pos = ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                            pos = ax[id].scatter([ys], [xs], s=1.0, c="white")
                             self._pos_scatters[w].append(pos)
-                            ano = ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
+                            ano = ax[id].annotate(str(lab), xy=(ys, xs), c="white")
                             self._annotations[w].append(ano)
-                            _ = ax[idx1, idx2].set_xticks([])
-                            _ = ax[idx1, idx2].set_yticks([])
+                            _ = ax[id].set_xticks([])
+                            _ = ax[id].set_yticks([])
                             
             plt.subplots_adjust(bottom=0.075)
             # Make a horizontal slider to control the frequency.
@@ -1425,8 +1426,6 @@ class CellTracking(object):
         self._annotations[PACPid]      = []
         for z, id, r in counter:
             # select current z plane
-            idx1 = zidxs[0][id]
-            idx2 = zidxs[1][id]
             if z == None:
                 img = np.zeros(self.plot_stack_dims)
                 self._imshows[PACPid][id].set_data(img)
@@ -1435,9 +1434,9 @@ class CellTracking(object):
                 self._titles[PACPid][id].set_text("")
             else:      
                 img = imgs[z,:,:]
-                PACP.zs[idx1, idx2] = z
+                PACP.zs[id] = z
                 labs = self.Labels[t][z]
-                self.replot_axis(PACP.ax[idx1, idx2], img, z, t, PACPid, id, plot_outlines=plot_outlines)
+                self.replot_axis(PACP.ax[id], img, z, t, PACPid, id, plot_outlines=plot_outlines)
                 for lab in labs:
                     cell = self._get_cell(lab)
                     tid = cell.times.index(t)
@@ -1446,18 +1445,18 @@ class CellTracking(object):
                     ys = round(ys*self.dim_change)
                     if zz == z:
                         if [lab, PACP.t] in self.apoptotic_events:
-                            _ = PACP.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="k")
+                            _ = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                             self._pos_scatters[PACPid].append(_)
                         else:
-                            _ = PACP.ax[idx1, idx2].scatter([ys], [xs], s=1.0, c="white")
+                            _ = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
                             self._pos_scatters[PACPid].append(_)
-                        anno = PACP.ax[idx1, idx2].annotate(str(lab), xy=(ys, xs), c="white")
+                        anno = PACP.ax[id].annotate(str(lab), xy=(ys, xs), c="white")
                         self._annotations[PACPid].append(anno)              
                         
                         for mitoev in self.mitotic_events:
                             for cell in mitoev:
                                 if [lab, PACP.t]==cell:
-                                    _ = PACP.ax[idx1, idx2].scatter([ys], [xs], s=5.0, c="red")
+                                    _ = PACP.ax[id].scatter([ys], [xs], s=5.0, c="red")
                                     self._pos_scatters[PACPid].append(_)
 
         plt.subplots_adjust(bottom=0.075)

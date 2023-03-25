@@ -372,46 +372,23 @@ class PlotActionCT(PlotAction):
 
     def add_cells(self):
         self.title.set(text="ADD CELL MODE", ha='left', x=0.01)
-        if isinstance(self.ax, np.ndarray):
-            if len(self.ax.shape)==1:
-                if self.current_subplot == None:
-                    self.instructions.set(text="Double left-click to select Z-PLANE")
-                    self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
-                    self.fig.patch.set_facecolor((0.0,1.0,0.0,0.1))
-                    self.CP = SubplotPicker_add(self)
-                else:
-                    i = self.current_subplot
-                    self.ax_sel = self.ax[i]
-                    bbox = self.ax_sel.get_window_extent()
-                    self.patch =mtp.patches.Rectangle((bbox.x0 - bbox.width*0.1, bbox.y0-bbox.height*0.1),
-                                        bbox.width*1.2, bbox.height*1.2,
-                                        fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=1000,
-                                        transform=None, figure=self.fig)
-                    self.fig.patches.extend([self.patch])
-                    #self.ax_sel.add_patch(self.patch)
-                    self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
-                    self.instructions.set(text="Right click to add points. Press ENTER when finished")
-                    self.update()
-            else:
-                if self.current_subplot == None:
-                    self.instructions.set(text="Double left-click to select Z-PLANE")
-                    self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
-                    self.fig.patch.set_facecolor((0.0,1.0,0.0,0.1))
-                    self.CP = SubplotPicker_add(self)
+        if self.current_subplot == None:
+            self.instructions.set(text="Double left-click to select Z-PLANE")
+            self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
+            self.fig.patch.set_facecolor((0.0,1.0,0.0,0.1))
+            self.CP = SubplotPicker_add(self)
 
-                else:
-                    i = self.current_subplot[0]
-                    j = self.current_subplot[1]
-                    self.ax_sel = self.ax[i,j]
-                    bbox = self.ax_sel.get_window_extent()
-                    self.patch =mtp.patches.Rectangle((bbox.x0 - bbox.width*0.1, bbox.y0-bbox.height*0.1),
-                                        bbox.width*1.2, bbox.height*1.2,
-                                        fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=-1,
-                                        transform=None, figure=self.fig)
-                    self.fig.patches.extend([self.patch])
-                    self.instructions.set(text="Right click to add points. Press ENTER when finished")
-                    self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
-                    self.update()
+        else:
+            self.ax_sel = self.ax[self.current_subplot]
+            bbox = self.ax_sel.get_window_extent()
+            self.patch =mtp.patches.Rectangle((bbox.x0 - bbox.width*0.1, bbox.y0-bbox.height*0.1),
+                                bbox.width*1.2, bbox.height*1.2,
+                                fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=-1,
+                                transform=None, figure=self.fig)
+            self.fig.patches.extend([self.patch])
+            self.instructions.set(text="Right click to add points. Press ENTER when finished")
+            self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
+            self.update()
 
     def extract_unique_cell_time_list_of_cells(self):
         if self.current_state in ["Com", "Sep"]:
