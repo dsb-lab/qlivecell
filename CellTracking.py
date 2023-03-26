@@ -901,7 +901,7 @@ class CellTracking(object):
         self._extract_unique_labels_and_max_label()
         self._extract_unique_labels_per_time()
         self._compute_masks_stack()
-        self._compute_outlines_stack()
+        self._compute_outlines_stack(increase_width=False)
 
     def _update_CT_cell_attributes(self):
             self.Labels   = []
@@ -1258,16 +1258,16 @@ class CellTracking(object):
     # based on https://stackoverflow.com/questions/29912408/finding-valid-neighbor-indices-in-2d-array    
     def voisins(self, neighs,x,y): return [[x+dx,y+dy] for (dx,dy) in neighs]
  
-    def _compute_outlines_stack(self, increse_width=True):
+    def _compute_outlines_stack(self, increase_width=True):
         t = self.times
         z = self.slices
         x,y = self.plot_stack_dims
         self._outlines_stack = np.zeros((t,z,x,y,4))
         total_cells = len(self.cells)
         for c, cell in enumerate(self.cells):
-            self._set_outlines_alphas(cell, True, increse_width)
+            self._set_outlines_alphas(cell, True, increase_width)
             
-    def _set_outlines_alphas(self, cell, plot_outline, increse_width):
+    def _set_outlines_alphas(self, cell, plot_outline, increase_width):
         if plot_outline: alpha=1
         else: alpha = 0
         
@@ -1275,7 +1275,7 @@ class CellTracking(object):
         for tid, tc in enumerate(cell.times):
             for zid, zc in enumerate(cell.zs[tid]):
                 outline = np.unique(cell.outlines[tid][zid], axis=0)
-                if increse_width: outline = self.point_neighbors(outline)
+                if increase_width: outline = self.point_neighbors(outline)
                 xids = np.rint(outline[:,1]*self.dim_change).astype('int32')
                 yids = np.rint(outline[:,0]*self.dim_change).astype('int32')
                 self._outlines_stack[tc][zc][xids,yids]=np.array(color)
@@ -1327,7 +1327,7 @@ class CellTracking(object):
         self.plot_masks=True
         
         self._compute_masks_stack()
-        self._compute_outlines_stack(increse_width=True)
+        self._compute_outlines_stack(increase_width=True)
 
         self.PACPs             = []
         self._time_sliders     = []
