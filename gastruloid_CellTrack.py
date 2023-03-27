@@ -41,13 +41,12 @@ CT_1 = CellTracking(IMGS, model, path_save, embcode
                     , movement_computation_method="center"
                     , mean_substraction_cell_movement=False
                     , plot_stack_dims = (256, 256)
-                    , plot_outline_width=1)
+                    , plot_outline_width=0)
 
 CT_1()
-CT_1.plot_tracking(plot_stack_dims = (256, 256), plot_layout=(1,1))
+CT_1.plot_tracking(plot_stack_dims = (512, 512), plot_layout=(1,1), plot_outline_width=0)
 # CT_1.plot_cell_movement()
-# CT_1.plot_masks3D_Imagej(cell_selection=False, color = np.array([175,0,175]), channel_name="0")
-
+CT_1.plot_masks3D_Imagej(cell_selection=False, color=None, channel_name="0")
 
 ### CHANNEL 2 ###
 

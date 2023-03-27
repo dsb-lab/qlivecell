@@ -901,7 +901,9 @@ class CellTracking(object):
         self._extract_unique_labels_and_max_label()
         self._extract_unique_labels_per_time()
         self._compute_masks_stack()
-        self._compute_outlines_stack(increase_width=False)
+        if self._neigh_index == 0: iw = False
+        else: iw=True
+        self._compute_outlines_stack(increase_width=iw)
 
     def _update_CT_cell_attributes(self):
             self.Labels   = []
@@ -1327,7 +1329,9 @@ class CellTracking(object):
         self.plot_masks=True
         
         self._compute_masks_stack()
-        self._compute_outlines_stack(increase_width=True)
+        if self._neigh_index == 0: iw = False
+        else: iw=True
+        self._compute_outlines_stack(increase_width=iw)
 
         self.PACPs             = []
         self._time_sliders     = []
@@ -1607,15 +1611,16 @@ class CellTracking(object):
         masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
         for cell in self.cells:
             if cell.label not in labels: continue
-            if color is None: color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('float32')
+            if color is None: _color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('float32')
+            else: _color=color
             for tid, tc in enumerate(cell.times):
                 for zid, zc in enumerate(cell.zs[tid]):
                     mask = cell.masks[tid][zid]
                     xids = mask[:,1]
                     yids = mask[:,0]
-                    masks[tc][zc][0][xids,yids]=color[0]
-                    masks[tc][zc][1][xids,yids]=color[1]
-                    masks[tc][zc][2][xids,yids]=color[2]
+                    masks[tc][zc][0][xids,yids]=_color[0]
+                    masks[tc][zc][1][xids,yids]=_color[1]
+                    masks[tc][zc][2][xids,yids]=_color[2]
         masks[0][0][0][0,0] = 255
         masks[0][0][1][0,0] = 255
         masks[0][0][2][0,0] = 255
