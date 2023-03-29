@@ -464,7 +464,7 @@ class PlotActionCT(PlotAction):
         self.title.set(text="COMBINE CELLS MODE - t", ha='left', x=0.01)
         self.instructions.set(text="Rigth-click to select cells to be combined")
         self.instructions.set_backgroundcolor((1.0,0.0,1.0,0.4))
-        self.fig.patch.set_facecolor((1.0,0.0,1.0,0.1))        
+        self.fig.patch.set_facecolor((1.0,0.0,1.0,0.1))     
         self.CP = CellPicker_com_t(self)
 
     def separate_cells_t(self):

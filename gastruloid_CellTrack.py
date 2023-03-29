@@ -18,7 +18,8 @@ model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/Ph
 
 IMGS   = np.array([[imread(path_data+f)[:-2,0,:,:] for f in files[emb:emb+1]][0]])
 
-CT_1 = CellTracking(IMGS, model, path_save, embcode
+CT_1 = CellTracking(IMGS, path_save, embcode
+                    , model=model
                     , trainedmodel=True
                     , channels=[0,0]
                     , flow_th_cellpose=0.4
@@ -44,7 +45,7 @@ CT_1 = CellTracking(IMGS, model, path_save, embcode
                     , plot_outline_width=0)
 
 CT_1()
-CT_1.plot_tracking(plot_stack_dims = (512, 512), plot_layout=(1,1), plot_outline_width=0)
+CT_1.plot_tracking(plot_stack_dims = (512, 512), plot_layout=(1,1))
 # CT_1.plot_cell_movement()
 CT_1.plot_masks3D_Imagej(cell_selection=False, color=None, channel_name="0")
 
@@ -52,7 +53,8 @@ CT_1.plot_masks3D_Imagej(cell_selection=False, color=None, channel_name="0")
 
 IMGS   = np.array([[imread(path_data+f)[:-2,1,:,:] for f in files[emb:emb+1]][0]])
 
-CT_2 = CellTracking(IMGS, model, path_save, embcode
+CT_2 = CellTracking(IMGS, path_save, embcode
+                    , model=model
                     , trainedmodel=True
                     , channels=[0,0]
                     , flow_th_cellpose=0.4

@@ -6,6 +6,7 @@ import itertools
 import warnings
 
 from cellpose import utils as utilscp
+import cellpose
 
 from matplotlib import cm
 import matplotlib.pyplot as plt
@@ -13,6 +14,7 @@ from matplotlib.lines import lineStyles
 
 import random
 from scipy.spatial import ConvexHull
+from scipy.ndimage import distance_transform_edt
 
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
@@ -43,8 +45,7 @@ warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 warnings.simplefilter("ignore", UserWarning)
 
 plt.rcParams['keymap.save'].remove('s')
-plt.rcParams['keymap.zoom'][0]='º'
-
+plt.rcParams['keymap.zoom'][0]=','
 PLTLINESTYLES = list(lineStyles.keys())
 PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X" ,"p","^"]
 
@@ -92,30 +93,38 @@ class CellSegmentation(object):
         self._assign_color_to_label()
 
     def __call__(self):
-        print("################       SEGMENTING CURRENT EMBRYO      ################")
-        self.printfancy("")
         self._cell_segmentation_outlines()
         self.printfancy("")
-        self.printfancy("Raw segmentation completed")
         self._update()
 
         self.printfancy("Running segmentation post-processing...")
+        self.printclear()
+        self.printfancy("running concatenation correction... (1/2)")
         self._separate_concatenated_cells()
+        self.printclear()
+        self.printfancy("concatenation correction completed (1/2)")
         self._update()
 
+        self.printclear()
+        self.printfancy("running concatenation correction... (2/2)")
         self._separate_concatenated_cells()
+        self.printclear()
+        self.printfancy("concatenation correction completed (2/2)")
         self._update()
-
+        self.printclear()
+        self.printfancy("running short cell removal...")
         self._remove_short_cells()
+        self.printclear()
+        self.printfancy("short cell removal completed")
+        self.printclear()
+        self.printfancy("computing attributes...")
         self._update()
         self._position3d()
-                
+        self.printclear()
+        self.printfancy("attributes computed")
+        self.printclear()
         self.printfancy("")
-
-        self.printfancy("Segmentation completed and revised")
-        self.printfancy("")
-        print("################         SEGMENTATION COMPLETED       ################")
-        self.printfancy("")
+        self.printfancy("Segmentation and corrections completed")
     
     def _cell_segmentation_outlines(self):
 
@@ -570,10 +579,11 @@ class CellSegmentation(object):
         new_str+="#"
         print(new_str)
 
-    def printclear(self):
+    def printclear(self, n=1):
         LINE_UP = '\033[1A'
         LINE_CLEAR = '\x1b[2K'
-        print(LINE_UP, end=LINE_CLEAR)
+        for i in range(n):
+            print(LINE_UP, end=LINE_CLEAR)
 
     def progress(self, step, total, width=46):
         percent = np.rint(step*100/total).astype('int32')
@@ -609,83 +619,112 @@ class CellSegmentation(object):
 
 
 class CellTracking(object):
-    def __init__(self, stacks, model, pthtosave, embcode, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=(512, 512), plot_outline_width=1):
+        
+    def __init__(self, stacks, pthtosave, embcode, CELLS=None, CT_info=None, model=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=(512, 512), plot_outline_width=1):
+        if CELLS !=None: 
+            self._init_with_cells(CELLS, CT_info)
+        else:
+            if model is None: model = cellpose.models.Cellpose(gpu=True, model_type='nuclei')
+            self._model            = model
+            self._trainedmodel     = trainedmodel
+            self._channels         = channels
+            self._flow_th_cellpose = flow_th_cellpose
+            self._distance_th_z    = distance_th_z
+            self._xyresolution     = xyresolution
+            self._zresolution      = zresolution
+            self.times             = np.shape(stacks)[0]
+            self.slices            = np.shape(stacks)[1]
+            self.stack_dims        = np.shape(stacks)[-2:]
+            self._tstep = time_step
+
+            ##  Segmentation and tracking attributes  ##
+            self._relative         = relative_overlap
+            self._fullmat          = use_full_matrix_to_compute_overlap
+            self._zneigh           = z_neighborhood
+            self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
+            
+            ##  Mito and Apo events
+            self.apoptotic_events  = []
+            self.mitotic_events    = []
+        
         self.path_to_save      = pthtosave
         self.embcode           = embcode
         self.stacks            = stacks
-        self._model            = model
-        self._trainedmodel     = trainedmodel
-        self._channels         = channels
-        self._flow_th_cellpose = flow_th_cellpose
-        self._distance_th_z    = distance_th_z
-        self._xyresolution     = xyresolution
-        self._zresolution      = zresolution
-        self.times             = np.shape(stacks)[0]
-        self.slices            = np.shape(stacks)[1]
-        self.stack_dims        = np.shape(stacks)[-2:]
-        self.plot_stack_dims   = plot_stack_dims
-        
+        self.max_label         = 0
+
+        ##  Plotting Attributes  ##
         # We assume that both dimension have the same resolution
+        self.plot_stack_dims   = plot_stack_dims
         self.dim_change = plot_stack_dims[0] / self.stack_dims[0]
         self._plot_xyresolution= self._xyresolution * self.dim_change
-        self._relative         = relative_overlap
-        self._fullmat          = use_full_matrix_to_compute_overlap
-        self._zneigh           = z_neighborhood
-        self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
         if not hasattr(plot_layout, '__iter__'): raise # Need to revise this error 
         self.plot_layout       = plot_layout
         self.plot_overlap      = plot_overlap
-        self.max_label         = 0
         self._cmap_name        = masks_cmap
         self._cmap             = cm.get_cmap(self._cmap_name)
         self._label_colors     = self._cmap.colors
-        self._min_outline_length = min_outline_length
-        self._nearest_neighs     = neighbors_for_sequence_sorting
+        self.plot_masks = True
+        self._backup_steps= backup_steps
+        self._neigh_index = plot_outline_width
+        self.plot_tracking_windows=plot_tracking_windows
+        self._assign_color_to_label()
+
+        ##  Cell movement parameters  ##
         self._cdaxis = cell_distance_axis
         self._movement_computation_method = movement_computation_method
-        self.plot_masks = True
+        self._mscm   = mean_substraction_cell_movement
+
+        ##  Extra attributes  ##
+        self._min_outline_length = min_outline_length
+        self._nearest_neighs     = neighbors_for_sequence_sorting
         self.list_of_cells     = []
         self.mito_cells        = []
-        self.apoptotic_events  = []
-        self.mitotic_events    = []
-        self._backup_steps= backup_steps
-        self.plot_tracking_windows=plot_tracking_windows
-        self._tstep = time_step
-        self._mscm   = mean_substraction_cell_movement
-        self._neigh_index = plot_outline_width
-        self._assign_color_to_label()
+        
         self.CT_info = CellTracking_info(self)
         
-    def printfancy(self, string, finallength=70):
+        if CELLS!=None: self.update_labels()
+
+    def _init_with_cells(self, CELLS, CT_info):
+        self._xyresolution    = CT_info.xyresolution 
+        self._zresolution     = CT_info.zresolution  
+        self.times            = CT_info.times
+        self.slices           = CT_info.slices
+        self.stack_dims       = CT_info.stack_dims
+        self._tstep           = CT_info.time_step
+        self.apoptotic_events = CT_info.apo_cells
+        self.mitotic_events   = CT_info.mito_cells
+        self.cells = CELLS
+        
+    def printfancy(self, string, finallength=70, clear_prev=0):
         new_str = "#   "+string
         while len(new_str)<finallength-1:
             new_str+=" "
         new_str+="#"
+        self.printclear(clear_prev)
         print(new_str)
 
-    def printclear(self):
+    def printclear(self, n=1):
         LINE_UP = '\033[1A'
         LINE_CLEAR = '\x1b[2K'
-        print(LINE_UP, end=LINE_CLEAR)
-        
+        for i in range(n):
+            print(LINE_UP, end=LINE_CLEAR)
+
     def __call__(self):
         self.cell_segmentation()
         self.printfancy("")
         self.cell_tracking()
-        self.printfancy("tracking completed")
-        self.printfancy("")
+        self.printfancy("tracking completed", clear_prev=1)
         self.init_cells()
-        self.printfancy("cells initialised")
+        self.printfancy("cells initialised", clear_prev=1)
         self.update_labels()
-        self.printfancy("")
-        self.printfancy("labels updated")
+        self.printfancy("labels updated", clear_prev=1)
         self.backupCT  = backup_CellTrack(0, self)
         self._backupCT = backup_CellTrack(0, self)
         self.backups = deque([self._backupCT], self._backup_steps)
         plt.close("all")
-        self.printfancy("")
-        print("#######################    PROCESS FINISHED   #######################")
-
+        self.printclear(2)
+        print("##############    SEGMENTATION AND TRACKING FINISHED   ##############")
+        
     def undo_corrections(self, all=False):
         if all:
             backup = self.backupCT
@@ -721,7 +760,7 @@ class CellTracking(object):
         self._labels   = []
         self._Zlabel_zs= []
         self._Zlabel_ls= []
-        print("######################   BEGIN SEGMENTATIONS   ######################")
+        print("######################   BEGIN SEGMENTATIONS   #######################")
         for t in range(self.times):
             imgs = self.stacks[t,:,:,:]
             CS = CellSegmentation( imgs, self._model, self.embcode, trainedmodel=self._trainedmodel
@@ -738,10 +777,10 @@ class CellTracking(object):
                                 , neighbors_for_sequence_sorting=self._nearest_neighs)
 
             self.printfancy("")
-            self.printfancy("######   CURRENT TIME = %d   ######" %t)
+            self.printfancy("######   CURRENT TIME = %d/%d   ######" % (t+1, self.times))
             self.printfancy("")
             CS()
-            self.printfancy("Segmentation and corrections completed. Proceeding to next time")
+            self.printfancy("Segmentation and corrections completed. Proceeding to next time", clear_prev=1)
             self.TLabels.append(CS.labels_centers)
             self.TCenters.append(CS.centers_positions)
             self.TOutlines.append(CS.centers_outlines)
@@ -751,7 +790,9 @@ class CellTracking(object):
             self._labels.append(CS.labels)
             self._Zlabel_zs.append(CS._Zlabel_z)
             self._Zlabel_ls.append(CS._Zlabel_l)
-            self.printfancy("")
+        
+            self.printclear(n=7)
+        self.printclear(n=2)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
 
     def cell_tracking(self):
@@ -901,9 +942,7 @@ class CellTracking(object):
         self._extract_unique_labels_and_max_label()
         self._extract_unique_labels_per_time()
         self._compute_masks_stack()
-        if self._neigh_index == 0: iw = False
-        else: iw=True
-        self._compute_outlines_stack(increase_width=iw)
+        self._compute_outlines_stack()
 
     def _update_CT_cell_attributes(self):
             self.Labels   = []
@@ -953,7 +992,7 @@ class CellTracking(object):
                 self.printfancy("ERROR: Improve your point drawing") 
                 for PACP in self.PACPs:
                     PACP.visualization()
-                return
+                return None, None
         return np.array(new_outline), used_idxs
 
     def _increase_point_resolution(self, outline):
@@ -1020,6 +1059,7 @@ class CellTracking(object):
     def append_cell_from_outline(self, outline, z, t, sort=True):
         if sort:
             new_outline_sorted, _ = self._sort_point_sequence(outline)
+            if new_outline_sorted is None: return
         else:
             new_outline_sorted = outline
         new_outline_sorted_highres = self._increase_point_resolution(new_outline_sorted)
@@ -1127,11 +1167,11 @@ class CellTracking(object):
     
     def combine_cells_t(self):
         # 2 cells selected
+        print(self.list_of_cells)
         if len(self.list_of_cells)!=2:
             return
         cells = [x[0] for x in self.list_of_cells]
-        Ts    = [x[1] for x in self.list_of_cells]
-        
+        Ts    = [x[2] for x in self.list_of_cells]
         # 2 different times
         if len(np.unique(Ts))!=2:
             return
@@ -1140,7 +1180,7 @@ class CellTracking(object):
         minlab = min(cells)
         cellmax = self._get_cell(maxlab)
         cellmin = self._get_cell(minlab)
-        
+
         # check time overlap
         if any(i in cellmax.times for i in cellmin.times):
             self.printfancy("ERROR: cells overlap in time")
@@ -1162,7 +1202,7 @@ class CellTracking(object):
         if len(self.list_of_cells)!=2:
             return
         cells = [x[0] for x in self.list_of_cells]
-        Ts    = [x[1] for x in self.list_of_cells]
+        Ts    = [x[2] for x in self.list_of_cells]
 
         # 2 different times
         if len(np.unique(Ts))!=2:
@@ -1259,28 +1299,57 @@ class CellTracking(object):
         
     # based on https://stackoverflow.com/questions/29912408/finding-valid-neighbor-indices-in-2d-array    
     def voisins(self, neighs,x,y): return [[x+dx,y+dy] for (dx,dy) in neighs]
- 
-    def _compute_outlines_stack(self, increase_width=True):
+
+    # Function based on: https://github.com/scikit-image/scikit-image/blob/v0.20.0/skimage/segmentation/_expand_labels.py#L5-L95
+    def increase_outline_width(self, label_image, neighs):
+
+        distances, nearest_label_coords = distance_transform_edt(label_image == np.array([0.,0.,0.,0.]), return_indices=True)
+        labels_out = np.zeros_like(label_image)
+        dilate_mask = distances <= neighs
+        # build the coordinates to find nearest labels,
+        # in contrast to [1] this implementation supports label arrays
+        # of any dimension
+        masked_nearest_label_coords = [
+            dimension_indices[dilate_mask]
+            for dimension_indices in nearest_label_coords
+        ]
+        nearest_labels = label_image[tuple(masked_nearest_label_coords)]
+        labels_out[dilate_mask] = nearest_labels
+        return labels_out
+
+    def _compute_outlines_stack(self):
         t = self.times
         z = self.slices
         x,y = self.plot_stack_dims
-        self._outlines_stack = np.zeros((t,z,x,y,4))
+        self._outlines_stack_pre = np.zeros((t,z,256,256,4))
         total_cells = len(self.cells)
         for c, cell in enumerate(self.cells):
-            self._set_outlines_alphas(cell, True, increase_width)
-            
-    def _set_outlines_alphas(self, cell, plot_outline, increase_width):
+            self._set_outlines_alphas(cell, True)
+        
+        self._outlines_stack = np.zeros((t,z,x,y,4))
+        if x == 256: 
+            self._outlines_stack = self._outlines_stack_pre 
+            return
+        for tid in range(self.times):
+            for zid in range(self.slices): 
+                self._outlines_stack[tid][zid] =  cv2.resize(self._outlines_stack_pre[tid][zid], self.plot_stack_dims)
+                xid, yid, cid = np.where(self._outlines_stack[tid][zid] != [0,0,0,0])
+                a = self._outlines_stack[tid][zid][xid, yid]
+                a[:,3] = 1
+                self._outlines_stack[tid][zid][xid, yid]= a
+                
+    def _set_outlines_alphas(self, cell, plot_outline):
         if plot_outline: alpha=1
         else: alpha = 0
         
+        dim_change = 256 / self.stack_dims[0]
         color = np.append(self._label_colors[self._labels_color_id[cell.label]], alpha)
         for tid, tc in enumerate(cell.times):
             for zid, zc in enumerate(cell.zs[tid]):
                 outline = np.unique(cell.outlines[tid][zid], axis=0)
-                if increase_width: outline = self.point_neighbors(outline)
-                xids = np.rint(outline[:,1]*self.dim_change).astype('int32')
-                yids = np.rint(outline[:,0]*self.dim_change).astype('int32')
-                self._outlines_stack[tc][zc][xids,yids]=np.array(color)
+                xids = np.rint(outline[:,1]*dim_change).astype('int32')
+                yids = np.rint(outline[:,0]*dim_change).astype('int32')
+                self._outlines_stack_pre[tc][zc][xids,yids]=np.array(color)
 
     def plot_axis(self, _ax, img, z, PACPid, t):
         im = _ax.imshow(img, vmin=0, vmax=255)
@@ -1329,9 +1398,7 @@ class CellTracking(object):
         self.plot_masks=True
         
         self._compute_masks_stack()
-        if self._neigh_index == 0: iw = False
-        else: iw=True
-        self._compute_outlines_stack(increase_width=iw)
+        self._compute_outlines_stack()
 
         self.PACPs             = []
         self._time_sliders     = []
