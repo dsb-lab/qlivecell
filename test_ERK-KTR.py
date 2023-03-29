@@ -37,7 +37,6 @@ EmbSeg.plot_segmentation(t, z, extra_IMGS=IMGS_SEG)
 
 # EmbSeg = load_ES(path_save, embcode)
 
-
 erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100)
 
 import time
