@@ -9,7 +9,7 @@ path_data=home+'/Desktop/PhD/projects/Data/gastruloids/movies/joshi/competition/
 path_save=home+'/Desktop/PhD/projects/Data/gastruloids/CellTrackObjects/joshi/competition/F3_A12-8/'
 
 files = os.listdir(path_data)
-emb = 2
+emb = 0
 embcode=files[emb].split('.')[0]
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
 #model  = models.Cellpose(gpu=True, model_type='nuclei')
@@ -24,8 +24,8 @@ CT_1 = CellTracking(IMGS, path_save, embcode
                     , channels=[0,0]
                     , flow_th_cellpose=0.4
                     , distance_th_z=3.0
-                    , xyresolution=0.2767553 # microns per pixel
-                    , zresolution =3
+                    , xyresolution=0.2525 # microns per pixel
+                    , zresolution =2.98
                     , relative_overlap=False
                     , use_full_matrix_to_compute_overlap=True
                     , z_neighborhood=2
@@ -45,9 +45,11 @@ CT_1 = CellTracking(IMGS, path_save, embcode
                     , plot_outline_width=0)
 
 CT_1()
-CT_1.plot_tracking(plot_stack_dims = (512, 512), plot_layout=(1,1))
-# CT_1.plot_cell_movement()
-CT_1.plot_masks3D_Imagej(cell_selection=False, color=None, channel_name="0")
+CT_1.plot_tracking(plot_stack_dims = (256, 256), plot_layout=(1,1), plot_outline_width=1)
+CT_1.plot_cell_movement()
+
+# NEED TO CORRECT PlotActionCellPicker object has no attribute plot_outlines
+CT_1.plot_masks3D_Imagej(cell_selection=True, color=None, channel_name="0")
 
 ### CHANNEL 2 ###
 
@@ -59,8 +61,8 @@ CT_2 = CellTracking(IMGS, path_save, embcode
                     , channels=[0,0]
                     , flow_th_cellpose=0.4
                     , distance_th_z=3.0
-                    , xyresolution=0.2767553 # microns per pixel
-                    , zresolution =3
+                    , xyresolution=0.2525 # microns per pixel
+                    , zresolution =2.98
                     , relative_overlap=False
                     , use_full_matrix_to_compute_overlap=True
                     , z_neighborhood=2
