@@ -1282,8 +1282,8 @@ class CellTracking(object):
         for tid, tc in enumerate(cell.times):
             for zid, zc in enumerate(cell.zs[tid]):
                 mask = cell.masks[tid][zid]
-                xids = np.rint(mask[:,1]*self.dim_change).astype('int32')
-                yids = np.rint(mask[:,0]*self.dim_change).astype('int32')
+                xids = np.floor(mask[:,1]*self.dim_change).astype('int32')
+                yids = np.floor(mask[:,0]*self.dim_change).astype('int32')
                 self._masks_stack[tc][zc][xids,yids]=np.array(color)
                 
     def point_neighbors(self, outline):
@@ -1321,35 +1321,31 @@ class CellTracking(object):
         t = self.times
         z = self.slices
         x,y = self.plot_stack_dims
-        self._outlines_stack_pre = np.zeros((t,z,256,256,4))
-        total_cells = len(self.cells)
-        for c, cell in enumerate(self.cells):
-            self._set_outlines_alphas(cell, True)
-        
+        # self._outlines_stack_pre = np.zeros((t,z,256,256,4))
         self._outlines_stack = np.zeros((t,z,x,y,4))
-        if x == 256: 
-            self._outlines_stack = self._outlines_stack_pre 
-            return
-        for tid in range(self.times):
-            for zid in range(self.slices): 
-                self._outlines_stack[tid][zid] =  cv2.resize(self._outlines_stack_pre[tid][zid], self.plot_stack_dims)
-                xid, yid, cid = np.where(self._outlines_stack[tid][zid] != [0,0,0,0])
-                a = self._outlines_stack[tid][zid][xid, yid]
-                a[:,3] = 1
-                self._outlines_stack[tid][zid][xid, yid]= a
-                
-    def _set_outlines_alphas(self, cell, plot_outline):
-        if plot_outline: alpha=1
-        else: alpha = 0
+        for c, cell in enumerate(self.cells):
+            self._set_outlines_color(cell)
         
-        dim_change = 256 / self.stack_dims[0]
-        color = np.append(self._label_colors[self._labels_color_id[cell.label]], alpha)
+        # self._outlines_stack = np.zeros((t,z,x,y,4))
+        # if x == 256: 
+        #     self._outlines_stack = self._outlines_stack_pre 
+        #     return
+        # for tid in range(self.times):
+        #     for zid in range(self.slices): 
+        #         self._outlines_stack[tid][zid] =  cv2.resize(self._outlines_stack_pre[tid][zid], self.plot_stack_dims)
+        #         xid, yid, cid = np.where(self._outlines_stack[tid][zid] != [0,0,0,0])
+        #         a = self._outlines_stack[tid][zid][xid, yid]
+        #         a[:,3] = 1
+        #         self._outlines_stack[tid][zid][xid, yid]= a
+                
+    def _set_outlines_color(self, cell):
+        color = np.append(self._label_colors[self._labels_color_id[cell.label]], 1)
         for tid, tc in enumerate(cell.times):
             for zid, zc in enumerate(cell.zs[tid]):
                 outline = np.unique(cell.outlines[tid][zid], axis=0)
-                xids = np.rint(outline[:,1]*dim_change).astype('int32')
-                yids = np.rint(outline[:,0]*dim_change).astype('int32')
-                self._outlines_stack_pre[tc][zc][xids,yids]=np.array(color)
+                xids = np.floor(outline[:,1]*self.dim_change).astype('int32')
+                yids = np.floor(outline[:,0]*self.dim_change).astype('int32')
+                self._outlines_stack[tc][zc][xids,yids]=np.array(color)
 
     def plot_axis(self, _ax, img, z, PACPid, t):
         im = _ax.imshow(img, vmin=0, vmax=255)
