@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+from tifffile import TiffFile
 
 def compute_distance_xy(X1, X2, Y1, Y2):
     return np.sqrt((X2-X1)**2 + (Y2-Y1)**2)
@@ -63,3 +64,18 @@ def load_CT(path=None, filename=None):
     CT_info = pickle.load(file_to_store)
     file_to_store.close()
     return cells, CT_info
+
+def read_img_with_resolution(path_to_file, channel=0):
+    with TiffFile(path_to_file) as tif:
+        IMGS = np.array([tif.asarray()[:,channel,:,:]])
+        imagej_metadata = tif.imagej_metadata
+        tags = tif.pages[0].tags
+        # parse X, Y resolution
+        npix, unit = tags['XResolution'].value
+        xres = unit/npix
+        npix, unit = tags['YResolution'].value
+        yres = unit/npix
+        assert(xres == yres)
+        xyres = xres
+        zres = imagej_metadata['spacing']
+    return IMGS, xyres, zres

@@ -547,7 +547,7 @@ class CellSegmentation(object):
 
     def _increase_point_resolution(self, outline):
         rounds = np.ceil(np.log2(self._min_outline_length/len(outline))).astype('int32')
-        if rounds==0:
+        if rounds<=0:
                 newoutline_new=np.copy(outline)
         for r in range(rounds):
             if r==0:
