@@ -615,7 +615,7 @@ class CellSegmentation(object):
 
     def _assign_color_to_label(self):
         coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
-        self._labels_color_id = [next(coloriter) for i in range(3000)]
+        self._labels_color_id = [next(coloriter) for i in range(10000)]
 
 
 class CellTracking(object):
@@ -1531,7 +1531,7 @@ class CellTracking(object):
 
     def _assign_color_to_label(self):
         coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
-        self._labels_color_id = [next(coloriter) for i in range(3000)]
+        self._labels_color_id = [next(coloriter) for i in range(10000)]
     
     def compute_cell_movement(self, movement_computation_method):
         for cell in self.cells:
