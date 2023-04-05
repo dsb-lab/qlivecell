@@ -682,7 +682,12 @@ class CellTracking(object):
         
         self.CT_info = CellTracking_info(self)
         
-        if CELLS!=None: self.update_labels()
+        if CELLS!=None: 
+            self.update_labels()
+            self.backupCT  = backup_CellTrack(0, self)
+            self._backupCT = backup_CellTrack(0, self)
+            self.backups = deque([self._backupCT], self._backup_steps)
+            plt.close("all")
 
     def _init_with_cells(self, CELLS, CT_info):
         self._xyresolution    = CT_info.xyresolution 
@@ -694,7 +699,12 @@ class CellTracking(object):
         self.apoptotic_events = CT_info.apo_cells
         self.mitotic_events   = CT_info.mito_cells
         self.cells = CELLS
-        
+        self.extract_currentcellid()
+    
+    def extract_currentcellid(self):
+        self.currentcellid=0
+        for cell in self.cells:
+            self.currentcellid=max(self.currentcellid, cell.id)
     def printfancy(self, string, finallength=70, clear_prev=0):
         new_str = "#   "+string
         while len(new_str)<finallength-1:
@@ -1232,16 +1242,27 @@ class CellTracking(object):
         self.update_labels()
 
     def apoptosis(self, list_of_cells):
-        for cell in list_of_cells:
-            if cell not in self.apoptotic_events:
-                self.apoptotic_events.append(cell)
+        for cell_att in list_of_cells:
+            lab, z, t = cell_att
+            cell = self._get_cell(lab)
+            attributes = [cell.id, z, t]
+            if attributes not in self.apoptotic_events:
+                self.apoptotic_events.append(attributes)
             else:
-                self.apoptotic_events.remove(cell)
+                self.apoptotic_events.remove(attributes)
 
     def mitosis(self):
         if len(self.mito_cells) != 3:
             return 
-        mito_ev = [self.mito_cells[0], self.mito_cells[1], self.mito_cells[2]]
+        cell  = self._get_cell(self.mito_cells[0][0]) 
+        mito0 = [cell.id, self.mito_cells[0][1]]
+        cell  = self._get_cell(self.mito_cells[1][0])
+        mito1 = [cell.id, self.mito_cells[1][1]]
+        cell  = self._get_cell(self.mito_cells[2][0]) 
+        mito2 = [cell.id, self.mito_cells[2][1]]
+        
+        mito_ev = [mito0, mito1, mito2]
+        
         if mito_ev in self.mitotic_events:
             self.mitotic_events.remove(mito_ev)
         else:
