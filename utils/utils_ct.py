@@ -41,13 +41,9 @@ def extract_position_as_matrices(CT):
             Y[i,t] = CT.FinalCenters[t][id][2]
     return X,Y,Z
 
-def save_CT(CT, path=None, filename=None, _del_plots=True):
+def save_cells(CT, path=None, filename=None):
     pthsave = path+filename
-    file_to_store = open(pthsave+".pickle", "wb")
-    if _del_plots:
-        if hasattr(CT, 'PACPs'):
-            delattr(CT, 'PACPs')
-            delattr(CT, '_time_sliders')
+    file_to_store = open(pthsave+"_cells.pickle", "wb")
     pickle.dump(CT.cells, file_to_store)
     file_to_store.close()
     file_to_store = open(pthsave+"_info.pickle", "wb")
@@ -55,9 +51,9 @@ def save_CT(CT, path=None, filename=None, _del_plots=True):
     pickle.dump(CT.CT_info, file_to_store)
     file_to_store.close()
 
-def load_CT(path=None, filename=None):
+def load_cells(path=None, filename=None):
     pthsave = path+filename
-    file_to_store = open(pthsave+".pickle", "rb")
+    file_to_store = open(pthsave+"_cells.pickle", "rb")
     cells = pickle.load(file_to_store)
     file_to_store.close()
     file_to_store = open(pthsave+"_info.pickle", "rb")
@@ -65,9 +61,34 @@ def load_CT(path=None, filename=None):
     file_to_store.close()
     return cells, CT_info
 
+
+def save_CT(CT, path=None, filename=None, _del_plots=True):
+    pthsave = path+filename
+    file_to_store = open(pthsave+".pickle", "wb")
+    if _del_plots:
+        if hasattr(CT, 'PACPs'):
+            delattr(CT, 'PACPs')
+            delattr(CT, '_time_sliders')
+    pickle.dump(CT, file_to_store)
+    file_to_store.close()
+
+def load_CT(path=None, filename=None):
+    pthsave = path+filename
+    file_to_store = open(pthsave+".pickle", "rb")
+    CT = pickle.load(file_to_store)
+    file_to_store.close()
+    return CT
+
 def read_img_with_resolution(path_to_file, channel=0):
     with TiffFile(path_to_file) as tif:
-        IMGS = np.array([tif.asarray()[:,channel,:,:]])
+        preIMGS = tif.asarray()
+        shapeimg = preIMGS.shape
+        if channel==None: 
+            if len(shapeimg) == 3: IMGS = np.array([tif.asarray()])
+            else: IMGS = np.array(tif.asarray())
+        else: 
+            if len(shapeimg) == 4: IMGS = np.array([tif.asarray()[:,channel,:,:]])
+            else: IMGS = np.array(tif.asarray()[:,:,channel,:,:])
         imagej_metadata = tif.imagej_metadata
         tags = tif.pages[0].tags
         # parse X, Y resolution

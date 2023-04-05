@@ -14,7 +14,6 @@ model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/Ph
 
 emb = 1
 file = files[emb]
-file = 'CompetitionGastruloid_n2_F3(150)+A12-WT(150)_120h_3.tif'
 embcode=file.split('.')[0]
 ### CHANNEL 1 ###
 
