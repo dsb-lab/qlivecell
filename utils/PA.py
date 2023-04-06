@@ -108,7 +108,7 @@ class PlotActionCT(PlotAction):
         actionsbox = "Possible actions: \n- ESC : visualization\n- a : add cell\n- d : delete cell\n- j : join cells\n- c : combine cells - z\n- C : combine cells - t\n- s : separate cells - t\n- A : apoptotic event\n- M : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- m : show/hide outlines\n- q : quit plot"
         self.actionlist = self.fig.text(0.01, 0.8, actionsbox, fontsize=1, ha='left', va='top')
         self.title          = self.fig.text(0.02,0.96,"", ha='left', va='top', fontsize=1)
-        self.timetxt = self.fig.text(0.02, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=1, ha='left', va='top')
+        self.timetxt = self.fig.text(0.02, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t+1, tt=self.CT.times), fontsize=1, ha='left', va='top')
         self.instructions = self.fig.suptitle("PRESS ENTER TO START",y=0.98, fontsize=1, ha='center', va='top', bbox=dict(facecolor='black', alpha=0.4, edgecolor='black', pad=2))
         self.selected_cells = self.fig.text(0.98, 0.89, "Selection", fontsize=1, ha='right', va='top')
         
@@ -368,7 +368,7 @@ class PlotActionCT(PlotAction):
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Selection\n\n"+s)
         self.instructions.set(fontsize=width_or_height/scale2)
-        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t, tt=self.CT.times-1), fontsize=width_or_height/scale2)
+        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t+1, tt=self.CT.times), fontsize=width_or_height/scale2)
         self.title.set(fontsize=width_or_height/scale2)
         self.fig.subplots_adjust(top=0.9,left=0.2)
         self.fig.canvas.draw_idle()

@@ -48,6 +48,8 @@ class plotRound:
         self.currentround = round
         if self.rounds == 1:
             self.groupsize=self.totalspots
+        first, last = self.get_first_and_last_in_round(round)
+        if last - first < (self.groupsize-1): self.current = last - self.groupsize +1
     
     def __iter__(self):
         return self
