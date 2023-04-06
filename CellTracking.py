@@ -680,6 +680,7 @@ class CellTracking(object):
         self.list_of_cells     = []
         self.mito_cells        = []
         
+        self.action_counter = -1
         self.CT_info = CellTracking_info(self)
         
         if CELLS!=None: 
@@ -705,6 +706,7 @@ class CellTracking(object):
         self.currentcellid=0
         for cell in self.cells:
             self.currentcellid=max(self.currentcellid, cell.id)
+        self.currentcellid+=1
     def printfancy(self, string, finallength=70, clear_prev=0):
         new_str = "#   "+string
         while len(new_str)<finallength-1:
@@ -953,6 +955,7 @@ class CellTracking(object):
         self._extract_unique_labels_per_time()
         self._compute_masks_stack()
         self._compute_outlines_stack()
+        self.action_counter+=1
 
     def _update_CT_cell_attributes(self):
             self.Labels   = []

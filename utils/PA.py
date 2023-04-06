@@ -348,15 +348,15 @@ class PlotActionCT(PlotAction):
             width_or_height = self.figwidth
         
         labs_to_plot = [x[0] for x in cells_to_plot]
-        for lab in labs_to_plot:
-            cell = self.CT._get_cell(label=lab)
-            self.CT._set_masks_alphas(cell, True)
+        # for lab in labs_to_plot:
+        #     cell = self.CT._get_cell(label=lab)
+        #     self.CT._set_masks_alphas(cell, True)
         
-        labs_to_remove = [l for l in self._pre_labs_to_plot if l not in labs_to_plot]
+        # labs_to_remove = [l for l in self._pre_labs_to_plot if l not in labs_to_plot]
 
-        for lab in labs_to_remove:
-            cell = self.CT._get_cell(label=lab)
-            self.CT._set_masks_alphas(cell, False)
+        # for lab in labs_to_remove:
+        #     cell = self.CT._get_cell(label=lab)
+        #     self.CT._set_masks_alphas(cell, False)
 
         self._pre_labs_to_plot = labs_to_plot
 
@@ -368,7 +368,6 @@ class PlotActionCT(PlotAction):
         self.title.set(fontsize=width_or_height/scale2)
         self.fig.subplots_adjust(top=0.9,left=0.2)
         self.fig.canvas.draw_idle()
-        #self.fig.canvas.draw()
 
     def add_cells(self):
         self.title.set(text="ADD CELL MODE", ha='left', x=0.01)
