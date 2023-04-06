@@ -1299,16 +1299,19 @@ class CellTracking(object):
         for cell in self.cells:
             self._set_masks_alphas(cell, self.plot_masks)
 
-    def _set_masks_alphas(self, cell, plot_mask):
+    def _set_masks_alphas(self, cell, plot_mask, z=None):
         if plot_mask: alpha=1
         else: alpha = 0
         color = np.append(self._label_colors[self._labels_color_id[cell.label]], alpha)
         for tid, tc in enumerate(cell.times):
+            if z is None: zs = cell.zs[tid]
+            else: zs = [z]
             for zid, zc in enumerate(cell.zs[tid]):
-                mask = cell.masks[tid][zid]
-                xids = np.floor(mask[:,1]*self.dim_change).astype('int32')
-                yids = np.floor(mask[:,0]*self.dim_change).astype('int32')
-                self._masks_stack[tc][zc][xids,yids]=np.array(color)
+                if zc in zs:
+                    mask = cell.masks[tid][zid]
+                    xids = np.floor(mask[:,1]*self.dim_change).astype('int32')
+                    yids = np.floor(mask[:,0]*self.dim_change).astype('int32')
+                    self._masks_stack[tc][zc][xids,yids]=np.array(color)
                 
     def point_neighbors(self, outline):
         self.stack_dims[0]

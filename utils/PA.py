@@ -4,6 +4,7 @@ from copy import copy
 import matplotlib as mtp
 from utils.pickers import *
 import time
+
 class PlotAction():
     def __init__(self, fig, ax, CT, id, mode):
         self.fig=fig
@@ -106,7 +107,7 @@ class PlotActionCT(PlotAction):
         # Predefine some variables
         self.plot_outlines=True
         self._pre_labs_to_plot = []
-        
+        self._zs_to_plot = []
         # Update plot after initialization
         self.update()
 
@@ -331,11 +332,13 @@ class PlotActionCT(PlotAction):
             if self.current_state=="Sep": cells_to_plot = self.CT.list_of_cells
             else: cells_to_plot=self.extract_unique_cell_time_list_of_cells()
             cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
+            zs = [None for _ in cells_to_plot]
         else:
             cells_to_plot = self.sort_list_of_cells()
             for i,x in enumerate(cells_to_plot):
                 cells_to_plot[i][0] = x[0]
             cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
+            zs = [x[1] for x in cells_to_plot]
         s = "\n".join(cells_string)
         self.get_size()
         if self.figheight < self.figwidth:
@@ -348,18 +351,18 @@ class PlotActionCT(PlotAction):
             width_or_height = self.figwidth
         
         labs_to_plot = [x[0] for x in cells_to_plot]
-        # for lab in labs_to_plot:
-        #     cell = self.CT._get_cell(label=lab)
-        #     self.CT._set_masks_alphas(cell, True)
+        for i, lab in enumerate(labs_to_plot):
+            cell = self.CT._get_cell(label=lab)
+            self.CT._set_masks_alphas(cell, True, z=zs[i])
         
-        # labs_to_remove = [l for l in self._pre_labs_to_plot if l not in labs_to_plot]
-
-        # for lab in labs_to_remove:
-        #     cell = self.CT._get_cell(label=lab)
-        #     self.CT._set_masks_alphas(cell, False)
+        labs_to_remove = [l for l in self._pre_labs_to_plot if l not in labs_to_plot]
+        zs_to_remove   = [z for z in self._zs_to_plot if z not in zs]
+        for i, lab in enumerate(labs_to_remove):
+            cell = self.CT._get_cell(label=lab)
+            self.CT._set_masks_alphas(cell, False, z=zs_to_remove[i])
 
         self._pre_labs_to_plot = labs_to_plot
-
+        self._zs_to_plot = zs
         self.actionlist.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Selection\n\n"+s)

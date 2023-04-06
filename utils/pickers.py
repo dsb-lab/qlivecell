@@ -86,13 +86,10 @@ class CellPicker():
         self._update()
         
     def _update(self):
-        self.PACP.update() 
+        self.PACP.update()
+        self.PACP.reploting()  
 
 class CellPicker_del(CellPicker):
-    
-    def _update(self):
-        self.PACP.update()
-        self.PACP.reploting() 
         
     def _action(self, event):
         lab, z = self._get_cell(event)
@@ -102,6 +99,7 @@ class CellPicker_del(CellPicker):
             self.PACP.list_of_cells.append(cell)
         else:
             self.PACP.list_of_cells.remove(cell)
+        self._update()
         if event.dblclick==True:
             for id_cell, Cell in enumerate(self.PACP.CT.cells):
                 if lab == Cell.label:
@@ -123,8 +121,7 @@ class CellPicker_del(CellPicker):
             if add_all:
                 for zz in zs:
                     self.PACP.list_of_cells.append([lab, zz])
-        self.PACP.update()
-        self.PACP.reploting()
+        self._update()
 
 class CellPicker_join(CellPicker):
 
@@ -214,7 +211,10 @@ class CellPicker_com_t(CellPicker):
                     if self.PACP.t not in np.array(self.PACP.CT.list_of_cells)[:,1]:
                         self.PACP.CT.list_of_cells.append(cell)
             else:
-                if cell in self.PACP.CT.list_of_cells: self.PACP.CT.list_of_cells.remove(cell)
+                list_of_cells_t = [[x[0], x[2]] for x in self.PACP.CT.list_of_cells]
+                if [cell[0], cell[2]] in list_of_cells_t:
+                    id_to_pop = list_of_cells_t.index([cell[0], cell[2]])
+                    self.PACP.CT.list_of_cells.pop(id_to_pop)
                 else: self.PACP.CT.printfancy("ERROR: cannot combine a cell with itself")
         self._update()
 
@@ -241,8 +241,10 @@ class CellPicker_sep_t(CellPicker):
                 return
             
             else:
-                if self.PACP.t in np.array(self.PACP.CT.list_of_cells)[:,1]:
-                    self.PACP.CT.list_of_cells.remove(cell)
+                list_of_times = [_cell[2] for _cell in self.PACP.CT.list_of_cells]
+                if self.PACP.t in list_of_times:
+                    id_to_pop = list_of_times.index(self.PACP.t)
+                    self.PACP.CT.list_of_cells.pop(id_to_pop)
                 else:
                     if len(self.PACP.CT.list_of_cells)==2: 
                         self.PACP.CT.printfancy("ERROR: cannot separate more than 2 times at once")
@@ -310,10 +312,6 @@ class CellPicker_mit(CellPicker):
             else:
                 self.PACP.CT.mito_cells.append(cell)
         self._update()
-        
-    def _update(self):
-        self.PACP.update()
-        self.PACP.reploting() 
 
 class CellPicker_CP(CellPicker):
     
