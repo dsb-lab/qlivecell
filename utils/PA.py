@@ -348,8 +348,11 @@ class PlotActionCT(PlotAction):
             cell = self.CT._get_cell(label=lab)
             self.CT._set_masks_alphas(cell, True, z=zs[i])
 
-        labs_to_remove = [l for l in self._pre_labs_to_plot if l not in labs_to_plot]
-        zs_to_remove   = [z for z in self._zs_to_plot if z not in zs]
+
+        labs_z_to_remove = [[l,self._zs_to_plot[i]] for i,l in enumerate(self._pre_labs_to_plot) if l not in labs_to_plot]
+        labs_to_remove   = [l_z[0] for l_z in labs_z_to_remove]
+        zs_to_remove   = [l_z[1] for l_z in labs_z_to_remove]
+
         for i, lab in enumerate(labs_to_remove):
             cell = self.CT._get_cell(label=lab)
             if None in zs: self.CT._set_masks_alphas(cell, False, z=None)
