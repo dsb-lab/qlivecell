@@ -38,3 +38,5 @@ CT.plot_tracking(windows=1, plot_layout=(1,2), plot_overlap=1, plot_stack_dims=(
 # CT.plot_masks3D_Imagej(cell_selection=False)
 
 CT.action_counter
+
+CT.mitotic_events

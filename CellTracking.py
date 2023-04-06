@@ -1248,7 +1248,7 @@ class CellTracking(object):
         for cell_att in list_of_cells:
             lab, z, t = cell_att
             cell = self._get_cell(lab)
-            attributes = [cell.id, z, t]
+            attributes = [cell.id, t]
             if attributes not in self.apoptotic_events:
                 self.apoptotic_events.append(attributes)
             else:
@@ -1539,7 +1539,7 @@ class CellTracking(object):
                     xs = round(xs*self.dim_change)
                     ys = round(ys*self.dim_change)
                     if zz == z:
-                        if [lab, PACP.t] in self.apoptotic_events:
+                        if [cell.id, PACP.t] in self.apoptotic_events:
                             _ = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                             self._pos_scatters[PACPid].append(_)
                         else:
@@ -1549,8 +1549,8 @@ class CellTracking(object):
                         self._annotations[PACPid].append(anno)              
                         
                         for mitoev in self.mitotic_events:
-                            for cell in mitoev:
-                                if [lab, PACP.t]==cell:
+                            for ev in mitoev:
+                                if [cell.id, PACP.t]==ev:
                                     _ = PACP.ax[id].scatter([ys], [xs], s=5.0, c="red")
                                     self._pos_scatters[PACPid].append(_)
 

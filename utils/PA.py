@@ -208,7 +208,6 @@ class PlotActionCT(PlotAction):
                         self.CT.complete_add_cell(self)
                         delattr(self.CT, 'linebuilder')
                     for PACP in self.CT.PACPs:
-                        PACP._pre_labs_to_plot = []
                         PACP.list_of_cells = []
                         PACP.current_subplot=None
                         PACP.current_state=None
@@ -223,7 +222,6 @@ class PlotActionCT(PlotAction):
                     delattr(self, 'CP')
                     self.CT.delete_cell(self)
                     for PACP in self.CT.PACPs:
-                        PACP._pre_labs_to_plot = []
                         PACP.list_of_cells = []
                         PACP.current_subplot=None
                         PACP.current_state=None
@@ -238,7 +236,6 @@ class PlotActionCT(PlotAction):
                     delattr(self, 'CP')
                     self.CT.combine_cells_t()
                     for PACP in self.CT.PACPs:
-                        PACP._pre_labs_to_plot = []
                         PACP.current_subplot=None
                         PACP.current_state=None
                         PACP.ax_sel=None
@@ -253,7 +250,6 @@ class PlotActionCT(PlotAction):
                     delattr(self, 'CP')
                     self.CT.combine_cells_z(self)
                     for PACP in self.CT.PACPs:
-                        PACP._pre_labs_to_plot = []
                         PACP.list_of_cells = []
                         PACP.current_subplot=None
                         PACP.current_state=None
@@ -268,7 +264,6 @@ class PlotActionCT(PlotAction):
                     delattr(self, 'CP')
                     self.CT.join_cells(self)
                     for PACP in self.CT.PACPs:
-                        PACP._pre_labs_to_plot = []
                         PACP.list_of_cells = []
                         PACP.current_subplot=None
                         PACP.current_state=None
@@ -283,7 +278,6 @@ class PlotActionCT(PlotAction):
                     delattr(self, 'CP')
                     self.CT.separate_cells_t()
                     for PACP in self.CT.PACPs:
-                        PACP._pre_labs_to_plot = []
                         PACP.current_subplot=None
                         PACP.current_state=None
                         PACP.ax_sel=None
@@ -299,7 +293,6 @@ class PlotActionCT(PlotAction):
                     self.CT.apoptosis(self.list_of_cells)
                     self.list_of_cells=[]
                     for PACP in self.CT.PACPs:
-                        PACP._pre_labs_to_plot = []
                         PACP.CT.replot_tracking(PACP, plot_outlines=self.plot_outlines)
                         PACP.visualization()
                         PACP.update()
@@ -309,7 +302,6 @@ class PlotActionCT(PlotAction):
                     delattr(self, 'CP')
                     self.CT.mitosis()
                     for PACP in self.CT.PACPs:
-                        PACP._pre_labs_to_plot = []
                         PACP.current_subplot=None
                         PACP.current_state=None
                         PACP.ax_sel=None
@@ -351,18 +343,21 @@ class PlotActionCT(PlotAction):
             width_or_height = self.figwidth
         
         labs_to_plot = [x[0] for x in cells_to_plot]
+
         for i, lab in enumerate(labs_to_plot):
             cell = self.CT._get_cell(label=lab)
             self.CT._set_masks_alphas(cell, True, z=zs[i])
-        
+
         labs_to_remove = [l for l in self._pre_labs_to_plot if l not in labs_to_plot]
         zs_to_remove   = [z for z in self._zs_to_plot if z not in zs]
         for i, lab in enumerate(labs_to_remove):
             cell = self.CT._get_cell(label=lab)
-            self.CT._set_masks_alphas(cell, False, z=zs_to_remove[i])
+            if None in zs: self.CT._set_masks_alphas(cell, False, z=None)
+            else: self.CT._set_masks_alphas(cell, False, z=zs_to_remove[i])
 
         self._pre_labs_to_plot = labs_to_plot
         self._zs_to_plot = zs
+
         self.actionlist.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Selection\n\n"+s)

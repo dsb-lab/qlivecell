@@ -28,7 +28,7 @@ emb = apo_embs[1]
 apo_cells, apo_starts, apo_ends = select_apo(Embs[emb], ["ICM", "Polar"])
 
 Emb = Embs[emb]
-cid = 2
+cid = 1
 cell = Emb[apo_cells[cid]]
 t = cell.TimeM[apo_starts[cid]]
 x = cell.X[apo_starts[cid]]
