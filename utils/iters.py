@@ -62,3 +62,8 @@ class plotRound:
         else:
             return None, self.currentonround, self.currentround
 
+    def get_first_and_last_in_round(self, cr):
+        first = (self.groupsize*cr)-(self.overlap*cr) + 1
+        last  = first + self.groupsize - 1
+        last  = min(last, self.totalsize) 
+        return first, last

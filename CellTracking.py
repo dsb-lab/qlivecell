@@ -35,7 +35,7 @@ import gc
 import sys
 sys.path.append('utils')
 from utils.PA import *
-from utils.extraclasses import MySlider, backup_CellTrack, Cell
+from utils.extraclasses import Slider_t, Slider_z, backup_CellTrack, Cell
 from utils.iters import plotRound
 from utils.utils_ct import *
 from utils.utils_ct import save_CT
@@ -1382,7 +1382,7 @@ class CellTracking(object):
         self._imshows_masks[PACPid].append(im_masks)
         self._imshows_outlines[PACPid].append(im_outlines)
 
-        title = _ax.set_title("z = %d" %z)
+        title = _ax.set_title("z = %d" %(z+1))
         self._titles[PACPid].append(title)
         _ = _ax.axis(False)
 
@@ -1425,6 +1425,7 @@ class CellTracking(object):
 
         self.PACPs             = []
         self._time_sliders     = []
+        self._z_sliders        = []
         self._imshows          = []
         self._imshows_masks    = []
         self._imshows_outlines = []
@@ -1481,21 +1482,43 @@ class CellTracking(object):
                             _ = ax[id].set_yticks([])
                             
             plt.subplots_adjust(bottom=0.075)
-            # Make a horizontal slider to control the frequency.
-            axslide = fig.add_axes([0.12, 0.01, 0.8, 0.03])
-            sliderstr = "/%d" %(self.times -1)
-            time_slider = MySlider(
+            # Make a horizontal slider to control the time.
+            axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
+            sliderstr = "/%d" %(self.times)
+            time_slider = Slider_t(
                 ax=axslide,
                 label='time',
                 initcolor='r',
-                valmin=0,
-                valmax=self.times-1,
-                valinit=0,
+                valmin=1,
+                valmax=self.times,
+                valinit=1,
                 valstep=1,
-                valfmt="%d"+sliderstr
+                valfmt="%d"+sliderstr,
+                track_color = [0.8, 0.8, 0, 0.5],
+                facecolor   = [0.8, 0.8, 0, 1.0]
                 )
             self._time_sliders.append(time_slider)
-            self._time_sliders[w].on_changed(self.PACPs[w].update_slider)
+            self._time_sliders[w].on_changed(self.PACPs[w].update_slider_t)
+
+            # Make a horizontal slider to control the zs.
+            axslide = fig.add_axes([0.10, 0.04, 0.75, 0.03])
+            sliderstr = "/%d" %(self.slices)
+            z_slider = Slider_z(
+                ax=axslide,
+                label='z slice',
+                initcolor='r',
+                valmin=0,
+                valmax=self.PACPs[w].max_round,
+                valinit=0,
+                valstep=1,
+                valfmt="(%d-%d)"+sliderstr,
+                counter=counter,
+                track_color = [0, 0.7, 0, 0.5],
+                facecolor   = [0, 0.7, 0, 1.0]
+                )
+            self._z_sliders.append(z_slider)
+            self._z_sliders[w].on_changed(self.PACPs[w].update_slider_z)
+
         plt.show()
 
     def replot_axis(self, _ax, img, z, t, PACPid, imid, plot_outlines=True):
@@ -1503,7 +1526,7 @@ class CellTracking(object):
         self._imshows_masks[PACPid][imid].set_data(self._masks_stack[t][z])
         if plot_outlines: self._imshows_outlines[PACPid][imid].set_data(self._outlines_stack[t][z])
         else: self._imshows_outlines[PACPid][imid].set_data(np.zeros_like(self._outlines_stack[t][z]))
-        self._titles[PACPid][imid].set_text("z = %d" %z)
+        self._titles[PACPid][imid].set_text("z = %d" %(z+1))
                     
     def replot_tracking(self, PACP, plot_outlines=True):
         

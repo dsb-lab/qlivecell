@@ -24,7 +24,8 @@ class PlotAction():
         self.z = None
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
         groupsize  = self.CT.plot_layout[0] * self.CT.plot_layout[1]
-        self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
+        # self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
+        self.max_round = int(np.ceil((CT.slices - groupsize)/(groupsize - CT.plot_overlap)))
         self.get_size()
         self.mode=mode        
     
@@ -40,9 +41,15 @@ class PlotAction():
         if event.key == 'control':
             self.ctrl_is_held = False
 
-    # The function to be called anytime a slider's value changes
-    def update_slider(self, t):
-        self.t=t
+    # The function to be called anytime a t-slider's value changes
+    def update_slider_t(self, t):
+        self.t=t-1
+        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.update()
+
+    # The function to be called anytime a z-slider's value changes
+    def update_slider_z(self, cr):
+        self.cr=cr
         self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
 
@@ -54,20 +61,21 @@ class PlotAction():
 
             self.t = max(self.t, 0)
             self.t = min(self.t, self.CT.times-1)
-            self.CT._time_sliders[self.id].set_val(self.t)
+            self.CT._time_sliders[self.id].set_val(self.t+1)
             self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
             self.update()
 
             if self.current_state=="SCL": self.current_state=None
 
         else: 
-            #if self.current_state == None: self.current_state="SCL"
+
             if event.button == 'up':       self.cr = self.cr - 1
             elif event.button == 'down':   self.cr = self.cr + 1
 
             self.cr = max(self.cr, 0)
             self.cr = min(self.cr, self.max_round)
-            start = time.time()
+            self.CT._z_sliders[self.id].set_val(self.cr)
+
             self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
             self.update()
 
@@ -106,8 +114,7 @@ class PlotActionCT(PlotAction):
         
         # Predefine some variables
         self.plot_outlines=True
-        self._pre_labs_to_plot = []
-        self._zs_to_plot = []
+        self._pre_labs_z_to_plot = []
         # Update plot after initialization
         self.update()
 
@@ -342,24 +349,20 @@ class PlotActionCT(PlotAction):
             scale2=90
             width_or_height = self.figwidth
         
-        labs_to_plot = [x[0] for x in cells_to_plot]
+        labs_z_to_plot = [[x[0], zs[xid]] for xid, x in enumerate(cells_to_plot)]
 
-        for i, lab in enumerate(labs_to_plot):
-            cell = self.CT._get_cell(label=lab)
-            self.CT._set_masks_alphas(cell, True, z=zs[i])
+        for i, lab_z in enumerate(labs_z_to_plot):
+            cell = self.CT._get_cell(label=lab_z[0])
+            self.CT._set_masks_alphas(cell, True, z=lab_z[1])
 
+        labs_z_to_remove = [lab_z for lab_z in self._pre_labs_z_to_plot if lab_z not in labs_z_to_plot]
 
-        labs_z_to_remove = [[l,self._zs_to_plot[i]] for i,l in enumerate(self._pre_labs_to_plot) if l not in labs_to_plot]
-        labs_to_remove   = [l_z[0] for l_z in labs_z_to_remove]
-        zs_to_remove   = [l_z[1] for l_z in labs_z_to_remove]
-
-        for i, lab in enumerate(labs_to_remove):
-            cell = self.CT._get_cell(label=lab)
+        for i, lab_z in enumerate(labs_z_to_remove):
+            cell = self.CT._get_cell(label=lab_z[0])
             if None in zs: self.CT._set_masks_alphas(cell, False, z=None)
-            else: self.CT._set_masks_alphas(cell, False, z=zs_to_remove[i])
+            else: self.CT._set_masks_alphas(cell, False, z=lab_z[1])
 
-        self._pre_labs_to_plot = labs_to_plot
-        self._zs_to_plot = zs
+        self._pre_labs_z_to_plot = labs_z_to_plot
 
         self.actionlist.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(fontsize=width_or_height/scale1)

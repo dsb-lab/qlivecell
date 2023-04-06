@@ -99,8 +99,9 @@ class CellPicker_del(CellPicker):
             self.PACP.list_of_cells.append(cell)
         else:
             self.PACP.list_of_cells.remove(cell)
-        self._update()
+
         if event.dblclick==True:
+            self._update()
             for id_cell, Cell in enumerate(self.PACP.CT.cells):
                 if lab == Cell.label:
                     idx_lab = id_cell 

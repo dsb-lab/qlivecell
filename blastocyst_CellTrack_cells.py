@@ -34,9 +34,5 @@ CT = CellTracking(IMGS, path_save, embcode, CELLS=cells, CT_info=CT_info
                     , plot_stack_dims = (256, 256))
 
 CT.plot_tracking(windows=1, plot_layout=(1,2), plot_overlap=1, plot_stack_dims=(512, 512))
+
 # CT.plot_cell_movement()
-# CT.plot_masks3D_Imagej(cell_selection=False)
-
-CT.action_counter
-
-CT.mitotic_events
