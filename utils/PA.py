@@ -101,11 +101,11 @@ class PlotActionCT(PlotAction):
         # Call Parent init function
         super(PlotActionCT, self).__init__(*args, **kwargs)  
         
-        ## Exteng Parent init function
+        ## Extend Parent init function
         # Define text boxes to plot
         self.current_state='START'
         
-        actionsbox = "Possible actions: \n- ESC : visualization\n- a : add cell\n- d : delete cell\n- j : join cells\n- c : combine cells - z\n- C : combine cells - t\n- s : separate cells - t\n- A : apoptotic event\n- M : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- m : show/hide outlines\n- q : quit plot"
+        actionsbox = "Possible actions: \n- ESC : visualization\n- a : add cell\n- d : delete cell\n- j : join cells\n- c : combine cells - z\n- C : combine cells - t\n- s : separate cells - t\n- A : apoptotic event\n- M : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- m : show/hide outlines\n-S : save cells \n- q : quit plot"
         self.actionlist = self.fig.text(0.01, 0.8, actionsbox, fontsize=1, ha='left', va='top')
         self.title          = self.fig.text(0.02,0.96,"", ha='left', va='top', fontsize=1)
         self.timetxt = self.fig.text(0.02, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t+1, tt=self.CT.times), fontsize=1, ha='left', va='top')
@@ -177,6 +177,8 @@ class PlotActionCT(PlotAction):
                 for PACP in self.CT.PACPs:
                     PACP.visualization()
                     PACP.update()
+            elif event.key == 'S':
+                self.CT.save_cells()
             self.update()
 
         else:

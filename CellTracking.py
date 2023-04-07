@@ -1774,3 +1774,6 @@ class CellTracking(object):
 
         if not keep:
             subprocess.run(["rm", fullpath])
+    
+    def save_cells(self):
+        save_cells(self, self.path_to_save, self.embcode)
