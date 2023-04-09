@@ -1197,7 +1197,6 @@ class CellTracking(object):
     
     def combine_cells_t(self):
         # 2 cells selected
-        print(self.list_of_cells)
         if len(self.list_of_cells)!=2:
             return
         cells = [x[0] for x in self.list_of_cells]
