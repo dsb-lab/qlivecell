@@ -111,7 +111,9 @@ class PlotActionCT(PlotAction):
         self.timetxt = self.fig.text(0.02, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t+1, tt=self.CT.times), fontsize=1, ha='left', va='top')
         self.instructions = self.fig.suptitle("PRESS ENTER TO START",y=0.98, fontsize=1, ha='center', va='top', bbox=dict(facecolor='black', alpha=0.4, edgecolor='black', pad=2))
         self.selected_cells = self.fig.text(0.98, 0.89, "Selection", fontsize=1, ha='right', va='top')
-        
+        hints = "possible apo/mito cells:\n\ncells\n\n\n\nmarked apo cells:\n\ncells\n\n\nmarked mito cells:\n\ncells"
+        self.hints = self.fig.text(0.01, 0.5, hints, fontsize=1, ha='left', va='top')
+
         # Predefine some variables
         self.plot_outlines=True
         self._pre_labs_z_to_plot = []
@@ -367,10 +369,41 @@ class PlotActionCT(PlotAction):
         self._pre_labs_z_to_plot = labs_z_to_plot
 
         self.actionlist.set(fontsize=width_or_height/scale1)
+    
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Selection\n\n"+s)
         self.instructions.set(fontsize=width_or_height/scale2)
         self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t+1, tt=self.CT.times), fontsize=width_or_height/scale2)
+
+        marked_apo = [self.CT._get_cell(cellid=event[0]).label for event in self.CT.apoptotic_events if event[1] == self.t]
+        marked_apo_str = ""
+        for item_id, item in enumerate(marked_apo):
+            if item_id % 7 == 6:  marked_apo_str += "%d\n" %item
+            else: marked_apo_str += "%d, " %item
+        if marked_apo_str=="": marked_apo_str="None"
+        
+        marked_mito = [self.CT._get_cell(cellid=mitocell[0]).label for event in self.CT.mitotic_events for mitocell in event if mitocell[1] == self.t]
+        marked_mito_str = ""
+        for item_id, item in enumerate(marked_mito):
+            if item_id % 7 == 6:  marked_mito_str += "%d\n" %item
+            else: marked_mito_str += "%d, " %item
+        if marked_mito_str=="": marked_mito_str="None"
+        
+        disappeared_cells = ""
+        if self.t != self.CT.times-1:
+            for item_id, item in enumerate(self.CT.hints[self.t][0]):
+                if item_id % 7 == 6:  disappeared_cells += "%d\n" %item
+                else: disappeared_cells += "%d, " %item
+        if disappeared_cells=="": disappeared_cells="None"
+        
+        appeared_cells    = ""
+        if self.t !=0:
+            for item_id, item in enumerate(self.CT.hints[self.t-1][1]):
+                if item_id % 7 == 6:  appeared_cells += "%d\n" %item
+                else: appeared_cells += "%d, " %item
+        if appeared_cells=="": appeared_cells="None"
+        hints = "HINT: posible apo/mito cells:\n\ncells disapear:\n{discells}\n\ncells appeared:\n{appcells}\n\n\nmarked apo cells:\n{apocells}\n\n\nmarked mito cells:\n{mitocells}\n\nCONFLICTS: {conflicts}".format(discells=disappeared_cells, appcells=appeared_cells, apocells=marked_apo_str, mitocells=marked_mito_str, conflicts=self.CT.conflicts)
+        self.hints.set(text=hints, fontsize=width_or_height/scale1)
         self.title.set(fontsize=width_or_height/scale2)
         self.fig.subplots_adjust(top=0.9,left=0.2)
         self.fig.canvas.draw_idle()

@@ -707,6 +707,7 @@ class CellTracking(object):
         for cell in self.cells:
             self.currentcellid=max(self.currentcellid, cell.id)
         self.currentcellid+=1
+    
     def printfancy(self, string, finallength=70, clear_prev=0):
         new_str = "#   "+string
         while len(new_str)<finallength-1:
@@ -955,8 +956,24 @@ class CellTracking(object):
         self._extract_unique_labels_per_time()
         self._compute_masks_stack()
         self._compute_outlines_stack()
+        self._get_hints()
+        self._get_number_of_conflicts()
         self.action_counter+=1
 
+    def _get_hints(self):
+        self.hints = []
+        for t in range(self.times-1):
+            self.hints.append([])
+            self.hints[t].append(np.setdiff1d(self.unique_labels_T[t], self.unique_labels_T[t+1]))
+            self.hints[t].append(np.setdiff1d(self.unique_labels_T[t+1], self.unique_labels_T[t]))
+        
+    def _get_number_of_conflicts(self):
+        total_hints       = np.sum([len(h) for hh in self.hints for h in hh])
+        total_marked_apo  = len(self.apoptotic_events)
+        total_marked_mito = len(self.mitotic_events)*3
+        total_marked = total_marked_apo + total_marked_mito
+        self.conflicts = total_hints-total_marked
+        
     def _update_CT_cell_attributes(self):
             self.Labels   = []
             self.Outlines = []
