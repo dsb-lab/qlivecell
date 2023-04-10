@@ -672,7 +672,7 @@ class EmbryoSegmentation():
         self.smoothing=smoothing
     
     def __call__(self):
-        for tid, t in enumerate(self.trange):
+        for tid, t in enumerate(range(self.times)):
             print("t =", t)
             self.Embmask.append([])
             self.Backmask.append([])
@@ -703,7 +703,7 @@ class EmbryoSegmentation():
 
     def compute_emb_masks_z(self,t,z,tid,zid):
         print("z =", z)
-        image = self.IMGS[tid][zid]
+        image = self.IMGS[t][z]
         if t in self.trange:
             if z in self.zrange:
                 emb, back, ls, embmask, backmask = self.segment_embryo(image, self.binths[zid])
@@ -748,6 +748,8 @@ class EmbryoSegmentation():
             int2+=image[p[1], p[0]]
             nint2+=1
 
+        if nint1 ==0: nint1=1
+        if nint2 ==0: nint2=1
         int1/=nint1
         int2/=nint2
         # The Morphological ACWE sometines asigns the embryo mask as 0s and others as 1s. 
