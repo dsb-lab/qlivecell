@@ -27,29 +27,29 @@ IMGS_ERK, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
 
 cells, CT_info = load_cells(path_save, embcode)
 
-EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,10], checkerboard_size=6, num_inter=100, smoothing=5, trange=range(0+1), zrange=None, mp_threads=10)
+EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,4], checkerboard_size=6, num_inter=100, smoothing=5, trange=None, zrange=None)
 EmbSeg()
-EmbSeg.plot_segmentation(0, 23, extra_IMGS=IMGS_ERK)
+EmbSeg.plot_segmentation(0, 29, extra_IMGS=IMGS_ERK)
 
-# save_ES(EmbSeg, path_save, embcode)
+save_ES(EmbSeg, path_save, embcode)
 
-# EmbSeg = load_ES(path_save, embcode)
+EmbSeg = load_ES(path_save, embcode)
 
-erkktr = ERKKTR(IMGS_ERK, cells, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100)
+erkktr =  ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=10, min_outline_length=100, cell_distance_th=50.0, mp_threads=10)
 
 import time
 tt = time.time()
-erkktr.create_donuts(EmbSeg)
+erkktr.create_donuts(cells, EmbSeg)
 elapsed = time.time() - tt
 print("TIME =", elapsed)
 
 t=0
 z=15
-erkktr.plot_donuts(IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_outlines=False, plot_donut=True, EmbSeg=EmbSeg)
+erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_outlines=False, plot_donut=True, EmbSeg=EmbSeg)
 
 img = IMGS_ERK[t][z] 
 
-ICM, TE = extract_ICM_TE_labels(erkktr.cells, t, z)
+ICM, TE = extract_ICM_TE_labels(cells, t, z)
 
 ICM_derk = []
 ICM_nerk = []

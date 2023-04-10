@@ -672,7 +672,8 @@ class EmbryoSegmentation():
         self.smoothing=smoothing
     
     def __call__(self):
-        for tid, t in enumerate(range(self.times)):
+        for tid, t in enumerate(self.trange):
+            print("t =", t)
             self.Embmask.append([])
             self.Backmask.append([])
             
@@ -685,33 +686,32 @@ class EmbryoSegmentation():
                 TASKS = [(self.compute_emb_masks_z, ((t, z, tid, zid))) for zid,z in enumerate(range(self.slices))]
                 results = multiprocess(self._threads, worker, TASKS)
 
-            results.sort(key=lambda x: x[0])
+            results.sort(key=lambda x: x[1])
             for result in results:
-                zid, ls, emb, back, embmask, backmask = result
+                tid, zid, ls, emb, back, embmask, backmask = result
                 if len(ls)!=0:
                     self.LS[tid][zid] = ls
 
                     self.Emb[tid][zid] = emb 
                     self.Back[tid][zid]= back
                 
-                self.Embmask[-1].append(embmask)
-                self.Backmask[-1].append(backmask)
+                self.Embmask[tid].append(embmask)
+                self.Backmask[tid].append(backmask)
         self.Embmask  = np.array(self.Embmask)
         self.Backmask = np.array(self.Backmask)
         return
 
     def compute_emb_masks_z(self,t,z,tid,zid):
-
-
+        print("z =", z)
         image = self.IMGS[tid][zid]
         if t in self.trange:
             if z in self.zrange:
                 emb, back, ls, embmask, backmask = self.segment_embryo(image, self.binths[zid])
-                return (zid,ls, emb, back, embmask, backmask)
+                return (tid, zid,ls, emb, back, embmask, backmask)
             else:
-                return (zid,[],[],[],[],[])
+                return (tid, zid,[],[],[],[],[])
         else:
-            return (zid,[],[],[],[],[])
+            return (tid, zid,[],[],[],[],[])
         
     def segment_embryo(self, image, binths):
         kernel = gkernel(self.ksize, self.ksigma)
