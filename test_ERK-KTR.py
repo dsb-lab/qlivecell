@@ -27,9 +27,9 @@ IMGS_ERK, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
 
 cells, CT_info = load_cells(path_save, embcode)
 
-EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,4], checkerboard_size=6, num_inter=100, smoothing=5, trange=None, zrange=None)
+EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,7], checkerboard_size=6, num_inter=100, smoothing=5, trange=None, zrange=None)
 EmbSeg()
-EmbSeg.plot_segmentation(17, 20, extra_IMGS=IMGS_SEG)
+EmbSeg.plot_segmentation(17, 29, extra_IMGS=IMGS_ERK)
 
 save_ES(EmbSeg, path_save, embcode)
 
