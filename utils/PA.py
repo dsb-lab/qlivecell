@@ -27,7 +27,8 @@ class PlotAction():
         # self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
         self.max_round = int(np.ceil((CT.slices - groupsize)/(groupsize - CT.plot_overlap)))
         self.get_size()
-        self.mode=mode        
+        self.mode=mode   
+        self.plot_outlines=True     
     
     def __call__(self, event):
         # To be defined 

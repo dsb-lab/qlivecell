@@ -1169,7 +1169,6 @@ class CellTracking(object):
 
         cell1 = self._get_cell(cells[0])
         tid_cell1 = cell1.times.index(t)
-
         for lab in cells[1:]:
 
             cell2 = self._get_cell(lab)
@@ -1192,7 +1191,7 @@ class CellTracking(object):
             cell2.masks.pop(tid_cell2)
             cell2._update(self)
             if cell2._rem:
-                self._del_cell(lab)
+                self._del_cell(cellid=cell2.id)
         self.update_labels()
     
     def combine_cells_t(self):
@@ -1296,14 +1295,21 @@ class CellTracking(object):
             for cell in self.cells:
                     if cell.label == label:
                         return cell
-        
-        self.printfancy("ERROR: cell not found, you should not be here...")
+        return None
 
-    def _del_cell(self, lab):
-        idx = 0
-        for idd, cell in enumerate(self.cells):
-            if cell.label == lab:
-                idx=idd
+    def _del_cell(self, label=None, cellid=None):
+        idx=None
+        if label==None:
+            for id, cell in enumerate(self.cells):
+                    if cell.id == cellid:
+                        idx = id
+                        break
+        else:
+            for id, cell in enumerate(self.cells):
+                    if cell.label == label:
+                        idx = id
+                        break
+        
         self.cells.pop(idx)
 
     def _compute_masks_stack(self):
@@ -1318,6 +1324,7 @@ class CellTracking(object):
     def _set_masks_alphas(self, cell, plot_mask, z=None):
         if plot_mask: alpha=1
         else: alpha = 0
+        if cell is None: return
         color = np.append(self._label_colors[self._labels_color_id[cell.label]], alpha)
         for tid, tc in enumerate(cell.times):
             if z is None: zs = cell.zs[tid]
