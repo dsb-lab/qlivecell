@@ -23,7 +23,6 @@ class ERKKTR_donut():
         elif inhull_method=="linprog": self._inhull=self._inhull_linprog
         else: self._inhull=self._inhull_Delaunay
         self.cell_label = cell.label
-        print(self.cell_label)
         self._masks_computed = False
         self.compute_donut_outlines(cell)
         self.compute_donut_masks(cell.masks)
@@ -304,12 +303,12 @@ class ERKKTR():
         print("Running donut corrections...")
         print("...correcting cell-cell overlap")
         self.correct_cell_to_cell_overlap(cells)
-        # print("...correcting donut-embryo overlap")
-        # self.correct_donut_embryo_overlap(cells, EmbSeg)
-        # self.remove_empty_outlines(cells)
-        # print("...correcting nuclei-donut overlap and computing masks")
-        # self.correct_donut_nuclei_overlap(cells)
-        # print("...corrections finished")
+        print("...correcting donut-embryo overlap")
+        self.correct_donut_embryo_overlap(cells, EmbSeg)
+        self.remove_empty_outlines(cells)
+        print("...correcting nuclei-donut overlap and computing masks")
+        self.correct_donut_nuclei_overlap(cells)
+        print("...corrections finished")
         return
     
     def remove_empty_outlines(self, cells):
@@ -356,6 +355,7 @@ class ERKKTR():
                 dist = cell_i.compute_distance_cell(cell_j, t, z, axis='xy')
                 if dist < dist_th: 
                     cells_close.append(cell_j_id)
+
             if len(cells_close)==0: continue
             # Now for the the closest ones we check for overlaping
             oi_out = donut_i.donut_outlines_out[ti][zi]
@@ -383,6 +383,7 @@ class ERKKTR():
                 maskout_cell_j = np.vstack((maskout_cell_j, oj_out))
                 
                 maskout_intersection = intersect2D(maskout_cell_i, maskout_cell_j)
+
                 if len(maskout_intersection)==0: continue
 
                 # Check intersection with OUTTER outline
@@ -447,18 +448,9 @@ class ERKKTR():
                 if len(oj_mc_intersection)!=0:
                     new_oj = get_only_unique(np.vstack((oj_inn, oj_mc_intersection)))
                     if len(new_oj)!=0:
-                        try:
-                            new_oj, tolerance_bool = donut_j.sort_points_counterclockwise(new_oj)
-                        except:
-                            pass
-                            # print()
-                            # print(donut_j.cell_label)
-                            # print(donut_i.cell_label)
-                            # print(tcc)
-                            # print(t)
-                            # print(zcc)
-                            # print(z)
+                        new_oj, tolerance_bool = donut_j.sort_points_counterclockwise(new_oj)
                         donut_j.donut_outlines_in[tcc][zcc] = deepcopy(new_oj)
+                    else: pass
         return None
 
     def correct_donut_embryo_overlap(self, cells, EmbSeg):

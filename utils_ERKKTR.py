@@ -287,7 +287,8 @@ def printclear(n=1):
 
 def compute_ERK_traces(IMGS, cells, erkktr):
     for cell in cells:
-        donuts = erkktr._get_donut(cell.label)
+        try: donuts = erkktr._get_donut(cell.label)
+        except: continue
         ERKtrace = np.zeros_like(cell.times).astype('float64')
         for tid, t in enumerate(cell.times):
             erk  = 0.0

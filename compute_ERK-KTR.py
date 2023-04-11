@@ -2,8 +2,7 @@ from cellpose.io import imread
 import sys
 sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")
 
-# from CellTracking import CellTracking
-from CellTracking import load_cells
+from CellTracking import load_cells, read_img_with_resolution
 
 from ERKKTR import *
 import os
@@ -22,10 +21,13 @@ if __name__ == '__main__':
     if "_info" in embcode: 
         embcode=embcode[0:-5]
 
-    f = embcode+'.tif'
+    file = embcode+'.tif'
 
-    IMGS_ERK   = imread(path_data+f)[:,:,0,:,:]
-    IMGS_SEG   = imread(path_data+f)[:,:,1,:,:]
+    _IMGS_SEG, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
+    _IMGS_ERK, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
+
+    IMGS_SEG = _IMGS_SEG[:,:,:,:]
+    IMGS_ERK = _IMGS_ERK[:,:,:,:]
 
     cells, CT_info = load_cells(path_save, embcode)
     # EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,5], checkerboard_size=6, num_inter=100, smoothing=5, trange=range(1), mp_threads=10)
@@ -37,12 +39,12 @@ if __name__ == '__main__':
 
     # erkktr = load_donuts(path_save, embcode)
     # start = time.time()
-    erkktr = ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=6, min_outline_length=100, cell_distance_th=50.0, mp_threads=10)
+    erkktr = ERKKTR(IMGS_ERK, innerpad=1, outterpad=1, donut_width=6, min_outline_length=100, cell_distance_th=100.0, mp_threads=10)
     erkktr.create_donuts(cells, EmbSeg)
     # end = time.time()
     # print(end - start)
 
-    erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, 21, 14, plot_nuclei=True, plot_outlines=False, plot_donut=True, EmbSeg=None)
+    erkktr.plot_donuts(cells, _IMGS_SEG, _IMGS_ERK, 0, 15, plot_nuclei=True, plot_outlines=False, plot_donut=True, EmbSeg=None)
     save_donuts(erkktr, path_save, embcode)
 
 ## TO DO: show errors or warnings when donuts are too big for the given data. Either that or delete problematic cells
