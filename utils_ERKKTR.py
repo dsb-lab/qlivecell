@@ -60,6 +60,7 @@ def extract_ICM_TE_labels(cells, t, z):
 
     centers = [cen[1:] for cen in centers if cen[0]==z]
     centers = np.array(centers)
+    if len(centers) < 3: return [],[]
     hull = ConvexHull(centers)
     outline = centers[hull.vertices]
     outline = np.array(outline).astype('int32')
@@ -266,3 +267,47 @@ def multiprocess_get_results(done_queue, TASKS):
     results = [done_queue.get() for t in TASKS]
 
     return results
+
+def printclear(n=1):
+    LINE_UP = '\033[1A'
+    LINE_CLEAR = '\x1b[2K'
+    for i in range(n):
+        print(LINE_UP, end=LINE_CLEAR)
+
+
+def compute_ERK_traces(IMGS, cells, erkktr):
+    for cell in cells:
+        donuts = erkktr._get_donut(cell.label)
+        ERKtrace = np.zeros_like(cell.times).astype('float64')
+        for tid, t in enumerate(cell.times):
+            erk  = 0.0
+            erkn = 0.0
+            for zid, z in enumerate(cell.zs[tid]):
+                img = IMGS[t,z]
+                donut = donuts.donut_masks[tid][zid]
+                xids = donut[:,1]
+                yids = donut[:,0]
+                erkdonutdist = img[xids, yids]
+
+                nuclei = donuts.nuclei_masks[tid][zid]
+                xids = nuclei[:,1]
+                yids = nuclei[:,0]
+                erknucleidist = img[xids, yids]
+                erk  += np.mean(erkdonutdist)/np.mean(erknucleidist)
+                erkn += 1
+
+            ERKtrace[tid] = erk/np.float(erkn)
+        cell.ERKtrace = ERKtrace
+
+def assign_fate(cells, times, slices):
+    for cell in cells: cell.fate = [None for i in cell.times]
+    for t in range(times):
+        for z in range(slices):
+            ICM, TE = extract_ICM_TE_labels(cells, t, z)
+
+            for cell in cells:
+                if t not in cell.times: continue
+                tid = cell.times.index(t)
+                if z not in cell.zs[tid]: continue
+                if cell.label in ICM: cell.fate[tid] = "ICM"
+                elif cell.label in TE: cell.fate[tid] = "TE"

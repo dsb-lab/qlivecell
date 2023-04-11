@@ -33,14 +33,14 @@ if __name__ == '__main__':
     # save_ES(EmbSeg, path_save, embcode)
 
     EmbSeg = load_ES(path_save, embcode)
-    EmbSeg.plot_segmentation(0,20)
+    # EmbSeg.plot_segmentation(0,20)
 
     # erkktr = load_donuts(path_save, embcode)
-    start = time.time()
-    erkktr = ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=6, min_outline_length=100, cell_distance_th=50.0, mp_threads=None)
+    # start = time.time()
+    erkktr = ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=6, min_outline_length=100, cell_distance_th=50.0, mp_threads=10)
     erkktr.create_donuts(cells, EmbSeg)
-    end = time.time()
-    print(end - start)
+    # end = time.time()
+    # print(end - start)
 
-    erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, 5, 10, plot_nuclei=False, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
-    # save_donuts(erkktr, path_save, embcode)
+    erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, 21, 14, plot_nuclei=True, plot_outlines=False, plot_donut=True, EmbSeg=None)
+    save_donuts(erkktr, path_save, embcode)
