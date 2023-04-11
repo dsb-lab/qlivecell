@@ -1,5 +1,4 @@
 from cellpose.io import imread
-
 import sys
 sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")
 
@@ -17,65 +16,90 @@ files = os.listdir(path_data)
 embs = []
 for emb, file in enumerate(files):
     if "082119_p1" in file: embs.append(emb)
-
-emb = embs[0]
-file = files[emb]
-embcode=file.split('.')[0]
+embcode=files[emb].split('.')[0]
+if "_info" in embcode: 
+    embcode=embcode[0:-5]
 
 IMGS_SEG, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
 IMGS_ERK, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
 
+
+IMGS_ERK   = imread(path_data+f)[:,:,0,:,:]
+IMGS_SEG   = imread(path_data+f)[:,:,1,:,:]
+
 cells, CT_info = load_cells(path_save, embcode)
 
-
-# EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,7], checkerboard_size=6, num_inter=100, smoothing=5, trange=None, zrange=None)
-# EmbSeg()
-# EmbSeg.plot_segmentation(17, 25, extra_IMGS=IMGS_SEG)
-
-# save_ES(EmbSeg, path_save, embcode)
-
 EmbSeg = load_ES(path_save, embcode)
-# EmbSeg.plot_segmentation(12, 16, extra_IMGS=IMGS_SEG)
 
-erkktr =  ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100, cell_distance_th=50.0, mp_threads=None)
+erkktr = load_donuts(path_save, embcode)
 
-erkktr.create_donuts(cells, EmbSeg)
+compute_ERK_traces(IMGS_ERK, cells, erkktr)
 
-# save_donuts(erkktr, path_save, embcode)
+for cell in cells:
+    cell.compute_movement("xy", "center")
 
-t=3
-z=16
-erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=True, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
+assign_fate(cells, CT_info.times, CT_info.slices)
 
-erkktr._get_donut(27)
+apo_cell_ids = [x[0] for x in CT_info.apo_cells]
+apo_times    = [x[1] for x in CT_info.apo_cells]
+mito_cell_ids = [x[0] for y in CT_info.mito_cells for x in y]
+mito_times    = np.unique([x[0][1] for x in CT_info.mito_cells])
 
-# img = IMGS_ERK[t][z] 
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(1,2, figsize=(10,5))
+maxerk = 0
+maxdisp = 0
+for cell in cells:
+    if cell.id in mito_cell_ids: continue
+    if cell.id in apo_cell_ids: continue
+    if cell.fate[-1] =="TE": cc = [0.75, 0.75, 0]
+    elif cell.fate[-1] == "ICM": cc = "purple"
+    else: cc="brown"
+    if cc!="purple":continue
+    ax[0].set_title("ERK-KTR trace")
+    ax[0].plot(cell.times, cell.ERKtrace, marker=None, color = cc)
+    ax[1].set_title("cell displacement")
+    ax[1].plot(np.array(cell.times[:-1]) + 0.5, cell.disp, label=cell.id, color=cc)
+    # ax[1].set_ylim(0, 10)
+    maxdisp = max(maxdisp, max(cell.disp))
+    maxerk = max(maxerk, max(cell.ERKtrace))
 
-# ICM, TE = extract_ICM_TE_labels(cells, t, z)
+for at in apo_times:
+    x = np.ones(100)*at
+    y = np.linspace(0, stop=maxerk+0.1, num = len(x))
+    ax[0].plot(x,y, linewidth=3, color='k')
+    y = np.linspace(0, stop=maxerk+2, num = len(x))
+    ax[1].plot(x,y, linewidth=3, color='k')
 
-# ICM_derk = []
-# ICM_nerk = []
-# ICM_CN = []
-# for lab in ICM:
-#     erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
-#     ICM_derk = np.append(ICM_derk, erkd)
-#     ICM_nerk = np.append(ICM_nerk, erkn)
-#     ICM_CN.append(cn)
+# for am in mito_times:
+#     x = np.ones(100)*am
+#     y = np.linspace(0, stop=maxerk, num = len(x))
+#     ax[0].plot(x,y, linewidth=3, color='green')
+#     y = np.linspace(0, stop=maxdisp+2, num = len(x))
+#     ax[1].plot(x,y, linewidth=3, color='green')
 
-# TE_derk  = []
-# TE_nerk  = []
-# TE_CN = []
-# for lab in TE:
-#     erkd, erkn, cn = erkktr.get_donut_erk(img, lab, t, z, th=1)
-#     TE_derk = np.append(TE_derk, erkd)
-#     TE_nerk = np.append(TE_nerk, erkn)
-#     TE_CN.append(cn)
+# plt.legend()
+plt.show()
 
-# fig, ax = plt.subplots(2,2)
-# ax[0,0].hist(ICM_derk, bins=100)
-# ax[0,1].hist(ICM_nerk, bins=100)
-# ax[1,0].hist(TE_derk, bins=100)
-# ax[1,1].hist(TE_nerk, bins=100)
-
-
-# plt.show()
+labs = [cell.label for cell in cells]
+maxlab = max(labs)
+ccell = 0
+while ccell <=maxlab:
+    fig, _axes = plt.subplots(3,3, figsize=(20,20))
+    axes = _axes.flatten()
+    for ax in axes:
+        if ccell > maxlab:
+            plt.show()
+            break
+        cellidx = labs.index(ccell)
+        cell = cells[cellidx]
+        if cell.fate[-1] =="TE": cc = [0.75, 0.75, 0]
+        elif cell.fate[-1] == "ICM": cc = "purple"
+        else: cc="brown"
+        ax.plot(cell.times, cell.ERKtrace, marker='o', color = cc, label="erk")
+        ax.legend(loc=1)
+        tax = ax.twinx()
+        tax.plot(np.array(cell.times[:-1]) + 0.5, cell.disp, label="disp", color=cc, marker='*')
+        tax.legend(loc=2)
+        ccell +=1
+    plt.show()

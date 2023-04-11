@@ -4,7 +4,7 @@ from copy import deepcopy
 from scipy.spatial import Delaunay,ConvexHull
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 import time
-from utils_ERKKTR import multiprocess_start, multiprocess_end, multiprocess_add_tasks, multiprocess_get_results, worker, multiprocess, mp, sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, save_donuts, load_donuts, load_cells_info, sort_points_counterclockwise
+from utils_ERKKTR import assign_fate, compute_ERK_traces, printclear, multiprocess_start, multiprocess_end, multiprocess_add_tasks, multiprocess_get_results, worker, multiprocess, mp, sefdiff2D, sort_xy, intersect2D, get_only_unique, gkernel, convolve2D, extract_ICM_TE_labels, save_ES, load_ES, save_cells, save_donuts, load_donuts, load_cells_info, sort_points_counterclockwise
 import sys
 from multiprocessing.managers import BaseManager
 import warnings 
@@ -269,7 +269,7 @@ class ERKKTR():
         self.Donuts = []
         if mp_threads == "all": self._threads=mp.cpu_count()-1
         else: self._threads = mp_threads
-        self.list_of_cells = range(30)
+        self.list_of_cells = range(10**4)
 
     def execute_erkktr(self, cell, innerpad, outterpad, donut_width, min_outline_length):
         return ERKKTR_donut(cell, innerpad, outterpad, donut_width, min_outline_length, "delaunay")
@@ -287,9 +287,11 @@ class ERKKTR():
         
         # Check for multi or single processing
         if threads is None:
-            for cell in cells:
-                if cell.label in self.list_of_cells:
-                    self.Donuts.append(self.execute_erkktr(cell, innerpad, outterpad, donut_width, self.min_outline_length))
+            tcells = len(cells)
+            for celli, cell in enumerate(cells):
+                print("cell %d / %d" %(celli+1, tcells))
+                if cell.label not in self.list_of_cells: continue
+                self.Donuts.append(self.execute_erkktr(cell, innerpad, outterpad, donut_width, self.min_outline_length))
         else:
 
             TASKS = [(self.execute_erkktr, (cell, innerpad, outterpad, donut_width, self.min_outline_length)) for cell in cells]
@@ -324,8 +326,12 @@ class ERKKTR():
             self.Donuts.pop(d)
         
     def correct_cell_to_cell_overlap(self, cells):
+        print()
         for _, t in enumerate(range(self.times)):
             for _, z in enumerate(range(self.slices)):
+                printclear(n=1)
+                print("t = %d/%d , z = %d/%d" %(t+1, self.times, z+1, self.slices))
+
                 Cells  = []
                 for cell in cells:
                     if cell.label not in self.list_of_cells: continue
@@ -334,6 +340,7 @@ class ERKKTR():
                     if z not in cell.zs[ti]: continue
                     Cells.append(cell)
                 self.correct_cell_to_cell_overlap_z(Cells, t, z, self._dist_th)
+        printclear()
         return
 
     def correct_cell_to_cell_overlap_z(self, Cells, t, z, dist_th):
@@ -455,9 +462,13 @@ class ERKKTR():
         return None
 
     def correct_donut_embryo_overlap(self, cells, EmbSeg):
-        if self._threads is not None: task_queue, done_queue = multiprocess_start(self._threads, worker, [], daemon=True)
+        # if self._threads is not None: task_queue, done_queue = multiprocess_start(self._threads, worker, [], daemon=True)
+        print()
         for _, t in enumerate(range(self.times)):
+            
             for _, z in enumerate(range(self.slices)):
+                printclear(n=1)
+                print("t = %d/%d , z = %d/%d" %(t+1, self.times, z+1, self.slices))
 
                 Donuts = []
                 for cell in cells:
@@ -468,27 +479,26 @@ class ERKKTR():
                     zi = cell.zs[ti].index(z)
                     Donuts.append(self._get_donut(cell.label))
                 
-                if self._threads is None: 
-                     results = []
-                     for donuts in Donuts:
-                        cell = self._get_cell(cells, label=donuts.cell_label)
-                        ti = cell.times.index(t)
-                        zi = cell.zs[ti].index(z)
-                        mask_emb = EmbSeg.Embmask[t][z]
+                # if self._threads is None: 
+                results = []
+                for donuts in Donuts:
+                    cell = self._get_cell(cells, label=donuts.cell_label)           
+                    ti = cell.times.index(t)
+                    zi = cell.zs[ti].index(z)
+                    mask_emb = EmbSeg.Embmask[t][z]
+                    results.append(donuts.correct_donut_embryo_overlap_c(ti, zi, mask_emb, donuts.cell_label))
 
-                        results.append(donuts.correct_donut_embryo_overlap_c(ti, zi, mask_emb, donuts.cell_label))
+                # else:
+                #     TASKS = []
+                #     for donuts in Donuts:
+                #         cell = self._get_cell(cells, label=donuts.cell_label)
+                #         ti = cell.times.index(t)
+                #         zi = cell.zs[ti].index(z)
+                #         mask_emb = EmbSeg.Embmask[t][z]
 
-                else:
-                    TASKS = []
-                    for donuts in Donuts:
-                        cell = self._get_cell(cells, label=donuts.cell_label)
-                        ti = cell.times.index(t)
-                        zi = cell.zs[ti].index(z)
-                        mask_emb = EmbSeg.Embmask[t][z]
-
-                        TASKS.append((donuts.correct_donut_embryo_overlap_c, (ti, zi, mask_emb, donuts.cell_label)))
-                    task_queue = multiprocess_add_tasks(task_queue, TASKS)
-                    results = multiprocess_get_results(done_queue, TASKS)
+                #         TASKS.append((donuts.correct_donut_embryo_overlap_c, (ti, zi, mask_emb, donuts.cell_label)))
+                #     task_queue = multiprocess_add_tasks(task_queue, TASKS)
+                #     results = multiprocess_get_results(done_queue, TASKS)
 
                 for res in results:
                     donut = self._get_donut(res[0])
@@ -497,7 +507,8 @@ class ERKKTR():
                     zi = cell.zs[ti].index(z)
                     donut.donut_outlines_out[ti][zi] = res[1]
                     donut.donut_outlines_in[ti][zi] = res[2]
-        if self._threads is not None: multiprocess_end(task_queue)
+        # if self._threads is not None: multiprocess_end(task_queue)
+        printclear()
         return
 
     def correct_donut_nuclei_overlap(self, cells):
@@ -579,14 +590,15 @@ class ERKKTR():
         tid  = cell.times.index(t)
         zid  = cell.zs[tid].index(z) 
 
-        donut = cell.ERKKTR_donut.donut_masks[tid][zid]
+        donuts = self._get_donut(label=label)
+        donut = donuts.donut_masks[tid][zid]
         img_cell = np.zeros_like(img)
         xids = donut[:,1]
         yids = donut[:,0]
         img_cell[xids, yids] = img[xids, yids]
         erkdonutdist = img[xids, yids]
 
-        nuclei = cell.ERKKTR_donut.nuclei_masks[tid][zid]
+        nuclei = donuts.nuclei_masks[tid][zid]
         img_cell = np.zeros_like(img)
         xids = nuclei[:,1]
         yids = nuclei[:,0]
@@ -633,13 +645,15 @@ class ERKKTR():
                 ax[0].scatter(outline[:,0], outline[:,1], s=1, c='k', alpha=0.5)
                 ax[0].plot(don_outline_in[:,0], don_outline_in[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
                 ax[0].plot(don_outline_out[:,0], don_outline_out[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
+                ax[0].plot(nuc_outline[:,0], nuc_outline[:,1], linewidth=1, c='purple', alpha=0.5)#, marker='o',markersize=1)
                 ax[1].scatter(outline[:,0], outline[:,1], s=1, c='k', alpha=0.5)
                 ax[1].plot(don_outline_in[:,0], don_outline_in[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
                 ax[1].plot(don_outline_out[:,0], don_outline_out[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
+                ax[1].plot(nuc_outline[:,0], nuc_outline[:,1], linewidth=1, c='purple', alpha=0.5)#, marker='o',markersize=1)
 
             if plot_nuclei:
-                ax[1].scatter(nuc_mask[:,0], nuc_mask[:,1],s=1, c='green', alpha=0.1)
-                ax[0].scatter(nuc_mask[:,0], nuc_mask[:,1],s=1, c='green', alpha=0.1)
+                ax[1].scatter(nuc_mask[:,0], nuc_mask[:,1],s=1, c='green', alpha=1)
+                ax[0].scatter(nuc_mask[:,0], nuc_mask[:,1],s=1, c='green', alpha=1)
 
             if plot_donut:
                 ax[1].scatter(don_mask[:,0], don_mask[:,1],s=1, c='red', alpha=0.1)
