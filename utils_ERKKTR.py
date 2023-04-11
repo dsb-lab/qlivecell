@@ -36,7 +36,6 @@ def sefdiff2D(a, b):
     return mask
 
 def sort_xy(x, y, ang_tolerance = 0.2):
-
     x0 = np.mean(x)
     y0 = np.mean(y)
     r = np.sqrt((x-x0)**2 + (y-y0)**2)
