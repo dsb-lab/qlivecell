@@ -35,20 +35,17 @@ cells, CT_info = load_cells(path_save, embcode)
 # save_ES(EmbSeg, path_save, embcode)
 
 EmbSeg = load_ES(path_save, embcode)
-# EmbSeg.plot_segmentation(0, 5, extra_IMGS=IMGS_SEG)
+# EmbSeg.plot_segmentation(12, 16, extra_IMGS=IMGS_SEG)
 
-erkktr =  ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100, cell_distance_th=50.0, mp_threads=10)
+erkktr =  ERKKTR(IMGS_ERK, innerpad=1, outterpad=2, donut_width=4, min_outline_length=100, cell_distance_th=50.0, mp_threads=None)
 
-import time
-tt = time.time()
 erkktr.create_donuts(cells, EmbSeg)
-elapsed = time.time() - tt
-print("TIME =", elapsed)
-save_donuts(erkktr, path_save, embcode)
+
+# save_donuts(erkktr, path_save, embcode)
 
 t=3
 z=16
-erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=False, plot_outlines=False, plot_donut=True, EmbSeg=EmbSeg)
+erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, t, z, plot_nuclei=True, plot_outlines=True, plot_donut=True, EmbSeg=EmbSeg)
 
 erkktr._get_donut(27)
 
