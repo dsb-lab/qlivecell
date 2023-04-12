@@ -4,6 +4,5 @@ itertools
 np
 plt
 *log.txt
-test.py
 test.jl
 literature
