@@ -10,7 +10,7 @@ import os
 
 home = os.path.expanduser('~')
 path_data=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
-path_save=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects'
+path_save=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects/'
 
 files = os.listdir(path_data)
 embs = []
@@ -28,6 +28,8 @@ cells, CT_info = load_cells(path_save, embcode)
 EmbSeg = load_ES(path_save, embcode)
 
 erkktr = load_donuts(path_save, embcode)
+
+erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, 0, 10, labels='all', plot_outlines=True, plot_nuclei=True, plot_donut=True, EmbSeg=None)
 
 compute_ERK_traces(IMGS_ERK, cells, erkktr)
 
