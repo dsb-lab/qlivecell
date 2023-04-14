@@ -1,7 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+import tifffile
 from tifffile import TiffFile
+import os
+import random
 
 def compute_distance_xy(X1, X2, Y1, Y2):
     return np.sqrt((X2-X1)**2 + (Y2-Y1)**2)
@@ -100,3 +103,34 @@ def read_img_with_resolution(path_to_file, channel=0):
         xyres = xres
         zres = imagej_metadata['spacing']
     return IMGS, xyres, zres
+
+def generate_set(paths_data, path_to_save, number_of_images, exclude_if_in_path=None, data_subtype=None):
+    os.system('rm -rf '+path_to_save)
+    os.system('mkdir '+path_to_save)
+    current_img = 0
+    while current_img < number_of_images:
+        p = random.choice(paths_data)
+        files = os.listdir(p)
+        file  = random.choice(files)
+
+        if data_subtype is not None:
+            if data_subtype not in file: continue
+            
+        embcode=file.split('.')[0]
+
+        channel = random.choice([0,1]) # In this case there are two channel
+        IMGS, xyres, zres = read_img_with_resolution(p+file, channel=channel)
+        xres = yres = xyres
+        mdata = {'spacing': zres, 'unit': 'um'}
+
+        t = random.choice(range(len(IMGS)))
+        z = random.choice(range(len(IMGS[t])))
+        img = IMGS[t,z]
+        path_file_save = path_to_save+embcode+'_t%d' %t + '_z%d' %z + '.tif'
+
+        if exclude_if_in_path is not None:
+            files_to_exclude=os.listdir(exclude_if_in_path)
+            if path_file_save in files_to_exclude: continue
+
+        tifffile.imwrite(path_file_save, img, imagej=True, resolution=(xres, yres), metadata=mdata)
+        current_img+=1

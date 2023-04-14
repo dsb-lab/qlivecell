@@ -38,8 +38,7 @@ from utils.PA import *
 from utils.extraclasses import Slider_t, Slider_z, backup_CellTrack, Cell
 from utils.iters import plotRound
 from utils.utils_ct import *
-from utils.utils_ct import save_CT
-from utils.utils_ct import load_CT
+
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 warnings.simplefilter("ignore", UserWarning)

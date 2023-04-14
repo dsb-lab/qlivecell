@@ -1,74 +1,16 @@
-from cellpose.io import imread
-from cellpose import models
-from CellTracking import CellTracking
-from CellTracking import save_cells, load_cells, save_CT, load_CT, read_img_with_resolution
 import os
-import numpy as np
+from CellTracking import generate_set
+
 home = os.path.expanduser('~')
-path_data=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
-path_save=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects'
+path_data_n1 = home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/n1/movies/'
+path_data_n2 = home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/n2/movies/'
+paths_data=[path_data_n1, path_data_n2]
 
-files = os.listdir(path_data)
-embs = []
-for emb, file in enumerate(files):
-    if "082119_p1" in file: embs.append(emb)
+path_save_train_data=home+'/Desktop/PhD/projects/Data/gastruloids/cellpose/train_sets/joshi/confocal/'
+path_save_test_data =home+'/Desktop/PhD/projects/Data/gastruloids/cellpose/test_sets/joshi/confocal/'
 
-emb = embs[0]
-file = files[emb]
-embcode=file.split('.')[0]
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
+max_train_imgs = 20
+max_test_imgs  = 5
 
-cells, CT_info = load_cells(path_save, embcode)
-
-CT = CellTracking(IMGS, path_save, embcode, CELLS=cells, CT_info=CT_info
-                    , plot_layout=(1,1)
-                    , plot_overlap=1
-                    , masks_cmap='tab10'
-                    , min_outline_length=200
-                    , neighbors_for_sequence_sorting=7
-                    , plot_tracking_windows=1
-                    , backup_steps=20
-                    , cell_distance_axis="xy"
-                    , movement_computation_method="center"
-                    , mean_substraction_cell_movement=False
-                    , plot_stack_dims = (256, 256))
-
-CT.plot_tracking(windows=1, plot_layout=(1,2), plot_overlap=1, plot_stack_dims=(512, 512))
-
-from scipy.interpolate import Rbf
-import numpy as np
-
-CT_info.times
-
-cell = cells[22]
-X = []
-Y = []
-Z = []
-D = []
-for tid, t in enumerate(cell.times):
-    X.append([])
-    Y.append([])
-    Z.append([])
-    D.append([])
-    for zid, z in enumerate(cell.zs[tid]):
-        img = IMGS[t,z]
-        outline = cell.outlines[tid][zid]
-        for point in outline:
-            y,x = point
-            d = img[y,x]
-            X[tid].append(x)
-            Y[tid].append(y)
-            Z[tid].append(z)
-            D[tid].append(d)
-
-x = X[0]
-y = Y[0]
-z = Z[0]
-d = D[0]
-rbfi = Rbf(x, y, z, d)  # radial basis function interpolator instance
-
-xi = yi = zi = np.linspace(0, 1, 20)
-
-di = rbfi(xi, yi, zi)
-
-cells[0].centers
+generate_set(paths_data, path_save_train_data, max_train_imgs, exclude_if_in_path=None, data_subtype=None)
+generate_set(paths_data, path_save_test_data, max_test_imgs, exclude_if_in_path=path_save_train_data, data_subtype=None)
