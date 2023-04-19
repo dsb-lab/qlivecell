@@ -1,4 +1,3 @@
-from cellpose.io import imread
 import sys
 sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")
 
@@ -104,7 +103,6 @@ plt.show()
 #         tax.legend(loc=2)
 #         ccell +=1
 #     plt.show()
-
 
 
 import matplotlib.pyplot as plt

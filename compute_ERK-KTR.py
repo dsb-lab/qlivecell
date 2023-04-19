@@ -30,9 +30,6 @@ if __name__ == '__main__':
     IMGS_ERK = _IMGS_ERK[:,:,:,:]
 
     cells, CT_info = load_cells(path_save, embcode)
-    # EmbSeg = EmbryoSegmentation(IMGS_ERK, ksize=5, ksigma=3, binths=[20,5], checkerboard_size=6, num_inter=100, smoothing=5, trange=range(1), mp_threads=10)
-    # EmbSeg()
-    # save_ES(EmbSeg, path_save, embcode)
 
     EmbSeg = load_ES(path_save, embcode)
     # EmbSeg.plot_segmentation(0,20)
