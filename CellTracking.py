@@ -140,7 +140,6 @@ class CellSegmentation(object):
             self.progress(z+1, self.slices)
             # Current xy plane
             img = self.stack[z,:,:]
-
             if self._given_outlines is None:
                 # Select whether we are using a pre-trained model or a cellpose base-model
                 if self._trainedmodel:
@@ -149,7 +148,7 @@ class CellSegmentation(object):
                     masks, flows, styles, diam = self._model.eval(img, channels=self._channels, flow_threshold=self._flow_th_cellpose)
                 
                     # Extract the oulines from the masks using the cellpose function for it. 
-                    outlines = utilscp.outlines_list(masks)
+                outlines = utilscp.outlines_list(masks)
             
             else: outlines = self._given_outlines[z]
 
