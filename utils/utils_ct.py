@@ -6,6 +6,12 @@ from tifffile import TiffFile
 import os
 import random
 
+def get_file_embcode(path_data, emb):
+    files = os.listdir(path_data)
+    file = files[emb]
+    embcode=file.split('.')[0]
+    return file, embcode
+
 def compute_distance_xy(X1, X2, Y1, Y2):
     return np.sqrt((X2-X1)**2 + (Y2-Y1)**2)
 
@@ -63,7 +69,6 @@ def load_cells(path=None, filename=None):
     CT_info = pickle.load(file_to_store)
     file_to_store.close()
     return cells, CT_info
-
 
 def save_CT(CT, path=None, filename=None, _del_plots=True):
     pthsave = path+filename
