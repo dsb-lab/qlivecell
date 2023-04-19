@@ -1,6 +1,6 @@
 import multiprocessing as mp
 import time 
-
+import os
 import numpy as np
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
 from copy import deepcopy
@@ -28,6 +28,12 @@ def read_img_with_resolution(path_to_file, channel=0):
         xyres = xres
         zres = imagej_metadata['spacing']
     return IMGS, xyres, zres
+
+def get_file_embcode(path_data, emb):
+    files = os.listdir(path_data)
+    file = files[emb]
+    embcode=file.split('.')[0]
+    return file, embcode
 
 def worker(input, output):
 
