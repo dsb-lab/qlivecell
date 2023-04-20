@@ -14,11 +14,10 @@ IMGS_ch1, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
 IMGS_ch2, xyres, zres = read_img_with_resolution(path_data+file, channel=2)
 
 # Combine channels into single stack
-IMGS = IMGS_ch0 + IMGS_ch1 #+ IMGS_ch2
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots()
-ax.imshow(IMGS_ch1[0][-1])
-plt.show()
+IMGS = IMGS_ch0.astype('uint16') + IMGS_ch1.astype('uint16') #+ IMGS_ch2.astype('uint16')
+t, z, x, y = np.where(IMGS>255)
+IMGS[t,z,x,y] = 255
+IMGS = IMGS.astype('uint8')
 
 IMGS_corrected = centroid_correction_3d_based_on_mid_plane(IMGS)
 err = test_mid_plane_centroid_correction(IMGS_corrected, 0, pixel_tolerance=1)
@@ -26,7 +25,7 @@ err = test_mid_plane_centroid_correction(IMGS_corrected, 0, pixel_tolerance=1)
 assert err[1]
 
 path_registered = generate_fijiyama_file_system(path_parent, 'movies_registered', embcode)
-generate_fijiyama_stacks(path_registered, IMGS, xyres, zres, file_format="t_%d.tif")
+generate_fijiyama_stacks(path_registered, IMGS_corrected, xyres, zres, file_format="t_%d.tif")
 
 openfiji()
 
