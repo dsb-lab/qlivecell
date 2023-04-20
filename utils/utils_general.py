@@ -4,6 +4,8 @@ from tifffile import TiffFile
 import os
 import numpy as np
 
+import shutil
+
 def get_file_embcode(path_data, emb):
     files = os.listdir(path_data)
     file = files[emb]
@@ -31,3 +33,25 @@ def read_img_with_resolution(path_to_file, channel=0):
         xyres = xres
         zres = imagej_metadata['spacing']
     return IMGS, xyres, zres
+
+def remove_dir(path, dir=''):
+    shutil.rmtree(path+dir)
+
+def create_dir(path, dir='', rem=False):
+    if dir!='': path = correct_path(path)
+    try:
+        os.mkdir(path+dir)
+        return
+    except FileExistsError:
+        if rem:
+            remove_dir(path+dir)
+            create_dir(path, dir)
+        else: pass
+
+        return
+
+    raise Exception("something is wrong with the dir creation")
+
+def correct_path(path):
+    if path[-1] != '/': path=path+'/'
+    return path
