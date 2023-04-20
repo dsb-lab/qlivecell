@@ -53,7 +53,6 @@ CT_0()
 CT_0.plot_tracking(plot_stack_dims = (812, 812), plot_layout=(1,1), plot_outline_width=1)
 # CT.plot_cell_movement()
 
-# NEED TO CORRECT PlotActionCellPicker object has no attribute plot_outlines
 # CT.plot_masks3D_Imagej(cell_selection=True, color=None, channel_name="0")
 
 # IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
