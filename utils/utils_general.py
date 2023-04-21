@@ -35,7 +35,10 @@ def read_img_with_resolution(path_to_file, channel=0):
     return IMGS, xyres, zres
 
 def remove_dir(path, dir=''):
-    shutil.rmtree(path+dir)
+    try:
+        shutil.rmtree(path+dir)
+    except FileNotFoundError:
+        return
 
 def create_dir(path, dir='', rem=False, return_path=False):
     if dir!='': path = correct_path(path)

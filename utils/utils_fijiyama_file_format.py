@@ -27,13 +27,14 @@ def remove_fijiyama_file_system(path, forlder_name=None, embcode=None):
         remove_dir(tmp_path, 'tmp_'+embcode)
         remove_dir(tmp_path, 'output')
 
-def generate_fijiyama_stacks(path_to_save, IMGS, xyres, zres,file_format="t%d.tif"):
+def generate_fijiyama_stacks(path_to_save, IMGS, xyres, zres,file_format="t%d.tif", rem=True):
     pth = correct_path(path_to_save)
     ts,zs,xs,ys = IMGS.shape
     list_of_files = os.listdir(pth)
     if len(list_of_files)!=0:
-        remove_dir(pth)
-        create_dir(pth)
+        if rem:
+            remove_dir(pth)
+            create_dir(pth)
     for t in range(ts):
         IMG = IMGS[t].reshape((1,zs,xs,ys))
         fullpath = pth+file_format %(t+1)

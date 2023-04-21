@@ -31,7 +31,7 @@ err = test_mid_plane_centroid_correction(IMGS_corrected, 0, pixel_tolerance=1)
 # Create Fijiyama file system (input and output folders)
 path_registered, path_output, path_movies_reg = generate_fijiyama_file_system(path_parent, 'movies_registered', embcode)
 # Save registration stacks into input folder
-generate_fijiyama_stacks(path_registered, IMGS, xyres, zres, file_format="t%d.tif")
+generate_fijiyama_stacks(path_registered, IMGS_corrected, xyres, zres, file_format="t%d.tif")
 # Open Imagej to run fijiyama registration
 openfiji()
 # Remove stacks used for registration
@@ -43,18 +43,26 @@ move_transformation(path_output, path_trans_emb_global, path_trans_emb_steps)
 # Remove Fijiyama output folder 
 remove_dir(path_output)
 
+
 ### APPLY TRANSFORMATIONS ###
+# expand channels
+path_movies_reg_embcode = create_dir(path_movies_reg, embcode, return_path=True, rem=True)
+generate_fijiyama_stacks(path_movies_reg_embcode, IMGS_ch0, xyres, zres, file_format="t%d_c0.tif", rem=True)
+generate_fijiyama_stacks(path_movies_reg_embcode, IMGS_ch1, xyres, zres, file_format="t%d_c1.tif", rem=False)
+generate_fijiyama_stacks(path_movies_reg_embcode, IMGS_ch2, xyres, zres, file_format="t%d_c2.tif", rem=False)
+
 # Define where you have the beanshell class to be called from beanshell
-pth_beanshell = "/home/pablo/Desktop/PhD/ImageRegistration/fijiyama/beanshell/bsh-2.0b4.jar"
-text_to_write =  "\n".join([pth_beanshell, path_trans_emb_global, path_data, path_movies_reg])
+pth_beanshell = "/opt/Fiji.app/beanshell/bsh-2.0b4.jar"
+text_to_write =  "\n".join([pth_beanshell, path_trans_emb_global, path_movies_reg_embcode, path_movies_reg])
 # Save path information in a text file to be open in beanshell.
 temporal_file = correct_path(home)+'tmp.txt'
 with open(temporal_file, 'w') as the_file:
     the_file.write(text_to_write)
 
 # Run Beanshell script
-# subprocess.run(`/opt/Fiji.app/ImageJ-linux64 -batch /home/pablo/Desktop/PhD/ImageRegistration/fijiyama/apply_transform_img/apply_global_img.bsh`)
-
+pth_beanshell_script = correct_path(os.getcwd())+'utils/apply_transformation.bsh'
+subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--headless' ,'--run', pth_beanshell_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 # Remove path file
 os.remove(temporal_file)
+remove_dir(path_movies_reg_embcode)
