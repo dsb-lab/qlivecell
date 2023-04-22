@@ -35,6 +35,7 @@ def generate_fijiyama_stacks(path_to_save, IMGS, xyres, zres,file_format="t%d.ti
         if rem:
             remove_dir(pth)
             create_dir(pth)
+    
     for t in range(ts):
         IMG = IMGS[t].reshape((1,zs,xs,ys))
         fullpath = pth+file_format %(t+1)
