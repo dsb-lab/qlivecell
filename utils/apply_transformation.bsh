@@ -46,7 +46,6 @@ addClassPath(path_beanshell);
 
 pathtoimgs=path_movies;
 pathtosaveimgs=path_movies_reg;
-print(pathtosaveimgs);
 
 // Define folder with embryo transforms
 File embryo_trans_folder = new File(path_trans_emb_global);
