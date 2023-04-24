@@ -31,6 +31,7 @@ def read_img_with_resolution(path_to_file, channel=0):
 
 def get_file_embcode(path_data, emb):
     files = os.listdir(path_data)
+    files = [file for file in files if '.tif' in file]
     file = files[emb]
     embcode=file.split('.')[0]
     return file, embcode

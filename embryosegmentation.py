@@ -62,13 +62,16 @@ class EmbryoSegmentation():
                 self.Backmask[tid].append(backmask)
         return
 
-    def plot_segmentation(self, ts, zs, extra_IMGS=None):
+    def plot_segmentation(self, ts, zs, plot_background=True, extra_IMGS=None, extra_title=''):
                 
         if not isinstance(ts, list): ts=[ts]
         if not isinstance(zs, list): zs=[zs]
 
-        if extra_IMGS is None: fig, ax = plt.subplots(len(ts),2,figsize=(12, 6*len(ts)))
-        else: fig, ax = plt.subplots(len(ts),3,figsize=(18, 6*len(ts)))
+        naxes = 1
+        if plot_background: naxes+=1
+        if extra_IMGS is not None: naxes+=1
+        
+        fig, ax = plt.subplots(len(ts),naxes,figsize=(18, 6*len(ts)))
         
         ids = np.arange(len(ax.flatten())).reshape(np.shape(ax))
         ax = ax.flatten()
@@ -87,26 +90,30 @@ class EmbryoSegmentation():
             backmask    = np.array(self.Backmask[tid][zid])
             ls          = np.array(self.LS[tid][zid])
             
-            id0 = ids[id,0]
+            try: id0 = ids[id,0]
+            except: id0 = 0
             ax[id0].imshow(emb_segment)
             ax[id0].set_axis_off()
             ax[id0].contour(ls, [0.5], colors='r')
             #ax[id0].scatter(embmask[:,0], embmask[:,1], s=0.1, c='red', alpha=0.1)
             ax[id0].set_title("Morphological ACWE - mask", fontsize=12)
 
-            id1 = ids[id,1]
-            ax[id1].imshow(background)
-            ax[id1].set_axis_off()
-            ax[id1].contour(ls, [0.5], colors='r')
-            #ax[id1].scatter(backmask[:,0], backmask[:,1], s=0.1, c='red', alpha=0.1)
-            ax[id1].set_title("Morphological ACWE - background", fontsize=12)
+            if plot_background:
+                try: id1 = ids[id,1]
+                except: id1 = 1
+                ax[id1].imshow(background)
+                ax[id1].set_axis_off()
+                ax[id1].contour(ls, [0.5], colors='r')
+                #ax[id1].scatter(backmask[:,0], backmask[:,1], s=0.1, c='red', alpha=0.1)
+                ax[id1].set_title("Morphological ACWE - background", fontsize=12)
 
             if extra_IMGS is not None: 
-                id2 = ids[id,2]
+                try: id2 = ids[id,-1]
+                except: id2 = -1
                 ax[id2].imshow(extra_IMGS[t][z])
                 ax[id2].set_axis_off()
                 ax[id2].contour(ls, [0.5], colors='r')
-                ax[id2].set_title("nuclear channel", fontsize=12)
+                ax[id2].set_title(extra_title, fontsize=12)
                 
         fig.tight_layout()
         plt.show()
