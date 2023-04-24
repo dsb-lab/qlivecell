@@ -620,7 +620,7 @@ class CellSegmentation(object):
 
 class CellTracking(object):
         
-    def __init__(self, stacks, pthtosave, embcode, given_Outlines=None, CELLS=None, CT_info=None, model=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=(512, 512), plot_outline_width=1):
+    def __init__(self, stacks, pthtosave, embcode, given_Outlines=None, CELLS=None, CT_info=None, model=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=None, plot_outline_width=1):
         if CELLS !=None: 
             self._init_with_cells(CELLS, CT_info)
         else:
@@ -656,8 +656,10 @@ class CellTracking(object):
 
         ##  Plotting Attributes  ##
         # We assume that both dimension have the same resolution
-        self.plot_stack_dims   = plot_stack_dims
-        self.dim_change = plot_stack_dims[0] / self.stack_dims[0]
+        if plot_stack_dims is not None: self.plot_stack_dims = plot_stack_dims
+        else: self.plot_stack_dims = self.stack_dims
+        
+        self.dim_change = self.plot_stack_dims[0] / self.stack_dims[0]
         self._plot_xyresolution= self._xyresolution * self.dim_change
         if not hasattr(plot_layout, '__iter__'): raise # Need to revise this error 
         self.plot_layout       = plot_layout
