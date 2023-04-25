@@ -7,6 +7,7 @@ import time
 import warnings 
 from tifffile import TiffFile
 import os 
+from copy import deepcopy
 
 np.seterr(all='warn')
 
@@ -88,12 +89,13 @@ def extract_ICM_TE_labels(cells, t, z):
     return ICM, TE
 
 def sort_points_counterclockwise(points):
-    x = points[:, 1]
-    y = points[:, 0]
+    new_points = deepcopy(points)
+    x = new_points[:, 1]
+    y = new_points[:, 0]
     xsorted, ysorted, tolerance_bool = sort_xy(x, y)
-    points[:, 1] = xsorted
-    points[:, 0] = ysorted
-    return points, tolerance_bool
+    new_points[:, 1] = xsorted
+    new_points[:, 0] = ysorted
+    return new_points, tolerance_bool
     
 def save_donuts(ES, path=None, filename=None):
     pthsave = path+filename
@@ -245,3 +247,83 @@ def get_file_embcode(path_data, emb):
     file = files[emb]
     embcode=file.split('.')[0]
     return file, embcode
+
+def sort_coordinates(list_of_xy_coords):
+    cx, cy = list_of_xy_coords.mean(0)
+    x, y = list_of_xy_coords.T
+    angles = np.arctan2(x-cx, y-cy)
+    indices = np.argsort(-angles)
+    return list_of_xy_coords[indices]
+
+def sort_outline(outline):
+    hull = ConvexHull(outline)
+    noutline = outline[hull.vertices]
+    newoutline = sort_coordinates(noutline)
+    return newoutline
+
+import matplotlib.pyplot as plt
+def plot_donuts(DONUTS, cells, IMGS_SEG, IMGS_ERK, t, z, labels='all', plot_outlines=True, plot_nuclei=True, plot_donut=True, EmbSeg=None):
+    fig, ax = plt.subplots(1,2,figsize=(15,15))
+    imgseg = IMGS_SEG[t,z]
+    imgerk = IMGS_ERK[t,z]
+    
+    ax[0].imshow(imgseg)
+    ax[1].imshow(imgerk)
+    
+    if labels == 'all':
+        labels = [cell.label for cell in cells]
+    for donut in DONUTS.Donuts:
+        if donut.cell_label not in labels: continue
+        cell = DONUTS._get_cell(cells, label=donut.cell_label)
+
+        if t not in cell.times: continue
+        tid = cell.times.index(t)
+        if z not in cell.zs[tid]: continue
+        zid = cell.zs[tid].index(z)
+
+
+        outline = cell.outlines[tid][zid]
+        mask    = cell.masks[tid][zid]
+
+        nuc_mask    = sort_outline(donut.nuclei_masks[tid][zid])
+        nuc_outline = sort_outline(donut.nuclei_outlines[tid][zid])
+        don_mask    = sort_outline(donut.donut_masks[tid][zid])
+        maskout     = sort_outline(donut.donut_outer_mask[tid][zid])
+        don_outline_in  = sort_outline(donut.donut_outlines_in[tid][zid])
+        don_outline_out = sort_outline(donut.donut_outlines_out[tid][zid])
+
+
+        if plot_outlines:
+            ax[0].scatter(outline[:,0], outline[:,1], s=1, c='k', alpha=0.5)
+            ax[0].plot(don_outline_in[:,0], don_outline_in[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
+            ax[0].plot(don_outline_out[:,0], don_outline_out[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
+            ax[0].plot(nuc_outline[:,0], nuc_outline[:,1], linewidth=1, c='purple', alpha=0.5)#, marker='o',markersize=1)
+            ax[1].scatter(outline[:,0], outline[:,1], s=1, c='k', alpha=0.5)
+            ax[1].plot(don_outline_in[:,0], don_outline_in[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
+            ax[1].plot(don_outline_out[:,0], don_outline_out[:,1], linewidth=1, c='orange', alpha=0.5)#, marker='o',markersize=1)
+            ax[1].plot(nuc_outline[:,0], nuc_outline[:,1], linewidth=1, c='purple', alpha=0.5)#, marker='o',markersize=1)
+
+        if plot_nuclei:
+            ax[1].scatter(nuc_mask[:,0], nuc_mask[:,1],s=1, c='green', alpha=1)
+            ax[0].scatter(nuc_mask[:,0], nuc_mask[:,1],s=1, c='green', alpha=1)
+
+        if plot_donut:
+            ax[1].scatter(don_mask[:,0], don_mask[:,1],s=1, c='red', alpha=0.1)
+            ax[0].scatter(don_mask[:,0], don_mask[:,1],s=1, c='red', alpha=0.1)
+        
+        xs = cell.centersi[tid][zid]
+        ys = cell.centersj[tid][zid]
+        label = cell.label
+        ax[0].annotate(str(label), xy=(ys, xs), c="w")
+        ax[0].scatter([ys], [xs], s=0.5, c="white")
+        ax[0].axis(False)
+        ax[1].annotate(str(label), xy=(ys, xs), c="w")
+        ax[1].scatter([ys], [xs], s=0.5, c="white")
+        ax[1].axis(False)
+        
+    if EmbSeg is not None:
+        ax[1].scatter(EmbSeg.Embmask[t][z][:,0], EmbSeg.Embmask[t][z][:,1],s=1, c='blue', alpha=0.05)
+        ax[0].scatter(EmbSeg.Embmask[t][z][:,0], EmbSeg.Embmask[t][z][:,1],s=1, c='blue', alpha=0.05)
+
+    plt.tight_layout()
+    plt.show()
