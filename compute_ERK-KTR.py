@@ -1,6 +1,13 @@
 import os
 from ERKKTR import *
 
+import sys
+sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")
+sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/EmbryoSegmentation")
+
+from CellTracking import load_cells
+from embryosegmentation import load_ES
+
 if __name__ == '__main__':
     home = os.path.expanduser('~')
     path_data=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsheet/movies_registered/'

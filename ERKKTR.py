@@ -4,9 +4,6 @@ from copy import deepcopy
 from scipy.spatial import Delaunay,ConvexHull
 from utils_ERKKTR import *
 
-from multiprocessing.managers import BaseManager
-import warnings 
-
 def comptute_donut_masks(donut, cell_masks):
     donut.compute_donut_masks(cell_masks)
 

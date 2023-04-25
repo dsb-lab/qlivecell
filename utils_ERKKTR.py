@@ -95,33 +95,6 @@ def sort_points_counterclockwise(points):
     points[:, 0] = ysorted
     return points, tolerance_bool
     
-def load_ES(path=None, filename=None):
-    pthsave = path+filename
-    file_to_store = open(pthsave+"_ES.pickle", "rb")
-    ES = pickle.load(file_to_store)
-    file_to_store.close()
-    return ES
-
-def load_cells(path=None, filename=None):
-    pthsave = path+filename
-    file_to_store = open(pthsave+"_cells.pickle", "rb")
-    cells = pickle.load(file_to_store)
-    file_to_store.close()
-    file_to_store = open(pthsave+"_info.pickle", "rb")
-    CT_info = pickle.load(file_to_store)
-    file_to_store.close()
-    return cells, CT_info
-
-def load_cells_info(path=None, filename=None):
-    pthsave = path+filename
-    file_to_store = open(pthsave+".pickle", "rb")
-    cells = pickle.load(file_to_store)
-    file_to_store.close()
-    file_to_store = open(pthsave+"_info.pickle", "rb")
-    CT_info = pickle.load(file_to_store)
-    file_to_store.close()
-    return cells, CT_info
-
 def save_donuts(ES, path=None, filename=None):
     pthsave = path+filename
     file_to_store = open(pthsave+"_donuts.pickle", "wb")
