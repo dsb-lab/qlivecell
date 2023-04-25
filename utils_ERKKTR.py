@@ -5,6 +5,8 @@ import pickle
 import multiprocessing as mp
 import time 
 import warnings 
+from tifffile import TiffFile
+import os 
 
 np.seterr(all='warn')
 
@@ -100,11 +102,15 @@ def load_ES(path=None, filename=None):
     file_to_store.close()
     return ES
 
-def save_cells(cells, path=None, filename=None):
+def load_cells(path=None, filename=None):
     pthsave = path+filename
-    file_to_store = open(pthsave+".pickle", "wb")
-    pickle.dump(cells, file_to_store)
+    file_to_store = open(pthsave+"_cells.pickle", "rb")
+    cells = pickle.load(file_to_store)
     file_to_store.close()
+    file_to_store = open(pthsave+"_info.pickle", "rb")
+    CT_info = pickle.load(file_to_store)
+    file_to_store.close()
+    return cells, CT_info
 
 def load_cells_info(path=None, filename=None):
     pthsave = path+filename
@@ -237,3 +243,32 @@ def assign_fate(cells, times, slices):
                 if z not in cell.zs[tid]: continue
                 if cell.label in ICM: cell.fate[tid] = "ICM"
                 elif cell.label in TE: cell.fate[tid] = "TE"
+                
+def read_img_with_resolution(path_to_file, channel=0):
+    with TiffFile(path_to_file) as tif:
+        preIMGS = tif.asarray()
+        shapeimg = preIMGS.shape
+        if channel==None: 
+            if len(shapeimg) == 3: IMGS = np.array([tif.asarray()])
+            else: IMGS = np.array(tif.asarray())
+        else: 
+            if len(shapeimg) == 4: IMGS = np.array([tif.asarray()[:,channel,:,:]])
+            else: IMGS = np.array(tif.asarray()[:,:,channel,:,:])
+        imagej_metadata = tif.imagej_metadata
+        tags = tif.pages[0].tags
+        # parse X, Y resolution
+        npix, unit = tags['XResolution'].value
+        xres = unit/npix
+        npix, unit = tags['YResolution'].value
+        yres = unit/npix
+        assert(xres == yres)
+        xyres = xres
+        zres = imagej_metadata['spacing']
+    return IMGS, xyres, zres
+
+def get_file_embcode(path_data, emb):
+    files = os.listdir(path_data)
+    files = [file for file in files if '.tif' in file]
+    file = files[emb]
+    embcode=file.split('.')[0]
+    return file, embcode

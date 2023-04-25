@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from scipy.spatial import Delaunay,ConvexHull
-from utils_ERKKTR import assign_fate, compute_ERK_traces, printclear, multiprocess_start, multiprocess_end, multiprocess_add_tasks, multiprocess_get_results, worker, multiprocess, mp, sefdiff2D, sort_xy, intersect2D, get_only_unique, extract_ICM_TE_labels, load_ES, save_cells, save_donuts, load_donuts, load_cells_info, sort_points_counterclockwise
+from utils_ERKKTR import *
 
 from multiprocessing.managers import BaseManager
 import warnings 
