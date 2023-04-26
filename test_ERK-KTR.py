@@ -1,8 +1,9 @@
 import sys
 sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")
+sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/EmbryoSegmentation")
 
-# from CellTracking import CellTracking
-from CellTracking import load_cells, read_img_with_resolution
+from CellTracking import load_cells
+from embryosegmentation import load_ES
 
 from ERKKTR import *
 import os
