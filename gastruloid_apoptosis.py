@@ -14,23 +14,38 @@ path_save=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsh
 
 file, embcode = get_file_embcode(path_data, 0)
 
-IMGS_F3, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
-IMGS_KO, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
-
+IMGS_F3, xyres, zres  = read_img_with_resolution(path_data+file, channel=1)
+IMGS_KO, xyres, zres  = read_img_with_resolution(path_data+file, channel=0)
 IMGS_APO, xyres, zres = read_img_with_resolution(path_data+file, channel=2)
 
 cellsF3, CT_infoF3 = load_cells(path_save, embcode+'_ch%d' %1)
 cellsKO, CT_infoKO = load_cells(path_save, embcode+'_ch%d' %0)
 
-EmbSeg = load_ES(path_save, embcode)
+# EmbSeg = load_ES(path_save, embcode)
 
-erkktrF3 = load_donuts(path_save, embcode+'_F3')
-erkktrF3.plot_donuts(cellsF3, IMGS_KO, IMGS_KO, 0, 50, plot_nuclei=False, plot_outlines=False, plot_donut=True, EmbSeg=None)
+donutsF3 = load_donuts(path_save, embcode+'_F3')
+plot_donuts(donutsF3, cellsF3, IMGS_F3, IMGS_APO, 5, 40, plot_nuclei=False, plot_outlines=True, plot_donut=False, EmbSeg=None)
 
-# erkktrA12 = ERKKTR(IMGS_KO, innerpad=1, outterpad=1, donut_width=6, min_outline_length=100, cell_distance_th=100.0, mp_threads=14)
-# erkktrA12.create_donuts(cellsKO, EmbSeg)
-# erkktrF3 = load_donuts( path_save, embcode+'_F3')
-# erkktrA12.plot_donuts(cellsKO, IMGS_KO, IMGS_APO, 5, 33, plot_nuclei=True, plot_outlines=False, plot_donut=True, EmbSeg=None)
-# save_donuts(erkktrA12, path_save, embcode+'_KO')
+donutsKO = load_donuts(path_save, embcode+'_KO')
+plot_donuts(donutsKO, cellsKO, IMGS_KO, IMGS_APO, 5, 50, plot_nuclei=False, plot_outlines=True, plot_donut=False, EmbSeg=None)
 
-## TO DO: show errors or warnings when donuts are too big for the given data. Either that or delete problematic cells
+# img1 = np.array(IMGS_F3[0,46])
+# img2 = np.array(IMGS_APO[0,46])
+# img1 = img1/255.0
+# img2 = img2/255.0
+# img2 = (img2/np.max(img2)) * np.max(img1)
+
+# img = np.zeros((len(img1), len(img1), 3))
+
+# maximg1 = np.max(img1)
+# maximg2 = np.max(img2)
+
+# for i in range(len(img1)):
+#     for j in range(len(img1)):
+#         img[i,j] = [img2[i,j], img1[i,j], 0]
+
+# img = np.array(img)
+# import matplotlib.pyplot as plt
+# fig, ax = plt.subplots()
+# ax.imshow(img)
+# plt.show()
