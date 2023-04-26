@@ -28,7 +28,6 @@ from copy import deepcopy, copy
 
 from tifffile import imwrite
 import subprocess
-import time 
 import gc
 
 # Import files from repo utils

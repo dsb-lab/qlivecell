@@ -6,16 +6,70 @@ from tifffile import TiffFile
 import os
 import random
 
-def get_file_embcode(path_data, emb):
-    files = os.listdir(path_data)
-    file = files[emb]
-    embcode=file.split('.')[0]
-    return file, embcode
 
-def compute_distance_xy(X1, X2, Y1, Y2):
-    return np.sqrt((X2-X1)**2 + (Y2-Y1)**2)
+def get_file_embcode(path_data, f):
+    """
+    Parameters
+    ----------
+    path_data : str
+        The path to the directory containing emb
+    f : str or int
+        if str returns path_data/emb
+        if int returns the emb element in path_data
+    
+    Returns
+    -------
+    file, name
+        full file path and file name.
+    """    
+    files = os.listdir(path_data)
+    if isinstance(f, str):
+        for i, file in enumerate(files): 
+            if f in file: fid=i
+    else: fid=f
+    file = files[fid]
+    name=file.split('.')[0]
+    return file, name
+
+def compute_distance_xy(x1, x2, y1, y2):
+    """
+    Parameters
+    ----------
+    x1 : number
+        x coordinate of point 1
+    x2 : number
+        x coordinate of point 2
+    y1 : number
+        y coordinate of point 1
+    y2 : number
+        y coordinate of point 2
+
+    Returns
+    -------
+    dist : number
+        euclidean distance between points (x1, y1) and (x2, y2)
+    """
+    dist = np.sqrt((x2-x1)**2 + (y2-y1)**2)
+    return dist
 
 def compute_disp_xy(X,Y):
+    """
+    Parameters
+    ----------
+    X : list of lists
+        x coordinates with shape (c, times). 
+        c being the number of cells.
+        times being the number of points per cell
+    Y : list of lists
+        y coordinates with shape (c, times). 
+        c being the number of cells.
+        times being the number of points per cell
+
+    Returns
+    -------
+    disp : list of lists
+        shape (c, times - 1) cell displacement as euclidean distance between each cell with itself at t and t+1 
+    """
     disp = []
     for i in range(X.shape[0]):
         disp.append([])
@@ -23,15 +77,30 @@ def compute_disp_xy(X,Y):
             disp[i].append(compute_distance_xy(X[i, j], X[i, j+1], Y[i, j], Y[i, j+1]))
     return disp
 
-def extract_complete_labels(FinalLabels):
+def extract_complete_labels(Labels):
+    """ Extract labels that appear in all times and those that are truncated
+    Parameters
+    ----------
+    Labels : list of lists
+        shape(times, labels)
+    
+    Returns
+    -------
+    labels_full : list
+        shape (labels_complete). 
+        list containing the labels of cells that appear in every time
+    labels_trunc : list of lists
+        shape (times, labels_incomplete). 
+        list containing the labels of cells that do not appear in every time
+    """
     maxlabel = 0
-    for t in range(len(FinalLabels)):
-        maxlabel = max(maxlabel, max(FinalLabels[t]))
+    for t in range(len(Labels)):
+        maxlabel = max(maxlabel, max(Labels[t]))
 
     labels_full = list(range(maxlabel))
-    for t in range(len(FinalLabels)):
+    for t in range(len(Labels)):
         for lab in labels_full:
-            if lab not in FinalLabels[t]:
+            if lab not in Labels[t]:
                 labels_full.remove(lab)
 
     labels_trun = [element for element in range(maxlabel) if element not in labels_full]
@@ -50,8 +119,27 @@ def extract_position_as_matrices(CT):
             Y[i,t] = CT.FinalCenters[t][id][2]
     return X,Y,Z
 
+def correct_path(path):
+    if path[-1] != '/': path=path+'/'
+    return path
+
 def save_cells(CT, path=None, filename=None):
-    pthsave = path+filename
+    """ save cell objects obtained with CellTracking.py
+
+    Saves cells as `path`/`filename`_cells.pickle
+    Saves CellTracking info as `path`/`filename`_info.pickle
+
+    Parameters
+    ----------
+    CT : CellTracking
+
+    path : str
+        path to save directory
+    filename : str
+        name of file characteristic of the given CT
+    
+    """
+    pthsave = correct_path(path)+filename
     file_to_store = open(pthsave+"_cells.pickle", "wb")
     pickle.dump(CT.cells, file_to_store)
     file_to_store.close()
@@ -61,7 +149,7 @@ def save_cells(CT, path=None, filename=None):
     file_to_store.close()
 
 def load_cells(path=None, filename=None):
-    pthsave = path+filename
+    pthsave = correct_path(path)+filename
     file_to_store = open(pthsave+"_cells.pickle", "rb")
     cells = pickle.load(file_to_store)
     file_to_store.close()
@@ -71,7 +159,7 @@ def load_cells(path=None, filename=None):
     return cells, CT_info
 
 def save_CT(CT, path=None, filename=None, _del_plots=True):
-    pthsave = path+filename
+    pthsave = correct_path(path)+filename
     file_to_store = open(pthsave+".pickle", "wb")
     if _del_plots:
         if hasattr(CT, 'PACPs'):
@@ -81,13 +169,28 @@ def save_CT(CT, path=None, filename=None, _del_plots=True):
     file_to_store.close()
 
 def load_CT(path=None, filename=None):
-    pthsave = path+filename
+    pthsave = correct_path(path)+filename
     file_to_store = open(pthsave+".pickle", "rb")
     CT = pickle.load(file_to_store)
     file_to_store.close()
     return CT
 
+
 def read_img_with_resolution(path_to_file, channel=0):
+    """
+    Parameters
+    ----------
+    path_to_file : str
+        The path to the tif file.
+    channel : int or None
+        if None assumes the tif file contains only one channel
+        if int selects that channel from the tif
+    
+    Returns
+    -------
+    IMGS, xyres, zres
+        4D numpy array with shape (t, z, x, y), x and y resolution and z resolution
+    """  
     with TiffFile(path_to_file) as tif:
         preIMGS = tif.asarray()
         shapeimg = preIMGS.shape
@@ -108,6 +211,7 @@ def read_img_with_resolution(path_to_file, channel=0):
         xyres = xres
         zres = imagej_metadata['spacing']
     return IMGS, xyres, zres
+
 
 def generate_set(paths_data, path_to_save, number_of_images, exclude_if_in_path=None, data_subtype=None):
     os.system('rm -rf '+path_to_save)
