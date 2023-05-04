@@ -29,12 +29,30 @@ def read_img_with_resolution(path_to_file, channel=0):
         zres = imagej_metadata['spacing']
     return IMGS, xyres, zres
 
-def get_file_embcode(path_data, emb):
+
+def get_file_embcode(path_data, f):
+    """
+    Parameters
+    ----------
+    path_data : str
+        The path to the directory containing emb
+    f : str or int
+        if str returns path_data/emb
+        if int returns the emb element in path_data
+    
+    Returns
+    -------
+    file, name
+        full file path and file name.
+    """    
     files = os.listdir(path_data)
-    files = [file for file in files if '.tif' in file]
-    file = files[emb]
-    embcode=file.split('.')[0]
-    return file, embcode
+    if isinstance(f, str):
+        for i, file in enumerate(files): 
+            if f in file: fid=i
+    else: fid=f
+    file = files[fid]
+    name=file.split('.')[0]
+    return file, name
 
 def worker(input, output):
 
