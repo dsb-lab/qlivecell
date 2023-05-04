@@ -12,15 +12,7 @@ home = os.path.expanduser('~')
 path_data=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
 path_save=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects/'
 
-files = os.listdir(path_data)
-embs = []
-for emb, file in enumerate(files):
-    if "082119_p1" in file: embs.append(emb)
-emb=embs[0]
-embcode=files[emb].split('.')[0]
-if "_info" in embcode: 
-    embcode=embcode[0:-5]
-file = embcode+'.tif'
+file, embcode = get_file_embcode(path_data, "082119_p1")
 
 IMGS_SEG, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
 IMGS_ERK, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
@@ -31,19 +23,34 @@ EmbSeg = load_ES(path_save, embcode)
 
 erkktr = load_donuts(path_save, embcode)
 
-erkktr.plot_donuts(cells, IMGS_SEG, IMGS_ERK, 0, 10, labels='all', plot_outlines=True, plot_nuclei=True, plot_donut=True, EmbSeg=None)
+plot_donuts(erkktr, cells, IMGS_SEG, IMGS_ERK, 20, 16, plot_nuclei=False, plot_outlines=False, plot_donut=True, EmbSeg=None)
 
 compute_ERK_traces(IMGS_ERK, cells, erkktr)
 
 for cell in cells:
     cell.compute_movement("xy", "center")
 
-assign_fate(cells, CT_info.times, CT_info.slices)
-
 apo_cell_ids = [x[0] for x in CT_info.apo_cells]
 apo_times    = [x[1] for x in CT_info.apo_cells]
 mito_cell_ids = [x[0] for y in CT_info.mito_cells for x in y]
 mito_times    = np.unique([x[0][1] for x in CT_info.mito_cells])
+
+assign_fate(cells, CT_info.times, CT_info.slices)
+
+with open("/home/pablo/labels.txt", "w") as txt_file:
+    for cell in cells:
+        if cell.id in mito_cell_ids: continue
+        if cell.id in apo_cell_ids: continue  
+        if not hasattr(cell, "ERKtrace"): continue
+        txt_file.write(" ".join([str(cell.label)]) + "\n")            
+
+with open("/home/pablo/erktraces.txt", "w") as txt_file:
+    for cell in cells:
+        if cell.id in mito_cell_ids: continue
+        if cell.id in apo_cell_ids: continue
+        if not hasattr(cell, "ERKtrace"): continue
+        txt_file.write(" ".join([str(x)+"," for x in cell.ERKtrace]) + "\n")       
+
 
 import matplotlib.pyplot as plt
 fig, ax = plt.subplots(1,2, figsize=(10,5))
@@ -59,7 +66,6 @@ for cell in cells:
     ax[0].set_title("ERK-KTR trace")
     ax[0].plot(cell.times, cell.ERKtrace, marker=None, color = cc)
     ax[1].set_title("cell displacement")
-    print(len(cell.disp))
     ax[1].plot(np.array(cell.times[:-1]) + 0.5, cell.disp, label=cell.id, color=cc)
     # ax[1].set_ylim(0, 10)
     maxdisp = max(maxdisp, max(cell.disp))

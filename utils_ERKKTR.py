@@ -11,6 +11,30 @@ from copy import deepcopy
 
 np.seterr(all='warn')
 
+def get_file_embcode(path_data, f):
+    """
+    Parameters
+    ----------
+    path_data : str
+        The path to the directory containing emb
+    f : str or int
+        if str returns path_data/emb
+        if int returns the emb element in path_data
+    
+    Returns
+    -------
+    file, name
+        full file path and file name.
+    """    
+    files = os.listdir(path_data)
+    if isinstance(f, str):
+        for i, file in enumerate(files): 
+            if f in file: fid=i
+    else: fid=f
+    file = files[fid]
+    name=file.split('.')[0]
+    return file, name
+
 def intersect2D(a, b):
   """
   Find row intersection between 2D numpy arrays, a and b.
@@ -241,13 +265,6 @@ def read_img_with_resolution(path_to_file, channel=0):
         zres = imagej_metadata['spacing']
     return IMGS, xyres, zres
 
-def get_file_embcode(path_data, emb):
-    files = os.listdir(path_data)
-    files = [file for file in files if '.tif' in file]
-    file = files[emb]
-    embcode=file.split('.')[0]
-    return file, embcode
-
 def sort_coordinates(list_of_xy_coords):
     cx, cy = list_of_xy_coords.mean(0)
     x, y = list_of_xy_coords.T
@@ -285,10 +302,10 @@ def plot_donuts(DONUTS, cells, IMGS_SEG, IMGS_ERK, t, z, labels='all', plot_outl
         outline = cell.outlines[tid][zid]
         mask    = cell.masks[tid][zid]
 
-        nuc_mask    = sort_outline(donut.nuclei_masks[tid][zid])
+        nuc_mask    = donut.nuclei_masks[tid][zid]
         nuc_outline = sort_outline(donut.nuclei_outlines[tid][zid])
-        don_mask    = sort_outline(donut.donut_masks[tid][zid])
-        maskout     = sort_outline(donut.donut_outer_mask[tid][zid])
+        don_mask    = donut.donut_masks[tid][zid]
+        maskout     = donut.donut_outer_mask[tid][zid]
         don_outline_in  = sort_outline(donut.donut_outlines_in[tid][zid])
         don_outline_out = sort_outline(donut.donut_outlines_out[tid][zid])
 
