@@ -80,7 +80,6 @@ class PlotAction():
             self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
             self.update()
 
-
             if self.current_state=="SCL": self.current_state=None
             
     def get_size(self):
@@ -330,7 +329,11 @@ class PlotActionCT(PlotAction):
                 self.current_state=None
                 self.ax_sel=None
                 self.z=None
-                
+    
+    def onscroll(self, event):
+        if self.current_state=='add': return
+        else: super().onscroll(event)
+    
     def update(self):
         if self.current_state in ["apo","Com", "mit", "Sep"]:
             if self.current_state=="Sep": cells_to_plot = self.CT.list_of_cells

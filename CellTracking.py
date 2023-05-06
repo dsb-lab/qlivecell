@@ -619,7 +619,7 @@ class CellSegmentation(object):
 
 class CellTracking(object):
         
-    def __init__(self, stacks, pthtosave, embcode, given_Outlines=None, CELLS=None, CT_info=None, model=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=None, plot_outline_width=1):
+    def __init__(self, stacks, pthtosave, embcode, given_Outlines=None, CELLS=None, CT_info=None, model=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=None, plot_outline_width=1, line_builder_mode='lasso'):
         if CELLS !=None: 
             self._init_with_cells(CELLS, CT_info)
         else:
@@ -685,6 +685,9 @@ class CellTracking(object):
         
         self.action_counter = -1
         self.CT_info = CellTracking_info(self)
+        
+        self._line_builder_mode = line_builder_mode
+        if self._line_builder_mode not in ['points', 'lasso']: raise Exception
         
         if CELLS!=None: 
             self.update_labels()
@@ -1078,20 +1081,29 @@ class CellTracking(object):
         return pointsinside
     
     def add_cell(self, PACP):
-        line, = PACP.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
-        self.linebuilder = LineBuilder(line)
+        if self._line_builder_mode == 'points':
+            line, = PACP.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
+            self.linebuilder = LineBuilder_points(line)
+        else: self.linebuilder = LineBuilder_lasso(PACP.ax_sel)
 
     def complete_add_cell(self, PACP):
-        if len(self.linebuilder.xs)<3:
-            return
-        new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(self.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(self.linebuilder.ys) / self.dim_change).astype(np.int64))])
-        if np.max(new_outline)>self.stack_dims[0]:
-            self.printfancy("ERROR: drawing out of image")
-            return
-        self.append_cell_from_outline(new_outline, PACP.z, PACP.t)
+        if self._line_builder_mode == 'points':
+            if len(self.linebuilder.xs)<3:
+                return
+            new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(self.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(self.linebuilder.ys) / self.dim_change).astype(np.int64))])
+            if np.max(new_outline)>self.stack_dims[0]:
+                self.printfancy("ERROR: drawing out of image")
+                return
+            mask = None
+        elif self._line_builder_mode == 'lasso':
+            if len(self.linebuilder.mask)<6:
+                return
+            new_outline = self.linebuilder.outline
+            mask = [self.linebuilder.mask]
+        self.append_cell_from_outline(new_outline, PACP.z, PACP.t, mask=mask)
         self.update_labels()
 
-    def append_cell_from_outline(self, outline, z, t, sort=True):
+    def append_cell_from_outline(self, outline, z, t, mask=None, sort=True):
         if sort:
             new_outline_sorted, _ = self._sort_point_sequence(outline)
             if new_outline_sorted is None: return
@@ -1099,7 +1111,8 @@ class CellTracking(object):
             new_outline_sorted = outline
         new_outline_sorted_highres = self._increase_point_resolution(new_outline_sorted)
         outlines = [[new_outline_sorted_highres]]
-        masks = [[self._points_within_hull(new_outline_sorted_highres)]]
+        if mask is None: masks = [[self._points_within_hull(new_outline_sorted_highres)]]
+        else: masks = [mask]
         self._extract_unique_labels_and_max_label()
         self.cells.append(Cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self))
         self.currentcellid+=1
