@@ -119,19 +119,6 @@ def extract_position_as_matrices(CT):
             Y[i,t] = CT.FinalCenters[t][id][2]
     return X,Y,Z
 
-def extract_position_as_matrices(cells):    
-
-    X = np.zeros((len(labels_full), len(CT.FinalLabels)))
-    Y = np.zeros((len(labels_full), len(CT.FinalLabels)))
-    Z = np.zeros((len(labels_full), len(CT.FinalLabels)))
-    for i, lab in enumerate(labels_full):
-        for t in range(len(CT.FinalLabels)):
-            id = np.where(np.array(CT.FinalLabels[t])==lab)[0][0]
-            Z[i,t] = CT.FinalCenters[t][id][0]
-            X[i,t] = CT.FinalCenters[t][id][1]
-            Y[i,t] = CT.FinalCenters[t][id][2]
-    return X,Y,Z
-9
 def correct_path(path):
     if path[-1] != '/': path=path+'/'
     return path

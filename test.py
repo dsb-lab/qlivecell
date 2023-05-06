@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib.widgets import LassoSelector
 from matplotlib.path import Path
 
-class SelectFromCollection:
+class ConstrunctOutline:
     """
     Select indices from a matplotlib collection using `LassoSelector`.
 
@@ -26,62 +26,52 @@ class SelectFromCollection:
         alpha value of 1 and non-selected points to *alpha_other*.
     """
 
-    def __init__(self, ax, collection, alpha_other=0.3):
+    def __init__(self, ax):
         self.canvas = ax.figure.canvas
-        self.collection = collection
-        self.alpha_other = alpha_other
-
-        self.xys = collection.get_offsets()
-        self.Npts = len(self.xys)
-
-        # Ensure that we have separate colors for each object
-        self.fc = collection.get_facecolors()
-        if len(self.fc) == 0:
-            raise ValueError('Collection must have a facecolor')
-        elif len(self.fc) == 1:
-            self.fc = np.tile(self.fc, (self.Npts, 1))
-
         self.lasso = LassoSelector(ax, onselect=self.onselect)
-        self.ind = []
+        self.outline = []
 
     def onselect(self, verts):
+        self.outline = np.floor([[x[0],x[1]] for x in verts]).astype('int32')
+        imin = min(self.outline[:,0])
+        imax = max(self.outline[:,0])
+        jmin = min(self.outline[:,1])
+        jmax = max(self.outline[:,1])
+        self.mask = np.array([[i,j] for i in range(imin, imax+1) for j in  range(jmin, jmax+1)]).astype('int32')
         path = Path(verts)
-        self.ind = np.nonzero(path.contains_points(self.xys))[0]
-        self.fc[:, -1] = self.alpha_other
-        self.fc[self.ind, -1] = 1
-        self.collection.set_facecolors(self.fc)
-        self.canvas.draw_idle()
-
+        self.ind = np.nonzero(path.contains_points(self.mask))[0]
+        self.mask = [self.mask[self.ind]]
+        
     def disconnect(self):
         self.lasso.disconnect_events()
-        self.fc[:, -1] = 1
-        self.collection.set_facecolors(self.fc)
         self.canvas.draw_idle()
 
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-
-    # Fixing random state for reproducibility
-    np.random.seed(19680801)
-
-    data = np.random.rand(100, 2)
-
-    subplot_kw = dict(xlim=(0, 1), ylim=(0, 1), autoscale_on=False)
+    img = np.zeros((512,512))
+    subplot_kw = dict(xlim=(0, img.shape[0]), ylim=(0, img.shape[1]), autoscale_on=False)
     fig, ax = plt.subplots(subplot_kw=subplot_kw)
 
-    pts = ax.scatter(data[:, 0], data[:, 1], s=80)
-    selector = SelectFromCollection(ax, pts)
+    ims = ax.imshow(img)
+    selector = ConstrunctOutline(ax, ims)
 
     def accept(event):
         if event.key == "enter":
-            print("Selected points:")
-            print(selector.xys[selector.ind])
             selector.disconnect()
             ax.set_title("")
             fig.canvas.draw()
 
     fig.canvas.mpl_connect("key_press_event", accept)
-    ax.set_title("Press enter to accept selected points.")
-
     plt.show()
+
+img = np.zeros((512,512))
+newmask = selector.mask[selector.ind]
+newimg = np.zeros((512,512))
+newimg[newmask] = 1
+fig, ax = plt.subplots()
+ax.imshow(newimg)
+ax.scatter(selector.mask[:,0], selector.mask[:,1], s=20)
+ax.scatter(newmask[:,0], newmask[:,1], s=10)
+
+plt.show()

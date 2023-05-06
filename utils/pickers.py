@@ -20,7 +20,7 @@ class SubplotPicker_add():
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
 
-class LineBuilder:
+class LineBuilder_points:
     def __init__(self, line):
         self.line = line
         self.xs = list(line.get_xdata())
@@ -40,9 +40,51 @@ class LineBuilder:
             self.line.figure.canvas.draw()
         else:
             return
+        
     def stopit(self):
         self.line.figure.canvas.mpl_disconnect(self.cid)
         self.line.remove()
+
+from matplotlib.path import Path
+from utils.extraclasses import CustomLassoSelector
+
+class LineBuilder_lasso:
+    """
+    construct line using `LassoSelector`.
+
+    Parameters
+    ----------
+    ax : `~matplotlib.axes.Axes`
+        Axes to interact with.
+    """
+
+    def __init__(self, ax):
+        self.canvas = ax.figure.canvas
+        self.lasso = CustomLassoSelector(ax, onselect=self.onselect, button=3)
+        self.outline = []
+        self.mask=None
+        
+    def onselect(self, verts):
+        self.outline = np.floor([[x[0],x[1]] for x in verts]).astype('int32')
+        self.outline = np.unique(self.outline, axis=0)
+
+        fl = 100
+        ol = len(self.outline)
+        step = np.ceil(ol/fl).astype('int32')
+        self.outline = self.outline[::step]
+        
+        imin = min(self.outline[:,0])
+        imax = max(self.outline[:,0])
+        jmin = min(self.outline[:,1])
+        jmax = max(self.outline[:,1])
+        self.mask = np.array([[i,j] for i in range(imin, imax+1) for j in  range(jmin, jmax+1)]).astype('int32')
+        path = Path(verts)
+        self.ind = np.nonzero(path.contains_points(self.mask))[0]
+        self.mask = np.unique(self.mask[self.ind], axis=0)
+        
+    def stopit(self):
+        self.lasso.disconnect_events()
+        self.canvas.draw_idle()
 
 class CellPicker():
     def __init__(self, PACP):

@@ -2,7 +2,7 @@ import numpy as np
 
 from copy import deepcopy, copy
 
-from matplotlib.widgets import Slider
+from matplotlib.widgets import Slider, LassoSelector
 from matplotlib.transforms import TransformedPatchPath
 
 # This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
@@ -37,6 +37,20 @@ class Slider_z(Slider):
         first, last = self._counter.get_first_and_last_in_round(val)
         if self.valfmt is not None:
             return self.valfmt % (first, last)
+
+
+class CustomLassoSelector(LassoSelector):
+    """
+    Similar to LassoSelector but it disables matplotlib zoom
+    """
+
+    def press(self, event):
+        """Button press handler and validator."""
+        if event.button in self.validButtons:
+            if self.canvas.toolbar.mode!="":
+                self.canvas.mpl_disconnect(self.canvas.toolbar._zoom_info.cid)
+                self.canvas.toolbar.zoom()
+        super().press(event)
 
 class backup_CellTrack():
     def __init__(self, t, CT):
