@@ -217,7 +217,7 @@ class PlotActionCT(PlotAction):
                         delattr(self, 'patch')
                         self.CT.linebuilder.stopit()
                         self.CT.complete_add_cell(self)
-                        # delattr(self.CT, 'linebuilder')
+                        delattr(self.CT, 'linebuilder')
                     for PACP in self.CT.PACPs:
                         PACP.list_of_cells = []
                         PACP.current_subplot=None
