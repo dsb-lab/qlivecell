@@ -19,22 +19,6 @@ t, z, x, y = np.where(IMGS>255)
 IMGS[t,z,x,y] = 255
 IMGS = IMGS.astype('uint8')
 
-# import cv2
-
-# scaling_factor=1.0
-# if scaling_factor!=1:
-#     # resize image
-#     curr_shape = IMGS.shape
-#     new_img_shape = [np.round(x*scaling_factor).astype('int32') for x in IMGS.shape[2:]]
-#     new_img_shape = [np.round(x*scaling_factor).astype('int32') for x in IMGS.shape[2:]]
-#     new_shape = [x for x in curr_shape]
-#     new_shape[2:] = new_img_shape
-#     red_IMGS = np.zeros(new_shape)
-
-#     for i in range(curr_shape[0]):
-#         for j in range(curr_shape[1]):
-#             red_IMGS[i,j] = cv2.resize(IMGS[i,j], new_img_shape, interpolation = cv2.INTER_AREA)
-
 ### PREPROCESSING ###
 # Run centroid correction prior to Fijiyama registration to improve performance
 IMGS_corrected = centroid_correction_3d_based_on_mid_plane(IMGS)
@@ -46,25 +30,31 @@ IMGS_corrected = IMGS_corrected.astype('uint8')
 ### FJIYAMA REGISTRATION ###
 # Create Fijiyama file system (input and output folders)
 path_registered, path_output, path_movies_reg = generate_fijiyama_file_system(path_parent, 'movies_registered', embcode)
+
 # Save registration stacks into input folder
 generate_fijiyama_stacks(path_registered, IMGS_corrected, xyres, zres, file_format="t%d.tif")
+
 # Open Imagej to run fijiyama registration
 openfiji()
+
 # Remove stacks used for registration
 remove_dir(path_registered)
+
 # Create transformation folders
 path_trans_emb_global, path_trans_emb_steps = create_transformations_folders(path_movies_reg, embcode, trans_folder="transformations")
+
 # Move transformations
 move_transformation(path_output, path_trans_emb_global, path_trans_emb_steps)
+
 # Remove Fijiyama output folder 
 remove_dir(path_output)
 
 ### APPLY TRANSFORMATIONS ###
+
 path_movies_reg_embcode = create_dir(path_movies_reg, embcode, return_path=True, rem=True)
 IMGS_chs = np.array([IMGS_ch0,IMGS_ch1,IMGS_ch2])
 
-
-# expand channels
+# Expand channels
 registered_IMGS_chs = np.zeros_like(np.array(IMGS_chs))
 
 for ch, IMGS_ch in enumerate(IMGS_chs):
@@ -97,19 +87,18 @@ for ch, IMGS_ch in enumerate(IMGS_chs):
         IMG_t, xyres, zres = read_img_with_resolution(correct_path(path_movies_reg_embcode_ch_reg)+tfile, channel=None)
         registered_IMGS_chs[ch][t]=IMG_t
 
+# Reorder stack from CTZXY to the imagej structure TZCXY 
 sh = registered_IMGS_chs.shape
-for ch, IMGS_ch in enumerate(registered_IMGS_chs):
-    registered_IMGS_chs[ch] = centroid_correction_3d_based_on_mid_plane(IMGS_ch)
-
 final_registered_IMGS_chs = np.zeros((sh[1], sh[2], sh[0], sh[3], sh[4]))
-
 for ch in range(sh[0]):
     for t in range(sh[1]):
         for z in range(sh[2]):
             final_registered_IMGS_chs[t,z,ch] = registered_IMGS_chs[ch, t, z]
-            
+
+# Convert again to 8 bit
 final_registered_IMGS_chs = final_registered_IMGS_chs.astype('uint8')
 
+# Save final stack and remove unncessary intermediate files
 fullpath = path_movies_reg_embcode+'.tif'
 mdata = {'axes': 'TZCYX', 'spacing': zres, 'unit': 'um'}
 tifffile.imwrite(fullpath, final_registered_IMGS_chs, imagej=True, resolution=(1/xyres, 1/xyres), metadata=mdata)
