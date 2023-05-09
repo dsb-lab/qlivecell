@@ -1,3 +1,4 @@
+
 import numpy as np
 from scipy.spatial import cKDTree
 import random
@@ -31,13 +32,11 @@ import subprocess
 import gc
 
 # Import files from repo utils
-import sys
-sys.path.append('utils')
-from utils.PA import *
-from utils.extraclasses import Slider_t, Slider_z, backup_CellTrack, Cell
-from utils.iters import plotRound
-from utils.utils_ct import *
 
+from .utils.PA import *
+from .utils.extraclasses import Slider_t, Slider_z, backup_CellTrack, Cell
+from .utils.iters import plotRound
+from .utils.utils_ct import *
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 warnings.simplefilter("ignore", UserWarning)

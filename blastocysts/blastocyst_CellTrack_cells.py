@@ -1,5 +1,4 @@
-from cellpose.io import imread
-from cellpose import models
+
 from CellTracking import CellTracking
 from CellTracking import get_file_embcode, save_cells, load_cells, save_CT, load_CT, read_img_with_resolution
 import os

@@ -1,9 +1,7 @@
-import math 
 import numpy as np
 from copy import copy
 import matplotlib as mtp
-from utils.pickers import *
-import time
+from .pickers import *
 
 class PlotAction():
     def __init__(self, fig, ax, CT, id, mode):
