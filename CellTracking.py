@@ -33,10 +33,12 @@ import gc
 
 # Import files from repo utils
 
-from .utils.PA import *
-from .utils.extraclasses import Slider_t, Slider_z, backup_CellTrack, Cell
-from .utils.iters import plotRound
-from .utils.utils_ct import *
+import sys
+sys.path.insert(0, "utils")
+from utils.PA import *
+from utils.extraclasses import Slider_t, Slider_z, backup_CellTrack, Cell
+from utils.iters import plotRound
+from utils.utils_ct import *
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 warnings.simplefilter("ignore", UserWarning)

@@ -1,12 +1,11 @@
-from cellpose.io import imread
 from cellpose import models
 from CellTracking import CellTracking
 from CellTracking import get_file_embcode, save_cells, load_cells, save_CT, load_CT, read_img_with_resolution
 import os
 
 home = os.path.expanduser('~')
-path_data=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/test/movies/'
-path_save=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/test/CellTrackObjects/'
+path_data=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/Casp3/movies/'
+path_save=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/Casp3/CellTrackObjects/'
 
 files = os.listdir(path_data)
 # model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
@@ -16,7 +15,7 @@ model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/Ph
 
 file, embcode = get_file_embcode(path_data, 0)
 
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=2)
 
 
 ### CHANNEL 1 ###

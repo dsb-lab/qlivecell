@@ -2,12 +2,10 @@ import os
 from CellTracking import generate_set
 
 home = os.path.expanduser('~')
-path_data_n1 = home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/n1/movies/'
-path_data_n2 = home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/n2/movies/'
-paths_data=[path_data_n1, path_data_n2]
+paths_data=[home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/Casp3/movies/']
 
-path_save_train_data=home+'/Desktop/PhD/projects/Data/gastruloids/cellpose/train_sets/joshi/confocal/'
-path_save_test_data =home+'/Desktop/PhD/projects/Data/gastruloids/cellpose/test_sets/joshi/confocal/'
+path_save_train_data=home+'/Desktop/PhD/projects/Data/gastruloids/cellpose/train_sets/joshi/Casp3/'
+path_save_test_data =home+'/Desktop/PhD/projects/Data/gastruloids/cellpose/test_sets/joshi/Casp3/'
 
 max_train_imgs = 20
 max_test_imgs  = 5
