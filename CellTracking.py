@@ -68,7 +68,7 @@ class CellTracking_info():
 
 class CellSegmentation(object):
 
-    def __init__(self, stack, model, embcode, given_outlines=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7):
+    def __init__(self, stack, model, embcode, given_outlines=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7, blur_args=None):
         self.embcode             = embcode
         self.stack               = stack
         self._model              = model
@@ -90,6 +90,10 @@ class CellSegmentation(object):
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self._given_outlines     = given_outlines
+        self._blur_args = blur_args
+        if blur_args is not None:
+            self._ksize=blur_args[0]
+            self._ksigma=blur_args[1]
         self._assign_color_to_label()
 
     def __call__(self):
@@ -140,6 +144,8 @@ class CellSegmentation(object):
             self.progress(z+1, self.slices)
             # Current xy plane
             img = self.stack[z,:,:]
+            if self._blur_args is not None:
+                img = cv2.GaussianBlur(img,self._ksize, self._ksigma)
             if self._given_outlines is None:
                 # Select whether we are using a pre-trained model or a cellpose base-model
                 if self._trainedmodel:
@@ -620,7 +626,7 @@ class CellSegmentation(object):
 
 class CellTracking(object):
         
-    def __init__(self, stacks, pthtosave, embcode, given_Outlines=None, CELLS=None, CT_info=None, model=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=None, plot_outline_width=1, line_builder_mode='lasso'):
+    def __init__(self, stacks, pthtosave, embcode, given_Outlines=None, CELLS=None, CT_info=None, model=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=None, plot_outline_width=1, line_builder_mode='lasso', blur_args=None):
         if CELLS !=None: 
             self._init_with_cells(CELLS, CT_info)
         else:
@@ -689,7 +695,7 @@ class CellTracking(object):
         
         self._line_builder_mode = line_builder_mode
         if self._line_builder_mode not in ['points', 'lasso']: raise Exception
-        
+        self._blur_args = blur_args
         if CELLS!=None: 
             self.update_labels()
             self.backupCT  = backup_CellTrack(0, self)
@@ -796,7 +802,8 @@ class CellTracking(object):
                                 , overlap_gradient_th=self._overlap_th
                                 , masks_cmap=self._cmap_name
                                 , min_outline_length=self._min_outline_length
-                                , neighbors_for_sequence_sorting=self._nearest_neighs)
+                                , neighbors_for_sequence_sorting=self._nearest_neighs
+                                , blur_args=self._blur_args)
 
             self.printfancy("")
             self.printfancy("######   CURRENT TIME = %d/%d   ######" % (t+1, self.times))

@@ -1,9 +1,7 @@
-from cellpose.io import imread
 from cellpose import models
 from CellTracking import CellTracking
 from CellTracking import get_file_embcode, save_cells, load_cells, save_CT, load_CT, read_img_with_resolution
 import os
-import numpy as np
 home = os.path.expanduser('~')
 path_data=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
 path_save=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects/'
@@ -12,9 +10,9 @@ file, embcode = get_file_embcode(path_data, "082119_p1")
 
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
-# model  = models.Cellpose(gpu=True, model_type='nuclei')
+model  = models.Cellpose(gpu=True, model_type='nuclei')
 
-CT = CellTracking(IMGS, path_save, embcode
+CT = CellTracking(IMGS[0:10], path_save, embcode
                     , model = model 
                     , trainedmodel=True
                     , channels=[0,0]
@@ -37,12 +35,13 @@ CT = CellTracking(IMGS, path_save, embcode
                     , cell_distance_axis="xy"
                     , movement_computation_method="center"
                     , mean_substraction_cell_movement=False
-                    , plot_stack_dims = (256, 256))
+                    , plot_stack_dims = (256, 256)
+                    #, blur_args=None)
+                    , blur_args=[[5,5], 1])
 
 CT()
 # save_CT(CT, path_save, embcode)
-# CT.plot_tracking(windows=1, plot_layout=(1,2), plot_overlap=1, plot_stack_dims=(512, 512))
-save_cells(CT, path_save, embcode)
+CT.plot_tracking(windows=1, plot_layout=(1,2), plot_overlap=1, plot_stack_dims=(512, 512))
+# save_cells(CT, path_save, embcode)
 # CT.plot_cell_movement()
 # CT.plot_masks3D_Imagej(cell_selection=False)
-
