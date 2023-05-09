@@ -344,3 +344,95 @@ def plot_donuts(DONUTS, cells, IMGS_SEG, IMGS_ERK, t, z, labels='all', plot_outl
 
     plt.tight_layout()
     plt.show()
+
+class PlotAction():
+    def __init__(self, fig, ax, donuts, IMGS1, IMGS2, id, mode):
+        self.fig=fig
+        self.ax=ax
+        self.id=id
+        self.donuts=donuts
+        self.list_of_cells = []
+        self.act = fig.canvas.mpl_connect('key_press_event', self)
+        self.ctrl_press   = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
+        self.ctrl_release = self.fig.canvas.mpl_connect('key_release_event', self.on_key_release)
+        self.ctrl_is_held = False
+        self.current_state=None
+        self.current_subplot = None
+        self.cr = 0
+        self.t =0
+        self.zs=[]
+        self.z = None
+        self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
+        groupsize  = 1
+        self.times = IMGS1.shape[0]
+        self.slices = IMGS1.shape[1]
+        self.max_round = self.slices
+        self.get_size()
+        self.mode=mode   
+        self.plot_outlines=True     
+    
+    def __call__(self, event):
+        # To be defined 
+        pass
+    
+    def on_key_press(self, event):
+        if event.key == 'control':
+            self.ctrl_is_held = True
+
+    def on_key_release(self, event):
+        if event.key == 'control':
+            self.ctrl_is_held = False
+
+    # The function to be called anytime a t-slider's value changes
+    def update_slider_t(self, t):
+        self.t=t-1
+        #REPLOT()
+        self.update()
+
+    # The function to be called anytime a z-slider's value changes
+    def update_slider_z(self, cr):
+        self.cr=cr
+        #REPLOT()
+        self.update()
+
+    def onscroll(self, event):
+        if self.ctrl_is_held:
+            #if self.current_state == None: self.current_state="SCL"
+            if event.button == 'up': self.t = self.t + 1
+            elif event.button == 'down': self.t = self.t - 1
+
+            self.t = max(self.t, 0)
+            self.t = min(self.t, self.CT.times-1)
+            self.CT._time_sliders[self.id].set_val(self.t+1)
+        #REPLOT()
+            self.update()
+
+            if self.current_state=="SCL": self.current_state=None
+
+        else: 
+
+            if event.button == 'up':       self.cr = self.cr - 1
+            elif event.button == 'down':   self.cr = self.cr + 1
+
+            self.cr = max(self.cr, 0)
+            self.cr = min(self.cr, self.max_round)
+            self.CT._z_sliders[self.id].set_val(self.cr)
+
+            self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+            self.update()
+
+            if self.current_state=="SCL": self.current_state=None
+            
+    def get_size(self):
+        bboxfig = self.fig.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+        widthfig, heightfig = bboxfig.width*self.fig.dpi, bboxfig.height*self.fig.dpi
+        self.figwidth  = widthfig
+        self.figheight = heightfig
+
+    def reploting(self):
+        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.fig.canvas.draw_idle()
+        self.fig.canvas.draw()
+
+    def update(self):
+        pass
