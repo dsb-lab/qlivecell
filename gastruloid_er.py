@@ -21,12 +21,12 @@ IMGS = IMGS.astype('uint8')
 
 ### PREPROCESSING ###
 # Run centroid correction prior to Fijiyama registration to improve performance
-IMGS_corrected = centroid_correction_3d_based_on_mid_plane(IMGS)
+# IMGS_corrected = centroid_correction_3d_based_on_mid_plane(IMGS)
 # Check whether correction is good enough
 err = test_mid_plane_centroid_correction(IMGS_corrected, 0, pixel_tolerance=1)
 
-IMGS_corrected = IMGS_corrected.astype('uint8')
-
+# IMGS_corrected = IMGS_corrected.astype('uint8')
+IMGS_corrected = IMGS.astype('uint8')
 ### FJIYAMA REGISTRATION ###
 # Create Fijiyama file system (input and output folders)
 path_registered, path_output, path_movies_reg = generate_fijiyama_file_system(path_parent, 'movies_registered', embcode)
