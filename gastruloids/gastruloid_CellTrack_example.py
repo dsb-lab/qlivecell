@@ -4,17 +4,17 @@ from CellTracking import get_file_embcode, save_cells, load_cells, save_CT, load
 import os
 
 home = os.path.expanduser('~')
-path_data=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/Casp3/movies/'
-path_save=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/Casp3/CellTrackObjects/'
+path_data=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsheet/movies_registered/'
+path_save=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsheet/CellTrackObjects/'
 
 files = os.listdir(path_data)
 # model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/cell_tracking/training_set_expanded_nuc/models/blasto')
-model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/gastruloids/cellpose/train_sets/joshi/confocal/models/CP_20230418_203246')
-model  = models.Cellpose(gpu=True, model_type='nuclei')
+model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/gastruloids/cellpose/train_sets/joshi/confocal/models/CP_20230510_115154')
+# model  = models.Cellpose(gpu=True, model_type='nuclei')
 
-file, embcode = get_file_embcode(path_data, 0)
+file, embcode = get_file_embcode(path_data, 1)
 
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=2)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
 
 ### CHANNEL 1 ###
 
@@ -42,9 +42,14 @@ CT = CellTracking(IMGS, path_save, embcode
                     , movement_computation_method="center"
                     , mean_substraction_cell_movement=False
                     , plot_outline_width=0
-                    , blur_args=[[5,5], 2])
+                    , blur_args=None)
 
 CT()
+
+for cellid, cell in reversed(list(enumerate(CT.cells))):
+    if cell.times != [i for i in range(10)]: CT.cells.pop(cellid)
+
+CT.update_labels()
 
 CT.plot_tracking(plot_stack_dims = (512, 512), plot_layout=(1,1), plot_outline_width=1)
 save_cells(CT, path_save, embcode+'_ch%d' %0)
@@ -52,8 +57,7 @@ save_cells(CT, path_save, embcode+'_ch%d' %0)
  
 # CT.plot_masks3D_Imagej(cell_selection=True, color=None, channel_name="0")
 
-
-
+# CT1 = CT
 img = IMGS[0,10]
 # img[img < 15] = 0
 import cv2
