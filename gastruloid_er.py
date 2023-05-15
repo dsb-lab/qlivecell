@@ -6,7 +6,7 @@ path_parent = home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lig
 path_data=path_parent+'movies/'
 path_save=path_parent+'CellTrackObjects/'
 
-file, embcode = get_file_embcode(path_data, 1)
+file, embcode = get_file_embcode(path_data, 0)
 
 # Extract both channels
 IMGS_ch0, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
@@ -14,10 +14,10 @@ IMGS_ch1, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
 IMGS_ch2, xyres, zres = read_img_with_resolution(path_data+file, channel=2)
 
 # Combine channels into single stack
-IMGS = IMGS_ch0.astype('int32') + IMGS_ch1.astype('int32') #+ IMGS_ch2.astype('uint16')
+IMGS = IMGS_ch0.astype('uint16') + IMGS_ch1.astype('uint16') #+ IMGS_ch2.astype('uint16')
 t, z, x, y = np.where(IMGS>255)
 IMGS[t,z,x,y] = 255
-IMGS = IMGS.astype('int32')
+IMGS = IMGS.astype('uint8')
 
 ### PREPROCESSING ###
 # Run centroid correction prior to Fijiyama registration to improve performance
