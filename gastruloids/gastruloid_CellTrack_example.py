@@ -12,9 +12,9 @@ files = os.listdir(path_data)
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/gastruloids/cellpose/train_sets/joshi/confocal/models/CP_20230510_115154')
 # model  = models.Cellpose(gpu=True, model_type='nuclei')
 
-file, embcode = get_file_embcode(path_data, 1)
+file, embcode = get_file_embcode(path_data, 2)
 
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
 
 ### CHANNEL 1 ###
 
