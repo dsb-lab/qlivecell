@@ -1,77 +1,44 @@
 import numpy as np
+from scipy.spatial.distance import directed_hausdorff
+from munkres import Munkres
 
-from matplotlib.widgets import LassoSelector
-from matplotlib.path import Path
+# Example cell positions, volumes, and outlines for time 1 and time 2
+time1_cells = [(1, 1), (2, 2), (3, 3)]  # List of (x, y) positions for time 1
+time1_volumes = [10, 15, 20]  # List of volumes for time 1
+time1_outlines = [np.array([[1, 1], [1, 2], [2, 2], [2, 1]]),  # Example outline for cell 1
+                  np.array([[2, 2], [2, 3], [3, 3], [3, 2]]),  # Example outline for cell 2
+                  np.array([[3, 3], [3, 4], [4, 4], [4, 3]])]  # Example outline for cell 3
 
-class ConstrunctOutline:
-    """
-    Select indices from a matplotlib collection using `LassoSelector`.
+time2_cells = [(2, 2), (3, 3), (4, 4)]  # List of (x, y) positions for time 2
+time2_volumes = [12, 18, 22]  # List of volumes for time 2
+time2_outlines = [np.array([[2, 2], [2, 3], [3, 3], [3, 2]]),  # Example outline for cell 2
+                  np.array([[3, 3], [3, 4], [4, 4], [4, 3]]),  # Example outline for cell 3
+                  np.array([[4, 4], [4, 5], [5, 5], [5, 4]])]  # Example outline for cell 4
 
-    Selected indices are saved in the `ind` attribute. This tool fades out the
-    points that are not part of the selection (i.e., reduces their alpha
-    values). If your collection has alpha < 1, this tool will permanently
-    alter the alpha values.
+# Calculate the cost matrix based on the Euclidean distance, volume differences, and shape similarity
+cost_matrix = []
+for i in range(len(time1_cells)):
+    row = []
+    for j in range(len(time2_cells)):
+        distance = ((time1_cells[i][0] - time2_cells[j][0]) ** 2 +
+                    (time1_cells[i][1] - time2_cells[j][1]) ** 2) ** 0.5
+        volume_diff = abs(time1_volumes[i] - time2_volumes[j])
+        shape_diff = directed_hausdorff(time1_outlines[i], time2_outlines[j])[0]  # Hausdorff distance
+        cost = distance + volume_diff + shape_diff
+        row.append(cost)
+    cost_matrix.append(row)
 
-    Note that this tool selects collection objects based on their *origins*
-    (i.e., `offsets`).
+# Create an instance of the Munkres class
+m = Munkres()
 
-    Parameters
-    ----------
-    ax : `~matplotlib.axes.Axes`
-        Axes to interact with.
-    collection : `matplotlib.collections.Collection` subclass
-        Collection you want to select from.
-    alpha_other : 0 <= float <= 1
-        To highlight a selection, this tool sets all selected points to an
-        alpha value of 1 and non-selected points to *alpha_other*.
-    """
+# Solve the assignment problem using the Hungarian algorithm
+indexes = m.compute(cost_matrix)
 
-    def __init__(self, ax):
-        self.canvas = ax.figure.canvas
-        self.lasso = LassoSelector(ax, onselect=self.onselect)
-        self.outline = []
-
-    def onselect(self, verts):
-        self.outline = np.floor([[x[0],x[1]] for x in verts]).astype('int32')
-        imin = min(self.outline[:,0])
-        imax = max(self.outline[:,0])
-        jmin = min(self.outline[:,1])
-        jmax = max(self.outline[:,1])
-        self.mask = np.array([[i,j] for i in range(imin, imax+1) for j in  range(jmin, jmax+1)]).astype('int32')
-        path = Path(verts)
-        self.ind = np.nonzero(path.contains_points(self.mask))[0]
-        self.mask = [self.mask[self.ind]]
-        
-    def disconnect(self):
-        self.lasso.disconnect_events()
-        self.canvas.draw_idle()
-
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    img = np.zeros((512,512))
-    subplot_kw = dict(xlim=(0, img.shape[0]), ylim=(0, img.shape[1]), autoscale_on=False)
-    fig, ax = plt.subplots(subplot_kw=subplot_kw)
-
-    ims = ax.imshow(img)
-    selector = ConstrunctOutline(ax, ims)
-
-    def accept(event):
-        if event.key == "enter":
-            selector.disconnect()
-            ax.set_title("")
-            fig.canvas.draw()
-
-    fig.canvas.mpl_connect("key_press_event", accept)
-    plt.show()
-
-img = np.zeros((512,512))
-newmask = selector.mask[selector.ind]
-newimg = np.zeros((512,512))
-newimg[newmask] = 1
-fig, ax = plt.subplots()
-ax.imshow(newimg)
-ax.scatter(selector.mask[:,0], selector.mask[:,1], s=20)
-ax.scatter(newmask[:,0], newmask[:,1], s=10)
-
-plt.show()
+# Print the matched cell pairs
+for row, column in indexes:
+    time1_cell = time1_cells[row]
+    time1_volume = time1_volumes[row]
+    time2_cell = time2_cells[column]
+    time2_volume = time2_volumes[column]
+    print(f"Time 1: Cell {time1_cell}, Volume: {time1_volume}")
+    print(f"Time 2: Cell {time2_cell}, Volume: {time2_volume}")

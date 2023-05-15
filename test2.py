@@ -90,15 +90,3 @@ CT()
 CT.plot_tracking(windows=1, plot_layout=(1,1), plot_overlap=1, plot_stack_dims=(512, 512))
 # CT.plot_cell_movement(substract_mean=False)
 # CT.plot_masks3D_Imagej(cell_selection=False)
-
-# import matplotlib.pyplot as plt
-# fig, ax =  plt.subplots()
-# z = 0
-# ax.imshow(IMGS[0,z])
-# for c in range(len(outlines)):
-#     if zs[c]!=z: continue
-#     outline = np.array(outlines[c])
-#     ax.scatter(outline[:,0], outline[:,1], s=1)
-# plt.show()
-
-len(CT.cells)

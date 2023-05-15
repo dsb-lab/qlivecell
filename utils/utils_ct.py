@@ -5,7 +5,7 @@ import tifffile
 from tifffile import TiffFile
 import os
 import random
-
+import cv2
 
 def get_file_embcode(path_data, f):
     """
@@ -175,7 +175,6 @@ def load_CT(path=None, filename=None):
     file_to_store.close()
     return CT
 
-
 def read_img_with_resolution(path_to_file, channel=0):
     """
     Parameters
@@ -212,8 +211,7 @@ def read_img_with_resolution(path_to_file, channel=0):
         zres = imagej_metadata['spacing']
     return IMGS, xyres, zres
 
-
-def generate_set(paths_data, path_to_save, number_of_images, exclude_if_in_path=None, data_subtype=None):
+def generate_set(paths_data, path_to_save ,number_of_images, channels=0, zrange=None, exclude_if_in_path=None, data_subtype=None, blur_args=None):
     os.system('rm -rf '+path_to_save)
     os.system('mkdir '+path_to_save)
     current_img = 0
@@ -227,7 +225,9 @@ def generate_set(paths_data, path_to_save, number_of_images, exclude_if_in_path=
             
         embcode=file.split('.')[0]
 
-        channel = random.choice([0,1]) # In this case there are two channel
+        if not isinstance(channels, list): channels=[channels]
+        channel = random.choice(channels) # In this case there are two channel
+
         IMGS, xyres, zres = read_img_with_resolution(p+file, channel=channel)
         xres = yres = xyres
         mdata = {'spacing': zres, 'unit': 'um'}
@@ -235,6 +235,7 @@ def generate_set(paths_data, path_to_save, number_of_images, exclude_if_in_path=
         t = random.choice(range(len(IMGS)))
         z = random.choice(range(len(IMGS[t])))
         img = IMGS[t,z]
+        if blur_args is not None: img = cv2.GaussianBlur(img, blur_args[0], blur_args[1])
         path_file_save = path_to_save+embcode+'_t%d' %t + '_z%d' %z + '.tif'
 
         if exclude_if_in_path is not None:

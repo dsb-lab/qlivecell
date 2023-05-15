@@ -16,9 +16,9 @@ file = files[emb]
 embcode=file.split('.')[0]
 ### CHANNEL 1 ###
 
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
 
-cells, CT_0_info = load_cells(path_save, embcode+'_ch%d' %1)
+cells, CT_0_info = load_cells(path_save, embcode+'_ch%d' %0)
 
 CT = CellTracking(IMGS, path_save, embcode, CELLS=cells, CT_info=CT_0_info
                     , min_outline_length=200

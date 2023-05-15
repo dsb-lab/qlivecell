@@ -10,5 +10,5 @@ path_save_test_data =home+'/Desktop/PhD/projects/Data/gastruloids/cellpose/test_
 max_train_imgs = 20
 max_test_imgs  = 5
 
-generate_set(paths_data, path_save_train_data, max_train_imgs, exclude_if_in_path=None, data_subtype=None)
-generate_set(paths_data, path_save_test_data, max_test_imgs, exclude_if_in_path=path_save_train_data, data_subtype=None)
+generate_set(paths_data, path_save_train_data, max_train_imgs, channels=2, exclude_if_in_path=None, data_subtype=None, blur_args=[[5,5],1])
+generate_set(paths_data, path_save_test_data, max_test_imgs, channels=2, exclude_if_in_path=path_save_train_data, data_subtype=None, blur_args=None)
