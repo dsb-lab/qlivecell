@@ -11,7 +11,7 @@ file, embcode = get_file_embcode(path_data, "082119_p1")
 
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
 
-cells, CT_info = load_cells(path_save, embcode+'test')
+cells, CT_info = load_cells(path_save, embcode)
 
 CT = CellTracking(IMGS, path_save, embcode, CELLS=cells, CT_info=CT_info
                     , plot_layout=(1,1)
