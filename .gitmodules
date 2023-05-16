@@ -1,0 +1,12 @@
+[submodule "celltrack"]
+	path = celltrack
+	url = git@github.com:dsb-lab/celltrack.git
+[submodule "embseg"]
+	path = embseg
+	url = git@github.com:dsb-lab/embseg.git
+[submodule "cytodonut"]
+	path = cytodonut
+	url = git@github.com:dsb-lab/cytodonut.git
+[submodule "pyjiyama"]
+	path = pyjiyama
+	url = git@github.com:dsb-lab/pyjiyama.git
