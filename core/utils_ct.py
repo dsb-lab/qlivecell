@@ -32,7 +32,7 @@ def progressbar(step, total, width=46):
     tags = "#" * left
     spaces = " " * right
     percents = f"{percent:.0f}%"
-    self.printclear()
+    printclear()
     if percent < 10:
         print("#   Progress: [", tags, spaces, "] ", percents, "    #", sep="")
     elif 9 < percent < 100:

@@ -4,10 +4,6 @@ from scipy.spatial import cKDTree
 import random
 from copy import deepcopy, copy
 import itertools
-import warnings
-
-from cellpose import utils as utilscp
-import cellpose
 
 from matplotlib import cm
 import matplotlib.pyplot as plt
@@ -31,14 +27,14 @@ from tifffile import imwrite
 import subprocess
 import gc
 
-# Import files from repo utils
+from core.pickers import LineBuilder_lasso, LineBuilder_points
+from core.PA import PlotActionCT, PlotActionCellPicker
+from core.extraclasses import Slider_t, Slider_z, backup_CellTrack, Cell
+from core.iters import plotRound
+from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
+from core.segmentation import CellSegmentation
 
-import sys
-from .core.PA import PlotActionCT, PlotActionCellPicker
-from .core.extraclasses import Slider_t, Slider_z, backup_CellTrack, Cell
-from .core.iters import plotRound
-from .core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
-from .core.segmentation import CellSegmentation
+import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 warnings.simplefilter("ignore", UserWarning)
 

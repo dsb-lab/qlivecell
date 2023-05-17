@@ -1,9 +1,35 @@
 import cv2
+import numpy as np
+
+from scipy.spatial import cKDTree
+import random
+
+import itertools
+
 from cellpose import utils as utilscp
 from .utils_ct import printfancy, progressbar
 from .tools import increase_point_resolution, points_within_hull
 
-def cell_segmentation2D_cellpose(img, model, trained_model, args):
+def cell_segmentation2D_cellpose(img, args):
+    """
+    Parameters
+    ----------
+    img : 2D ndarray
+    args: list
+        Contains cellpose arguments:
+        - model : cellpose model
+        - trained_model : Bool
+        - chs : list    
+        - fth : float
+        See https://cellpose.readthedocs.io/en/latest/api.html for more information
+    
+    Returns
+    -------
+    outlines : list of lists
+        Contains the 2D of the points forming the outlines
+    masks: list of lists
+        Contains the 2D of the points inside the outlines
+    """    
     model = args[0]
     trained_model = args[1]
     chs = args[2]
@@ -16,16 +42,38 @@ def cell_segmentation2D_cellpose(img, model, trained_model, args):
     outlines = utilscp.outlines_list(masks)
     return outlines, masks
                 
-# Extract the oulines from the masks using the cellpose function for it. 
-def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_args):
+def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_args, min_outline_length=100):
+    """
+    Parameters
+    ----------
+    stack : 3D ndarray
+
+    segmentation_function: function
+        returns outlines and masks for a 2D image
+        
+    segmentation_args: list
+        arguments for segmentation_function
+
+    blur_args : None or list
+        If None, there is no image blurring. If list, contains the arguments for blurring.
+        If list, should be of the form [ksize, sigma]. 
+        See https://docs.opencv.org/4.x/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1 for more information.
+    
+    Returns
+    -------
+    Outlines : list of lists of lists
+        Contains the 2D of the points forming the outlines
+    Masks: list of lists of lists
+        Contains the 2D of the points inside the outlines
+    """    
 
     # This function will return the Outlines and Mask of the current embryo. 
-    # The structure will be (z, cell_number)
+    # The structure will be (z, cell_number, outline_length)
     Outlines = []
     Masks    = []
 
     slices = stack.shape[0]
-     
+    
     # Number of z-levels
     printfancy("Progress: ")
     # Loop over the z-levels
@@ -44,7 +92,7 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_ar
         # We now check which oulines do we keep and which we remove.
         idxtoremove = []
         for cell, outline in enumerate(outlines):
-            outlines[cell] = increase_point_resolution(outline)
+            outlines[cell] = increase_point_resolution(outline,min_outline_length)
 
             # Compute cell mask
             ptsin = points_within_hull(outlines[cell])
@@ -63,11 +111,7 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_ar
 
         # Keep the ouline for the current z-level
         Outlines.append(outlines)
-            
-def cellsegmentation3D(stack, model, embcode, given_outlines=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7, blur_args=None, verbose=True):
-
-    return labels_centers, centers_positions, centers_outlines, Outlines, Masks, labels, _Zlabel_z, _Zlabel_l
-
+    return Outlines, Masks
 
 class CellSegmentation(object):
 
@@ -93,10 +137,12 @@ class CellSegmentation(object):
         if blur_args is not None:
             self._ksize=blur_args[0]
             self._ksigma=blur_args[1]
-        self._assign_color_to_label()
 
     def __call__(self):
-        self._cell_segmentation_outlines()
+        segmentation_args = [self._model, self._trainedmodel, self._channels, self._flow_th_cellpose]
+        Outlines, Masks = cell_segmentation3D(self.stack, cell_segmentation2D_cellpose, segmentation_args, self._blur_args)
+        self.Outlines = Outlines
+        self.Masks = Masks
         self.printfancy("")
         self._update()
 
@@ -516,7 +562,3 @@ class CellSegmentation(object):
                     id2 = idpair[1]
                     self._Masks_to_plot[z][id2][id1] = self._labels_color_id[lab]
                     self._Masks_to_plot_alphas[z][id2][id1] = 1
-
-    def _assign_color_to_label(self):
-        coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
-        self._labels_color_id = [next(coloriter) for i in range(10000)]

@@ -1,7 +1,7 @@
 import numpy as np
 from copy import copy
 import matplotlib as mtp
-from .pickers import *
+from .pickers import SubplotPicker_add, CellPicker_del, CellPicker_join, CellPicker_com_z, CellPicker_com_t, CellPicker_sep_t, CellPicker_mit, CellPicker_apo, CellPicker_CM, CellPicker_CP
 
 class PlotAction():
     def __init__(self, fig, ax, CT, id, mode):

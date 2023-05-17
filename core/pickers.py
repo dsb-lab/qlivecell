@@ -46,7 +46,7 @@ class LineBuilder_points:
         self.line.remove()
 
 from matplotlib.path import Path
-from utils.extraclasses import CustomLassoSelector
+from .extraclasses import CustomLassoSelector
 
 class LineBuilder_lasso:
     """
