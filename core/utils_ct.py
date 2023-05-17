@@ -7,6 +7,40 @@ import os
 import random
 import cv2
 
+LINE_UP = '\033[1A'
+LINE_CLEAR = '\x1b[2K'
+
+def printclear(n=1):
+    LINE_UP = '\033[1A'
+    LINE_CLEAR = '\x1b[2K'
+    for i in range(n):
+        print(LINE_UP, end=LINE_CLEAR)
+
+def printfancy(string, finallength=70, clear_prev=0):
+    new_str = "#   "+string
+    while len(new_str)<finallength-1:
+        new_str+=" "
+    new_str+="#"
+    printclear(clear_prev)
+    print(new_str)
+
+def progressbar(step, total, width=46):
+    percent = np.rint(step*100/total).astype('int32')
+    left = width * percent // 100
+    right = width - left
+    
+    tags = "#" * left
+    spaces = " " * right
+    percents = f"{percent:.0f}%"
+    self.printclear()
+    if percent < 10:
+        print("#   Progress: [", tags, spaces, "] ", percents, "    #", sep="")
+    elif 9 < percent < 100:
+        print("#   Progress: [", tags, spaces, "] ", percents, "   #", sep="")
+    elif percent > 99:
+        print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
+
+
 def get_file_embcode(path_data, f):
     """
     Parameters
