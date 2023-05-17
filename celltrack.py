@@ -29,10 +29,12 @@ import gc
 
 from core.pickers import LineBuilder_lasso, LineBuilder_points
 from core.PA import PlotActionCT, PlotActionCellPicker
-from core.extraclasses import Slider_t, Slider_z, backup_CellTrack, Cell
+from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
 from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
 from core.segmentation import CellSegmentation
+from core.dataclasses import CellTracking_info, backup_CellTrack, Cell
+
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
@@ -46,27 +48,12 @@ PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X" ,"p","^"]
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
 
-class CellTracking_info():
-    def __init__(self, CT):
-        self.__call__(CT)
-    
-    def __call__(self, CT):
-        self.xyresolution = CT._xyresolution 
-        self.zresolution  = CT._zresolution
-        self.times        = CT.times
-        self.slices       = CT.slices
-        self.stack_dims   = CT.stack_dims
-        self.time_step    = CT._tstep
-        self.apo_cells    = CT.apoptotic_events
-        self.mito_cells   = CT.mitotic_events
-
 class CellTracking(object):
         
     def __init__(self, stacks, pthtosave, embcode, given_Outlines=None, CELLS=None, CT_info=None, model=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=None, plot_outline_width=1, line_builder_mode='lasso', blur_args=None):
         if CELLS !=None: 
             self._init_with_cells(CELLS, CT_info)
         else:
-            if model is None: model = cellpose.models.Cellpose(gpu=True, model_type='nuclei')
             self._model            = model
             self._trainedmodel     = trainedmodel
             self._channels         = channels
@@ -127,15 +114,23 @@ class CellTracking(object):
         self.mito_cells        = []
         
         self.action_counter = -1
-        self.CT_info = CellTracking_info(self)
+        self.CT_info = CellTracking_info(
+            self._xyresolution, 
+            self._zresolution, 
+            self.times, 
+            self.slices,
+            self.stack_dims,
+            self._tstep,
+            self.apoptotic_events,
+            self.mitotic_events)
         
         self._line_builder_mode = line_builder_mode
         if self._line_builder_mode not in ['points', 'lasso']: raise Exception
         self._blur_args = blur_args
         if CELLS!=None: 
             self.update_labels()
-            self.backupCT  = backup_CellTrack(0, self)
-            self._backupCT = backup_CellTrack(0, self)
+            self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
+            self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
             self.backups = deque([self._backupCT], self._backup_steps)
             plt.close("all")
 
@@ -180,8 +175,8 @@ class CellTracking(object):
         self.printfancy("cells initialised", clear_prev=1)
         self.update_labels()
         self.printfancy("labels updated", clear_prev=1)
-        self.backupCT  = backup_CellTrack(0, self)
-        self._backupCT = backup_CellTrack(0, self)
+        self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
+        self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
         self.backups = deque([self._backupCT], self._backup_steps)
         plt.close("all")
         self.printclear(2)
@@ -209,7 +204,7 @@ class CellTracking(object):
             self.one_step_copy()
 
     def one_step_copy(self, t=0):
-        new_copy = backup_CellTrack(t, self)
+        new_copy = backup_CellTrack(t, self.cells, self.apoptotic_events, self.mitotic_events)
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
