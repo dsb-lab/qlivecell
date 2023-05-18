@@ -258,7 +258,7 @@ class CellTracking(object):
         
             self.printclear(n=7)
         self.printclear(n=2)
-        print("###############      ALL SEGMENTATIONS COMPLEATED     ###############")
+        print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
 
     def cell_tracking(self):
         TLabels  = self.TLabels
