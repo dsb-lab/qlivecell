@@ -84,7 +84,7 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_ar
         if blur_args is not None:
             img = cv2.GaussianBlur(img, blur_args[0], blur_args[1])
             # Select whether we are using a pre-trained model or a cellpose base-model
-            outlines, masks = segmentation_function(img, segmentation_args)
+        outlines, masks = segmentation_function(img, segmentation_args)
 
         # Append the empty masks list for the current z-level.
         Masks.append([])
