@@ -34,7 +34,7 @@ from core.iters import plotRound
 from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
 from core.segmentation import CellSegmentation
 from core.dataclasses import CellTracking_info, backup_CellTrack, Cell
-from core.tools.cell_tools import create_cell, update_cell
+from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
@@ -583,7 +583,10 @@ class CellTracking(object):
         for i,cellid in enumerate(np.unique(cellids)):
             z=Zs[i]
             cell  = self._get_cell(cellid=cellid)
-            try: cell.find_z_discontinuities(self, PACP.t)
+            try: 
+                new_cell, new_maxlabel = find_z_discontinuities(cell, self.stacks, self.max_label, self.currentcellid, PACP.t)
+                self.max_label = new_maxlabel
+                self.cells.append(new_cell)
             except ValueError: pass
         self.update_labels()
 

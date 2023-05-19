@@ -149,7 +149,7 @@ def sort_over_t(cell: Cell):
     cell.outlines = newouts
     cell.masks = newmasks
 
-def find_z_discontinuities(cell: Cell, stacks, max_label, currentcellid, t):
+def find_z_discontinuities(cell: Cell, max_label, currentcellid, t):
     tid   = cell.times.index(t)
     if not checkConsecutive(cell.zs[tid]):
         discontinuities = whereNotConsecutive(cell.zs[tid])
