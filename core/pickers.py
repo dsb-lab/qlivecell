@@ -144,8 +144,8 @@ class CellPicker_del(CellPicker):
 
         if event.dblclick==True:
             self._update()
-            for id_cell, Cell in enumerate(self.PACP.CT.cells):
-                if lab == Cell.label:
+            for id_cell, CT_cell in enumerate(self.PACP.CT.cells):
+                if lab == CT_cell.label:
                     idx_lab = id_cell 
             tcell = self.PACP.CT.cells[idx_lab].times.index(self.PACP.t)
             zs = self.PACP.CT.cells[idx_lab].zs[tcell]

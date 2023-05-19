@@ -3,7 +3,10 @@ from ..dataclasses import Cell
 
 import numpy as np
 
-def compute_distance_cell(cell1, cell2, t, z, axis='xy'):
+def create_cell(id, label, zs, times, outlines, masks):
+    return Cell(id, label, zs, times, outlines, masks, False, [], [], [], [], [], [], [])
+        
+def compute_distance_cell(cell1: Cell, cell2: Cell, t, z, axis='xy'):
     t1 = cell1.times.index(t)
     z1 = cell1.zs[t1].index(z)
     x1 = cell1.X_all[t1][z1]
@@ -158,7 +161,7 @@ def find_z_discontinuities(cell: Cell, stacks, max_label, currentcellid, t):
             newzs = cell.zs[tid][disc:nextdisc]
             newoutlines = cell.outlines[tid][disc:nextdisc]
             newmasks    = cell.masks[tid][disc:nextdisc]
-            new_cell = Cell(currentcellid, max_label+1, [newzs], [t], [newoutlines], [newmasks], stacks)
+            new_cell = create_cell(currentcellid, max_label+1, [newzs], [t], [newoutlines], [newmasks])
             currentcellid+=1
             max_label+=1
 
