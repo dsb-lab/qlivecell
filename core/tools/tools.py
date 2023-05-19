@@ -47,3 +47,16 @@ def points_within_hull(hull):
 
     pointsinside=np.array(pointsinside)
     return pointsinside
+
+def compute_distance_xy(x1, x2, y1, y2):
+    return np.sqrt((x2-x1)**2 + (y2-y1)**2)
+
+def compute_distance_xyz(x1, x2, y1, y2, z1, z2):
+    return np.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2)
+
+def checkConsecutive(l):
+    n = len(l) - 1
+    return (sum(np.diff(sorted(l)) == 1) >= n)
+
+def whereNotConsecutive(l):
+    return [id+1 for id, val in enumerate(np.diff(l)) if val > 1]

@@ -4,6 +4,7 @@ from scipy.spatial import cKDTree
 import random
 from copy import deepcopy, copy
 import itertools
+import time 
 
 from matplotlib import cm
 import matplotlib.pyplot as plt
@@ -29,10 +30,12 @@ import gc
 
 from core.pickers import LineBuilder_lasso, LineBuilder_points
 from core.PA import PlotActionCT, PlotActionCellPicker
-from core.extraclasses import Slider_t, Slider_z, backup_CellTrack, Cell
+from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
 from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
 from core.segmentation import CellSegmentation
+from core.dataclasses import CellTracking_info, backup_CellTrack, Cell
+from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
@@ -46,27 +49,12 @@ PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X" ,"p","^"]
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
 
-class CellTracking_info():
-    def __init__(self, CT):
-        self.__call__(CT)
-    
-    def __call__(self, CT):
-        self.xyresolution = CT._xyresolution 
-        self.zresolution  = CT._zresolution
-        self.times        = CT.times
-        self.slices       = CT.slices
-        self.stack_dims   = CT.stack_dims
-        self.time_step    = CT._tstep
-        self.apo_cells    = CT.apoptotic_events
-        self.mito_cells   = CT.mitotic_events
-
 class CellTracking(object):
         
     def __init__(self, stacks, pthtosave, embcode, given_Outlines=None, CELLS=None, CT_info=None, model=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=None, plot_outline_width=1, line_builder_mode='lasso', blur_args=None):
         if CELLS !=None: 
             self._init_with_cells(CELLS, CT_info)
         else:
-            if model is None: model = cellpose.models.Cellpose(gpu=True, model_type='nuclei')
             self._model            = model
             self._trainedmodel     = trainedmodel
             self._channels         = channels
@@ -127,15 +115,23 @@ class CellTracking(object):
         self.mito_cells        = []
         
         self.action_counter = -1
-        self.CT_info = CellTracking_info(self)
+        self.CT_info = CellTracking_info(
+            self._xyresolution, 
+            self._zresolution, 
+            self.times, 
+            self.slices,
+            self.stack_dims,
+            self._tstep,
+            self.apoptotic_events,
+            self.mitotic_events)
         
         self._line_builder_mode = line_builder_mode
         if self._line_builder_mode not in ['points', 'lasso']: raise Exception
         self._blur_args = blur_args
         if CELLS!=None: 
             self.update_labels()
-            self.backupCT  = backup_CellTrack(0, self)
-            self._backupCT = backup_CellTrack(0, self)
+            self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
+            self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
             self.backups = deque([self._backupCT], self._backup_steps)
             plt.close("all")
 
@@ -180,8 +176,8 @@ class CellTracking(object):
         self.printfancy("cells initialised", clear_prev=1)
         self.update_labels()
         self.printfancy("labels updated", clear_prev=1)
-        self.backupCT  = backup_CellTrack(0, self)
-        self._backupCT = backup_CellTrack(0, self)
+        self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
+        self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
         self.backups = deque([self._backupCT], self._backup_steps)
         plt.close("all")
         self.printclear(2)
@@ -209,7 +205,7 @@ class CellTracking(object):
             self.one_step_copy()
 
     def one_step_copy(self, t=0):
-        new_copy = backup_CellTrack(t, self)
+        new_copy = backup_CellTrack(t, deepcopy(self.cells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
@@ -341,9 +337,10 @@ class CellTracking(object):
                         id_l = np.where(np.array(self._labels[t][z])==_lab)[0][0]
                         OUTLINES[-1].append(self._Outlines[t][z][id_l])
                         MASKS[-1].append(self._Masks[t][z][id_l])
-            self.cells.append(Cell(self.currentcellid, lab, ZS, TIMES, OUTLINES, MASKS, self))
+            
+            self.cells.append(create_cell(self.currentcellid, lab, ZS, TIMES, OUTLINES, MASKS, self.stacks))
             self.currentcellid+=1
-
+            
     def _extract_unique_labels_and_max_label(self):
         _ = np.hstack(self.Labels)
         _ = np.hstack(_)
@@ -402,14 +399,45 @@ class CellTracking(object):
         for cell in self.cells:
             cell.label = correspondance[cell.label]
 
+        start = time.time()
         self._order_labels_z()
+        end = time.time()
+        print("order labels z",end - start)
+        
+        start = time.time()
         self._update_CT_cell_attributes()
+        end = time.time()
+        print("update attributes",end - start)
+
+        start = time.time()        
         self._extract_unique_labels_and_max_label()
+        end = time.time()
+        print("unique and max labels",end - start)
+        
+        start = time.time()
         self._extract_unique_labels_per_time()
+        end = time.time()
+        print("labels per t",end - start)
+        
+        start = time.time()
         self._compute_masks_stack()
+        end = time.time()
+        print("compute masks",end - start)
+        
+        start = time.time()
         self._compute_outlines_stack()
+        end = time.time()
+        print("compute outlines",end - start)
+        
+        start = time.time()
         self._get_hints()
+        end = time.time()
+        print("get hints",end - start)
+        
+        start = time.time()
         self._get_number_of_conflicts()
+        end = time.time()
+        print("get conflicts",end - start)
         self.action_counter+=1
 
     def _get_hints(self):
@@ -558,7 +586,7 @@ class CellTracking(object):
         if mask is None: masks = [[self._points_within_hull(new_outline_sorted_highres)]]
         else: masks = [mask]
         self._extract_unique_labels_and_max_label()
-        self.cells.append(Cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self))
+        self.cells.append(create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self.stacks))
         self.currentcellid+=1
 
     def delete_cell(self, PACP):
@@ -577,7 +605,7 @@ class CellTracking(object):
             cell.zs[tid].pop(idrem)
             cell.outlines[tid].pop(idrem)
             cell.masks[tid].pop(idrem)
-            cell._update(self)
+            update_cell(cell, self.stacks)
             if cell._rem:
                 idrem = cell.id
                 cellids.remove(idrem)
@@ -586,7 +614,11 @@ class CellTracking(object):
         for i,cellid in enumerate(np.unique(cellids)):
             z=Zs[i]
             cell  = self._get_cell(cellid=cellid)
-            try: cell.find_z_discontinuities(self, PACP.t)
+            try: 
+                new_maxlabel, new_cell = find_z_discontinuities(cell, self.stacks, self.max_label, self.currentcellid, PACP.t)
+                if new_maxlabel is not None:
+                    self.max_label = new_maxlabel
+                    self.cells.append(new_cell)
             except ValueError: pass
         self.update_labels()
 
@@ -707,7 +739,7 @@ class CellTracking(object):
         cell.times    = cell.times[:border]
         cell.outlines = cell.outlines[:border]
         cell.masks    = cell.masks[:border]
-        cell._update(self)
+        update_cell(cell, self.stacks)
 
         new_cell.zs       = new_cell.zs[border:]
         new_cell.times    = new_cell.times[border:]
@@ -717,7 +749,7 @@ class CellTracking(object):
         new_cell.label = self.max_label+1
         new_cell.id=self.currentcellid
         self.currentcellid+=1
-        new_cell._update(self)
+        update_cell(new_cell, self.stacks)
         self.cells.append(new_cell)
         self.update_labels()
 
@@ -783,7 +815,7 @@ class CellTracking(object):
         for cell in self.cells:
             self._set_masks_alphas(cell, self.plot_masks)
 
-    def _set_masks_alphas(self, cell, plot_mask, z=None):
+    def _set_masks_alphas(self, cell: Cell, plot_mask, z=None):
         if plot_mask: alpha=1
         else: alpha = 0
         if cell is None: return
@@ -1068,121 +1100,121 @@ class CellTracking(object):
         coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
         self._labels_color_id = [next(coloriter) for i in range(10000)]
     
-    def compute_cell_movement(self, movement_computation_method):
-        for cell in self.cells:
-            cell.compute_movement(self._cdaxis, movement_computation_method)
+    # def compute_cell_movement(self, movement_computation_method):
+    #     for cell in self.cells:
+    #         cell.compute_movement(self._cdaxis, movement_computation_method)
 
-    def compute_mean_cell_movement(self):
-        nrm = np.zeros(self.times-1)
-        self.cell_movement = np.zeros(self.times-1)
-        for cell in self.cells:
-            time_ids = np.array(cell.times)[:-1]
-            nrm[time_ids]+=np.ones(len(time_ids))
-            self.cell_movement[time_ids]+=cell.disp
-        self.cell_movement /= nrm
+    # def compute_mean_cell_movement(self):
+    #     nrm = np.zeros(self.times-1)
+    #     self.cell_movement = np.zeros(self.times-1)
+    #     for cell in self.cells:
+    #         time_ids = np.array(cell.times)[:-1]
+    #         nrm[time_ids]+=np.ones(len(time_ids))
+    #         self.cell_movement[time_ids]+=cell.disp
+    #     self.cell_movement /= nrm
             
-    def cell_movement_substract_mean(self):
-        for cell in self.cells:
-            new_disp = []
-            for i,t in enumerate(cell.times[:-1]):
-                new_val = cell.disp[i] - self.cell_movement[t]
-                new_disp.append(new_val)
-            cell.disp = new_disp
+    # def cell_movement_substract_mean(self):
+    #     for cell in self.cells:
+    #         new_disp = []
+    #         for i,t in enumerate(cell.times[:-1]):
+    #             new_val = cell.disp[i] - self.cell_movement[t]
+    #             new_disp.append(new_val)
+    #         cell.disp = new_disp
 
-    def plot_cell_movement(self
-                         , label_list=None
-                         , plot_mean=True
-                         , substract_mean=None
-                         , plot_tracking=True
-                         , plot_layout=None
-                         , plot_overlap=None
-                         , masks_cmap=None
-                         , movement_computation_method=None):
+    # def plot_cell_movement(self
+    #                      , label_list=None
+    #                      , plot_mean=True
+    #                      , substract_mean=None
+    #                      , plot_tracking=True
+    #                      , plot_layout=None
+    #                      , plot_overlap=None
+    #                      , masks_cmap=None
+    #                      , movement_computation_method=None):
         
-        if movement_computation_method is None: movement_computation_method=self._movement_computation_method
-        else: self._movement_computation_method=movement_computation_method
-        if substract_mean is None: substract_mean=self._mscm
-        else: self._mscm=substract_mean
+    #     if movement_computation_method is None: movement_computation_method=self._movement_computation_method
+    #     else: self._movement_computation_method=movement_computation_method
+    #     if substract_mean is None: substract_mean=self._mscm
+    #     else: self._mscm=substract_mean
         
-        self.compute_cell_movement(movement_computation_method)
-        self.compute_mean_cell_movement()
-        if substract_mean:
-            self.cell_movement_substract_mean()
-            self.compute_mean_cell_movement()
+    #     self.compute_cell_movement(movement_computation_method)
+    #     self.compute_mean_cell_movement()
+    #     if substract_mean:
+    #         self.cell_movement_substract_mean()
+    #         self.compute_mean_cell_movement()
 
-        ymax  = max([max(cell.disp) if len(cell.disp)>0 else 0 for cell in self.cells])+1
-        ymin  = min([min(cell.disp) if len(cell.disp)>0 else 0 for cell in self.cells])-1
+    #     ymax  = max([max(cell.disp) if len(cell.disp)>0 else 0 for cell in self.cells])+1
+    #     ymin  = min([min(cell.disp) if len(cell.disp)>0 else 0 for cell in self.cells])-1
 
-        if label_list is None: label_list=list(copy(self.unique_labels))
+    #     if label_list is None: label_list=list(copy(self.unique_labels))
         
-        used_markers = []
-        used_styles  = []
-        if hasattr(self, "fig_cellmovement"):
-            if plt.fignum_exists(self.fig_cellmovement.number):
-                firstcall=False
-                self.ax_cellmovement.cla()
-            else:
-                firstcall=True
-                self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
-        else:
-            firstcall=True
-            self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
+    #     used_markers = []
+    #     used_styles  = []
+    #     if hasattr(self, "fig_cellmovement"):
+    #         if plt.fignum_exists(self.fig_cellmovement.number):
+    #             firstcall=False
+    #             self.ax_cellmovement.cla()
+    #         else:
+    #             firstcall=True
+    #             self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
+    #     else:
+    #         firstcall=True
+    #         self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
         
-        len_cmap = len(self._label_colors)
-        len_ls   = len_cmap*len(PLTMARKERS)
-        countm   = 0
-        markerid = 0
-        linestyleid = 0
-        for cell in self.cells:
-            label = cell.label
-            if label in label_list:
-                c  = self._label_colors[self._labels_color_id[label]]
-                m  = PLTMARKERS[markerid]
-                ls = PLTLINESTYLES[linestyleid]
-                if m not in used_markers: used_markers.append(m)
-                if ls not in used_styles: used_styles.append(ls)
-                tplot = [cell.times[i]*self._tstep for i in range(1,len(cell.times))]
-                self.ax_cellmovement.plot(tplot, cell.disp, c=c, marker=m, linewidth=2, linestyle=ls,label="%d" %label)
-            countm+=1
-            if countm==len_cmap:
-                countm=0
-                markerid+=1
-                if markerid==len(PLTMARKERS): 
-                    markerid=0
-                    linestyleid+=1
-        if plot_mean:
-            tplot = [i*self._tstep for i in range(1,self.times)]
-            self.ax_cellmovement.plot(tplot, self.cell_movement, c='k', linewidth=4, label="mean")
-            leg_patches = [Line2D([0], [0], color="k", lw=4, label="mean")]
-        else:
-            leg_patches = []
+    #     len_cmap = len(self._label_colors)
+    #     len_ls   = len_cmap*len(PLTMARKERS)
+    #     countm   = 0
+    #     markerid = 0
+    #     linestyleid = 0
+    #     for cell in self.cells:
+    #         label = cell.label
+    #         if label in label_list:
+    #             c  = self._label_colors[self._labels_color_id[label]]
+    #             m  = PLTMARKERS[markerid]
+    #             ls = PLTLINESTYLES[linestyleid]
+    #             if m not in used_markers: used_markers.append(m)
+    #             if ls not in used_styles: used_styles.append(ls)
+    #             tplot = [cell.times[i]*self._tstep for i in range(1,len(cell.times))]
+    #             self.ax_cellmovement.plot(tplot, cell.disp, c=c, marker=m, linewidth=2, linestyle=ls,label="%d" %label)
+    #         countm+=1
+    #         if countm==len_cmap:
+    #             countm=0
+    #             markerid+=1
+    #             if markerid==len(PLTMARKERS): 
+    #                 markerid=0
+    #                 linestyleid+=1
+    #     if plot_mean:
+    #         tplot = [i*self._tstep for i in range(1,self.times)]
+    #         self.ax_cellmovement.plot(tplot, self.cell_movement, c='k', linewidth=4, label="mean")
+    #         leg_patches = [Line2D([0], [0], color="k", lw=4, label="mean")]
+    #     else:
+    #         leg_patches = []
 
-        label_list_lastdigit = [int(str(l)[-1]) for l in label_list]
-        for i, col in enumerate(self._label_colors):
-            if i in label_list_lastdigit:
-                leg_patches.append(Line2D([0], [0], color=col, lw=2, label=str(i)))
+    #     label_list_lastdigit = [int(str(l)[-1]) for l in label_list]
+    #     for i, col in enumerate(self._label_colors):
+    #         if i in label_list_lastdigit:
+    #             leg_patches.append(Line2D([0], [0], color=col, lw=2, label=str(i)))
 
-        count = 0
-        for i, m in enumerate(used_markers):
-            leg_patches.append(Line2D([0], [0], marker=m, color='k', label="+%d" %count, markersize=10))
-            count+=len_cmap
+    #     count = 0
+    #     for i, m in enumerate(used_markers):
+    #         leg_patches.append(Line2D([0], [0], marker=m, color='k', label="+%d" %count, markersize=10))
+    #         count+=len_cmap
 
-        count = 0
-        for i, ls in enumerate(used_styles):
-            leg_patches.append(Line2D([0], [0], linestyle=ls, color='k', label="+%d" %count, linewidth=2))
-            count+=len_ls
+    #     count = 0
+    #     for i, ls in enumerate(used_styles):
+    #         leg_patches.append(Line2D([0], [0], linestyle=ls, color='k', label="+%d" %count, linewidth=2))
+    #         count+=len_ls
 
-        self.ax_cellmovement.set_ylabel("cell movement")
-        self.ax_cellmovement.set_xlabel("time (min)")
-        self.ax_cellmovement.xaxis.set_major_locator(MaxNLocator(integer=True))
-        self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.04, 1))
-        self.ax_cellmovement.set_ylim(ymin,ymax)
-        self.fig_cellmovement.tight_layout()
+    #     self.ax_cellmovement.set_ylabel("cell movement")
+    #     self.ax_cellmovement.set_xlabel("time (min)")
+    #     self.ax_cellmovement.xaxis.set_major_locator(MaxNLocator(integer=True))
+    #     self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.04, 1))
+    #     self.ax_cellmovement.set_ylim(ymin,ymax)
+    #     self.fig_cellmovement.tight_layout()
         
-        if firstcall:
-            if plot_tracking:
-                self.plot_tracking(windows=1, cell_picker=True, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, mode="CM")
-            else: plt.show()
+    #     if firstcall:
+    #         if plot_tracking:
+    #             self.plot_tracking(windows=1, cell_picker=True, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, mode="CM")
+    #         else: plt.show()
 
     def _select_cells(self
                     , plot_layout=None

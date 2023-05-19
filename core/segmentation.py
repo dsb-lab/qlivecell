@@ -4,11 +4,9 @@ import numpy as np
 from scipy.spatial import cKDTree
 import random
 
-import itertools
-
 from cellpose import utils as utilscp
 from .utils_ct import printfancy, progressbar
-from .tools import increase_point_resolution, points_within_hull
+from .tools.tools import increase_point_resolution, points_within_hull
 
 def cell_segmentation2D_cellpose(img, args):
     """
