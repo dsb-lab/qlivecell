@@ -337,7 +337,7 @@ class CellTracking(object):
                         OUTLINES[-1].append(self._Outlines[t][z][id_l])
                         MASKS[-1].append(self._Masks[t][z][id_l])
             
-            self.cells.append(create_cell(self.currentcellid, lab, ZS, TIMES, OUTLINES, MASKS))
+            self.cells.append(create_cell(self.currentcellid, lab, ZS, TIMES, OUTLINES, MASKS, self.stacks))
             self.currentcellid+=1
             
 
@@ -555,7 +555,7 @@ class CellTracking(object):
         if mask is None: masks = [[self._points_within_hull(new_outline_sorted_highres)]]
         else: masks = [mask]
         self._extract_unique_labels_and_max_label()
-        self.cells.append(create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks))
+        self.cells.append(create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self.stacks))
         self.currentcellid+=1
 
     def delete_cell(self, PACP):
@@ -584,7 +584,7 @@ class CellTracking(object):
             z=Zs[i]
             cell  = self._get_cell(cellid=cellid)
             try: 
-                new_cell, new_maxlabel = find_z_discontinuities(cell, self.stacks, self.max_label, self.currentcellid, PACP.t)
+                new_maxlabel, new_cell = find_z_discontinuities(cell, self.stacks, self.max_label, self.currentcellid, PACP.t)
                 self.max_label = new_maxlabel
                 self.cells.append(new_cell)
             except ValueError: pass

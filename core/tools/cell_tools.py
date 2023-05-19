@@ -3,8 +3,10 @@ from ..dataclasses import Cell
 
 import numpy as np
 
-def create_cell(id, label, zs, times, outlines, masks):
-    return Cell(id, label, zs, times, outlines, masks, False, [], [], [], [], [], [], [])
+def create_cell(id, label, zs, times, outlines, masks, stacks):
+    cell = Cell(id, label, zs, times, outlines, masks, False, [], [], [], [], [], [], [])
+    update_cell(cell, stacks)
+    return cell
         
 def compute_distance_cell(cell1: Cell, cell2: Cell, t, z, axis='xy'):
     t1 = cell1.times.index(t)
@@ -149,7 +151,7 @@ def sort_over_t(cell: Cell):
     cell.outlines = newouts
     cell.masks = newmasks
 
-def find_z_discontinuities(cell: Cell, max_label, currentcellid, t):
+def find_z_discontinuities(cell: Cell, stacks, max_label, currentcellid, t):
     tid   = cell.times.index(t)
     if not checkConsecutive(cell.zs[tid]):
         discontinuities = whereNotConsecutive(cell.zs[tid])
@@ -161,7 +163,7 @@ def find_z_discontinuities(cell: Cell, max_label, currentcellid, t):
             newzs = cell.zs[tid][disc:nextdisc]
             newoutlines = cell.outlines[tid][disc:nextdisc]
             newmasks    = cell.masks[tid][disc:nextdisc]
-            new_cell = create_cell(currentcellid, max_label+1, [newzs], [t], [newoutlines], [newmasks])
+            new_cell = create_cell(currentcellid, max_label+1, [newzs], [t], [newoutlines], [newmasks], stacks)
             currentcellid+=1
             max_label+=1
 

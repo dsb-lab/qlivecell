@@ -27,7 +27,7 @@ class Cell:
     times: list
     outlines: list
     masks: list
-    _rem=False
+    _rem: bool
     centersi: list
     centersj: list
     centers : list
