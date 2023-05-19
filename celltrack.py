@@ -4,6 +4,7 @@ from scipy.spatial import cKDTree
 import random
 from copy import deepcopy, copy
 import itertools
+import time 
 
 from matplotlib import cm
 import matplotlib.pyplot as plt
@@ -340,7 +341,6 @@ class CellTracking(object):
             self.cells.append(create_cell(self.currentcellid, lab, ZS, TIMES, OUTLINES, MASKS, self.stacks))
             self.currentcellid+=1
             
-
     def _extract_unique_labels_and_max_label(self):
         _ = np.hstack(self.Labels)
         _ = np.hstack(_)
@@ -399,14 +399,45 @@ class CellTracking(object):
         for cell in self.cells:
             cell.label = correspondance[cell.label]
 
+        start = time.time()
         self._order_labels_z()
+        end = time.time()
+        print("order labels z",end - start)
+        
+        start = time.time()
         self._update_CT_cell_attributes()
+        end = time.time()
+        print("update attributes",end - start)
+
+        start = time.time()        
         self._extract_unique_labels_and_max_label()
+        end = time.time()
+        print("unique and max labels",end - start)
+        
+        start = time.time()
         self._extract_unique_labels_per_time()
+        end = time.time()
+        print("labels per t",end - start)
+        
+        start = time.time()
         self._compute_masks_stack()
+        end = time.time()
+        print("compute masks",end - start)
+        
+        start = time.time()
         self._compute_outlines_stack()
+        end = time.time()
+        print("compute outlines",end - start)
+        
+        start = time.time()
         self._get_hints()
+        end = time.time()
+        print("get hints",end - start)
+        
+        start = time.time()
         self._get_number_of_conflicts()
+        end = time.time()
+        print("get conflicts",end - start)
         self.action_counter+=1
 
     def _get_hints(self):
