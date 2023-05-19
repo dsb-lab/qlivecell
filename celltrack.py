@@ -616,8 +616,9 @@ class CellTracking(object):
             cell  = self._get_cell(cellid=cellid)
             try: 
                 new_maxlabel, new_cell = find_z_discontinuities(cell, self.stacks, self.max_label, self.currentcellid, PACP.t)
-                self.max_label = new_maxlabel
-                self.cells.append(new_cell)
+                if new_maxlabel is not None:
+                    self.max_label = new_maxlabel
+                    self.cells.append(new_cell)
             except ValueError: pass
         self.update_labels()
 

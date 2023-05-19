@@ -172,7 +172,9 @@ def find_z_discontinuities(cell: Cell, stacks, max_label, currentcellid, t):
         cell.masks[tid]    = cell.masks[tid][0:discontinuities[0]]
         cell.label = max_label+1
         max_label+=1
-    return max_label, new_cell
+        return max_label, new_cell
+    else: 
+        return None, None
 
 def update_cell(cell: Cell, stacks):
     remt = []
