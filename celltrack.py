@@ -204,7 +204,7 @@ class CellTracking(object):
             self.one_step_copy()
 
     def one_step_copy(self, t=0):
-        new_copy = backup_CellTrack(t, self.cells, self.apoptotic_events, self.mitotic_events)
+        new_copy = backup_CellTrack(t, deepcopy(self.cells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
