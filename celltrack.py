@@ -1,4 +1,5 @@
-
+from numba import jit
+from numba.typed import List  # As per the docs, since it's in beta, it needs to be imported explicitly
 import numpy as np
 from scipy.spatial import cKDTree
 import random
@@ -36,7 +37,7 @@ from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_
 from core.segmentation import CellSegmentation
 from core.dataclasses import CellTracking_info, backup_CellTrack, Cell
 from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
-
+from core.tools.ct_tools import set_outlines_color
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 warnings.simplefilter("ignore", UserWarning)
@@ -868,7 +869,21 @@ class CellTracking(object):
         # self._outlines_stack_pre = np.zeros((t,z,256,256,4))
         self._outlines_stack = np.zeros((t,z,x,y,4))
         for c, cell in enumerate(self.cells):
-            self._set_outlines_color(cell)
+            color = np.append(self._label_colors[self._labels_color_id[cell.label]], 1)
+            timesnb = List(cell.times)
+            zsnb = List()
+            for tid in range(len(cell.times)):
+                zsnb.append(List(cell.zs[tid]))
+
+            outlinesnb = List()
+            for tid in range(len(cell.times)):
+                tmp1 = []
+                for zid in range(len(cell.zs[tid])):
+                    outline = cell.outlines[tid][zid]
+                    tmp1.append(np.array(outline))
+                outlinesnb.append(List(tmp1))
+            
+            set_outlines_color(self._outlines_stack, outlinesnb, timesnb, zsnb, np.array(color), self.dim_change)
         
         # self._outlines_stack = np.zeros((t,z,x,y,4))
         # if x == 256: 
@@ -881,15 +896,6 @@ class CellTracking(object):
         #         a = self._outlines_stack[tid][zid][xid, yid]
         #         a[:,3] = 1
         #         self._outlines_stack[tid][zid][xid, yid]= a
-                
-    def _set_outlines_color(self, cell):
-        color = np.append(self._label_colors[self._labels_color_id[cell.label]], 1)
-        for tid, tc in enumerate(cell.times):
-            for zid, zc in enumerate(cell.zs[tid]):
-                outline = np.unique(cell.outlines[tid][zid], axis=0)
-                xids = np.floor(outline[:,1]*self.dim_change).astype('int32')
-                yids = np.floor(outline[:,0]*self.dim_change).astype('int32')
-                self._outlines_stack[tc][zc][xids,yids]=np.array(color)
 
     def plot_axis(self, _ax, img, z, PACPid, t):
         im = _ax.imshow(img, vmin=0, vmax=255)
