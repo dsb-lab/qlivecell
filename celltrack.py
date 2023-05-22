@@ -194,8 +194,9 @@ class CellTracking(object):
         
         self.cells = deepcopy(backup.cells)
         self._update_CT_cell_attributes()
-        self._compute_masks_stack()
-        self._compute_outlines_stack()
+        jitcells = [contruct_jitCell(cell) for cell in self.cells]
+        self._compute_masks_stack(jitcells)
+        self._compute_outlines_stack(jitcells)
 
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
@@ -401,6 +402,7 @@ class CellTracking(object):
         for cell in self.cells:
             cell.label = correspondance[cell.label]
 
+        print()
         start = time.time()
         self._order_labels_z()
         end = time.time()
@@ -421,13 +423,14 @@ class CellTracking(object):
         end = time.time()
         print("labels per t",end - start)
         
+        jitcells = [contruct_jitCell(cell) for cell in self.cells]
         start = time.time()
-        self._compute_masks_stack()
+        self._compute_masks_stack(jitcells)
         end = time.time()
         print("compute masks",end - start)
         
         start = time.time()
-        self._compute_outlines_stack()
+        self._compute_outlines_stack(jitcells)
         end = time.time()
         print("compute outlines",end - start)
         
@@ -809,8 +812,7 @@ class CellTracking(object):
         
         self.cells.pop(idx)
 
-    def _compute_masks_stack(self):
-        jitcells = [contruct_jitCell(cell) for cell in self.cells]
+    def _compute_masks_stack(self, jitcells):
         t = self.times
         z = self.slices
         x,y = self.plot_stack_dims
@@ -853,8 +855,7 @@ class CellTracking(object):
         labels_out[dilate_mask] = nearest_labels
         return labels_out
 
-    def _compute_outlines_stack(self):
-        jitcells = [contruct_jitCell(cell) for cell in self.cells]
+    def _compute_outlines_stack(self, jitcells):
         t = self.times
         z = self.slices
         x,y = self.plot_stack_dims
@@ -910,8 +911,9 @@ class CellTracking(object):
         
         self.plot_masks=True
         
-        self._compute_masks_stack()
-        self._compute_outlines_stack()
+        jitcells = [contruct_jitCell(cell) for cell in self.cells]
+        self._compute_masks_stack(jitcells)
+        self._compute_outlines_stack(jitcells)
 
         self.PACPs             = []
         self._time_sliders     = []
