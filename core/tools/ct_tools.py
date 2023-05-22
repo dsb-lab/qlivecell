@@ -128,15 +128,18 @@ def nb_unique(input_data, axis=0):
     counts = counts - idx
     return data[idx]
 
-@njit(parallel=True)
-def set_outlines_color(outlines_stack, outlines, times, zs, color, dim_change):
+@njit()
+def set_cell_color(cell_stack, points, times, zs, color, dim_change, t=-1, z=-1):
     for tid in nb.prange(len(times)):
         tc=times[tid]
-        for zid in nb.prange(len(zs[tid])):
-            zc = zs[tid][zid]
-            outline = nb_unique(outlines[tid][zid], axis=0)
-            
-            for p in outline:
-                x = np.int32(np.floor(p[1]*dim_change))
-                y = np.int32(np.floor(p[0]*dim_change))
-                outlines_stack[tc,zc,x,y] = color
+        if t<0 or t==tc:
+            for zid in nb.prange(len(zs[tid])):
+                zc = zs[tid][zid]
+                if z<0 or z==zc:
+                    outline = nb_unique(points[tid][zid], axis=0)
+                    
+                    for p in outline:
+                        x = np.int32(np.floor(p[1]*dim_change))
+                        y = np.int32(np.floor(p[0]*dim_change))
+                        cell_stack[tc,zc,x,y] = color
+                    

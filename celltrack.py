@@ -1,4 +1,4 @@
-from numba import jit
+from numba import njit
 from numba.typed import List  # As per the docs, since it's in beta, it needs to be imported explicitly
 import numpy as np
 from scipy.spatial import cKDTree
@@ -35,9 +35,10 @@ from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
 from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
 from core.segmentation import CellSegmentation
-from core.dataclasses import CellTracking_info, backup_CellTrack, Cell
+from core.dataclasses import CellTracking_info, backup_CellTrack, Cell, jitCell, contruct_jitCell
 from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
-from core.tools.ct_tools import set_outlines_color
+from core.tools.ct_tools import set_cell_color
+
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 warnings.simplefilter("ignore", UserWarning)
@@ -616,9 +617,10 @@ class CellTracking(object):
             z=Zs[i]
             cell  = self._get_cell(cellid=cellid)
             try: 
-                new_maxlabel, new_cell = find_z_discontinuities(cell, self.stacks, self.max_label, self.currentcellid, PACP.t)
+                new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities(cell, self.stacks, self.max_label, self.currentcellid, PACP.t)
                 if new_maxlabel is not None:
                     self.max_label = new_maxlabel
+                    self.currentcellid = new_currentcellid
                     self.cells.append(new_cell)
             except ValueError: pass
         self.update_labels()
@@ -808,29 +810,18 @@ class CellTracking(object):
         self.cells.pop(idx)
 
     def _compute_masks_stack(self):
+        jitcells = [contruct_jitCell(cell) for cell in self.cells]
         t = self.times
         z = self.slices
         x,y = self.plot_stack_dims
-        self._masks_stack = np.zeros((t,z,x,y,4))
+        
+        self._masks_stack = np.zeros((t,z,x,y,4))            
+        for c, jitcell in enumerate(jitcells):
+            if self.plot_masks: alpha = 1
+            else: alpha = 0
+            color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], alpha)
+            set_cell_color(self._masks_stack, jitcell.outlines, jitcell.times, jitcell.zs, np.array(color), self.dim_change)
 
-        for cell in self.cells:
-            self._set_masks_alphas(cell, self.plot_masks)
-
-    def _set_masks_alphas(self, cell: Cell, plot_mask, z=None):
-        if plot_mask: alpha=1
-        else: alpha = 0
-        if cell is None: return
-        color = np.append(self._label_colors[self._labels_color_id[cell.label]], alpha)
-        for tid, tc in enumerate(cell.times):
-            if z is None: zs = cell.zs[tid]
-            else: zs = [z]
-            for zid, zc in enumerate(cell.zs[tid]):
-                if zc in zs:
-                    mask = cell.masks[tid][zid]
-                    xids = np.floor(mask[:,1]*self.dim_change).astype('int32')
-                    yids = np.floor(mask[:,0]*self.dim_change).astype('int32')
-                    self._masks_stack[tc][zc][xids,yids]=np.array(color)
-                
     def point_neighbors(self, outline):
         self.stack_dims[0]
         neighs=[[dx,dy] for dx in range(-self._neigh_index, self._neigh_index+1) for dy in range(-self._neigh_index, self._neigh_index+1)] 
@@ -863,39 +854,15 @@ class CellTracking(object):
         return labels_out
 
     def _compute_outlines_stack(self):
+        jitcells = [contruct_jitCell(cell) for cell in self.cells]
         t = self.times
         z = self.slices
         x,y = self.plot_stack_dims
-        # self._outlines_stack_pre = np.zeros((t,z,256,256,4))
-        self._outlines_stack = np.zeros((t,z,x,y,4))
-        for c, cell in enumerate(self.cells):
-            color = np.append(self._label_colors[self._labels_color_id[cell.label]], 1)
-            timesnb = List(cell.times)
-            zsnb = List()
-            for tid in range(len(cell.times)):
-                zsnb.append(List(cell.zs[tid]))
 
-            outlinesnb = List()
-            for tid in range(len(cell.times)):
-                tmp1 = []
-                for zid in range(len(cell.zs[tid])):
-                    outline = cell.outlines[tid][zid]
-                    tmp1.append(np.array(outline))
-                outlinesnb.append(List(tmp1))
-            
-            set_outlines_color(self._outlines_stack, outlinesnb, timesnb, zsnb, np.array(color), self.dim_change)
-        
-        # self._outlines_stack = np.zeros((t,z,x,y,4))
-        # if x == 256: 
-        #     self._outlines_stack = self._outlines_stack_pre 
-        #     return
-        # for tid in range(self.times):
-        #     for zid in range(self.slices): 
-        #         self._outlines_stack[tid][zid] =  cv2.resize(self._outlines_stack_pre[tid][zid], self.plot_stack_dims)
-        #         xid, yid, cid = np.where(self._outlines_stack[tid][zid] != [0,0,0,0])
-        #         a = self._outlines_stack[tid][zid][xid, yid]
-        #         a[:,3] = 1
-        #         self._outlines_stack[tid][zid][xid, yid]= a
+        self._outlines_stack = np.zeros((t,z,x,y,4))
+        for c, jitcell in enumerate(jitcells):
+            color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], 1)
+            set_cell_color(self._outlines_stack, jitcell.outlines, jitcell.times, jitcell.zs, np.array(color), self.dim_change)
 
     def plot_axis(self, _ax, img, z, PACPid, t):
         im = _ax.imshow(img, vmin=0, vmax=255)

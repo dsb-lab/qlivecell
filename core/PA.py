@@ -2,6 +2,8 @@ import numpy as np
 from copy import copy
 import matplotlib as mtp
 from .pickers import SubplotPicker_add, CellPicker_del, CellPicker_join, CellPicker_com_z, CellPicker_com_t, CellPicker_sep_t, CellPicker_mit, CellPicker_apo, CellPicker_CM, CellPicker_CP
+from .tools.ct_tools import set_cell_color
+from .dataclasses import contruct_jitCell
 
 class PlotAction():
     def __init__(self, fig, ax, CT, id, mode):
@@ -359,14 +361,21 @@ class PlotActionCT(PlotAction):
 
         for i, lab_z in enumerate(labs_z_to_plot):
             cell = self.CT._get_cell(label=lab_z[0])
-            self.CT._set_masks_alphas(cell, True, z=lab_z[1])
+            jitcell = contruct_jitCell(cell)
+            color = np.append(self.CT._label_colors[self.CT._labels_color_id[jitcell.label]], 1)
+            set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=-1, z=lab_z[1])
 
         labs_z_to_remove = [lab_z for lab_z in self._pre_labs_z_to_plot if lab_z not in labs_z_to_plot]
 
         for i, lab_z in enumerate(labs_z_to_remove):
             cell = self.CT._get_cell(label=lab_z[0])
-            if None in zs: self.CT._set_masks_alphas(cell, False, z=None)
-            else: self.CT._set_masks_alphas(cell, False, z=lab_z[1])
+            if cell is None: continue
+            jitcell = contruct_jitCell(cell)
+            
+            color = np.append(self.CT._label_colors[self.CT._labels_color_id[jitcell.label]], 0)
+
+            if None in zs: set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=-1, z=-1)
+            else: set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=-1, z=lab_z[1])
 
         self._pre_labs_z_to_plot = labs_z_to_plot
 
@@ -476,7 +485,11 @@ class PlotActionCT(PlotAction):
             else: self.CT.plot_masks = not self.CT.plot_masks
         else: self.CT.plot_masks=masks
         for cell in self.CT.cells:
-            self.CT._set_masks_alphas(cell, self.CT.plot_masks)
+            jitcell = contruct_jitCell(cell)
+            if self.CT.plot_masks: alpha = 1
+            else: alpha = 0
+            color = np.append(self.CT._label_colors[self.CT._labels_color_id[jitcell.label]], alpha)
+            set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=-1, z=-1)
         self.visualization()
 
     def delete_cells(self):

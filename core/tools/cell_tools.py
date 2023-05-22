@@ -4,7 +4,7 @@ from ..dataclasses import Cell
 import numpy as np
 
 def create_cell(id, label, zs, times, outlines, masks, stacks):
-    cell = Cell(id, label, zs, times, outlines, masks, False, [], [], [], [], [], [], [])
+    cell = Cell(id, label, zs, times, outlines, masks, False, [], [], [], [], [], [])
     update_cell(cell, stacks)
     return cell
         
@@ -82,7 +82,7 @@ def compute_movement_cell(cell: Cell, mode, method):
     elif method=="all_to_all":
         disp = compute_movement_all_to_all_cell(cell, mode)
 
-    cell.disp = disp
+    return disp
 
 def extract_cell_centers(cell: Cell, stacks):
     # Function for extracting the cell centers for the masks of a given embryo. 
@@ -172,7 +172,7 @@ def find_z_discontinuities(cell: Cell, stacks, max_label, currentcellid, t):
         cell.masks[tid]    = cell.masks[tid][0:discontinuities[0]]
         cell.label = max_label+1
         max_label+=1
-        return max_label, new_cell
+        return max_label, currentcellid, new_cell
     else: 
         return None, None
 
