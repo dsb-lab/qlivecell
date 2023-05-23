@@ -34,11 +34,12 @@ from core.PA import PlotActionCT, PlotActionCellPicker
 from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
 from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
-from core.segmentation import CellSegmentation, label_per_z
+from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
 from core.dataclasses import CellTracking_info, backup_CellTrack, Cell, jitCell, contruct_jitCell
 from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
 from core.tools.ct_tools import set_cell_color
 from core.tracking import greedy_tracking
+from core.utils_ct import printfancy, printclear, progressbar
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
@@ -161,7 +162,7 @@ class CellTracking(object):
         while len(new_str)<finallength-1:
             new_str+=" "
         new_str+="#"
-        self.printclear(clear_prev)
+        printclear(clear_prev)
         print(new_str)
 
     def printclear(self, n=1):
@@ -172,18 +173,18 @@ class CellTracking(object):
 
     def __call__(self):
         self.cell_segmentation()
-        self.printfancy("")
+        printfancy("")
         self.cell_tracking()
-        self.printfancy("tracking completed", clear_prev=1)
+        printfancy("tracking completed", clear_prev=1)
         self.init_cells()
-        self.printfancy("cells initialised", clear_prev=1)
+        printfancy("cells initialised", clear_prev=1)
         self.update_labels()
-        self.printfancy("labels updated", clear_prev=1)
+        printfancy("labels updated", clear_prev=1)
         self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
         self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
         self.backups = deque([self._backupCT], self._backup_steps)
         plt.close("all")
-        self.printclear(2)
+        printclear(2)
         print("##############    SEGMENTATION AND TRACKING FINISHED   ##############")
         
     def undo_corrections(self, all=False):
@@ -220,41 +221,73 @@ class CellTracking(object):
         self._Outlines = []
         self._Masks    = []
         self._labels   = []
+
         print("######################   BEGIN SEGMENTATIONS   #######################")
+        printfancy("")
         for t in range(self.times):
-            imgs = self.stacks[t,:,:,:]
-            CS = CellSegmentation( imgs, self._model, self.embcode
-                                , given_outlines=self._given_Outlines
-                                , trainedmodel=self._trainedmodel
-                                , channels=self._channels
-                                , flow_th_cellpose=self._flow_th_cellpose
-                                , distance_th_z=self._distance_th_z
-                                , xyresolution=self._xyresolution
-                                , relative_overlap=self._relative
-                                , use_full_matrix_to_compute_overlap=self._fullmat
-                                , z_neighborhood=self._zneigh
-                                , overlap_gradient_th=self._overlap_th
-                                , masks_cmap=self._cmap_name
-                                , min_outline_length=self._min_outline_length
-                                , neighbors_for_sequence_sorting=self._nearest_neighs
-                                , blur_args=self._blur_args)
+            stack = self.stacks[t,:,:,:]
+            segmentation_args = [self._model, self._trainedmodel, self._channels, self._flow_th_cellpose]
+            Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_cellpose, segmentation_args, self._blur_args)
 
-            self.printfancy("")
-            self.printfancy("######   CURRENT TIME = %d/%d   ######" % (t+1, self.times))
-            self.printfancy("")
-            CS()
-            self.printfancy("Segmentation and corrections completed. Proceeding to next time", clear_prev=1)
-            self.TLabels.append(CS.labels)
-            self.TCenters.append(CS.positions)
-            self.TOutlines.append(CS.outlines)
+            printfancy("")
+            printfancy("Running segmentation post-processing...")
+            printclear()
+            printfancy("running concatenation correction... (1/2)")
+
+            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
+            separate_concatenated_cells(stack, labels, Outlines, Masks, self._fullmat, self._relative, self._zneigh, self._overlap_th)
+            
+            printclear()
+            printfancy("concatenation correction completed (1/2)")
+
+            printclear()
+            printfancy("running concatenation correction... (2/2)")
+            
+            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
+            separate_concatenated_cells(stack, labels, Outlines, Masks, self._fullmat, self._relative, self._zneigh, self._overlap_th)
+            
+            printclear()
+            printfancy("concatenation correction completed (2/2)")
+
+            printclear()
+            printfancy("running short cell removal...")
+            
+            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
+            remove_short_cells(stack, labels, Outlines, Masks)
+            
+            printclear()
+            printfancy("short cell removal completed")
+            printclear()
+            printfancy("computing attributes...")
+
+            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
+            labels_per_t, positions_per_t, outlines_per_t = position3d(stack, labels, Outlines, Masks)  
+
+            printclear()
+            printfancy("attributes computed")
+            printclear()
+            printfancy("")
+            printfancy("Segmentation and corrections completed")
+
+            printfancy("")
+            printfancy("######   CURRENT TIME = %d/%d   ######" % (t+1, self.times))
+            printfancy("")
+
+            printfancy("Segmentation and corrections completed. Proceeding to next time", clear_prev=1)
+            self.TLabels.append(labels_per_t)
+            self.TCenters.append(positions_per_t)
+            self.TOutlines.append(outlines_per_t)
+
             self.label_correspondance.append([])        
-            self._Outlines.append(CS.Outlines)
-            self._Masks.append(CS.Masks)
-            self._labels.append(CS.labels)
 
-            self.printclear(n=7)
-        self.printclear(n=2)
+            self._Outlines.append(Outlines)
+            self._Masks.append(Masks)
+            self._labels.append(labels)
+
+            printclear(n=7)
+        printclear(n=2)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
+        printfancy("")
 
     def cell_tracking(self):
         FinalLabels, FinalCenters, FinalOutlines = greedy_tracking(self.times, self.TLabels, self.TCenters, self.TOutlines, self.label_correspondance, self._xyresolution)
@@ -264,7 +297,6 @@ class CellTracking(object):
         
     def init_cells(self):
         self.currentcellid = 0
-        print(np.hstack(self.FinalLabels))
         self.unique_labels = np.unique(np.hstack(self.FinalLabels))
         self.max_label = int(max(self.unique_labels))
         self.cells = []
@@ -451,7 +483,7 @@ class CellTracking(object):
                     pidx=id
                     break
             if len(used_idxs)==a:
-                self.printfancy("ERROR: Improve your point drawing") 
+                printfancy("ERROR: Improve your point drawing") 
                 for PACP in self.PACPs:
                     PACP.visualization()
                 return None, None
@@ -516,7 +548,7 @@ class CellTracking(object):
                 return
             new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(self.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(self.linebuilder.ys) / self.dim_change).astype(np.int64))])
             if np.max(new_outline)>self.stack_dims[0]:
-                self.printfancy("ERROR: drawing out of image")
+                printfancy("ERROR: drawing out of image")
                 return
             mask = None
         elif self._line_builder_mode == 'lasso':
@@ -658,7 +690,7 @@ class CellTracking(object):
 
         # check time overlap
         if any(i in cellmax.times for i in cellmin.times):
-            self.printfancy("ERROR: cells overlap in time")
+            printfancy("ERROR: cells overlap in time")
             self.update_labels()
             return
 
