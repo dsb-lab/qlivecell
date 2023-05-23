@@ -34,7 +34,10 @@ from core.PA import PlotActionCT, PlotActionCellPicker
 from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
 from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
-from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
+
+# import segmentation functions
+from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose
+from core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
 from core.dataclasses import CellTracking_info, backup_CellTrack, Cell, jitCell, contruct_jitCell
 from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
 from core.tools.ct_tools import set_cell_color
@@ -172,12 +175,18 @@ class CellTracking(object):
             print(LINE_UP, end=LINE_CLEAR)
 
     def __call__(self):
-        self.cell_segmentation()
+        TLabels, TCenters, TOutlines, label_correspondance, _Outlines, _Masks, _labels = self.cell_segmentation()
+        
         printfancy("")
-        self.cell_tracking()
+        
+        self.cell_tracking(TLabels, TCenters, TOutlines, label_correspondance)
+
         printfancy("tracking completed", clear_prev=1)
-        self.init_cells()
+
+        self.init_cells(_Outlines, _Masks, _labels)
+
         printfancy("cells initialised", clear_prev=1)
+
         self.update_labels()
         printfancy("labels updated", clear_prev=1)
         self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
@@ -214,14 +223,15 @@ class CellTracking(object):
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
-        self.TLabels   = []
-        self.TCenters  = []
-        self.TOutlines = []
-        self.label_correspondance = []
-        self._Outlines = []
-        self._Masks    = []
-        self._labels   = []
-
+        TLabels   = []
+        TCenters  = []
+        TOutlines = []
+        label_correspondance = []
+        _Outlines = []
+        _Masks    = []
+        _labels   = []
+        
+        print()
         print("######################   BEGIN SEGMENTATIONS   #######################")
         printfancy("")
         for t in range(self.times):
@@ -274,28 +284,30 @@ class CellTracking(object):
             printfancy("")
 
             printfancy("Segmentation and corrections completed. Proceeding to next time", clear_prev=1)
-            self.TLabels.append(labels_per_t)
-            self.TCenters.append(positions_per_t)
-            self.TOutlines.append(outlines_per_t)
+            TLabels.append(labels_per_t)
+            TCenters.append(positions_per_t)
+            TOutlines.append(outlines_per_t)
 
-            self.label_correspondance.append([])        
+            label_correspondance.append([])        
 
-            self._Outlines.append(Outlines)
-            self._Masks.append(Masks)
-            self._labels.append(labels)
+            _Outlines.append(Outlines)
+            _Masks.append(Masks)
+            _labels.append(labels)
 
             printclear(n=7)
         printclear(n=2)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
-    def cell_tracking(self):
-        FinalLabels, FinalCenters, FinalOutlines = greedy_tracking(self.times, self.TLabels, self.TCenters, self.TOutlines, self.label_correspondance, self._xyresolution)
+        return TLabels, TCenters, TOutlines, label_correspondance, _Outlines, _Masks, _labels
+
+    def cell_tracking(self, TLabels, TCenters, TOutlines, label_correspondance):
+        FinalLabels, FinalCenters, FinalOutlines = greedy_tracking(self.times, TLabels, TCenters, TOutlines, label_correspondance, self._xyresolution)
         self.FinalLabels   = FinalLabels
         self.FinalCenters  = FinalCenters
         self.FinalOutlines = FinalOutlines
         
-    def init_cells(self):
+    def init_cells(self, _Outlines, _Masks, _labels):
         self.currentcellid = 0
         self.unique_labels = np.unique(np.hstack(self.FinalLabels))
         self.max_label = int(max(self.unique_labels))
@@ -306,7 +318,7 @@ class CellTracking(object):
             TIMES    = []
             ZS       = []
             for t in range(self.times):
-                Zlabel_l, Zlabel_z = label_per_z(self.stacks.shape[1], self._labels[t])
+                Zlabel_l, Zlabel_z = label_per_z(self.stacks.shape[1], _labels[t])
                 if lab in self.FinalLabels[t]:
                     TIMES.append(t)
                     idd  = np.where(np.array(self.label_correspondance[t])[:,1]==lab)[0][0]
@@ -316,13 +328,13 @@ class CellTracking(object):
                     OUTLINES.append([])
                     MASKS.append([])
                     for z in ZS[-1]:
-                        id_l = np.where(np.array(self._labels[t][z])==_lab)[0][0]
-                        OUTLINES[-1].append(self._Outlines[t][z][id_l])
-                        MASKS[-1].append(self._Masks[t][z][id_l])
+                        id_l = np.where(np.array(_labels[t][z])==_lab)[0][0]
+                        OUTLINES[-1].append(_Outlines[t][z][id_l])
+                        MASKS[-1].append(_Masks[t][z][id_l])
             
             self.cells.append(create_cell(self.currentcellid, lab, ZS, TIMES, OUTLINES, MASKS, self.stacks))
             self.currentcellid+=1
-            
+
     def _extract_unique_labels_and_max_label(self):
         _ = np.hstack(self.Labels)
         _ = np.hstack(_)
