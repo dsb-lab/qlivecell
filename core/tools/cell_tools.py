@@ -170,8 +170,6 @@ def find_z_discontinuities(cell: Cell, stacks, max_label, currentcellid, t):
         cell.zs[tid]       = cell.zs[tid][0:discontinuities[0]]
         cell.outlines[tid] = cell.outlines[tid][0:discontinuities[0]]
         cell.masks[tid]    = cell.masks[tid][0:discontinuities[0]]
-        cell.label = max_label+1
-        max_label+=1
         return max_label, currentcellid, new_cell
     else: 
         return None, None
@@ -195,3 +193,4 @@ def update_cell(cell: Cell, stacks):
     sort_over_z(cell)
     sort_over_t(cell)
     extract_cell_centers(cell, stacks)
+    
