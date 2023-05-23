@@ -7,7 +7,7 @@ def create_cell(id, label, zs, times, outlines, masks, stacks):
     cell = Cell(id, label, zs, times, outlines, masks, False, [], [], [], [], [], [])
     update_cell(cell, stacks)
     return cell
-        
+            
 def compute_distance_cell(cell1: Cell, cell2: Cell, t, z, axis='xy'):
     t1 = cell1.times.index(t)
     z1 = cell1.zs[t1].index(z)

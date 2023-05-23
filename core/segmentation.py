@@ -111,6 +111,173 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_ar
         Outlines.append(outlines)
     return Outlines, Masks
 
+def label_per_z(slices, labels):
+    # Data re-structuring to correct possible alignment of contiguous cells along the z axis. 
+    Zlabel_l = []
+    Zlabel_z = []
+    for z in range(slices):
+        for l in labels[z]:
+            if l not in Zlabel_l:
+                Zlabel_l.append(l)
+                Zlabel_z.append([])
+            id = Zlabel_l.index(l)
+            Zlabel_z[id].append(z)
+    return Zlabel_l, Zlabel_z
+
+def nuclear_intensity_cell_z(stack, labels, Masks):
+    Zlabel_l, Zlabel_z = label_per_z(stack.shape[0], labels)
+    Zsignals = []
+    for id, l in enumerate(Zlabel_l):
+        # Compute nucleus intensity if num of z is greater than another threshold
+        if len(Zlabel_z[id]) > 0:
+            Zsignals.append([])
+            for z in Zlabel_z[id]:
+                id_l = labels[z].index(l)
+                img  = stack[z,:,:]#/np.max(self.stack[z,:,:])
+                mask = Masks[z][id_l]
+                Zsignals[-1].append(np.sum(img[mask[:,1], mask[:,0]]))
+    
+    return Zsignals
+
+def compute_overlap(relative, m1, m2):
+    nrows, ncols = m1.shape
+    dtype={'names':['f{}'.format(i) for i in range(ncols)],
+        'formats':ncols * [m1.dtype]}
+
+    C = np.intersect1d(m1.view(dtype), m2.view(dtype))
+
+    # This last bit is optional if you're okay with "C" being a structured array...
+    cl = C.view(m1.dtype).reshape(-1, ncols)
+    if relative:
+        denominador = np.minimum(len(m1), len(m2))
+        return 100*len(cl)/denominador
+    else:
+        denominador = np.add(len(m1), len(m2))
+        return 200*len(cl)/denominador
+
+def compute_planes_overlap(stack, labels, Masks, fullmat, relative):
+    Zlabel_l, Zlabel_z = label_per_z(stack.shape[0], labels)
+    Zoverlaps = []
+    for c in range(len(Zlabel_l)):
+        lab = Zlabel_l[c]
+        Zoverlaps.append(np.zeros((len(Zlabel_z[c]), len(Zlabel_z[c]))))
+        for i, z in enumerate(Zlabel_z[c]):
+            lid_curr  = labels[z].index(lab)
+            mask_curr = Masks[z][lid_curr]
+            if fullmat:
+                zvec = Zlabel_z[c]
+            else:
+                zvec = Zlabel_z[c][0:i]
+            for j, zz in enumerate(zvec):
+                if zz!=z:
+                    lid_other  = labels[zz].index(lab)
+                    mask_other = Masks[zz][lid_other]
+                    Zoverlaps[c][i,j]=compute_overlap(relative, mask_curr, mask_other)
+    return Zoverlaps
+
+def compute_overlap_measure(stack, labels, Masks, fullmat, relative, zneigh):
+    Zoverlaps = compute_planes_overlap(stack, labels, Masks, fullmat, relative)
+    Zoverlaps_conv = []
+    for c, Zoverlap in enumerate(Zoverlaps):
+        Zoverlaps_conv.append([])
+        for z in range(Zoverlap.shape[0]):
+            val = 0.0
+            n   = 0
+            for i in range(np.maximum(z-zneigh, 0), np.minimum(z+zneigh+1, Zoverlap.shape[0])):
+                if i!=z:
+                    val+=Zoverlap[z, i]
+                    n+=1
+            if n == 0:
+                Zoverlaps_conv[-1].append(0.0)
+            else:
+                Zoverlaps_conv[-1].append(val/n)
+    return Zoverlaps_conv
+
+def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overlap_th):
+    Zsignals = nuclear_intensity_cell_z(stack, labels, Masks)
+    Zoverlaps_conv = compute_overlap_measure(stack, labels, Masks, fullmat, relative, zneigh)
+
+    cellbarriers = []
+    for c in range(len(Zsignals)):
+        cellbarriers.append([])
+        intensity = np.array(Zsignals[c])*np.array(Zoverlaps_conv[c])
+
+        # Find data valleys and their corresponding idxs
+        datavalleys = np.r_[True, intensity[1:] < intensity[:-1]] & np.r_[intensity[:-1] < intensity[1:], True]
+        datavalleys_idx = np.arange(0,len(datavalleys))[datavalleys]
+
+        # Find data peaks and their corresponding idxs
+        datapeaks = np.r_[True, intensity[1:] > intensity[:-1]] & np.r_[intensity[:-1] > intensity[1:], True]
+        datapeaks_idx = np.arange(0,len(datapeaks))[datapeaks]
+
+        # For each local minima, apply conditions for it to be considered a cell barrier plane.
+        # Zlevel_cbs_to_pop correspongs to the z plane at which there might be a cell barrier. 
+        for Zlevel_cb in datavalleys_idx:
+            if Zlevel_cb==0:
+                pass
+            elif Zlevel_cb==len(datavalleys)-1:
+                pass
+            else:  
+                cellbarriers[-1].append(Zlevel_cb)
+
+        keep_checking = True
+        # remove a deltabarrier if the distance between two barriers is lower than a threshold.
+        while keep_checking:                
+            keep_checking=False
+            Zlevel_cbs_to_pop = []
+            Zlevel_cbs_to_add = []
+            for i, Zlevel_cb in enumerate(cellbarriers[-1][0:-1]):
+                dif = cellbarriers[-1][i+1] - Zlevel_cb
+                if dif < 5:                  
+                    if i not in Zlevel_cbs_to_pop:
+                        Zlevel_cbs_to_pop.append(i)
+                    if i+1 not in Zlevel_cbs_to_pop:
+                        Zlevel_cbs_to_pop.append(i+1)
+                    new_cb = np.argmax(intensity[Zlevel_cb:cellbarriers[-1][i+1]]) + Zlevel_cb
+                    Zlevel_cbs_to_add.append(new_cb)
+                    intensity[Zlevel_cb:cellbarriers[-1][i+1]+1] = np.ones(len(intensity[Zlevel_cb:cellbarriers[-1][i+1]+1]))*intensity[new_cb]
+                    keep_checking=True
+            Zlevel_cbs_to_pop.reverse()
+            for i in Zlevel_cbs_to_pop:
+                cellbarriers[-1].pop(i)
+            for new_cb in Zlevel_cbs_to_add:
+                cellbarriers[-1].append(new_cb)
+            cellbarriers[-1].sort()
+
+        Zlevel_cbs_to_pop = []
+        for i, Zlevel_cb in enumerate(cellbarriers[-1]):
+            closest_peak_right_idx  = datapeaks_idx[datapeaks_idx > Zlevel_cb].min()
+            closest_peak_left_idx   = datapeaks_idx[datapeaks_idx < Zlevel_cb].max() 
+            inten_peak1 = intensity[closest_peak_left_idx]
+            inten_peak2 = intensity[closest_peak_right_idx]
+            inten_peak  = np.minimum(inten_peak1, inten_peak2)
+            inten_cb    = intensity[Zlevel_cb]
+            if (inten_peak - inten_cb)/inten_peak < overlap_th: #0.2 threshold of relative height of the valley to the peak
+                Zlevel_cbs_to_pop.append(i)
+
+        Zlevel_cbs_to_pop.reverse()
+        for i in Zlevel_cbs_to_pop:
+            cellbarriers[-1].pop(i)
+    return cellbarriers
+
+def separate_concatenated_cells(stack, labels, Outlines, Masks, fullmat, relative, zneigh, overlap_th):
+    Zlabel_l, Zlabel_z = label_per_z(stack.shape[0], labels)
+    cellbarriers = detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overlap_th)
+    zids_remove = []
+    labs_remove = []
+    for c, cbs in enumerate(cellbarriers):
+        if len(cbs) != 0:
+            for cb in cbs:
+                zlevel = Zlabel_z[c][cb]
+                label  = Zlabel_l[c]
+                zids_remove.append(zlevel)
+                labs_remove.append(label)
+    for i, z in enumerate(zids_remove):
+        lid = labels[z].index(labs_remove[i])
+        labels[z].pop(lid)
+        Outlines[z].pop(lid)
+        Masks[z].pop(lid)
+
 class CellSegmentation(object):
 
     def __init__(self, stack, model, embcode, given_outlines=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, masks_cmap='tab10', min_outline_length=150, neighbors_for_sequence_sorting=7, blur_args=None):
@@ -147,14 +314,14 @@ class CellSegmentation(object):
         self.printfancy("Running segmentation post-processing...")
         self.printclear()
         self.printfancy("running concatenation correction... (1/2)")
-        self._separate_concatenated_cells()
+        separate_concatenated_cells(self.stack, self.labels, self.Outlines, self.Masks, self._fullmat, self._relative, self._zneigh, self._overlap_th)
         self.printclear()
         self.printfancy("concatenation correction completed (1/2)")
         self._update()
 
         self.printclear()
         self.printfancy("running concatenation correction... (2/2)")
-        self._separate_concatenated_cells()
+        separate_concatenated_cells(self.stack, self.labels, self.Outlines, self.Masks, self._fullmat, self._relative, self._zneigh, self._overlap_th)
         self.printclear()
         self.printfancy("concatenation correction completed (2/2)")
         self._update()
@@ -466,9 +633,9 @@ class CellSegmentation(object):
 
     def _position3d(self):
         self.labels_centers    = []
-        self.centers_positions = []
+        self.positions = []
         self.centers_weight    = []
-        self.centers_outlines  = []
+        self.outlines  = []
         for z in range(self.slices):
             img = self.stack[z,:,:]
             for cell, outline in enumerate(self.Outlines[z]):
@@ -478,16 +645,16 @@ class CellSegmentation(object):
                 label = self.labels[z][cell]
                 if label not in self.labels_centers:
                     self.labels_centers.append(label)
-                    self.centers_positions.append([z,ys,xs])
+                    self.positions.append([z,ys,xs])
                     self.centers_weight.append(np.sum(img[ptsin[:,1], ptsin[:,0]]))
-                    self.centers_outlines.append(outline)
+                    self.outlines.append(outline)
                 else:
                     curr_weight = np.sum(img[ptsin[:,1], ptsin[:,0]])
                     idx_prev    = np.where(np.array(self.labels_centers)==label)[0][0]
                     prev_weight = self.centers_weight[idx_prev]
                     if curr_weight > prev_weight:
-                        self.centers_positions[idx_prev] = [z, ys, xs]
-                        self.centers_outlines[idx_prev]  = outline
+                        self.positions[idx_prev] = [z, ys, xs]
+                        self.outlines[idx_prev]  = outline
                         self.centers_weight[idx_prev] = curr_weight
 
     def _sort_point_sequence(self, outline):

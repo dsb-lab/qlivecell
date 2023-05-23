@@ -34,10 +34,11 @@ from core.PA import PlotActionCT, PlotActionCellPicker
 from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
 from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
-from core.segmentation import CellSegmentation
+from core.segmentation import CellSegmentation, label_per_z
 from core.dataclasses import CellTracking_info, backup_CellTrack, Cell, jitCell, contruct_jitCell
 from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
 from core.tools.ct_tools import set_cell_color
+from core.tracking import greedy_tracking
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
@@ -219,8 +220,6 @@ class CellTracking(object):
         self._Outlines = []
         self._Masks    = []
         self._labels   = []
-        self._Zlabel_zs= []
-        self._Zlabel_ls= []
         print("######################   BEGIN SEGMENTATIONS   #######################")
         for t in range(self.times):
             imgs = self.stacks[t,:,:,:]
@@ -245,24 +244,27 @@ class CellTracking(object):
             self.printfancy("")
             CS()
             self.printfancy("Segmentation and corrections completed. Proceeding to next time", clear_prev=1)
-            self.TLabels.append(CS.labels_centers)
-            self.TCenters.append(CS.centers_positions)
-            self.TOutlines.append(CS.centers_outlines)
+            self.TLabels.append(CS.labels)
+            self.TCenters.append(CS.positions)
+            self.TOutlines.append(CS.outlines)
             self.label_correspondance.append([])        
             self._Outlines.append(CS.Outlines)
             self._Masks.append(CS.Masks)
             self._labels.append(CS.labels)
-            self._Zlabel_zs.append(CS._Zlabel_z)
-            self._Zlabel_ls.append(CS._Zlabel_l)
-        
+
             self.printclear(n=7)
         self.printclear(n=2)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
 
-    
-
+    def cell_tracking(self):
+        FinalLabels, FinalCenters, FinalOutlines = greedy_tracking(self.times, self.TLabels, self.TCenters, self.TOutlines, self.label_correspondance, self._xyresolution)
+        self.FinalLabels   = FinalLabels
+        self.FinalCenters  = FinalCenters
+        self.FinalOutlines = FinalOutlines
+        
     def init_cells(self):
         self.currentcellid = 0
+        print(np.hstack(self.FinalLabels))
         self.unique_labels = np.unique(np.hstack(self.FinalLabels))
         self.max_label = int(max(self.unique_labels))
         self.cells = []
@@ -272,12 +274,13 @@ class CellTracking(object):
             TIMES    = []
             ZS       = []
             for t in range(self.times):
+                Zlabel_l, Zlabel_z = label_per_z(self.stacks.shape[1], self._labels[t])
                 if lab in self.FinalLabels[t]:
                     TIMES.append(t)
                     idd  = np.where(np.array(self.label_correspondance[t])[:,1]==lab)[0][0]
                     _lab = self.label_correspondance[t][idd][0]
-                    _labid = self._Zlabel_ls[t].index(_lab)
-                    ZS.append(self._Zlabel_zs[t][_labid])
+                    _labid = Zlabel_l.index(_lab)
+                    ZS.append(Zlabel_z[_labid])
                     OUTLINES.append([])
                     MASKS.append([])
                     for z in ZS[-1]:
