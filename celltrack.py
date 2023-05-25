@@ -40,7 +40,7 @@ from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose
 from core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
 from core.dataclasses import CellTracking_info, backup_CellTrack, Cell, jitCell, contruct_jitCell
 from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
-from core.tools.ct_tools import set_cell_color
+from core.tools.ct_tools import compute_point_stack
 from core.tracking import greedy_tracking
 from core.utils_ct import printfancy, printclear, progressbar
 
@@ -173,6 +173,13 @@ class CellTracking(object):
             self.backups = deque([self._backupCT], self._backup_steps)
             plt.close("all")
 
+        t = self.times
+        z = self.slices
+        x,y = self.plot_stack_dims
+
+        self._masks_stack = np.zeros((t,z,x,y,4))
+        self._outlines_stack = np.zeros((t,z,x,y,4))
+
     def _init_with_cells(self, CELLS, CT_info):
         self._xyresolution    = CT_info.xyresolution 
         self._zresolution     = CT_info.zresolution  
@@ -223,8 +230,9 @@ class CellTracking(object):
         self.cells = deepcopy(backup.cells)
         self._update_CT_cell_attributes()
         jitcells = [contruct_jitCell(cell) for cell in self.cells]
-        self._compute_masks_stack(jitcells)
-        self._compute_outlines_stack(jitcells)
+
+        compute_point_stack(self._masks_stack, jitcells, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
+        compute_point_stack(self._outlines_stack, jitcells, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
 
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
@@ -437,12 +445,13 @@ class CellTracking(object):
         
         jitcells = [contruct_jitCell(cell) for cell in self.cells]
         start = time.time()
-        self._compute_masks_stack(jitcells)
+        compute_point_stack(self._masks_stack, jitcells, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
         end = time.time()
         print("compute masks",end - start)
         
+
         start = time.time()
-        self._compute_outlines_stack(jitcells)
+        compute_point_stack(self._outlines_stack, jitcells, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
         end = time.time()
         print("compute outlines",end - start)
         
@@ -825,18 +834,6 @@ class CellTracking(object):
         
         self.cells.pop(idx)
 
-    def _compute_masks_stack(self, jitcells):
-        t = self.times
-        z = self.slices
-        x,y = self.plot_stack_dims
-        
-        self._masks_stack = np.zeros((t,z,x,y,4))            
-        for c, jitcell in enumerate(jitcells):
-            if self.plot_masks: alpha = 1
-            else: alpha = 0
-            color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], alpha)
-            set_cell_color(self._masks_stack, jitcell.outlines, jitcell.times, jitcell.zs, np.array(color), self.dim_change)
-
     def point_neighbors(self, outline):
         self.stack_dims[0]
         neighs=[[dx,dy] for dx in range(-self._neigh_index, self._neigh_index+1) for dy in range(-self._neigh_index, self._neigh_index+1)] 
@@ -867,17 +864,7 @@ class CellTracking(object):
         nearest_labels = label_image[tuple(masked_nearest_label_coords)]
         labels_out[dilate_mask] = nearest_labels
         return labels_out
-
-    def _compute_outlines_stack(self, jitcells):
-        t = self.times
-        z = self.slices
-        x,y = self.plot_stack_dims
-
-        self._outlines_stack = np.zeros((t,z,x,y,4))
-        for c, jitcell in enumerate(jitcells):
-            color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], 1)
-            set_cell_color(self._outlines_stack, jitcell.outlines, jitcell.times, jitcell.zs, np.array(color), self.dim_change)
-
+    
     def plot_axis(self, _ax, img, z, t):
         im = _ax.imshow(img, vmin=0, vmax=255)
         im_masks =_ax.imshow(self._masks_stack[t][z])
@@ -924,8 +911,9 @@ class CellTracking(object):
         self.plot_masks=True
         
         jitcells = [contruct_jitCell(cell) for cell in self.cells]
-        self._compute_masks_stack(jitcells)
-        self._compute_outlines_stack(jitcells)
+
+        compute_point_stack(self._masks_stack, jitcells, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
+        compute_point_stack(self._outlines_stack, jitcells, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
 
         self._imshows          = []
         self._imshows_masks    = []
