@@ -142,4 +142,30 @@ def set_cell_color(cell_stack, points, times, zs, color, dim_change, t=-1, z=-1)
                         x = np.int32(np.floor(p[1]*dim_change))
                         y = np.int32(np.floor(p[0]*dim_change))
                         cell_stack[tc,zc,x,y] = color
-                    
+
+def get_cell_color(jitcell, label_colors, labels_color_id, alpha):
+    return np.append(label_colors[labels_color_id[jitcell.label]], alpha)
+
+def compute_point_stack(point_stack, jitcells, times, labels_per_t, dim_change, label_colors, labels_color_id, alpha, mode=None):
+
+    for t in times:
+        point_stack[t] = 0
+        labels = labels_per_t[t]
+        for lab in labels:
+            jitcell = get_cell(jitcells, lab)
+            color = get_cell_color(jitcell, label_colors, labels_color_id, alpha)
+            if mode=="outlines": points = jitcell.outlines
+            elif mode=="masks": points = jitcell.masks
+            set_cell_color(point_stack, points, jitcell.times, jitcell.zs, np.array(color), dim_change, t=t)
+    return point_stack
+
+def get_cell(cells, label=None, cellid=None):
+    if label==None:
+        for cell in cells:
+                if cell.id == cellid:
+                    return cell
+    else:
+        for cell in cells:
+                if cell.label == label:
+                    return cell
+    return None
