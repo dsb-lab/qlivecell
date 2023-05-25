@@ -34,10 +34,15 @@ from core.PA import PlotActionCT, PlotActionCellPicker
 from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
 from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
-from core.segmentation import CellSegmentation
+
+# import segmentation functions
+from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose
+from core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
 from core.dataclasses import CellTracking_info, backup_CellTrack, Cell, jitCell, contruct_jitCell
 from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
 from core.tools.ct_tools import set_cell_color
+from core.tracking import greedy_tracking
+from core.utils_ct import printfancy, printclear, progressbar
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
@@ -53,7 +58,39 @@ LINE_CLEAR = '\x1b[2K'
 
 class CellTracking(object):
         
-    def __init__(self, stacks, pthtosave, embcode, given_Outlines=None, CELLS=None, CT_info=None, model=None, trainedmodel=None, channels=[0,0], flow_th_cellpose=0.4, distance_th_z=3.0, xyresolution=0.2767553, zresolution=2.0, relative_overlap=False, use_full_matrix_to_compute_overlap=True, z_neighborhood=2, overlap_gradient_th=0.3, plot_layout=(2,3), plot_overlap=1, masks_cmap='tab10', min_outline_length=200, neighbors_for_sequence_sorting=7, plot_tracking_windows=1, backup_steps=5, time_step=None, cell_distance_axis="xy", movement_computation_method="center", mean_substraction_cell_movement=False, plot_stack_dims=None, plot_outline_width=1, line_builder_mode='lasso', blur_args=None):
+    def __init__(self, 
+        stacks, 
+        pthtosave, 
+        embcode, 
+        given_Outlines=None, 
+        CELLS=None, 
+        CT_info=None, 
+        model=None, 
+        trainedmodel=None, 
+        channels=[0,0], 
+        flow_th_cellpose=0.4, 
+        distance_th_z=3.0, 
+        xyresolution=0.2767553, 
+        zresolution=2.0, 
+        relative_overlap=False, 
+        use_full_matrix_to_compute_overlap=True, 
+        z_neighborhood=2, 
+        overlap_gradient_th=0.3, 
+        plot_layout=(2,3), 
+        plot_overlap=1, 
+        masks_cmap='tab10', 
+        min_outline_length=200, 
+        neighbors_for_sequence_sorting=7, 
+        backup_steps=5, 
+        time_step=None, 
+        cell_distance_axis="xy", 
+        movement_computation_method="center", 
+        mean_substraction_cell_movement=False, 
+        plot_stack_dims=None, 
+        plot_outline_width=1, 
+        line_builder_mode='lasso', 
+        blur_args=None):
+        
         if CELLS !=None: 
             self._init_with_cells(CELLS, CT_info)
         else:
@@ -102,7 +139,6 @@ class CellTracking(object):
         self.plot_masks = True
         self._backup_steps= backup_steps
         self._neigh_index = plot_outline_width
-        self.plot_tracking_windows=plot_tracking_windows
         self._assign_color_to_label()
 
         ##  Cell movement parameters  ##
@@ -154,35 +190,27 @@ class CellTracking(object):
         for cell in self.cells:
             self.currentcellid=max(self.currentcellid, cell.id)
         self.currentcellid+=1
-    
-    def printfancy(self, string, finallength=70, clear_prev=0):
-        new_str = "#   "+string
-        while len(new_str)<finallength-1:
-            new_str+=" "
-        new_str+="#"
-        self.printclear(clear_prev)
-        print(new_str)
-
-    def printclear(self, n=1):
-        LINE_UP = '\033[1A'
-        LINE_CLEAR = '\x1b[2K'
-        for i in range(n):
-            print(LINE_UP, end=LINE_CLEAR)
 
     def __call__(self):
-        self.cell_segmentation()
-        self.printfancy("")
-        self.cell_tracking()
-        self.printfancy("tracking completed", clear_prev=1)
-        self.init_cells()
-        self.printfancy("cells initialised", clear_prev=1)
+        TLabels, TCenters, TOutlines, label_correspondance, _Outlines, _Masks, _labels = self.cell_segmentation()
+        
+        printfancy("")
+        
+        self.cell_tracking(TLabels, TCenters, TOutlines, label_correspondance)
+
+        printfancy("tracking completed", clear_prev=1)
+
+        self.init_cells(_Outlines, _Masks, _labels, label_correspondance)
+
+        printfancy("cells initialised", clear_prev=1)
+
         self.update_labels()
-        self.printfancy("labels updated", clear_prev=1)
+        printfancy("labels updated", clear_prev=1)
         self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
         self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
         self.backups = deque([self._backupCT], self._backup_steps)
         plt.close("all")
-        self.printclear(2)
+        printclear(2)
         print("##############    SEGMENTATION AND TRACKING FINISHED   ##############")
         
     def undo_corrections(self, all=False):
@@ -200,8 +228,8 @@ class CellTracking(object):
 
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
-        for PACP in self.PACPs:
-            PACP.CT = self
+        self.PACP.CT = self
+
         
         # Make sure there is always a backup on the list
         if len(self.backups)==0:
@@ -212,112 +240,95 @@ class CellTracking(object):
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
-        self.TLabels   = []
-        self.TCenters  = []
-        self.TOutlines = []
-        self.label_correspondance = []
-        self._Outlines = []
-        self._Masks    = []
-        self._labels   = []
-        self._Zlabel_zs= []
-        self._Zlabel_ls= []
-        print("######################   BEGIN SEGMENTATIONS   #######################")
-        for t in range(self.times):
-            imgs = self.stacks[t,:,:,:]
-            CS = CellSegmentation( imgs, self._model, self.embcode
-                                , given_outlines=self._given_Outlines
-                                , trainedmodel=self._trainedmodel
-                                , channels=self._channels
-                                , flow_th_cellpose=self._flow_th_cellpose
-                                , distance_th_z=self._distance_th_z
-                                , xyresolution=self._xyresolution
-                                , relative_overlap=self._relative
-                                , use_full_matrix_to_compute_overlap=self._fullmat
-                                , z_neighborhood=self._zneigh
-                                , overlap_gradient_th=self._overlap_th
-                                , masks_cmap=self._cmap_name
-                                , min_outline_length=self._min_outline_length
-                                , neighbors_for_sequence_sorting=self._nearest_neighs
-                                , blur_args=self._blur_args)
-
-            self.printfancy("")
-            self.printfancy("######   CURRENT TIME = %d/%d   ######" % (t+1, self.times))
-            self.printfancy("")
-            CS()
-            self.printfancy("Segmentation and corrections completed. Proceeding to next time", clear_prev=1)
-            self.TLabels.append(CS.labels_centers)
-            self.TCenters.append(CS.centers_positions)
-            self.TOutlines.append(CS.centers_outlines)
-            self.label_correspondance.append([])        
-            self._Outlines.append(CS.Outlines)
-            self._Masks.append(CS.Masks)
-            self._labels.append(CS.labels)
-            self._Zlabel_zs.append(CS._Zlabel_z)
-            self._Zlabel_ls.append(CS._Zlabel_l)
+        TLabels   = []
+        TCenters  = []
+        TOutlines = []
+        label_correspondance = []
+        _Outlines = []
+        _Masks    = []
+        _labels   = []
         
-            self.printclear(n=7)
-        self.printclear(n=2)
+        print()
+        print("######################   BEGIN SEGMENTATIONS   #######################")
+        printfancy("")
+        for t in range(self.times):
+            printfancy("")
+            printfancy("######   CURRENT TIME = %d/%d   ######" % (t+1, self.times))
+            printfancy("")
+
+            stack = self.stacks[t,:,:,:]
+            segmentation_args = [self._model, self._trainedmodel, self._channels, self._flow_th_cellpose]
+            Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_cellpose, segmentation_args, self._blur_args)
+
+            printfancy("")
+            printfancy("Running segmentation post-processing...")
+            printclear()
+            printfancy("running concatenation correction... (1/2)")
+
+            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
+            separate_concatenated_cells(stack, labels, Outlines, Masks, self._fullmat, self._relative, self._zneigh, self._overlap_th)
+            
+            printclear()
+            printfancy("concatenation correction completed (1/2)")
+
+            printclear()
+            printfancy("running concatenation correction... (2/2)")
+            
+            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
+            separate_concatenated_cells(stack, labels, Outlines, Masks, self._fullmat, self._relative, self._zneigh, self._overlap_th)
+            
+            printclear()
+            printfancy("concatenation correction completed (2/2)")
+
+            printclear()
+            printfancy("running short cell removal...")
+            
+            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
+            remove_short_cells(stack, labels, Outlines, Masks)
+            
+            printclear()
+            printfancy("short cell removal completed")
+            printclear()
+            printfancy("computing attributes...")
+
+            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
+            labels_per_t, positions_per_t, outlines_per_t = position3d(stack, labels, Outlines, Masks)  
+
+            printclear()
+            printfancy("attributes computed")
+            printclear()
+            printfancy("")
+            printfancy("Segmentation and corrections completed")
+
+            printfancy("")
+            printfancy("######   CURRENT TIME = %d/%d   ######" % (t+1, self.times))
+            printfancy("")
+
+            printfancy("Segmentation and corrections completed. Proceeding to next time", clear_prev=1)
+            TLabels.append(labels_per_t)
+            TCenters.append(positions_per_t)
+            TOutlines.append(outlines_per_t)
+
+            label_correspondance.append([])        
+
+            _Outlines.append(Outlines)
+            _Masks.append(Masks)
+            _labels.append(labels)
+
+            printclear(n=7)
+        printclear(n=2)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
+        printfancy("")
 
-    def cell_tracking(self):
-        TLabels  = self.TLabels
-        TCenters = self.TCenters
-        TOutlines = self.TOutlines
-        FinalLabels   = []
-        FinalCenters  = []
-        FinalOutlines = []
-        for t in range(np.shape(self.stacks)[0]):
-            if t==0:
-                FinalLabels.append(TLabels[0])
-                FinalCenters.append(TCenters[0])
-                FinalOutlines.append(TOutlines[0])
-                labmax = np.max(FinalLabels[0])
-                for lab in TLabels[0]:
-                    self.label_correspondance[0].append([lab, lab])
-            else:
-                FinalLabels.append([])
-                FinalCenters.append([])
-                FinalOutlines.append([])
+        return TLabels, TCenters, TOutlines, label_correspondance, _Outlines, _Masks, _labels
 
-                Dists = np.ones((len(FinalLabels[t-1]), len(TLabels[t])))
-                for i in range(len(FinalLabels[t-1])):
-                    poscell1 = np.array(FinalCenters[t-1][i][1:])*np.array([self._xyresolution, self._xyresolution])
-                    for j in range(len(TLabels[t])): 
-                        poscell2 = np.array(TCenters[t][j][1:])*np.array([self._xyresolution, self._xyresolution])
-                        Dists[i,j] = np.linalg.norm(poscell1-poscell2)
-                        if np.abs(FinalCenters[t-1][i][0] - TCenters[t][j][0])>2:
-                            Dists[i,j] = 100.0
-
-                a = np.argmin(Dists, axis=0) # max prob for each future cell to be a past cell
-                b = np.argmin(Dists, axis=1) # max prob for each past cell to be a future one
-                correspondance = []
-                notcorrespondenta = []
-                notcorrespondentb = []
-                for i,j in enumerate(b):
-                    if i==a[j]:
-                        if Dists[i,j] < 7.5:
-                            correspondance.append([i,j]) #[past, future]
-                            self.label_correspondance[t].append([TLabels[t][j], FinalLabels[t-1][i]])
-                            FinalLabels[t].append(FinalLabels[t-1][i])
-                            FinalCenters[t].append(TCenters[t][j])
-                            FinalOutlines[t].append(TOutlines[t][j])                            
-                    else:
-                        notcorrespondenta.append(i)
-                labmax = np.maximum(np.max(FinalLabels[t-1]), labmax)
-                for j in range(len(a)):
-                    if j not in np.array(correspondance)[:,1]:
-                        self.label_correspondance[t].append([TLabels[t][j], labmax+1])
-                        FinalLabels[t].append(labmax+1)
-                        labmax+=1
-                        FinalCenters[t].append(TCenters[t][j])
-                        FinalOutlines[t].append(TOutlines[t][j])
-                        notcorrespondentb.append(j)
-                
+    def cell_tracking(self, TLabels, TCenters, TOutlines, label_correspondance):
+        FinalLabels, FinalCenters, FinalOutlines = greedy_tracking(self.times, TLabels, TCenters, TOutlines, label_correspondance, self._xyresolution)
         self.FinalLabels   = FinalLabels
         self.FinalCenters  = FinalCenters
         self.FinalOutlines = FinalOutlines
-
-    def init_cells(self):
+        
+    def init_cells(self, _Outlines, _Masks, _labels, label_correspondance):
         self.currentcellid = 0
         self.unique_labels = np.unique(np.hstack(self.FinalLabels))
         self.max_label = int(max(self.unique_labels))
@@ -328,22 +339,23 @@ class CellTracking(object):
             TIMES    = []
             ZS       = []
             for t in range(self.times):
+                Zlabel_l, Zlabel_z = label_per_z(self.stacks.shape[1], _labels[t])
                 if lab in self.FinalLabels[t]:
                     TIMES.append(t)
-                    idd  = np.where(np.array(self.label_correspondance[t])[:,1]==lab)[0][0]
-                    _lab = self.label_correspondance[t][idd][0]
-                    _labid = self._Zlabel_ls[t].index(_lab)
-                    ZS.append(self._Zlabel_zs[t][_labid])
+                    idd  = np.where(np.array(label_correspondance[t])[:,1]==lab)[0][0]
+                    _lab = label_correspondance[t][idd][0]
+                    _labid = Zlabel_l.index(_lab)
+                    ZS.append(Zlabel_z[_labid])
                     OUTLINES.append([])
                     MASKS.append([])
                     for z in ZS[-1]:
-                        id_l = np.where(np.array(self._labels[t][z])==_lab)[0][0]
-                        OUTLINES[-1].append(self._Outlines[t][z][id_l])
-                        MASKS[-1].append(self._Masks[t][z][id_l])
+                        id_l = np.where(np.array(_labels[t][z])==_lab)[0][0]
+                        OUTLINES[-1].append(_Outlines[t][z][id_l])
+                        MASKS[-1].append(_Masks[t][z][id_l])
             
             self.cells.append(create_cell(self.currentcellid, lab, ZS, TIMES, OUTLINES, MASKS, self.stacks))
             self.currentcellid+=1
-            
+
     def _extract_unique_labels_and_max_label(self):
         _ = np.hstack(self.Labels)
         _ = np.hstack(_)
@@ -504,9 +516,8 @@ class CellTracking(object):
                     pidx=id
                     break
             if len(used_idxs)==a:
-                self.printfancy("ERROR: Improve your point drawing") 
-                for PACP in self.PACPs:
-                    PACP.visualization()
+                printfancy("ERROR: Improve your point drawing")
+                self.PACP.visualization()
                 return None, None
         return np.array(new_outline), used_idxs
 
@@ -569,7 +580,7 @@ class CellTracking(object):
                 return
             new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(self.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(self.linebuilder.ys) / self.dim_change).astype(np.int64))])
             if np.max(new_outline)>self.stack_dims[0]:
-                self.printfancy("ERROR: drawing out of image")
+                printfancy("ERROR: drawing out of image")
                 return
             mask = None
         elif self._line_builder_mode == 'lasso':
@@ -713,7 +724,7 @@ class CellTracking(object):
 
         # check time overlap
         if any(i in cellmax.times for i in cellmin.times):
-            self.printfancy("ERROR: cells overlap in time")
+            printfancy("ERROR: cells overlap in time")
             self.update_labels()
             return
 
@@ -867,19 +878,19 @@ class CellTracking(object):
             color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], 1)
             set_cell_color(self._outlines_stack, jitcell.outlines, jitcell.times, jitcell.zs, np.array(color), self.dim_change)
 
-    def plot_axis(self, _ax, img, z, PACPid, t):
+    def plot_axis(self, _ax, img, z, t):
         im = _ax.imshow(img, vmin=0, vmax=255)
         im_masks =_ax.imshow(self._masks_stack[t][z])
         im_outlines = _ax.imshow(self._outlines_stack[t][z])
-        self._imshows[PACPid].append(im)
-        self._imshows_masks[PACPid].append(im_masks)
-        self._imshows_outlines[PACPid].append(im_outlines)
+        self._imshows.append(im)
+        self._imshows_masks.append(im_masks)
+        self._imshows_outlines.append(im_outlines)
 
         title = _ax.set_title("z = %d" %(z+1))
-        self._titles[PACPid].append(title)
+        self._titles.append(title)
         _ = _ax.axis(False)
 
-    def plot_tracking(self, windows=None
+    def plot_tracking(self
                     , plot_layout=None
                     , plot_overlap=None
                     , cell_picker=False
@@ -888,7 +899,6 @@ class CellTracking(object):
                     , plot_outline_width=None
                     , plot_stack_dims=None):
 
-        if windows==None: windows=self.plot_tracking_windows
         if plot_layout is not None: self.plot_layout=plot_layout
         if plot_overlap is not None: self.plot_overlap=plot_overlap
         if self.plot_layout[0]*self.plot_layout[1]==1: self.plot_overlap=0
@@ -917,9 +927,6 @@ class CellTracking(object):
         self._compute_masks_stack(jitcells)
         self._compute_outlines_stack(jitcells)
 
-        self.PACPs             = []
-        self._time_sliders     = []
-        self._z_sliders        = []
         self._imshows          = []
         self._imshows_masks    = []
         self._imshows_outlines = []
@@ -928,127 +935,117 @@ class CellTracking(object):
         self._annotations      = []
         self.list_of_cellsm    = []
         
-        if cell_picker: windows=1
-        for w in range(windows):
-            counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
-            fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
-            if not hasattr(ax, '__iter__'): ax = np.array([ax])
-            ax = ax.flatten()
-            
-            if cell_picker: self.PACPs.append(PlotActionCellPicker(fig, ax, self, w, mode))
-            else: self.PACPs.append(PlotActionCT(fig, ax, self, w, None))
-            self.PACPs[w].zs = np.zeros_like(ax)
-            zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
-            t=0
-            imgs   = self.plot_stacks[t,:,:,:]
+        counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
+        fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
+        if not hasattr(ax, '__iter__'): ax = np.array([ax])
+        ax = ax.flatten()
+        
+        if cell_picker: self.PACP = PlotActionCellPicker(fig, ax, self, mode)
+        else: self.PACP = PlotActionCT(fig, ax, self, None)
+        self.PACP.zs = np.zeros_like(ax)
+        zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
+        t=0
+        imgs   = self.plot_stacks[t,:,:,:]
 
-            self._imshows.append([])
-            self._imshows_masks.append([])
-            self._imshows_outlines.append([])
-            self._titles.append([])
-            self._pos_scatters.append([])
-            self._annotations.append([])
+        # Plot all our Zs in the corresponding round
+        for z, id, _round in counter:
+            # select current z plane
+            ax[id].axis(False)
+            if z == None:
+                pass
+            else:      
+                img = imgs[z,:,:]
+                self.PACP.zs[id] = z
+                self.plot_axis(ax[id], img, z, t)
+                labs = self.Labels[t][z]
+                
+                for lab in labs:
+                    cell = self._get_cell(lab)
+                    tid = cell.times.index(t)
+                    zz, ys, xs = cell.centers[tid]
+                    xs = round(xs*self.dim_change)
+                    ys = round(ys*self.dim_change)
+                    if zz == z:
+                        pos = ax[id].scatter([ys], [xs], s=1.0, c="white")
+                        self._pos_scatters.append(pos)
+                        ano = ax[id].annotate(str(lab), xy=(ys, xs), c="white")
+                        self._annotations.append(ano)
+                        _ = ax[id].set_xticks([])
+                        _ = ax[id].set_yticks([])
+                        
+        plt.subplots_adjust(bottom=0.075)
+        # Make a horizontal slider to control the time.
+        axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
+        sliderstr = "/%d" %(self.times)
+        time_slider = Slider_t(
+            ax=axslide,
+            label='time',
+            initcolor='r',
+            valmin=1,
+            valmax=self.times,
+            valinit=1,
+            valstep=1,
+            valfmt="%d"+sliderstr,
+            track_color = [0.8, 0.8, 0, 0.5],
+            facecolor   = [0.8, 0.8, 0, 1.0]
+            )
+        self._time_slider = time_slider
+        self._time_slider.on_changed(self.PACP.update_slider_t)
 
-            # Plot all our Zs in the corresponding round
-            for z, id, _round in counter:
-                # select current z plane
-                ax[id].axis(False)
-                if z == None:
-                    pass
-                else:      
-                    img = imgs[z,:,:]
-                    self.PACPs[w].zs[id] = z
-                    self.plot_axis(ax[id], img, z, w, t)
-                    labs = self.Labels[t][z]
-                    
-                    for lab in labs:
-                        cell = self._get_cell(lab)
-                        tid = cell.times.index(t)
-                        zz, ys, xs = cell.centers[tid]
-                        xs = round(xs*self.dim_change)
-                        ys = round(ys*self.dim_change)
-                        if zz == z:
-                            pos = ax[id].scatter([ys], [xs], s=1.0, c="white")
-                            self._pos_scatters[w].append(pos)
-                            ano = ax[id].annotate(str(lab), xy=(ys, xs), c="white")
-                            self._annotations[w].append(ano)
-                            _ = ax[id].set_xticks([])
-                            _ = ax[id].set_yticks([])
-                            
-            plt.subplots_adjust(bottom=0.075)
-            # Make a horizontal slider to control the time.
-            axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
-            sliderstr = "/%d" %(self.times)
-            time_slider = Slider_t(
-                ax=axslide,
-                label='time',
-                initcolor='r',
-                valmin=1,
-                valmax=self.times,
-                valinit=1,
-                valstep=1,
-                valfmt="%d"+sliderstr,
-                track_color = [0.8, 0.8, 0, 0.5],
-                facecolor   = [0.8, 0.8, 0, 1.0]
-                )
-            self._time_sliders.append(time_slider)
-            self._time_sliders[w].on_changed(self.PACPs[w].update_slider_t)
-
-            # Make a horizontal slider to control the zs.
-            axslide = fig.add_axes([0.10, 0.04, 0.75, 0.03])
-            sliderstr = "/%d" %(self.slices)
-            z_slider = Slider_z(
-                ax=axslide,
-                label='z slice',
-                initcolor='r',
-                valmin=0,
-                valmax=self.PACPs[w].max_round,
-                valinit=0,
-                valstep=1,
-                valfmt="(%d-%d)"+sliderstr,
-                counter=counter,
-                track_color = [0, 0.7, 0, 0.5],
-                facecolor   = [0, 0.7, 0, 1.0]
-                )
-            self._z_sliders.append(z_slider)
-            self._z_sliders[w].on_changed(self.PACPs[w].update_slider_z)
+        # Make a horizontal slider to control the zs.
+        axslide = fig.add_axes([0.10, 0.04, 0.75, 0.03])
+        sliderstr = "/%d" %(self.slices)
+        z_slider = Slider_z(
+            ax=axslide,
+            label='z slice',
+            initcolor='r',
+            valmin=0,
+            valmax=self.PACP.max_round,
+            valinit=0,
+            valstep=1,
+            valfmt="(%d-%d)"+sliderstr,
+            counter=counter,
+            track_color = [0, 0.7, 0, 0.5],
+            facecolor   = [0, 0.7, 0, 1.0]
+            )
+        self._z_slider = z_slider
+        self._z_slider.on_changed(self.PACP.update_slider_z)
 
         plt.show()
 
-    def replot_axis(self, _ax, img, z, t, PACPid, imid, plot_outlines=True):
-        self._imshows[PACPid][imid].set_data(img)
-        self._imshows_masks[PACPid][imid].set_data(self._masks_stack[t][z])
-        if plot_outlines: self._imshows_outlines[PACPid][imid].set_data(self._outlines_stack[t][z])
-        else: self._imshows_outlines[PACPid][imid].set_data(np.zeros_like(self._outlines_stack[t][z]))
-        self._titles[PACPid][imid].set_text("z = %d" %(z+1))
+    def replot_axis(self, img, z, t, imid, plot_outlines=True):
+        self._imshows[imid].set_data(img)
+        self._imshows_masks[imid].set_data(self._masks_stack[t][z])
+        if plot_outlines: self._imshows_outlines[imid].set_data(self._outlines_stack[t][z])
+        else: self._imshows_outlines[imid].set_data(np.zeros_like(self._outlines_stack[t][z]))
+        self._titles[imid].set_text("z = %d" %(z+1))
                     
     def replot_tracking(self, PACP, plot_outlines=True):
         
         t = PACP.t
-        PACPid = PACP.id
         counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=PACP.cr)
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
         imgs   = self.plot_stacks[t,:,:,:]
         # Plot all our Zs in the corresponding round
-        for sc in self._pos_scatters[PACPid]:
+        for sc in self._pos_scatters:
             sc.remove()
-        for ano in self._annotations[PACPid]:
+        for ano in self._annotations:
             ano.remove()
-        self._pos_scatters[PACPid]     = []
-        self._annotations[PACPid]      = []
+        self._pos_scatters = []
+        self._annotations  = []
         for z, id, r in counter:
             # select current z plane
             if z == None:
                 img = np.zeros(self.plot_stack_dims)
-                self._imshows[PACPid][id].set_data(img)
-                self._imshows_masks[PACPid][id].set_data(img)
-                self._imshows_outlines[PACPid][id].set_data(img)
-                self._titles[PACPid][id].set_text("")
+                self._imshows[id].set_data(img)
+                self._imshows_masks[id].set_data(img)
+                self._imshows_outlines[id].set_data(img)
+                self._titles[id].set_text("")
             else:      
                 img = imgs[z,:,:]
                 PACP.zs[id] = z
                 labs = self.Labels[t][z]
-                self.replot_axis(PACP.ax[id], img, z, t, PACPid, id, plot_outlines=plot_outlines)
+                self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
                 for lab in labs:
                     cell = self._get_cell(lab)
                     tid = cell.times.index(t)
@@ -1057,19 +1054,19 @@ class CellTracking(object):
                     ys = round(ys*self.dim_change)
                     if zz == z:
                         if [cell.id, PACP.t] in self.apoptotic_events:
-                            _ = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
-                            self._pos_scatters[PACPid].append(_)
+                            sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
+                            self._pos_scatters.append(sc)
                         else:
-                            _ = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
-                            self._pos_scatters[PACPid].append(_)
+                            sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
+                            self._pos_scatters.append(sc)
                         anno = PACP.ax[id].annotate(str(lab), xy=(ys, xs), c="white")
-                        self._annotations[PACPid].append(anno)              
+                        self._annotations.append(anno)              
                         
                         for mitoev in self.mitotic_events:
                             for ev in mitoev:
                                 if [cell.id, PACP.t]==ev:
-                                    _ = PACP.ax[id].scatter([ys], [xs], s=5.0, c="red")
-                                    self._pos_scatters[PACPid].append(_)
+                                    sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="red")
+                                    self._pos_scatters.append(sc)
 
         plt.subplots_adjust(bottom=0.075)
 
@@ -1193,81 +1190,81 @@ class CellTracking(object):
     #             self.plot_tracking(windows=1, cell_picker=True, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, mode="CM")
     #         else: plt.show()
 
-    def _select_cells(self
-                    , plot_layout=None
-                    , plot_overlap=None
-                    , masks_cmap=None):
+    # def _select_cells(self
+    #                 , plot_layout=None
+    #                 , plot_overlap=None
+    #                 , masks_cmap=None):
         
-        self.plot_tracking(windows=1, cell_picker=True, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, mode="CP")
-        self.PACPs[0].CP.stopit()
-        labels = copy(self.PACPs[0].label_list)
-        return labels
+    #     self.plot_tracking(windows=1, cell_picker=True, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, mode="CP")
+    #     self.PACP.CP.stopit()
+    #     labels = copy(self.PACP.label_list)
+    #     return labels
 
-    def save_masks3D_stack(self
-                         , cell_selection=False
-                         , plot_layout=None
-                         , plot_overlap=None
-                         , masks_cmap=None
-                         , color=None
-                         , channel_name=""):
+    # def save_masks3D_stack(self
+    #                      , cell_selection=False
+    #                      , plot_layout=None
+    #                      , plot_overlap=None
+    #                      , masks_cmap=None
+    #                      , color=None
+    #                      , channel_name=""):
         
-        if cell_selection:
-            labels = self._select_cells(plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap)
-        else:
-            labels = self.unique_labels
-        masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
-        for cell in self.cells:
-            if cell.label not in labels: continue
-            if color is None: _color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('float32')
-            else: _color=color
-            for tid, tc in enumerate(cell.times):
-                for zid, zc in enumerate(cell.zs[tid]):
-                    mask = cell.masks[tid][zid]
-                    xids = mask[:,1]
-                    yids = mask[:,0]
-                    masks[tc][zc][0][xids,yids]=_color[0]
-                    masks[tc][zc][1][xids,yids]=_color[1]
-                    masks[tc][zc][2][xids,yids]=_color[2]
-        masks[0][0][0][0,0] = 255
-        masks[0][0][1][0,0] = 255
-        masks[0][0][2][0,0] = 255
+    #     if cell_selection:
+    #         labels = self._select_cells(plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap)
+    #     else:
+    #         labels = self.unique_labels
+    #     masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
+    #     for cell in self.cells:
+    #         if cell.label not in labels: continue
+    #         if color is None: _color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('float32')
+    #         else: _color=color
+    #         for tid, tc in enumerate(cell.times):
+    #             for zid, zc in enumerate(cell.zs[tid]):
+    #                 mask = cell.masks[tid][zid]
+    #                 xids = mask[:,1]
+    #                 yids = mask[:,0]
+    #                 masks[tc][zc][0][xids,yids]=_color[0]
+    #                 masks[tc][zc][1][xids,yids]=_color[1]
+    #                 masks[tc][zc][2][xids,yids]=_color[2]
+    #     masks[0][0][0][0,0] = 255
+    #     masks[0][0][1][0,0] = 255
+    #     masks[0][0][2][0,0] = 255
 
-        imwrite(
-            self.path_to_save+self.embcode+"_masks"+channel_name+".tiff",
-            masks,
-            imagej=True,
-            resolution=(1/self._xyresolution, 1/self._xyresolution),
-            photometric='rgb',
-            metadata={
-                'spacing': self._zresolution,
-                'unit': 'um',
-                'finterval': 300,
-                'axes': 'TZCYX',
-            }
-        )
+    #     imwrite(
+    #         self.path_to_save+self.embcode+"_masks"+channel_name+".tiff",
+    #         masks,
+    #         imagej=True,
+    #         resolution=(1/self._xyresolution, 1/self._xyresolution),
+    #         photometric='rgb',
+    #         metadata={
+    #             'spacing': self._zresolution,
+    #             'unit': 'um',
+    #             'finterval': 300,
+    #             'axes': 'TZCYX',
+    #         }
+    #     )
     
-    def plot_masks3D_Imagej(self
-                          , verbose=False
-                          , cell_selection=False
-                          , plot_layout=None
-                          , plot_overlap=None
-                          , masks_cmap=None
-                          , keep=True
-                          , color=None
-                          , channel_name=""):
+    # def plot_masks3D_Imagej(self
+    #                       , verbose=False
+    #                       , cell_selection=False
+    #                       , plot_layout=None
+    #                       , plot_overlap=None
+    #                       , masks_cmap=None
+    #                       , keep=True
+    #                       , color=None
+    #                       , channel_name=""):
         
-        self.save_masks3D_stack(cell_selection, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, color=color, channel_name=channel_name)
-        file=self.embcode+"_masks"+channel_name+".tiff"
-        pth=self.path_to_save
-        fullpath = pth+file
+    #     self.save_masks3D_stack(cell_selection, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, color=color, channel_name=channel_name)
+    #     file=self.embcode+"_masks"+channel_name+".tiff"
+    #     pth=self.path_to_save
+    #     fullpath = pth+file
         
-        if verbose:
-            subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--ij2', '--console', '-macro', '/home/pablo/Desktop/PhD/projects/CellTracking/utils/imj_3D.ijm', fullpath])
-        else:
-            subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--ij2', '--console', '-macro', '/home/pablo/Desktop/PhD/projects/CellTracking/utils/imj_3D.ijm', fullpath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    #     if verbose:
+    #         subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--ij2', '--console', '-macro', '/home/pablo/Desktop/PhD/projects/CellTracking/utils/imj_3D.ijm', fullpath])
+    #     else:
+    #         subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--ij2', '--console', '-macro', '/home/pablo/Desktop/PhD/projects/CellTracking/utils/imj_3D.ijm', fullpath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        if not keep:
-            subprocess.run(["rm", fullpath])
+    #     if not keep:
+    #         subprocess.run(["rm", fullpath])
     
-    def save_cells(self):
-        save_cells(self, self.path_to_save, self.embcode)
+    # def save_cells(self):
+    #     save_cells(self, self.path_to_save, self.embcode)

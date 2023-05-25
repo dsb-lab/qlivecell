@@ -262,10 +262,8 @@ class CellPicker_com_t(CellPicker):
         self._update()
 
     def _update(self):
-        for PACP in self.PACP.CT.PACPs:
-            if PACP.current_state=="Com":
-                PACP.update()
-                PACP.reploting()
+            self.PACP.update()
+            self.PACP.reploting()
 
 class CellPicker_sep_t(CellPicker):
     
@@ -298,10 +296,8 @@ class CellPicker_sep_t(CellPicker):
         self._update()
 
     def _update(self):
-        for PACP in self.PACP.CT.PACPs:
-            if PACP.current_state=="Sep":
-                PACP.update()
-                PACP.reploting()
+        self.PACP.update()
+        self.PACP.reploting()
 
 class CellPicker_apo(CellPicker):
     def _action(self, event):
