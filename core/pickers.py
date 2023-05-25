@@ -2,20 +2,21 @@ import numpy as np
 
 class SubplotPicker_add():
     def __init__(self, PACP):
-        self.PACP  = PACP
-        self.cid = self.PACP.fig.canvas.mpl_connect('button_press_event', self)
-        self.canvas  = self.PACP.fig.canvas
-
+        self.ax = PACP.ax
+        self.cid = PACP.fig.canvas.mpl_connect('button_press_event', self)
+        self.canvas  = PACP.fig.canvas
+        self.zs = PACP.zs
+        self.callback = PACP.add_cells
+        
     def __call__(self, event):
         if event.dblclick == True:
             if event.button==1:
-                for id, ax in enumerate(self.PACP.ax):
+                for id, ax in enumerate(self.ax):
                     if event.inaxes==ax:
-                        self.PACP.current_subplot = id
-                        self.PACP.z = self.PACP.zs[id]
+                        self.current_subplot = id
+                        self.z = self.zs[id]
                         self.canvas.mpl_disconnect(self.cid)
-                        self.PACP.add_cells()
-                        self.PACP.CT.add_cell(self.PACP)
+                        self.callback()
     
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)

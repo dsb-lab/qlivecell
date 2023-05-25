@@ -412,12 +412,12 @@ class PlotActionCT(PlotAction):
 
     def add_cells(self):
         self.title.set(text="ADD CELL MODE", ha='left', x=0.01)
+        if hasattr(self, "CP"): self.current_subplot = self.CP.current_subplot
         if self.current_subplot == None:
             self.instructions.set(text="Double left-click to select Z-PLANE")
             self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
             self.fig.patch.set_facecolor((0.0,1.0,0.0,0.1))
             self.CP = SubplotPicker_add(self)
-
         else:
             self.ax_sel = self.ax[self.current_subplot]
             bbox = self.ax_sel.get_window_extent()
@@ -429,6 +429,9 @@ class PlotActionCT(PlotAction):
             self.instructions.set(text="Right click to add points. Press ENTER when finished")
             self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
             self.update()
+    
+            self.z = self.CP.z
+            self.CT.add_cell()
 
     def extract_unique_cell_time_list_of_cells(self):
         if self.current_state in ["Com", "Sep"]:

@@ -579,11 +579,11 @@ class CellTracking(object):
         self.cells.append(create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self.stacks))
         self.currentcellid+=1
         
-    def add_cell(self, PACP):
+    def add_cell(self):
         if self._line_builder_mode == 'points':
-            line, = PACP.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
+            line, = self.PACP.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
             self.linebuilder = LineBuilder_points(line)
-        else: self.linebuilder = LineBuilder_lasso(PACP.ax_sel)
+        else: self.linebuilder = LineBuilder_lasso(self.PACP.ax_sel)
 
     def complete_add_cell(self, PACP):
         if self._line_builder_mode == 'points':
