@@ -1,7 +1,7 @@
 import numpy as np
 from copy import copy
 import matplotlib as mtp
-from .pickers import SubplotPicker_add, CellPicker, CellPicker_com_t, CellPicker_sep_t, CellPicker_mit, CellPicker_apo, CellPicker_CM, CellPicker_CP
+from .pickers import SubplotPicker_add, CellPicker, CellPicker_mit, CellPicker_apo, CellPicker_CM, CellPicker_CP
 from .tools.ct_tools import set_cell_color
 from .dataclasses import contruct_jitCell
 from .utils_ct import printfancy
@@ -350,8 +350,11 @@ class PlotActionCT(PlotAction):
     
     def update(self):
         if self.current_state in ["apo","Com", "mit", "Sep"]:
-            if self.current_state=="Sep": cells_to_plot = self.CT.list_of_cells
-            else: cells_to_plot=self.extract_unique_cell_time_list_of_cells()
+
+            if self.current_state in ["Com", "Sep"]: cells_to_plot=self.CT.list_of_cells
+            if self.current_state=="mit": cells_to_plot=self.CT.mito_cells
+            elif self.current_state=="apo": cells_to_plot=self.list_of_cells
+
             cells_string = ["cell="+str(x[0])+" t="+str(x[2]) for x in cells_to_plot]
             zs = [-1 for _ in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
@@ -434,24 +437,6 @@ class PlotActionCT(PlotAction):
         self.title.set(fontsize=width_or_height/scale2)
         self.fig.subplots_adjust(top=0.9,left=0.2)
         self.fig.canvas.draw_idle()
-
-    def extract_unique_cell_time_list_of_cells(self):
-        if self.current_state in ["Com", "Sep"]:
-            list_of_cells=self.CT.list_of_cells
-        if self.current_state=="mit":
-            list_of_cells=self.CT.mito_cells
-        elif self.current_state=="apo":
-            list_of_cells=self.list_of_cells
-
-        if len(list_of_cells)==0:
-            return list_of_cells
-        cells = [x[0] for x in list_of_cells]
-        Ts    = [x[1] for x in list_of_cells]
-    
-        cs, cids = np.unique(cells, return_index=True)
-        #ts, tids = np.unique(Ts,  return_index=True)
-        
-        return [[cells[i], Ts[i]] for i in cids]
 
     def sort_list_of_cells(self):
         if len(self.list_of_cells)==0:
@@ -646,15 +631,68 @@ class PlotActionCT(PlotAction):
         self.instructions.set(text="Rigth-click to select cells to be combined")
         self.instructions.set_backgroundcolor((1.0,0.0,1.0,0.4))
         self.fig.patch.set_facecolor((1.0,0.0,1.0,0.1))     
-        self.CP = CellPicker_com_t(self)
+        self.CP = CellPicker(self, self.combine_cells_t_callback)
 
+    def combine_cells_t_callback(self, event):
+        get_axis(self, event)
+        lab, z = get_cell(self, event)
+        if lab is None: return
+        cell = [lab, z, self.t]
+        # Check if the cell is already on the list
+        if len(self.CT.list_of_cells)==0:
+            self.CT.list_of_cells.append(cell)
+        else:
+            if lab not in np.array(self.CT.list_of_cells)[:,0]:
+                if len(self.CT.list_of_cells)==2:
+                    printfancy("ERROR: cannot combine more than 2 cells at once")
+                else:
+                    if self.t not in np.array(self.CT.list_of_cells)[:,1]:
+                        self.CT.list_of_cells.append(cell)
+            else:
+                list_of_cells_t = [[x[0], x[2]] for x in self.CT.list_of_cells]
+                if [cell[0], cell[2]] in list_of_cells_t:
+                    id_to_pop = list_of_cells_t.index([cell[0], cell[2]])
+                    self.CT.list_of_cells.pop(id_to_pop)
+                else: printfancy("ERROR: cannot combine a cell with itself")
+        self.update()
+        self.reploting()
+    
     def separate_cells_t(self):
         self.title.set(text="SEPARATE CELLS - t", ha='left', x=0.01)
         self.instructions.set(text="Rigth-click to select cells to be separated")
         self.instructions.set_backgroundcolor((1.0,1.0,0.0,0.4))       
         self.fig.patch.set_facecolor((1.0,1.0,0, 0.1)) 
-        self.CP = CellPicker_sep_t(self)
+        self.CP = CellPicker(self, self.separate_cells_t_callback)
 
+    def separate_cells_t_callback(self, event):
+        get_axis(self, event)
+        lab, z = get_cell(self, event)
+        if lab is None: return
+        cell = [lab, z, self.t]
+        # Check if the cell is already on the list
+        if len(self.CT.list_of_cells)==0:
+            self.CT.list_of_cells.append(cell)
+        
+        else:
+            if lab != self.CT.list_of_cells[0][0]:
+                printfancy("ERROR: select same cell at a different time")
+                return
+            
+            else:
+                list_of_times = [_cell[2] for _cell in self.CT.list_of_cells]
+                if self.t in list_of_times:
+                    id_to_pop = list_of_times.index(self.t)
+                    self.CT.list_of_cells.pop(id_to_pop)
+                else:
+                    if len(self.CT.list_of_cells)==2: 
+                        printfancy("ERROR: cannot separate more than 2 times at once")
+                        return
+                    else:
+                        self.CT.list_of_cells.append(cell)
+
+        self.update()
+        self.reploting()
+        
     def mitosis(self):
         self.title.set(text="DETECT MITOSIS", ha='left', x=0.01)
         self.instructions.set(text="Right-click to SELECT THE MOTHER (1) AND DAUGHTER (2) CELLS")

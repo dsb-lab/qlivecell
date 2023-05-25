@@ -444,16 +444,13 @@ class CellTracking(object):
         print("update label attributes", end - start)
         
         jitcells = [contruct_jitCell(cell) for cell in self.cells]
-        start = time.time()
-        compute_point_stack(self._masks_stack, jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
-        end = time.time()
-        print("compute masks", end - start)
-        
-        start = time.time()
-        compute_point_stack(self._outlines_stack, jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
-        end = time.time()
-        print("compute outlines", end - start)
 
+        compute_point_stack(self._masks_stack, jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
+        
+        compute_point_stack(self._outlines_stack, jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+
+        print()
+        print()
     def _get_hints(self):
         self.hints = []
         for t in range(self.times-1):
@@ -728,7 +725,6 @@ class CellTracking(object):
         compute_point_stack(self._masks_stack, jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
         compute_point_stack(self._outlines_stack, jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
 
-    
     def combine_cells_t(self):
         # 2 cells selected
         if len(self.list_of_cells)!=2:
@@ -747,7 +743,13 @@ class CellTracking(object):
         # check time overlap
         if any(i in cellmax.times for i in cellmin.times):
             printfancy("ERROR: cells overlap in time")
-            self.update_labels()
+            
+            jitcells = [contruct_jitCell(cell) for cell in self.cells]
+        
+            self.update_label_attributes()
+            compute_point_stack(self._masks_stack, jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
+            compute_point_stack(self._outlines_stack, jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+
             return
 
         for tid, t in enumerate(cellmax.times):
@@ -762,7 +764,6 @@ class CellTracking(object):
         jitcells = [contruct_jitCell(cell) for cell in self.cells]
         
         self.update_label_attributes()
-        
         compute_point_stack(self._masks_stack, jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
         compute_point_stack(self._outlines_stack, jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
 
