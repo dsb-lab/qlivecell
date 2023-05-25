@@ -327,14 +327,18 @@ class PlotActionCT(PlotAction):
         if self.current_state in ["apo","Com", "mit", "Sep"]:
             if self.current_state=="Sep": cells_to_plot = self.CT.list_of_cells
             else: cells_to_plot=self.extract_unique_cell_time_list_of_cells()
-            cells_string = ["cell="+str(x[0])+" t="+str(x[1]) for x in cells_to_plot]
-            zs = [None for _ in cells_to_plot]
+            cells_string = ["cell="+str(x[0])+" t="+str(x[2]) for x in cells_to_plot]
+            zs = [-1 for _ in cells_to_plot]
+            ts = [x[2] for x in cells_to_plot]
+
         else:
             cells_to_plot = self.sort_list_of_cells()
             for i,x in enumerate(cells_to_plot):
                 cells_to_plot[i][0] = x[0]
             cells_string = ["cell="+str(x[0])+" z="+str(x[1]) for x in cells_to_plot]
             zs = [x[1] for x in cells_to_plot]
+            ts = [self.t for x in cells_to_plot]
+            
         s = "\n".join(cells_string)
         self.get_size()
         if self.figheight < self.figwidth:
@@ -346,25 +350,23 @@ class PlotActionCT(PlotAction):
             scale2=90
             width_or_height = self.figwidth
         
-        labs_z_to_plot = [[x[0], zs[xid]] for xid, x in enumerate(cells_to_plot)]
+        labs_z_to_plot = [[x[0], zs[xid], ts[xid]] for xid, x in enumerate(cells_to_plot)]
 
-        for i, lab_z in enumerate(labs_z_to_plot):
-            cell = self.CT._get_cell(label=lab_z[0])
+        for i, lab_z_t in enumerate(labs_z_to_plot):
+            cell = self.CT._get_cell(label=lab_z_t[0])
             jitcell = contruct_jitCell(cell)
             color = np.append(self.CT._label_colors[self.CT._labels_color_id[jitcell.label]], 1)
-            set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=-1, z=lab_z[1])
+            set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=lab_z_t[2], z=lab_z_t[1])
 
-        labs_z_to_remove = [lab_z for lab_z in self._pre_labs_z_to_plot if lab_z not in labs_z_to_plot]
+        labs_z_to_remove = [lab_z_t for lab_z_t in self._pre_labs_z_to_plot if lab_z_t not in labs_z_to_plot]
 
-        for i, lab_z in enumerate(labs_z_to_remove):
-            cell = self.CT._get_cell(label=lab_z[0])
+        for i, lab_z_t in enumerate(labs_z_to_remove):
+            cell = self.CT._get_cell(label=lab_z_t[0])
             if cell is None: continue
             jitcell = contruct_jitCell(cell)
             
             color = np.append(self.CT._label_colors[self.CT._labels_color_id[jitcell.label]], 0)
-
-            if None in zs: set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=-1, z=-1)
-            else: set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=-1, z=lab_z[1])
+            set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=lab_z_t[2], z=lab_z_t[1])
 
         self._pre_labs_z_to_plot = labs_z_to_plot
 
