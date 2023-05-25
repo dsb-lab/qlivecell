@@ -711,13 +711,13 @@ class CellTracking(object):
                 cell1.zs[tid_cell1].append(z)
                 cell1.outlines[tid_cell1].append(outlines_cell2[zid])
                 cell1.masks[tid_cell1].append(masks_cell2[zid])
-            cell1._update(self)
+            update_cell(cell1, self.stacks)
 
             cell2.times.pop(tid_cell2)
             cell2.zs.pop(tid_cell2)
             cell2.outlines.pop(tid_cell2)
             cell2.masks.pop(tid_cell2)
-            cell2._update(self)
+            update_cell(cell2, self.stacks)
             if cell2._rem:
                 self._del_cell(cellid=cell2.id)
 
@@ -756,7 +756,7 @@ class CellTracking(object):
             cellmin.outlines.append(cellmax.outlines[tid])
             cellmin.masks.append(cellmax.masks[tid])
         
-        cellmin._update(self)
+        update_cell(cellmin, self.stacks)
         self._del_cell(maxlab)
 
         jitcells = [contruct_jitCell(cell) for cell in self.cells]

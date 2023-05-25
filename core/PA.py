@@ -1,10 +1,35 @@
 import numpy as np
 from copy import copy
 import matplotlib as mtp
-from .pickers import SubplotPicker_add, CellPicker_del, CellPicker_join, CellPicker_com_z, CellPicker_com_t, CellPicker_sep_t, CellPicker_mit, CellPicker_apo, CellPicker_CM, CellPicker_CP
+from .pickers import SubplotPicker_add, CellPicker, CellPicker_com_t, CellPicker_sep_t, CellPicker_mit, CellPicker_apo, CellPicker_CM, CellPicker_CP
 from .tools.ct_tools import set_cell_color
 from .dataclasses import contruct_jitCell
+from .utils_ct import printfancy
 
+def get_axis(PACP, event):
+    for id, ax in enumerate(PACP.ax):
+        if event.inaxes==ax:
+            PACP.current_subplot = id
+            PACP.ax_sel = ax
+            PACP.z = PACP.zs[id]
+
+def get_point(dim_change, event):
+    x = np.rint(event.xdata).astype(np.int64)
+    y = np.rint(event.ydata).astype(np.int64)
+    picked_point = np.array([x, y])
+    return np.rint(picked_point / dim_change).astype('int32')
+
+def get_cell(PACP, event):
+    dim_change=PACP.CT.dim_change
+    picked_point = get_point(dim_change, event)
+    for i ,mask in enumerate(PACP.CT.Masks[PACP.t][PACP.z]):
+        for point in mask:
+            if (picked_point==point).all():
+                z   = PACP.z
+                lab = PACP.CT.Labels[PACP.t][z][i]
+                return lab, z
+    return None, None
+    
 class PlotAction():
     def __init__(self, fig, ax, CT, mode):
         self.fig=fig
@@ -410,29 +435,6 @@ class PlotActionCT(PlotAction):
         self.fig.subplots_adjust(top=0.9,left=0.2)
         self.fig.canvas.draw_idle()
 
-    def add_cells(self):
-        self.title.set(text="ADD CELL MODE", ha='left', x=0.01)
-        if hasattr(self, "CP"): self.current_subplot = self.CP.current_subplot
-        if self.current_subplot == None:
-            self.instructions.set(text="Double left-click to select Z-PLANE")
-            self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
-            self.fig.patch.set_facecolor((0.0,1.0,0.0,0.1))
-            self.CP = SubplotPicker_add(self)
-        else:
-            self.ax_sel = self.ax[self.current_subplot]
-            bbox = self.ax_sel.get_window_extent()
-            self.patch =mtp.patches.Rectangle((bbox.x0 - bbox.width*0.1, bbox.y0-bbox.height*0.1),
-                                bbox.width*1.2, bbox.height*1.2,
-                                fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=-1,
-                                transform=None, figure=self.fig)
-            self.fig.patches.extend([self.patch])
-            self.instructions.set(text="Right click to add points. Press ENTER when finished")
-            self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
-            self.update()
-    
-            self.z = self.CP.z
-            self.CT.add_cell()
-
     def extract_unique_cell_time_list_of_cells(self):
         if self.current_state in ["Com", "Sep"]:
             list_of_cells=self.CT.list_of_cells
@@ -486,26 +488,158 @@ class PlotActionCT(PlotAction):
             set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=-1, z=-1)
         self.visualization()
 
+    def add_cells(self):
+        self.title.set(text="ADD CELL MODE", ha='left', x=0.01)
+        if hasattr(self, "CP"): self.current_subplot = self.CP.current_subplot
+        if self.current_subplot == None:
+            self.instructions.set(text="Double left-click to select Z-PLANE")
+            self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
+            self.fig.patch.set_facecolor((0.0,1.0,0.0,0.1))
+            self.CP = SubplotPicker_add(self.ax, self.fig.canvas, self.zs, self.add_cells)
+        else:
+            self.ax_sel = self.ax[self.current_subplot]
+            bbox = self.ax_sel.get_window_extent()
+            self.patch =mtp.patches.Rectangle((bbox.x0 - bbox.width*0.1, bbox.y0-bbox.height*0.1),
+                                bbox.width*1.2, bbox.height*1.2,
+                                fill=True, color=(0.0,1.0,0.0), alpha=0.4, zorder=-1,
+                                transform=None, figure=self.fig)
+            self.fig.patches.extend([self.patch])
+            self.instructions.set(text="Right click to add points. Press ENTER when finished")
+            self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
+            self.update()
+    
+            self.z = self.CP.z
+            self.CT.add_cell()
+            
     def delete_cells(self):
         self.title.set(text="DELETE CELL", ha='left', x=0.01)
         self.instructions.set(text="Right-click to delete cell on a plane\nDouble right-click to delete on all planes")
         self.instructions.set_backgroundcolor((1.0,0.0,0.0,0.4))
         self.fig.patch.set_facecolor((1.0,0.0,0.0,0.1))
-        self.CP = CellPicker_del(self)
+        self.CP = CellPicker(self, self.delete_cells_callback)
 
+    def delete_cells_callback(self, event):
+        get_axis(self, event)
+        lab, z = get_cell(self, event)
+        if lab is None: return
+        cell = [lab, z]
+        if cell not in self.list_of_cells:
+            self.list_of_cells.append(cell)
+        else:
+            self.list_of_cells.remove(cell)
+
+        if event.dblclick==True:
+            self.update()
+            self.reploting()
+            for id_cell, CT_cell in enumerate(self.CT.cells):
+                if lab == CT_cell.label:
+                    idx_lab = id_cell 
+            tcell = self.CT.cells[idx_lab].times.index(self.t)
+            zs = self.CT.cells[idx_lab].zs[tcell]
+            add_all=True
+            idxtopop=[]
+            for jj, _cell in enumerate(self.list_of_cells):
+                _lab = _cell[0]
+                _z   = _cell[1]
+                if _lab == lab:
+                    if _z in zs:
+                        add_all=False
+                        idxtopop.append(jj)
+            idxtopop.sort(reverse=True)
+            for jj in idxtopop:
+                self.list_of_cells.pop(jj)
+            if add_all:
+                for zz in zs:
+                    self.list_of_cells.append([lab, zz])
+        self.update()
+        self.reploting()
+    
     def join_cells(self):
         self.title.set(text="JOIN CELLS", ha='left', x=0.01)
         self.instructions.set(text="Rigth-click to select cells to be combined")
         self.instructions.set_backgroundcolor((0.5,0.5,1.0,0.4))
         self.fig.patch.set_facecolor((0.2,0.2,1.0,0.1))
-        self.CP = CellPicker_join(self)
+        self.CP = CellPicker(self, self.join_cells_callback)
     
+    def join_cells_callback(self, event):
+        get_axis(self, event)
+        lab, z = get_cell(self, event)
+        if lab is None: return
+        cell = [lab, z, self.t]
+
+        if cell in self.list_of_cells:
+            self.list_of_cells.remove(cell)
+            self.update()
+            self.reploting()
+            return
+        
+        # Check that times match among selected cells
+        if len(self.list_of_cells)!=0:
+            if cell[2]!=self.list_of_cells[0][2]:
+                printfancy("ERROR: cells must be selected on same time")
+                return 
+        # Check that zs match among selected cells
+        if len(self.list_of_cells)!=0:
+            if cell[1]!=self.list_of_cells[0][1]:
+                printfancy("ERROR: cells must be selected on same z")
+                return                             
+        # proceed with the selection
+        self.list_of_cells.append(cell)
+        self.update()
+        self.reploting()
+        
     def combine_cells_z(self):
         self.title.set(text="COMBINE CELLS MODE - z", ha='left', x=0.01)
         self.instructions.set(text="Rigth-click to select cells to be combined")
         self.instructions.set_backgroundcolor((0.0,0.0,1.0,0.4))
         self.fig.patch.set_facecolor((0.0,0.0,1.0,0.1))
-        self.CP = CellPicker_com_z(self)
+        self.CP = CellPicker(self, self.combine_cells_z_callback)
+    
+    def combine_cells_z_callback(self, event):
+        get_axis(self, event)
+        lab, z = get_cell(self, event)
+        if lab is None: return
+        cell = [lab, z, self.t]
+
+        if cell in self.list_of_cells:
+            self.list_of_cells.remove(cell)
+            self.update()
+            self.reploting()
+            return
+        
+        # Check that times match among selected cells
+        if len(self.list_of_cells)!=0:
+            if cell[2]!=self.list_of_cells[0][2]:
+                self.CT.printfancy("ERROR: cells must be selected on same time")
+                return 
+            
+            # check that planes selected are contiguous over z
+            Zs = [x[1] for x in self.list_of_cells]
+            Zs.append(z)
+            Zs.sort()
+
+            if any((Zs[i+1]-Zs[i])!=1 for i in range(len(Zs)-1)):
+                self.CT.printfancy("ERROR: cells must be contiguous over z")
+                return
+                                                                            
+            # check if cells have any overlap in their zs
+            labs = [x[0] for x in self.list_of_cells]
+            labs.append(lab)
+            ZS = []
+            t = self.t
+            for l in labs:
+                c = self.CT._get_cell(l)
+                tid = c.times.index(t)
+                ZS = ZS + c.zs[tid]
+            
+            if len(ZS) != len(set(ZS)):
+                self.CT.printfancy("ERROR: cells overlap in z")
+                return
+        
+        # proceed with the selection
+        self.list_of_cells.append(cell)
+        self.update()
+        self.reploting()
     
     def combine_cells_t(self):
         self.title.set(text="COMBINE CELLS MODE - t", ha='left', x=0.01)
