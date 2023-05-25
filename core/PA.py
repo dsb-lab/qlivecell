@@ -6,10 +6,9 @@ from .tools.ct_tools import set_cell_color
 from .dataclasses import contruct_jitCell
 
 class PlotAction():
-    def __init__(self, fig, ax, CT, id, mode):
+    def __init__(self, fig, ax, CT, mode):
         self.fig=fig
         self.ax=ax
-        self.id=id
         self.CT=CT
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
@@ -62,7 +61,7 @@ class PlotAction():
 
             self.t = max(self.t, 0)
             self.t = min(self.t, self.CT.times-1)
-            self.CT._time_sliders[self.id].set_val(self.t+1)
+            self.CT._time_slider.set_val(self.t+1)
             self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
             self.update()
 
@@ -75,7 +74,7 @@ class PlotAction():
 
             self.cr = max(self.cr, 0)
             self.cr = min(self.cr, self.max_round)
-            self.CT._z_sliders[self.id].set_val(self.cr)
+            self.CT._z_slider.set_val(self.cr)
 
             self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
             self.update()
@@ -171,14 +170,12 @@ class PlotActionCT(PlotAction):
                 self.separate_cells_t()
             elif event.key == 'z':
                 self.CT.undo_corrections(all=False)
-                for PACP in self.CT.PACPs:
-                    PACP.visualization()
-                    PACP.update()
+                self.visualization()
+                self.update()
             elif event.key == 'Z':
                 self.CT.undo_corrections(all=True)
-                for PACP in self.CT.PACPs:
-                    PACP.visualization()
-                    PACP.update()
+                self.visualization()
+                self.update()
             elif event.key == 's':
                 self.CT.save_cells()
             self.update()
@@ -195,17 +192,16 @@ class PlotActionCT(PlotAction):
                         delattr(self.CT, 'linebuilder')
                 self.CP.stopit()
                 delattr(self, 'CP')
-                for PACP in self.CT.PACPs:
-                    PACP.list_of_cells = []
-                    PACP.CT.list_of_cells = []
-                    PACP.CT.mito_cells = []
-                    PACP.current_subplot=None
-                    PACP.current_state=None
-                    PACP.ax_sel=None
-                    PACP.z=None
-                    PACP.CT.replot_tracking(PACP, plot_outlines=self.plot_outlines)
-                    PACP.visualization()
-                    PACP.update()
+                self.list_of_cells = []
+                self.CT.list_of_cells = []
+                self.CT.mito_cells = []
+                self.current_subplot=None
+                self.current_state=None
+                self.ax_sel=None
+                self.z=None
+                self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                self.visualization()
+                self.update()
 
             elif event.key=='enter':
                 if self.current_state=="add":
@@ -218,109 +214,102 @@ class PlotActionCT(PlotAction):
                         self.CT.linebuilder.stopit()
                         self.CT.complete_add_cell(self)
                         delattr(self.CT, 'linebuilder')
-                    for PACP in self.CT.PACPs:
-                        PACP.list_of_cells = []
-                        PACP.current_subplot=None
-                        PACP.current_state=None
-                        PACP.ax_sel=None
-                        PACP.z=None
-                        PACP.CT.replot_tracking(PACP, plot_outlines=self.plot_outlines)
-                        PACP.visualization()
-                        PACP.update()
+
+                    self.list_of_cells = []
+                    self.current_subplot=None
+                    self.current_state=None
+                    self.ax_sel=None
+                    self.z=None
+                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.update()
 
                 if self.current_state=="del":
                     self.CP.stopit()
                     delattr(self, 'CP')
                     self.CT.delete_cell(self)
-                    for PACP in self.CT.PACPs:
-                        PACP.list_of_cells = []
-                        PACP.current_subplot=None
-                        PACP.current_state=None
-                        PACP.ax_sel=None
-                        PACP.z=None
-                        PACP.CT.replot_tracking(PACP, plot_outlines=self.plot_outlines)
-                        PACP.visualization()
-                        PACP.update()
+                    self.list_of_cells = []
+                    self.current_subplot=None
+                    self.current_state=None
+                    self.ax_sel=None
+                    self.z=None
+                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.update()
 
                 elif self.current_state=="Com":
                     self.CP.stopit()
                     delattr(self, 'CP')
                     self.CT.combine_cells_t()
-                    for PACP in self.CT.PACPs:
-                        PACP.current_subplot=None
-                        PACP.current_state=None
-                        PACP.ax_sel=None
-                        PACP.z=None
-                        PACP.CT.list_of_cells = []
-                        PACP.CT.replot_tracking(PACP, plot_outlines=self.plot_outlines)
-                        PACP.visualization()
-                        PACP.update()
+                    self.current_subplot=None
+                    self.current_state=None
+                    self.ax_sel=None
+                    self.z=None
+                    self.CT.list_of_cells = []
+                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.update()
 
                 elif self.current_state=="com":
                     self.CP.stopit()
                     delattr(self, 'CP')
                     self.CT.combine_cells_z(self)
-                    for PACP in self.CT.PACPs:
-                        PACP.list_of_cells = []
-                        PACP.current_subplot=None
-                        PACP.current_state=None
-                        PACP.ax_sel=None
-                        PACP.z=None
-                        PACP.CT.replot_tracking(PACP, plot_outlines=self.plot_outlines)
-                        PACP.visualization()
-                        PACP.update()
+                    self.list_of_cells = []
+                    self.current_subplot=None
+                    self.current_state=None
+                    self.ax_sel=None
+                    self.z=None
+                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.update()
 
                 elif self.current_state=="joi":
                     self.CP.stopit()
                     delattr(self, 'CP')
                     self.CT.join_cells(self)
-                    for PACP in self.CT.PACPs:
-                        PACP.list_of_cells = []
-                        PACP.current_subplot=None
-                        PACP.current_state=None
-                        PACP.ax_sel=None
-                        PACP.z=None
-                        PACP.CT.replot_tracking(PACP, plot_outlines=self.plot_outlines)
-                        PACP.visualization()
-                        PACP.update()
+                    self.list_of_cells = []
+                    self.current_subplot=None
+                    self.current_state=None
+                    self.ax_sel=None
+                    self.z=None
+                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.update()
 
                 elif self.current_state=="Sep":
                     self.CP.stopit()
                     delattr(self, 'CP')
                     self.CT.separate_cells_t()
-                    for PACP in self.CT.PACPs:
-                        PACP.current_subplot=None
-                        PACP.current_state=None
-                        PACP.ax_sel=None
-                        PACP.z=None
-                        PACP.CT.list_of_cells = []
-                        PACP.CT.replot_tracking(PACP, plot_outlines=self.plot_outlines)
-                        PACP.visualization()
-                        PACP.update()
+                    self.current_subplot=None
+                    self.current_state=None
+                    self.ax_sel=None
+                    self.z=None
+                    self.CT.list_of_cells = []
+                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.update()
 
                 elif self.current_state=="apo":
                     self.CP.stopit()
                     delattr(self, 'CP')
                     self.CT.apoptosis(self.list_of_cells)
                     self.list_of_cells=[]
-                    for PACP in self.CT.PACPs:
-                        PACP.CT.replot_tracking(PACP, plot_outlines=self.plot_outlines)
-                        PACP.visualization()
-                        PACP.update()
+                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.update()
 
                 elif self.current_state=="mit":
                     self.CP.stopit()
                     delattr(self, 'CP')
                     self.CT.mitosis()
-                    for PACP in self.CT.PACPs:
-                        PACP.current_subplot=None
-                        PACP.current_state=None
-                        PACP.ax_sel=None
-                        PACP.z=None
-                        PACP.CT.mito_cells = []
-                        PACP.CT.replot_tracking(PACP, plot_outlines=self.plot_outlines)
-                        PACP.visualization()
-                        PACP.update()
+                    self.current_subplot=None
+                    self.current_state=None
+                    self.ax_sel=None
+                    self.z=None
+                    self.CT.mito_cells = []
+                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.update()
 
                 else:
                     self.visualization()
