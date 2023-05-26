@@ -1,8 +1,7 @@
 from numba import njit
 from numba.typed import List  # As per the docs, since it's in beta, it needs to be imported explicitly
 import numpy as np
-from scipy.spatial import cKDTree
-import random
+
 from copy import deepcopy, copy
 import itertools
 import time 
@@ -41,6 +40,7 @@ from core.tools.segmentation_tools import label_per_z, assign_labels, separate_c
 from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell
 from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
 from core.tools.ct_tools import compute_point_stack
+from core.tools.tools import points_within_hull, increase_point_resolution, sort_point_sequence
 from core.tracking import greedy_tracking
 from core.utils_ct import printfancy, printclear, progressbar
 
@@ -506,86 +506,16 @@ class CellTracking(object):
                         self.Masks[t][z].append(cell.masks[tid][zid])
                         self.Centersi[t][z].append(cell.centersi[tid][zid])
                         self.Centersj[t][z].append(cell.centersj[tid][zid])
-    
-    def _sort_point_sequence(self, outline):
-        min_dists, min_dist_idx = cKDTree(outline).query(outline,self._nearest_neighs)
-        min_dists = min_dists[:,1:]
-        min_dist_idx = min_dist_idx[:,1:]
-        new_outline = []
-        used_idxs   = []
-        pidx = random.choice(range(len(outline)))
-        new_outline.append(outline[pidx])
-        used_idxs.append(pidx)
-        while len(new_outline)<len(outline):
-            a = len(used_idxs)
-            for id in min_dist_idx[pidx,:]:
-                if id not in used_idxs:
-                    new_outline.append(outline[id])
-                    used_idxs.append(id)
-                    pidx=id
-                    break
-            if len(used_idxs)==a:
-                printfancy("ERROR: Improve your point drawing")
-                self.PACP.visualization()
-                return None, None
-        return np.array(new_outline), used_idxs
-
-    def _increase_point_resolution(self, outline):
-        rounds = np.ceil(np.log2(self._min_outline_length/len(outline))).astype('int32')
-        if rounds==0:
-                newoutline_new=np.copy(outline)
-        for r in range(rounds):
-            if r==0:
-                pre_outline=np.copy(outline)
-            else:
-                pre_outline=np.copy(newoutline_new)
-            newoutline_new = np.copy(pre_outline)
-            i=0
-            while i < len(pre_outline)*2 - 2:
-                newpoint = np.array([np.rint((newoutline_new[i] + newoutline_new[i+1])/2).astype('int32')])
-                newoutline_new = np.insert(newoutline_new, i+1, newpoint, axis=0)
-                i+=2
-            newpoint = np.array([np.rint((pre_outline[-1] + pre_outline[0])/2).astype('int32')])
-            newoutline_new = np.insert(newoutline_new, 0, newpoint, axis=0)
-
-        return newoutline_new
-    
-    def _points_within_hull(self, hull):
-        # With this function we compute the points contained within a hull or outline.
-        pointsinside=[]
-        sortidx = np.argsort(hull[:,1])
-        outx = hull[:,0][sortidx]
-        outy = hull[:,1][sortidx]
-        curry = outy[0]
-        minx = np.iinfo(np.int32).max
-        maxx = 0
-        for j,y in enumerate(outy):
-            done=False
-            while not done:
-                if y==curry:
-                    minx = np.minimum(minx, outx[j])
-                    maxx = np.maximum(maxx, outx[j])
-                    done=True
-                    curry=y
-                else:
-                    for x in range(minx, maxx+1):
-                        pointsinside.append([x, curry])
-                    minx = np.iinfo(np.int32).max
-                    maxx = 0
-                    curry= y
-
-        pointsinside=np.array(pointsinside)
-        return pointsinside 
 
     def append_cell_from_outline(self, outline, z, t, mask=None, sort=True):
         if sort:
-            new_outline_sorted, _ = self._sort_point_sequence(outline)
+            new_outline_sorted, _ = sort_point_sequence(outline, self._nearest_neighs, self.PACP.visualization)
             if new_outline_sorted is None: return
         else:
             new_outline_sorted = outline
-        new_outline_sorted_highres = self._increase_point_resolution(new_outline_sorted)
+        new_outline_sorted_highres = increase_point_resolution(new_outline_sorted, self._min_outline_length)
         outlines = [[new_outline_sorted_highres]]
-        if mask is None: masks = [[self._points_within_hull(new_outline_sorted_highres)]]
+        if mask is None: masks = [[points_within_hull(new_outline_sorted_highres)]]
         else: masks = [mask]
         self._extract_unique_labels_and_max_label()
         self.cells.append(create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self.stacks))

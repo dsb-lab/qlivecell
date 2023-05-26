@@ -1,7 +1,10 @@
 import numpy as np
+from scipy.spatial import cKDTree
+import random
+from core.utils_ct import printfancy
 
-def increase_point_resolution(outline, _min_outline_length):
-    rounds = np.ceil(np.log2(_min_outline_length/len(outline))).astype('int32')
+def increase_point_resolution(outline, min_outline_length):
+    rounds = np.ceil(np.log2(min_outline_length/len(outline))).astype('int32')
     if rounds<=0:
             newoutline_new=np.copy(outline)
     for r in range(rounds):
@@ -20,7 +23,29 @@ def increase_point_resolution(outline, _min_outline_length):
 
     return newoutline_new
 
-
+def sort_point_sequence(outline, nearest_neighs, callback):
+    min_dists, min_dist_idx = cKDTree(outline).query(outline, nearest_neighs)
+    min_dists = min_dists[:,1:]
+    min_dist_idx = min_dist_idx[:,1:]
+    new_outline = []
+    used_idxs   = []
+    pidx = random.choice(range(len(outline)))
+    new_outline.append(outline[pidx])
+    used_idxs.append(pidx)
+    while len(new_outline)<len(outline):
+        a = len(used_idxs)
+        for id in min_dist_idx[pidx,:]:
+            if id not in used_idxs:
+                new_outline.append(outline[id])
+                used_idxs.append(id)
+                pidx=id
+                break
+        if len(used_idxs)==a:
+            printfancy("ERROR: Improve your point drawing")
+            callback()
+            return None, None
+    return np.array(new_outline), used_idxs
+    
 def points_within_hull(hull):
     # With this function we compute the points contained within a hull or outline.
     pointsinside=[]
