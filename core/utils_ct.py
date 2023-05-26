@@ -7,6 +7,42 @@ import os
 import random
 import cv2
 
+from .dataclasses import CellTracking_info
+
+LINE_UP = '\033[1A'
+LINE_CLEAR = '\x1b[2K'
+
+def printclear(n=1):
+    LINE_UP = '\033[1A'
+    LINE_CLEAR = '\x1b[2K'
+    for i in range(n):
+        print(LINE_UP, end=LINE_CLEAR)
+
+def printfancy(string, finallength=70, clear_prev=0):
+    new_str = "#   "+string
+    while len(new_str)<finallength-1:
+        new_str+=" "
+    new_str+="#"
+    printclear(clear_prev)
+    print(new_str)
+
+def progressbar(step, total, width=46):
+    percent = np.rint(step*100/total).astype('int32')
+    left = width * percent // 100
+    right = width - left
+    
+    tags = "#" * left
+    spaces = " " * right
+    percents = f"{percent:.0f}%"
+    printclear()
+    if percent < 10:
+        print("#   Progress: [", tags, spaces, "] ", percents, "    #", sep="")
+    elif 9 < percent < 100:
+        print("#   Progress: [", tags, spaces, "] ", percents, "   #", sep="")
+    elif percent > 99:
+        print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
+
+
 def get_file_embcode(path_data, f):
     """
     Parameters
@@ -144,8 +180,16 @@ def save_cells(CT, path=None, filename=None):
     pickle.dump(CT.cells, file_to_store)
     file_to_store.close()
     file_to_store = open(pthsave+"_info.pickle", "wb")
-    CT.CT_info(CT)
-    pickle.dump(CT.CT_info, file_to_store)
+    CT_info =  CellTracking_info(
+        CT._xyresolution, 
+        CT._zresolution, 
+        CT.times, 
+        CT.slices,
+        CT.stack_dims,
+        CT._tstep,
+        CT.apoptotic_events,
+        CT.mitotic_events)
+    pickle.dump(CT_info, file_to_store)
     file_to_store.close()
 
 def load_cells(path=None, filename=None):
@@ -157,23 +201,6 @@ def load_cells(path=None, filename=None):
     CT_info = pickle.load(file_to_store)
     file_to_store.close()
     return cells, CT_info
-
-def save_CT(CT, path=None, filename=None, _del_plots=True):
-    pthsave = correct_path(path)+filename
-    file_to_store = open(pthsave+".pickle", "wb")
-    if _del_plots:
-        if hasattr(CT, 'PACPs'):
-            delattr(CT, 'PACPs')
-            delattr(CT, '_time_sliders')
-    pickle.dump(CT, file_to_store)
-    file_to_store.close()
-
-def load_CT(path=None, filename=None):
-    pthsave = correct_path(path)+filename
-    file_to_store = open(pthsave+".pickle", "rb")
-    CT = pickle.load(file_to_store)
-    file_to_store.close()
-    return CT
 
 def read_img_with_resolution(path_to_file, channel=0):
     """
