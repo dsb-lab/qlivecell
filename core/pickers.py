@@ -88,11 +88,11 @@ class LineBuilder_lasso:
         self.canvas.draw_idle()
 
 class CellPicker():
-    def __init__(self, PACP, callback):
-        self.cid = PACP.fig.canvas.mpl_connect('button_press_event', self)
-        self.canvas  = PACP.fig.canvas
+    def __init__(self, canvas, callback):
+        self.cid = canvas.mpl_connect('button_press_event', self)
+        self.canvas  = canvas
         self.callback = callback
-        
+         
     def __call__(self, event):
         if event.button==3:
             self.callback(event)

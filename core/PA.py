@@ -5,28 +5,29 @@ from .pickers import SubplotPicker_add, CellPicker, CellPicker_mit, CellPicker_a
 from .tools.ct_tools import set_cell_color
 from .dataclasses import contruct_jitCell
 from .utils_ct import printfancy
+import time 
 
-def get_axis(PACP, event):
+def get_axis_PACP(PACP, event):
     for id, ax in enumerate(PACP.ax):
         if event.inaxes==ax:
             PACP.current_subplot = id
             PACP.ax_sel = ax
             PACP.z = PACP.zs[id]
 
-def get_point(dim_change, event):
+def get_point_PACP(dim_change, event):
     x = np.rint(event.xdata).astype(np.int64)
     y = np.rint(event.ydata).astype(np.int64)
     picked_point = np.array([x, y])
     return np.rint(picked_point / dim_change).astype('int32')
 
-def get_cell(PACP, event):
-    dim_change=PACP.CT.dim_change
-    picked_point = get_point(dim_change, event)
-    for i ,mask in enumerate(PACP.CT.Masks[PACP.t][PACP.z]):
+def get_cell_PACP(PACP, event):
+    dim_change=PACP.dim_change
+    picked_point = get_point_PACP(dim_change, event)
+    for i ,mask in enumerate(PACP.CTMasks[PACP.t][PACP.z]):
         for point in mask:
             if (picked_point==point).all():
                 z   = PACP.z
-                lab = PACP.CT.Labels[PACP.t][z][i]
+                lab = PACP.CTLabels[PACP.t][z][i]
                 return lab, z
     return None, None
     
@@ -34,7 +35,7 @@ class PlotAction():
     def __init__(self, fig, ax, CT, mode):
         self.fig=fig
         self.ax=ax
-        self.CT=CT
+
         self.list_of_cells = []
         self.act = fig.canvas.mpl_connect('key_press_event', self)
         self.ctrl_press   = self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
@@ -46,14 +47,59 @@ class PlotAction():
         self.t =0
         self.zs=[]
         self.z = None
+        
+        # Point to CT variables
+
+        self.cells = CT.cells
+        self._label_colors = CT._label_colors
+        self._labels_color_id =  CT._labels_color_id
+        self._masks_stack = CT._masks_stack
+        self.dim_change = CT.dim_change
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
-        groupsize  = self.CT.plot_layout[0] * self.CT.plot_layout[1]
-        # self.max_round =  math.ceil((self.CT.slices)/(groupsize-self.CT.plot_overlap))-1
+        self.times = CT.times
+        self._tstep = CT._tstep
+        
+        self.CTlist_of_cells = CT.list_of_cells
+        self.CTmito_cells = CT.mito_cells
+        self.CTapoptotic_events = CT.apoptotic_events
+        self.CTmitotic_events = CT.mitotic_events
+        self.CThints = CT.hints
+        self.CTconflicts = CT.conflicts 
+        self.CTplot_masks = CT.plot_masks
+        self.CTunique_labels = CT.unique_labels
+        self.CTMasks = CT.Masks
+        self.CTLabels = CT.Labels
+        # Point to sliders
+        CT._time_slider.on_changed(self.update_slider_t)
+        self.set_val_t_slider = CT._time_slider.set_val
+        
+        CT._z_slider.on_changed(self.update_slider_z)
+        self.set_val_z_slider = CT._z_slider.set_val
+
+        groupsize  = CT.plot_layout[0] * CT.plot_layout[1]
         self.max_round = int(np.ceil((CT.slices - groupsize)/(groupsize - CT.plot_overlap)))
         self.get_size()
         self.mode=mode   
         self.plot_outlines=True     
-    
+
+        # Point to CT functions
+        self.CTone_step_copy = CT.one_step_copy
+        self.CTundo_corrections = CT.undo_corrections
+        self.CTreplot_tracking = CT.replot_tracking
+        self.CTsave_cells = CT.save_cells
+        
+        self.CTadd_cell = CT.add_cell
+        self.CTcomplete_add_cell = CT.complete_add_cell
+        self.CTdelete_cell = CT.delete_cell
+        self.CTcombine_cells_t = CT.combine_cells_t
+        self.CTcombine_cells_z = CT.combine_cells_z
+        self.CTjoin_cells = CT.join_cells
+        self.CTseparate_cells_t = CT.separate_cells_t
+        self.CTmitosis = CT.mitosis
+        self.CTapoptosis =  CT.apoptosis
+        
+        self._CTget_cell = CT._get_cell
+        
     def __call__(self, event):
         # To be defined 
         pass
@@ -69,13 +115,13 @@ class PlotAction():
     # The function to be called anytime a t-slider's value changes
     def update_slider_t(self, t):
         self.t=t-1
-        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
 
     # The function to be called anytime a z-slider's value changes
     def update_slider_z(self, cr):
         self.cr=cr
-        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
 
     def onscroll(self, event):
@@ -85,9 +131,9 @@ class PlotAction():
             elif event.button == 'down': self.t = self.t - 1
 
             self.t = max(self.t, 0)
-            self.t = min(self.t, self.CT.times-1)
-            self.CT._time_slider.set_val(self.t+1)
-            self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+            self.t = min(self.t, self.times-1)
+            self.set_val_t_slider(self.t+1)
+            self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
             self.update()
 
             if self.current_state=="SCL": self.current_state=None
@@ -99,9 +145,9 @@ class PlotAction():
 
             self.cr = max(self.cr, 0)
             self.cr = min(self.cr, self.max_round)
-            self.CT._z_slider.set_val(self.cr)
+            self.set_val_z_slider(self.cr)
 
-            self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+            self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
             self.update()
 
             if self.current_state=="SCL": self.current_state=None
@@ -113,7 +159,7 @@ class PlotAction():
         self.figheight = heightfig
 
     def reploting(self):
-        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
         self.fig.canvas.draw_idle()
         self.fig.canvas.draw()
 
@@ -132,7 +178,7 @@ class PlotActionCT(PlotAction):
         actionsbox = "Possible actions: \n- ESC : visualization\n- a : add cell\n- d : delete cell\n- j : join cells\n- c : combine cells - z\n- C : combine cells - t\n- S : separate cells - t\n- A : apoptotic event\n- M : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- m : show/hide outlines\n- s : save cells \n- q : quit plot"
         self.actionlist = self.fig.text(0.01, 0.8, actionsbox, fontsize=1, ha='left', va='top')
         self.title          = self.fig.text(0.02,0.96,"", ha='left', va='top', fontsize=1)
-        self.timetxt = self.fig.text(0.02, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t+1, tt=self.CT.times), fontsize=1, ha='left', va='top')
+        self.timetxt = self.fig.text(0.02, 0.92, "TIME = {timem} min  ({t}/{tt})".format(timem = self._tstep*self.t, t=self.t+1, tt=self.times), fontsize=1, ha='left', va='top')
         self.instructions = self.fig.suptitle("PRESS ENTER TO START",y=0.98, fontsize=1, ha='center', va='top', bbox=dict(facecolor='black', alpha=0.4, edgecolor='black', pad=2))
         self.selected_cells = self.fig.text(0.98, 0.89, "Selection", fontsize=1, ha='right', va='top')
         hints = "possible apo/mito cells:\n\ncells\n\n\n\nmarked apo cells:\n\ncells\n\n\nmarked mito cells:\n\ncells"
@@ -147,37 +193,37 @@ class PlotActionCT(PlotAction):
     def __call__(self, event):
         if self.current_state==None:
             if event.key == 'd':
-                self.CT.one_step_copy(self.t)
+                self.CTone_step_copy(self.t)
                 self.current_state="del"
                 self.switch_masks(masks=False)
                 self.delete_cells()
             elif event.key == 'C':
-                self.CT.one_step_copy(self.t)
+                self.CTone_step_copy(self.t)
                 self.current_state="Com"
                 self.switch_masks(masks=False)
                 self.combine_cells_t()
             elif event.key == 'c':
-                self.CT.one_step_copy(self.t)
+                self.CTone_step_copy(self.t)
                 self.current_state="com"
                 self.switch_masks(masks=False)
                 self.combine_cells_z()
             elif event.key == 'j':
-                self.CT.one_step_copy(self.t)
+                self.CTone_step_copy(self.t)
                 self.current_state="joi"
                 self.switch_masks(masks=False)
                 self.join_cells()
             elif event.key == 'M':
-                self.CT.one_step_copy(self.t)
+                self.CTone_step_copy(self.t)
                 self.current_state="mit"
                 self.switch_masks(masks=False)
                 self.mitosis()
             if event.key == 'a':
-                self.CT.one_step_copy()
+                self.CTone_step_copy()
                 self.current_state="add"
                 self.switch_masks(masks=False)
                 self.add_cells()
             elif event.key == 'A':
-                self.CT.one_step_copy(self.t)
+                self.CTone_step_copy(self.t)
                 self.current_state="apo"
                 self.switch_masks(masks=False)
                 self.apoptosis()
@@ -189,20 +235,20 @@ class PlotActionCT(PlotAction):
             elif event.key == 'm':
                 self.switch_masks(masks=None)
             elif event.key == 'S':
-                self.CT.one_step_copy(self.t)
+                self.CTone_step_copy(self.t)
                 self.current_state="Sep"
                 self.switch_masks(masks=False)
                 self.separate_cells_t()
             elif event.key == 'z':
-                self.CT.undo_corrections(all=False)
+                self.CTundo_corrections(all=False)
                 self.visualization()
                 self.update()
             elif event.key == 'Z':
-                self.CT.undo_corrections(all=True)
+                self.CTundo_corrections(all=True)
                 self.visualization()
                 self.update()
             elif event.key == 's':
-                self.CT.save_cells()
+                self.CTsave_cells()
             self.update()
 
         else:
@@ -212,19 +258,21 @@ class PlotActionCT(PlotAction):
                         self.patch.set_visible(False)
                         delattr(self, 'patch')
                         self.fig.patches.pop()
-                    if hasattr(self.CT, 'linebuilder'):
-                        self.CT.linebuilder.stopit()
-                        delattr(self.CT, 'linebuilder')
+                    if hasattr(self, 'linebuilder'):
+                        self.linebuilder.stopit()
+                        delattr(self, 'linebuilder')
                 self.CP.stopit()
                 delattr(self, 'CP')
-                self.list_of_cells = []
-                self.CT.list_of_cells = []
-                self.CT.mito_cells = []
+                
+                del self.list_of_cells[:]
+                del self.CTlist_of_cells[:]
+                del self.CTmito_cells[:]
+
                 self.current_subplot=None
                 self.current_state=None
                 self.ax_sel=None
                 self.z=None
-                self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                 self.visualization()
                 self.update()
 
@@ -236,103 +284,103 @@ class PlotActionCT(PlotAction):
                         self.patch.set_visible(False)
                         self.fig.patches.pop()
                         delattr(self, 'patch')
-                        self.CT.linebuilder.stopit()
-                        self.CT.complete_add_cell(self)
-                        delattr(self.CT, 'linebuilder')
+                        self.linebuilder.stopit()
+                        self.CTcomplete_add_cell(self)
+                        delattr(self, 'linebuilder')
 
-                    self.list_of_cells = []
+                    del self.list_of_cells[:]
                     self.current_subplot=None
                     self.current_state=None
                     self.ax_sel=None
                     self.z=None
-                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.update()
 
                 if self.current_state=="del":
                     self.CP.stopit()
                     delattr(self, 'CP')
-                    self.CT.delete_cell(self)
-                    self.list_of_cells = []
+                    self.CTdelete_cell(self)
+                    del self.list_of_cells[:]
                     self.current_subplot=None
                     self.current_state=None
                     self.ax_sel=None
                     self.z=None
-                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.update()
 
                 elif self.current_state=="Com":
                     self.CP.stopit()
                     delattr(self, 'CP')
-                    self.CT.combine_cells_t()
+                    self.CTcombine_cells_t()
                     self.current_subplot=None
                     self.current_state=None
                     self.ax_sel=None
                     self.z=None
-                    self.CT.list_of_cells = []
-                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    del self.CTlist_of_cells[:]
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.update()
 
                 elif self.current_state=="com":
                     self.CP.stopit()
                     delattr(self, 'CP')
-                    self.CT.combine_cells_z(self)
-                    self.list_of_cells = []
+                    self.CTcombine_cells_z(self)
+                    del self.list_of_cells[:]
                     self.current_subplot=None
                     self.current_state=None
                     self.ax_sel=None
                     self.z=None
-                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.update()
 
                 elif self.current_state=="joi":
                     self.CP.stopit()
                     delattr(self, 'CP')
-                    self.CT.join_cells(self)
-                    self.list_of_cells = []
+                    self.CTjoin_cells(self)
+                    del self.list_of_cells[:]
                     self.current_subplot=None
                     self.current_state=None
                     self.ax_sel=None
                     self.z=None
-                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.update()
 
                 elif self.current_state=="Sep":
                     self.CP.stopit()
                     delattr(self, 'CP')
-                    self.CT.separate_cells_t()
+                    self.CTseparate_cells_t()
                     self.current_subplot=None
                     self.current_state=None
                     self.ax_sel=None
                     self.z=None
-                    self.CT.list_of_cells = []
-                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    del self.CTlist_of_cells[:]
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.update()
 
                 elif self.current_state=="apo":
                     self.CP.stopit()
                     delattr(self, 'CP')
-                    self.CT.apoptosis(self.list_of_cells)
-                    self.list_of_cells=[]
-                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTapoptosis(self.list_of_cells)
+                    del self.list_of_cells[:]
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.update()
 
                 elif self.current_state=="mit":
                     self.CP.stopit()
                     delattr(self, 'CP')
-                    self.CT.mitosis()
+                    self.CTmitosis()
                     self.current_subplot=None
                     self.current_state=None
                     self.ax_sel=None
                     self.z=None
-                    self.CT.mito_cells = []
-                    self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+                    del self.CTmito_cells
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.update()
 
@@ -351,8 +399,8 @@ class PlotActionCT(PlotAction):
     def update(self):
         if self.current_state in ["apo","Com", "mit", "Sep"]:
 
-            if self.current_state in ["Com", "Sep"]: cells_to_plot=self.CT.list_of_cells
-            if self.current_state=="mit": cells_to_plot=self.CT.mito_cells
+            if self.current_state in ["Com", "Sep"]: cells_to_plot=self.CTlist_of_cells
+            if self.current_state=="mit": cells_to_plot=self.CTmito_cells
             elif self.current_state=="apo": cells_to_plot=self.list_of_cells
 
             cells_string = ["cell="+str(x[0])+" t="+str(x[2]) for x in cells_to_plot]
@@ -381,20 +429,20 @@ class PlotActionCT(PlotAction):
         labs_z_to_plot = [[x[0], zs[xid], ts[xid]] for xid, x in enumerate(cells_to_plot)]
 
         for i, lab_z_t in enumerate(labs_z_to_plot):
-            cell = self.CT._get_cell(label=lab_z_t[0])
+            cell = self._CTget_cell(label=lab_z_t[0])
             jitcell = contruct_jitCell(cell)
-            color = np.append(self.CT._label_colors[self.CT._labels_color_id[jitcell.label]], 1)
-            set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=lab_z_t[2], z=lab_z_t[1])
+            color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], 1)
+            set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.dim_change, t=lab_z_t[2], z=lab_z_t[1])
 
         labs_z_to_remove = [lab_z_t for lab_z_t in self._pre_labs_z_to_plot if lab_z_t not in labs_z_to_plot]
 
         for i, lab_z_t in enumerate(labs_z_to_remove):
-            cell = self.CT._get_cell(label=lab_z_t[0])
+            cell = self._CTget_cell(label=lab_z_t[0])
             if cell is None: continue
             jitcell = contruct_jitCell(cell)
             
-            color = np.append(self.CT._label_colors[self.CT._labels_color_id[jitcell.label]], 0)
-            set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=lab_z_t[2], z=lab_z_t[1])
+            color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], 0)
+            set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.dim_change, t=lab_z_t[2], z=lab_z_t[1])
 
         self._pre_labs_z_to_plot = labs_z_to_plot
 
@@ -403,16 +451,16 @@ class PlotActionCT(PlotAction):
         self.selected_cells.set(fontsize=width_or_height/scale1)
         self.selected_cells.set(text="Selection\n\n"+s)
         self.instructions.set(fontsize=width_or_height/scale2)
-        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self.CT._tstep*self.t, t=self.t+1, tt=self.CT.times), fontsize=width_or_height/scale2)
+        self.timetxt.set(text="TIME = {timem} min  ({t}/{tt})".format(timem = self._tstep*self.t, t=self.t+1, tt=self.times), fontsize=width_or_height/scale2)
 
-        marked_apo = [self.CT._get_cell(cellid=event[0]).label for event in self.CT.apoptotic_events if event[1] == self.t]
+        marked_apo = [self._CTget_cell(cellid=event[0]).label for event in self.CTapoptotic_events if event[1] == self.t]
         marked_apo_str = ""
         for item_id, item in enumerate(marked_apo):
             if item_id % 7 == 6:  marked_apo_str += "%d\n" %item
             else: marked_apo_str += "%d, " %item
         if marked_apo_str=="": marked_apo_str="None"
         
-        marked_mito = [self.CT._get_cell(cellid=mitocell[0]).label for event in self.CT.mitotic_events for mitocell in event if mitocell[1] == self.t]
+        marked_mito = [self._CTget_cell(cellid=mitocell[0]).label for event in self.CTmitotic_events for mitocell in event if mitocell[1] == self.t]
         marked_mito_str = ""
         for item_id, item in enumerate(marked_mito):
             if item_id % 7 == 6:  marked_mito_str += "%d\n" %item
@@ -420,19 +468,19 @@ class PlotActionCT(PlotAction):
         if marked_mito_str=="": marked_mito_str="None"
         
         disappeared_cells = ""
-        if self.t != self.CT.times-1:
-            for item_id, item in enumerate(self.CT.hints[self.t][0]):
+        if self.t != self.times-1:
+            for item_id, item in enumerate(self.CThints[self.t][0]):
                 if item_id % 7 == 6:  disappeared_cells += "%d\n" %item
                 else: disappeared_cells += "%d, " %item
         if disappeared_cells=="": disappeared_cells="None"
         
         appeared_cells    = ""
         if self.t !=0:
-            for item_id, item in enumerate(self.CT.hints[self.t-1][1]):
+            for item_id, item in enumerate(self.CThints[self.t-1][1]):
                 if item_id % 7 == 6:  appeared_cells += "%d\n" %item
                 else: appeared_cells += "%d, " %item
         if appeared_cells=="": appeared_cells="None"
-        hints = "HINT: posible apo/mito cells:\n\ncells disapear:\n{discells}\n\ncells appeared:\n{appcells}\n\n\nmarked apo cells:\n{apocells}\n\n\nmarked mito cells:\n{mitocells}\n\nCONFLICTS: {conflicts}".format(discells=disappeared_cells, appcells=appeared_cells, apocells=marked_apo_str, mitocells=marked_mito_str, conflicts=self.CT.conflicts)
+        hints = "HINT: posible apo/mito cells:\n\ncells disapear:\n{discells}\n\ncells appeared:\n{appcells}\n\n\nmarked apo cells:\n{apocells}\n\n\nmarked mito cells:\n{mitocells}\n\nCONFLICTS: {conflicts}".format(discells=disappeared_cells, appcells=appeared_cells, apocells=marked_apo_str, mitocells=marked_mito_str, conflicts=self.CTconflicts)
         self.hints.set(text=hints, fontsize=width_or_height/scale1)
         self.title.set(fontsize=width_or_height/scale2)
         self.fig.subplots_adjust(top=0.9,left=0.2)
@@ -462,15 +510,15 @@ class PlotActionCT(PlotAction):
 
     def switch_masks(self, masks=None):
         if masks is None:
-            if self.CT.plot_masks is None: self.CT.plot_masks = True
-            else: self.CT.plot_masks = not self.CT.plot_masks
-        else: self.CT.plot_masks=masks
-        for cell in self.CT.cells:
+            if self.CTplot_masks is None: self.CTplot_masks = True
+            else: self.CTplot_masks = not self.CTplot_masks
+        else: self.CTplot_masks=masks
+        for cell in self.cells:
             jitcell = contruct_jitCell(cell)
-            if self.CT.plot_masks: alpha = 1
+            if self.CTplot_masks: alpha = 1
             else: alpha = 0
-            color = np.append(self.CT._label_colors[self.CT._labels_color_id[jitcell.label]], alpha)
-            set_cell_color(self.CT._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.CT.dim_change, t=-1, z=-1)
+            color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], alpha)
+            set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.dim_change, t=-1, z=-1)
         self.visualization()
 
     def add_cells(self):
@@ -494,18 +542,21 @@ class PlotActionCT(PlotAction):
             self.update()
     
             self.z = self.CP.z
-            self.CT.add_cell()
+            self.CTadd_cell(self)
             
     def delete_cells(self):
         self.title.set(text="DELETE CELL", ha='left', x=0.01)
         self.instructions.set(text="Right-click to delete cell on a plane\nDouble right-click to delete on all planes")
         self.instructions.set_backgroundcolor((1.0,0.0,0.0,0.4))
         self.fig.patch.set_facecolor((1.0,0.0,0.0,0.1))
-        self.CP = CellPicker(self, self.delete_cells_callback)
-
+        start = time.time()
+        self.CP = CellPicker(self.fig.canvas, self.delete_cells_callback)
+        end = time.time()
+        print("Created cell picker", end - start)
+        
     def delete_cells_callback(self, event):
-        get_axis(self, event)
-        lab, z = get_cell(self, event)
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
         if lab is None: return
         cell = [lab, z]
         if cell not in self.list_of_cells:
@@ -516,11 +567,11 @@ class PlotActionCT(PlotAction):
         if event.dblclick==True:
             self.update()
             self.reploting()
-            for id_cell, CT_cell in enumerate(self.CT.cells):
+            for id_cell, CT_cell in enumerate(self.cells):
                 if lab == CT_cell.label:
                     idx_lab = id_cell 
-            tcell = self.CT.cells[idx_lab].times.index(self.t)
-            zs = self.CT.cells[idx_lab].zs[tcell]
+            tcell = self.cells[idx_lab].times.index(self.t)
+            zs = self.cells[idx_lab].zs[tcell]
             add_all=True
             idxtopop=[]
             for jj, _cell in enumerate(self.list_of_cells):
@@ -544,11 +595,11 @@ class PlotActionCT(PlotAction):
         self.instructions.set(text="Rigth-click to select cells to be combined")
         self.instructions.set_backgroundcolor((0.5,0.5,1.0,0.4))
         self.fig.patch.set_facecolor((0.2,0.2,1.0,0.1))
-        self.CP = CellPicker(self, self.join_cells_callback)
+        self.CP = CellPicker(self.fig.canvas, self.join_cells_callback)
     
     def join_cells_callback(self, event):
-        get_axis(self, event)
-        lab, z = get_cell(self, event)
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
         if lab is None: return
         cell = [lab, z, self.t]
 
@@ -578,11 +629,11 @@ class PlotActionCT(PlotAction):
         self.instructions.set(text="Rigth-click to select cells to be combined")
         self.instructions.set_backgroundcolor((0.0,0.0,1.0,0.4))
         self.fig.patch.set_facecolor((0.0,0.0,1.0,0.1))
-        self.CP = CellPicker(self, self.combine_cells_z_callback)
+        self.CP = CellPicker(self.fig.canvas, self.combine_cells_z_callback)
     
     def combine_cells_z_callback(self, event):
-        get_axis(self, event)
-        lab, z = get_cell(self, event)
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
         if lab is None: return
         cell = [lab, z, self.t]
 
@@ -595,7 +646,7 @@ class PlotActionCT(PlotAction):
         # Check that times match among selected cells
         if len(self.list_of_cells)!=0:
             if cell[2]!=self.list_of_cells[0][2]:
-                self.CT.printfancy("ERROR: cells must be selected on same time")
+                printfancy("ERROR: cells must be selected on same time")
                 return 
             
             # check that planes selected are contiguous over z
@@ -604,7 +655,7 @@ class PlotActionCT(PlotAction):
             Zs.sort()
 
             if any((Zs[i+1]-Zs[i])!=1 for i in range(len(Zs)-1)):
-                self.CT.printfancy("ERROR: cells must be contiguous over z")
+                printfancy("ERROR: cells must be contiguous over z")
                 return
                                                                             
             # check if cells have any overlap in their zs
@@ -613,12 +664,12 @@ class PlotActionCT(PlotAction):
             ZS = []
             t = self.t
             for l in labs:
-                c = self.CT._get_cell(l)
+                c = self._CTget_cell(l)
                 tid = c.times.index(t)
                 ZS = ZS + c.zs[tid]
             
             if len(ZS) != len(set(ZS)):
-                self.CT.printfancy("ERROR: cells overlap in z")
+                printfancy("ERROR: cells overlap in z")
                 return
         
         # proceed with the selection
@@ -631,28 +682,28 @@ class PlotActionCT(PlotAction):
         self.instructions.set(text="Rigth-click to select cells to be combined")
         self.instructions.set_backgroundcolor((1.0,0.0,1.0,0.4))
         self.fig.patch.set_facecolor((1.0,0.0,1.0,0.1))     
-        self.CP = CellPicker(self, self.combine_cells_t_callback)
+        self.CP = CellPicker(self.fig.canvas, self.combine_cells_t_callback)
 
     def combine_cells_t_callback(self, event):
-        get_axis(self, event)
-        lab, z = get_cell(self, event)
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
         if lab is None: return
         cell = [lab, z, self.t]
         # Check if the cell is already on the list
-        if len(self.CT.list_of_cells)==0:
-            self.CT.list_of_cells.append(cell)
+        if len(self.CTlist_of_cells)==0:
+            self.CTlist_of_cells.append(cell)
         else:
-            if lab not in np.array(self.CT.list_of_cells)[:,0]:
-                if len(self.CT.list_of_cells)==2:
+            if lab not in np.array(self.CTlist_of_cells)[:,0]:
+                if len(self.CTlist_of_cells)==2:
                     printfancy("ERROR: cannot combine more than 2 cells at once")
                 else:
-                    if self.t not in np.array(self.CT.list_of_cells)[:,1]:
-                        self.CT.list_of_cells.append(cell)
+                    if self.t not in np.array(self.CTlist_of_cells)[:,1]:
+                        self.CTlist_of_cells.append(cell)
             else:
-                list_of_cells_t = [[x[0], x[2]] for x in self.CT.list_of_cells]
+                list_of_cells_t = [[x[0], x[2]] for x in self.CTlist_of_cells]
                 if [cell[0], cell[2]] in list_of_cells_t:
                     id_to_pop = list_of_cells_t.index([cell[0], cell[2]])
-                    self.CT.list_of_cells.pop(id_to_pop)
+                    self.CTlist_of_cells.pop(id_to_pop)
                 else: printfancy("ERROR: cannot combine a cell with itself")
         self.update()
         self.reploting()
@@ -662,33 +713,33 @@ class PlotActionCT(PlotAction):
         self.instructions.set(text="Rigth-click to select cells to be separated")
         self.instructions.set_backgroundcolor((1.0,1.0,0.0,0.4))       
         self.fig.patch.set_facecolor((1.0,1.0,0, 0.1)) 
-        self.CP = CellPicker(self, self.separate_cells_t_callback)
+        self.CP = CellPicker(self.fig.canvas, self.separate_cells_t_callback)
 
     def separate_cells_t_callback(self, event):
-        get_axis(self, event)
-        lab, z = get_cell(self, event)
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
         if lab is None: return
         cell = [lab, z, self.t]
         # Check if the cell is already on the list
-        if len(self.CT.list_of_cells)==0:
-            self.CT.list_of_cells.append(cell)
+        if len(self.CTlist_of_cells)==0:
+            self.CTlist_of_cells.append(cell)
         
         else:
-            if lab != self.CT.list_of_cells[0][0]:
+            if lab != self.CTlist_of_cells[0][0]:
                 printfancy("ERROR: select same cell at a different time")
                 return
             
             else:
-                list_of_times = [_cell[2] for _cell in self.CT.list_of_cells]
+                list_of_times = [_cell[2] for _cell in self.CTlist_of_cells]
                 if self.t in list_of_times:
                     id_to_pop = list_of_times.index(self.t)
-                    self.CT.list_of_cells.pop(id_to_pop)
+                    self.CTlist_of_cells.pop(id_to_pop)
                 else:
-                    if len(self.CT.list_of_cells)==2: 
+                    if len(self.CTlist_of_cells)==2: 
                         printfancy("ERROR: cannot separate more than 2 times at once")
                         return
                     else:
-                        self.CT.list_of_cells.append(cell)
+                        self.CTlist_of_cells.append(cell)
 
         self.update()
         self.reploting()
@@ -734,7 +785,7 @@ class PlotActionCellPicker(PlotAction):
         if self.current_state==None:
             if event.key=="enter":
                 if len(self.label_list)>0: self.label_list=[]
-                else: self.label_list = list(copy(self.CT.unique_labels))
+                else: self.label_list = list(copy(self.CTunique_labels))
                 if self.mode == "CM": self.CT.plot_cell_movement(label_list=self.label_list, plot_mean=self.plot_mean, plot_tracking=False)
                 self.update()
             elif event.key=="m":
@@ -764,5 +815,5 @@ class PlotActionCellPicker(PlotAction):
         self.instructions.set(fontsize=width_or_height)
         self.fig.subplots_adjust(right=0.75)
         self.fig.canvas.draw_idle()
-        if self.mode == "CM": self.CT.fig_cellmovement.canvas.draw()
+        # if self.mode == "CM": self.CT.fig_cellmovement.canvas.draw()
         self.fig.canvas.draw()

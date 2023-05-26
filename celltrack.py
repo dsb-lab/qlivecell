@@ -42,7 +42,7 @@ from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCe
 from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
 from core.tools.ct_tools import compute_point_stack
 from core.tracking import greedy_tracking
-from core.utils_ct import printfancy, printclear
+from core.utils_ct import printfancy, printclear, progressbar
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
@@ -167,6 +167,7 @@ class CellTracking(object):
         if self._line_builder_mode not in ['points', 'lasso']: raise Exception
         self._blur_args = blur_args
         if CELLS!=None: 
+            self._init_CT_cell_attributes()
             self.update_labels()
             self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
             self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
@@ -203,14 +204,17 @@ class CellTracking(object):
         
         printfancy("")
         
+        printfancy("computing tracking...")
+
         self.cell_tracking(TLabels, TCenters, TOutlines, label_correspondance)
 
-        printfancy("tracking completed", clear_prev=1)
+        printfancy("tracking completed. initialising cells...", clear_prev=1)
 
         self.init_cells(_Outlines, _Masks, _labels, label_correspondance)
 
-        printfancy("cells initialised", clear_prev=1)
+        printfancy("cells initialised. updating labels...", clear_prev=1)
 
+        self._init_CT_cell_attributes()
         self.update_labels()
         printfancy("labels updated", clear_prev=1)
         self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
@@ -343,7 +347,10 @@ class CellTracking(object):
         self.unique_labels = np.unique(np.hstack(self.FinalLabels))
         self.max_label = int(max(self.unique_labels))
         self.cells = []
-        for lab in self.unique_labels:
+
+        printfancy("Progress: ")        
+        for l, lab in enumerate(self.unique_labels):
+            progressbar(l+1, len(self.unique_labels))
             OUTLINES = []
             MASKS    = []
             TIMES    = []
@@ -452,7 +459,7 @@ class CellTracking(object):
         print()
         print()
     def _get_hints(self):
-        self.hints = []
+        del self.hints[:]
         for t in range(self.times-1):
             self.hints.append([])
             self.hints[t].append(np.setdiff1d(self.unique_labels_T[t], self.unique_labels_T[t+1]))
@@ -464,13 +471,21 @@ class CellTracking(object):
         total_marked_mito = len(self.mitotic_events)*3
         total_marked = total_marked_apo + total_marked_mito
         self.conflicts = total_hints-total_marked
+    
+    def _init_CT_cell_attributes(self):
+        self.hints = []
+        self.Labels   = []
+        self.Outlines = []
+        self.Masks    = []
+        self.Centersi = []
+        self.Centersj = []
         
     def _update_CT_cell_attributes(self):
-            self.Labels   = []
-            self.Outlines = []
-            self.Masks    = []
-            self.Centersi = []
-            self.Centersj = []
+            del self.Labels[:]
+            del self.Outlines[:]
+            del self.Masks[:]
+            del self.Centersi[:]
+            del self.Centersj[:]
             for t in range(self.times):
                 self.Labels.append([])
                 self.Outlines.append([])
@@ -576,26 +591,26 @@ class CellTracking(object):
         self.cells.append(create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self.stacks))
         self.currentcellid+=1
         
-    def add_cell(self):
+    def add_cell(self, PACP):
         if self._line_builder_mode == 'points':
             line, = self.PACP.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
-            self.linebuilder = LineBuilder_points(line)
-        else: self.linebuilder = LineBuilder_lasso(self.PACP.ax_sel)
+            PACP.linebuilder = LineBuilder_points(line)
+        else: PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel)
 
     def complete_add_cell(self, PACP):
         if self._line_builder_mode == 'points':
-            if len(self.linebuilder.xs)<3:
+            if len(PACP.linebuilder.xs)<3:
                 return
-            new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(self.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(self.linebuilder.ys) / self.dim_change).astype(np.int64))])
+            new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(PACP.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(PACP.linebuilder.ys) / self.dim_change).astype(np.int64))])
             if np.max(new_outline)>self.stack_dims[0]:
                 printfancy("ERROR: drawing out of image")
                 return
             mask = None
         elif self._line_builder_mode == 'lasso':
-            if len(self.linebuilder.mask)<6:
+            if len(PACP.linebuilder.mask)<6:
                 return
-            new_outline = self.linebuilder.outline
-            mask = [self.linebuilder.mask]
+            new_outline = PACP.linebuilder.outline
+            mask = [PACP.linebuilder.mask]
         self.append_cell_from_outline(new_outline, PACP.z, PACP.t, mask=mask)
         
         jitcells = [contruct_jitCell(cell) for cell in self.cells]
@@ -954,6 +969,48 @@ class CellTracking(object):
         if not hasattr(ax, '__iter__'): ax = np.array([ax])
         ax = ax.flatten()
         
+        
+        # Make a horizontal slider to control the time.
+        axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
+        sliderstr = "/%d" %(self.times)
+        time_slider = Slider_t(
+            ax=axslide,
+            label='time',
+            initcolor='r',
+            valmin=1,
+            valmax=self.times,
+            valinit=1,
+            valstep=1,
+            valfmt="%d"+sliderstr,
+            track_color = [0.8, 0.8, 0, 0.5],
+            facecolor   = [0.8, 0.8, 0, 1.0]
+            )
+        self._time_slider = time_slider
+
+        # Make a horizontal slider to control the zs.
+        axslide = fig.add_axes([0.10, 0.04, 0.75, 0.03])
+        sliderstr = "/%d" %(self.slices)
+        
+        groupsize  = self.plot_layout[0] * self.plot_layout[1]
+        max_round = int(np.ceil((self.slices - groupsize)/(groupsize - self.plot_overlap)))
+
+
+        z_slider = Slider_z(
+            ax=axslide,
+            label='z slice',
+            initcolor='r',
+            valmin=0,
+            valmax=max_round,
+            valinit=0,
+            valstep=1,
+            valfmt="(%d-%d)"+sliderstr,
+            counter=counter,
+            track_color = [0, 0.7, 0, 0.5],
+            facecolor   = [0, 0.7, 0, 1.0]
+            )
+        self._z_slider = z_slider
+
+
         if cell_picker: self.PACP = PlotActionCellPicker(fig, ax, self, mode)
         else: self.PACP = PlotActionCT(fig, ax, self, None)
         self.PACP.zs = np.zeros_like(ax)
@@ -988,43 +1045,6 @@ class CellTracking(object):
                         _ = ax[id].set_yticks([])
                         
         plt.subplots_adjust(bottom=0.075)
-        # Make a horizontal slider to control the time.
-        axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
-        sliderstr = "/%d" %(self.times)
-        time_slider = Slider_t(
-            ax=axslide,
-            label='time',
-            initcolor='r',
-            valmin=1,
-            valmax=self.times,
-            valinit=1,
-            valstep=1,
-            valfmt="%d"+sliderstr,
-            track_color = [0.8, 0.8, 0, 0.5],
-            facecolor   = [0.8, 0.8, 0, 1.0]
-            )
-        self._time_slider = time_slider
-        self._time_slider.on_changed(self.PACP.update_slider_t)
-
-        # Make a horizontal slider to control the zs.
-        axslide = fig.add_axes([0.10, 0.04, 0.75, 0.03])
-        sliderstr = "/%d" %(self.slices)
-        z_slider = Slider_z(
-            ax=axslide,
-            label='z slice',
-            initcolor='r',
-            valmin=0,
-            valmax=self.PACP.max_round,
-            valinit=0,
-            valstep=1,
-            valfmt="(%d-%d)"+sliderstr,
-            counter=counter,
-            track_color = [0, 0.7, 0, 0.5],
-            facecolor   = [0, 0.7, 0, 1.0]
-            )
-        self._z_slider = z_slider
-        self._z_slider.on_changed(self.PACP.update_slider_z)
-
         plt.show()
 
     def replot_axis(self, img, z, t, imid, plot_outlines=True):
@@ -1045,8 +1065,8 @@ class CellTracking(object):
             sc.remove()
         for ano in self._annotations:
             ano.remove()
-        self._pos_scatters = []
-        self._annotations  = []
+        del self._pos_scatters[:]
+        del self._annotations[:]
         for z, id, r in counter:
             # select current z plane
             if z == None:
@@ -1280,5 +1300,5 @@ class CellTracking(object):
     #     if not keep:
     #         subprocess.run(["rm", fullpath])
     
-    # def save_cells(self):
-    #     save_cells(self, self.path_to_save, self.embcode)
+    def save_cells(self):
+        save_cells(self, self.path_to_save, self.embcode)
