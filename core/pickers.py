@@ -1,21 +1,22 @@
 import numpy as np
 
 class SubplotPicker_add():
-    def __init__(self, PACP):
-        self.PACP  = PACP
-        self.cid = self.PACP.fig.canvas.mpl_connect('button_press_event', self)
-        self.canvas  = self.PACP.fig.canvas
-
+    def __init__(self, ax, canvas, zs, callback):
+        self.ax = ax
+        self.cid = canvas.mpl_connect('button_press_event', self)
+        self.canvas  = canvas
+        self.zs = zs
+        self.callback = callback
+        
     def __call__(self, event):
         if event.dblclick == True:
             if event.button==1:
-                for id, ax in enumerate(self.PACP.ax):
+                for id, ax in enumerate(self.ax):
                     if event.inaxes==ax:
-                        self.PACP.current_subplot = id
-                        self.PACP.z = self.PACP.zs[id]
+                        self.current_subplot = id
+                        self.z = self.zs[id]
                         self.canvas.mpl_disconnect(self.cid)
-                        self.PACP.add_cells()
-                        self.PACP.CT.add_cell(self.PACP)
+                        self.callback()
     
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
@@ -87,218 +88,18 @@ class LineBuilder_lasso:
         self.canvas.draw_idle()
 
 class CellPicker():
-    def __init__(self, PACP):
-        self.PACP  = PACP
-        self.cid = self.PACP.fig.canvas.mpl_connect('button_press_event', self)
-        self.canvas  = self.PACP.fig.canvas
-    
+    def __init__(self, canvas, callback):
+        self.cid = canvas.mpl_connect('button_press_event', self)
+        self.canvas  = canvas
+        self.callback = callback
+         
     def __call__(self, event):
         if event.button==3:
-            self._get_axis(event)
-            self._action(event)
+            self.callback(event)
             
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
-    
-    def _get_axis(self, event):
-        for id, ax in enumerate(self.PACP.ax):
-            if event.inaxes==ax:
-                self.PACP.current_subplot = id
-                self.PACP.ax_sel = ax
-                self.PACP.z = self.PACP.zs[id]
-    
-    def _get_point(self, event):
-        x = np.rint(event.xdata).astype(np.int64)
-        y = np.rint(event.ydata).astype(np.int64)
-        picked_point = np.array([x, y])
-        return np.rint(picked_point / self.PACP.CT.dim_change).astype('int32')
-    
-    def _get_cell(self, event):
-        picked_point = self._get_point(event)
-        for i ,mask in enumerate(self.PACP.CT.Masks[self.PACP.t][self.PACP.z]):
-            for point in mask:
-                if (picked_point==point).all():
-                    z   = self.PACP.z
-                    lab = self.PACP.CT.Labels[self.PACP.t][z][i]
-                    return lab, z
-        return None, None
-     
-    def _action(self, event):
-        self._get_cell(event)
-        self._update()
         
-    def _update(self):
-        self.PACP.update()
-        self.PACP.reploting()  
-
-class CellPicker_del(CellPicker):
-        
-    def _action(self, event):
-        lab, z = self._get_cell(event)
-        if lab is None: return
-        cell = [lab, z]
-        if cell not in self.PACP.list_of_cells:
-            self.PACP.list_of_cells.append(cell)
-        else:
-            self.PACP.list_of_cells.remove(cell)
-
-        if event.dblclick==True:
-            self._update()
-            for id_cell, CT_cell in enumerate(self.PACP.CT.cells):
-                if lab == CT_cell.label:
-                    idx_lab = id_cell 
-            tcell = self.PACP.CT.cells[idx_lab].times.index(self.PACP.t)
-            zs = self.PACP.CT.cells[idx_lab].zs[tcell]
-            add_all=True
-            idxtopop=[]
-            for jj, _cell in enumerate(self.PACP.list_of_cells):
-                _lab = _cell[0]
-                _z   = _cell[1]
-                if _lab == lab:
-                    if _z in zs:
-                        add_all=False
-                        idxtopop.append(jj)
-            idxtopop.sort(reverse=True)
-            for jj in idxtopop:
-                self.PACP.list_of_cells.pop(jj)
-            if add_all:
-                for zz in zs:
-                    self.PACP.list_of_cells.append([lab, zz])
-        self._update()
-
-class CellPicker_join(CellPicker):
-
-    def _action(self, event):
-        lab, z = self._get_cell(event)
-        if lab is None: return
-        cell = [lab, z, self.PACP.t]
-
-        if cell in self.PACP.list_of_cells:
-            self.PACP.list_of_cells.remove(cell)
-            self.PACP.update()
-            return
-        
-        # Check that times match among selected cells
-        if len(self.PACP.list_of_cells)!=0:
-            if cell[2]!=self.PACP.list_of_cells[0][2]:
-                self.PACP.CT.printfancy("ERROR: cells must be selected on same time")
-                return 
-        # Check that zs match among selected cells
-        if len(self.PACP.list_of_cells)!=0:
-            if cell[1]!=self.PACP.list_of_cells[0][1]:
-                self.PACP.CT.printfancy("ERROR: cells must be selected on same z")
-                return                             
-        # proceed with the selection
-        self.PACP.list_of_cells.append(cell)
-        self._update()
-
-class CellPicker_com_z(CellPicker):
-
-    def _action(self, event):
-        lab, z = self._get_cell(event)
-        if lab is None: return
-        cell = [lab, z, self.PACP.t]
-
-        if cell in self.PACP.list_of_cells:
-            self.PACP.list_of_cells.remove(cell)
-            self._update()
-            return
-        
-        # Check that times match among selected cells
-        if len(self.PACP.list_of_cells)!=0:
-            if cell[2]!=self.PACP.list_of_cells[0][2]:
-                self.PACP.CT.printfancy("ERROR: cells must be selected on same time")
-                return 
-            
-            # check that planes selected are contiguous over z
-            Zs = [x[1] for x in self.PACP.list_of_cells]
-            Zs.append(z)
-            Zs.sort()
-
-            if any((Zs[i+1]-Zs[i])!=1 for i in range(len(Zs)-1)):
-                self.PACP.CT.printfancy("ERROR: cells must be contiguous over z")
-                return
-                                                                            
-            # check if cells have any overlap in their zs
-            labs = [x[0] for x in self.PACP.list_of_cells]
-            labs.append(lab)
-            ZS = []
-            t = self.PACP.t
-            for l in labs:
-                c = self.PACP.CT._get_cell(l)
-                tid = c.times.index(t)
-                ZS = ZS + c.zs[tid]
-            
-            if len(ZS) != len(set(ZS)):
-                self.PACP.CT.printfancy("ERROR: cells overlap in z")
-                return
-        
-        # proceed with the selection
-        self.PACP.list_of_cells.append(cell)
-        self._update()
-
-class CellPicker_com_t(CellPicker):
-    
-    def _action(self, event):
-        lab, z = self._get_cell(event)
-        if lab is None: return
-        cell = [lab, z, self.PACP.t]
-        # Check if the cell is already on the list
-        if len(self.PACP.CT.list_of_cells)==0:
-            self.PACP.CT.list_of_cells.append(cell)
-        else:
-            if lab not in np.array(self.PACP.CT.list_of_cells)[:,0]:
-                if len(self.PACP.CT.list_of_cells)==2:
-                    self.PACP.CT.printfancy("ERROR: cannot combine more than 2 cells at once")
-                else:
-                    if self.PACP.t not in np.array(self.PACP.CT.list_of_cells)[:,1]:
-                        self.PACP.CT.list_of_cells.append(cell)
-            else:
-                list_of_cells_t = [[x[0], x[2]] for x in self.PACP.CT.list_of_cells]
-                if [cell[0], cell[2]] in list_of_cells_t:
-                    id_to_pop = list_of_cells_t.index([cell[0], cell[2]])
-                    self.PACP.CT.list_of_cells.pop(id_to_pop)
-                else: self.PACP.CT.printfancy("ERROR: cannot combine a cell with itself")
-        self._update()
-
-    def _update(self):
-            self.PACP.update()
-            self.PACP.reploting()
-
-class CellPicker_sep_t(CellPicker):
-    
-    def _action(self, event):
-        lab, z = self._get_cell(event)
-        if lab is None: return
-        cell = [lab, z, self.PACP.t]
-        # Check if the cell is already on the list
-        if len(self.PACP.CT.list_of_cells)==0:
-            self.PACP.CT.list_of_cells.append(cell)
-        
-        else:
-            
-            if lab != self.PACP.CT.list_of_cells[0][0]:
-                self.PACP.CT.printfancy("ERROR: select same cell at a different time")
-                return
-            
-            else:
-                list_of_times = [_cell[2] for _cell in self.PACP.CT.list_of_cells]
-                if self.PACP.t in list_of_times:
-                    id_to_pop = list_of_times.index(self.PACP.t)
-                    self.PACP.CT.list_of_cells.pop(id_to_pop)
-                else:
-                    if len(self.PACP.CT.list_of_cells)==2: 
-                        self.PACP.CT.printfancy("ERROR: cannot separate more than 2 times at once")
-                        return
-                    else:
-                        self.PACP.CT.list_of_cells.append(cell)
-
-        self._update()
-
-    def _update(self):
-        self.PACP.update()
-        self.PACP.reploting()
-
 class CellPicker_apo(CellPicker):
     def _action(self, event):
         lab, z = self._get_cell(event)
