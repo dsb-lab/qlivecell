@@ -32,7 +32,7 @@ from core.pickers import LineBuilder_lasso, LineBuilder_points
 from core.PA import PlotActionCT, PlotActionCellPicker
 from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
-from core.utils_ct import save_cells, load_cells, read_img_with_resolution, get_file_embcode
+from core.utils_ct import read_img_with_resolution, get_file_embcode
 
 # import segmentation functions
 from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose
@@ -41,6 +41,7 @@ from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCe
 from core.tools.cell_tools import create_cell, update_cell, find_z_discontinuities
 from core.tools.ct_tools import compute_point_stack
 from core.tools.tools import points_within_hull, increase_point_resolution, sort_point_sequence
+
 from core.tracking import greedy_tracking
 from core.utils_ct import printfancy, printclear, progressbar
 
@@ -1229,6 +1230,3 @@ class CellTracking(object):
 
     #     if not keep:
     #         subprocess.run(["rm", fullpath])
-    
-    def save_cells(self):
-        save_cells(self, self.path_to_save, self.embcode)

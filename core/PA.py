@@ -3,6 +3,7 @@ from copy import copy
 import matplotlib as mtp
 from .pickers import SubplotPicker_add, CellPicker, CellPicker_mit, CellPicker_apo, CellPicker_CM, CellPicker_CP
 from .tools.ct_tools import set_cell_color
+from core.tools.save_tools import save_cells
 from .dataclasses import contruct_jitCell
 from .utils_ct import printfancy
 import time 
@@ -49,8 +50,10 @@ class PlotAction():
         self.z = None
         
         # Point to CT variables
-
+        self.path_to_save = CT.path_to_save
+        self.filename = CT.embcode
         self.cells = CT.cells
+        self.CT_info = CT.CT_info
         self._label_colors = CT._label_colors
         self._labels_color_id =  CT._labels_color_id
         self._masks_stack = CT._masks_stack
@@ -86,7 +89,7 @@ class PlotAction():
         self.CTone_step_copy = CT.one_step_copy
         self.CTundo_corrections = CT.undo_corrections
         self.CTreplot_tracking = CT.replot_tracking
-        self.CTsave_cells = CT.save_cells
+        self.CTsave_cells = save_cells
         
         self.CTadd_cell = CT.add_cell
         self.CTcomplete_add_cell = CT.complete_add_cell
@@ -248,7 +251,9 @@ class PlotActionCT(PlotAction):
                 self.visualization()
                 self.update()
             elif event.key == 's':
-                self.CTsave_cells()
+                self.CT_info.apo_cells = self.CTapoptotic_events
+                self.CT_info.mito_cells = self.CTmitotic_events
+                self.CTsave_cells(self.cells, self.CT_info, self.path_to_save, self.filename)
             self.update()
 
         else:

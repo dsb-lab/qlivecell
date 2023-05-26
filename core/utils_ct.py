@@ -42,7 +42,6 @@ def progressbar(step, total, width=46):
     elif percent > 99:
         print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
 
-
 def get_file_embcode(path_data, f):
     """
     Parameters
@@ -158,49 +157,6 @@ def extract_position_as_matrices(CT):
 def correct_path(path):
     if path[-1] != '/': path=path+'/'
     return path
-
-def save_cells(CT, path=None, filename=None):
-    """ save cell objects obtained with CellTracking.py
-
-    Saves cells as `path`/`filename`_cells.pickle
-    Saves CellTracking info as `path`/`filename`_info.pickle
-
-    Parameters
-    ----------
-    CT : CellTracking
-
-    path : str
-        path to save directory
-    filename : str
-        name of file characteristic of the given CT
-    
-    """
-    pthsave = correct_path(path)+filename
-    file_to_store = open(pthsave+"_cells.pickle", "wb")
-    pickle.dump(CT.cells, file_to_store)
-    file_to_store.close()
-    file_to_store = open(pthsave+"_info.pickle", "wb")
-    CT_info =  CellTracking_info(
-        CT._xyresolution, 
-        CT._zresolution, 
-        CT.times, 
-        CT.slices,
-        CT.stack_dims,
-        CT._tstep,
-        CT.apoptotic_events,
-        CT.mitotic_events)
-    pickle.dump(CT_info, file_to_store)
-    file_to_store.close()
-
-def load_cells(path=None, filename=None):
-    pthsave = correct_path(path)+filename
-    file_to_store = open(pthsave+"_cells.pickle", "rb")
-    cells = pickle.load(file_to_store)
-    file_to_store.close()
-    file_to_store = open(pthsave+"_info.pickle", "rb")
-    CT_info = pickle.load(file_to_store)
-    file_to_store.close()
-    return cells, CT_info
 
 def read_img_with_resolution(path_to_file, channel=0):
     """
