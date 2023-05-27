@@ -4,7 +4,7 @@ import matplotlib as mtp
 from .pickers import SubplotPicker_add, CellPicker, CellPicker_mit, CellPicker_apo, CellPicker_CM, CellPicker_CP
 from .tools.ct_tools import set_cell_color
 from core.tools.save_tools import save_cells
-from .dataclasses import contruct_jitCell
+from .dataclasses import contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
 from .utils_ct import printfancy
 import time 
 
@@ -52,7 +52,7 @@ class PlotAction():
         # Point to CT variables
         self.path_to_save = CT.path_to_save
         self.filename = CT.embcode
-        self.cells = CT.cells
+        self.jitcells = CT.jitcells
         self.CT_info = CT.CT_info
         self._label_colors = CT._label_colors
         self._labels_color_id =  CT._labels_color_id
@@ -103,6 +103,24 @@ class PlotAction():
         
         self._CTget_cell = CT._get_cell
         
+    def reinit(self, CT):
+        # Point to CT variables
+        
+        self.jitcells = CT.jitcells
+        
+        self._masks_stack = CT._masks_stack
+        
+        self.CTlist_of_cells = CT.list_of_cells
+        self.CTmito_cells = CT.mito_cells
+        self.CTapoptotic_events = CT.apoptotic_events
+        self.CTmitotic_events = CT.mitotic_events
+        self.CThints = CT.hints
+        self.CTconflicts = CT.conflicts 
+        self.CTplot_masks = CT.plot_masks
+        self.CTunique_labels = CT.unique_labels
+        self.CTMasks = CT.Masks
+        self.CTLabels = CT.Labels
+
     def __call__(self, event):
         # To be defined 
         pass
@@ -253,7 +271,8 @@ class PlotActionCT(PlotAction):
             elif event.key == 's':
                 self.CT_info.apo_cells = self.CTapoptotic_events
                 self.CT_info.mito_cells = self.CTmitotic_events
-                self.CTsave_cells(self.cells, self.CT_info, self.path_to_save, self.filename)
+                cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
+                self.CTsave_cells(cells, self.CT_info, self.path_to_save, self.filename)
             self.update()
 
         else:
@@ -434,17 +453,15 @@ class PlotActionCT(PlotAction):
         labs_z_to_plot = [[x[0], zs[xid], ts[xid]] for xid, x in enumerate(cells_to_plot)]
 
         for i, lab_z_t in enumerate(labs_z_to_plot):
-            cell = self._CTget_cell(label=lab_z_t[0])
-            jitcell = contruct_jitCell(cell)
+            jitcell = self._CTget_cell(label=lab_z_t[0])
             color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], 1)
             set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.dim_change, t=lab_z_t[2], z=lab_z_t[1])
 
         labs_z_to_remove = [lab_z_t for lab_z_t in self._pre_labs_z_to_plot if lab_z_t not in labs_z_to_plot]
 
         for i, lab_z_t in enumerate(labs_z_to_remove):
-            cell = self._CTget_cell(label=lab_z_t[0])
-            if cell is None: continue
-            jitcell = contruct_jitCell(cell)
+            jitcell = self._CTget_cell(label=lab_z_t[0])
+            if jitcell is None: continue
             
             color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], 0)
             set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.dim_change, t=lab_z_t[2], z=lab_z_t[1])
@@ -518,8 +535,8 @@ class PlotActionCT(PlotAction):
             if self.CTplot_masks is None: self.CTplot_masks = True
             else: self.CTplot_masks = not self.CTplot_masks
         else: self.CTplot_masks=masks
-        for cell in self.cells:
-            jitcell = contruct_jitCell(cell)
+        for jitcell in self.jitcells:
+
             if self.CTplot_masks: alpha = 1
             else: alpha = 0
             color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], alpha)
@@ -572,11 +589,11 @@ class PlotActionCT(PlotAction):
         if event.dblclick==True:
             self.update()
             self.reploting()
-            for id_cell, CT_cell in enumerate(self.cells):
+            for id_cell, CT_cell in enumerate(self.jitcells):
                 if lab == CT_cell.label:
                     idx_lab = id_cell 
-            tcell = self.cells[idx_lab].times.index(self.t)
-            zs = self.cells[idx_lab].zs[tcell]
+            tcell = self.jitcells[idx_lab].times.index(self.t)
+            zs = self.jitcells[idx_lab].zs[tcell]
             add_all=True
             idxtopop=[]
             for jj, _cell in enumerate(self.list_of_cells):

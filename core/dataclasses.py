@@ -52,7 +52,7 @@ specs = [('id', int32),
     ('centers', ListType(Array(float64, 1, 'C'))), 
     ('centers_all',  ListType(ListType(Array(float64, 1, 'C')))), 
     ('centers_weight', Array(float64, 1, 'C')),
-    ('centers_weight_all', ListType(Array(float64, 1, 'C')))
+    ('centers_all_weight', ListType(Array(float64, 1, 'C')))
 ]
 
 @jitclass(specs)
@@ -70,10 +70,10 @@ class jitCell(object):
         self.centers = centers
         self.centers_all = centers_all
         self.centers_weight = centers_weight
-        self.centers_weight_all = centers_weight_all
+        self.centers_all_weight = centers_weight_all
 
 import numpy as np
-def _cell_attr_to_jit(cell: Cell):
+def _cell_attr_to_jitcell_attr(cell: Cell):
     # Create empty python list
     attr_list = list()
     
@@ -157,8 +157,96 @@ def _cell_attr_to_jit(cell: Cell):
     # [13]: cell disp
     return attr_list
 
-def contruct_jitCell(cell: Cell):
-    cell_attr = _cell_attr_to_jit(cell)
+def _jitcell_attr_to_cell_attr(cell: jitCell):
+    # Create empty python list
+    attr_list = list()
+    
+    # [0]: cell id
+    attr_list.append(cell.id)
+    
+    # [1]: cell label
+    attr_list.append(cell.label)
+    
+    # [2]: cell slices per time
+    zs = list()
+    for tid in range(len(cell.times)):
+        zst = list(np.array(cell.zs[tid]).astype('int32'))
+        zs.append(zst)
+    attr_list.append(zs)
+    
+    # [3]: cell times
+    attr_list.append(list(np.array(cell.times).astype('int32')))
+    
+    # [4]: cell outlines
+    outlines = list()
+    for tid in range(len(cell.times)):
+        outlinest = list()
+        for zid in range(len(cell.zs[tid])):
+            outlinesz = np.array(cell.outlines[tid][zid]).astype('int32')
+            outlinest.append(outlinesz)
+        outlines.append(outlinest)
+    attr_list.append(outlines)
+
+    # [5]: cell masks
+    masks = list()
+    for tid in range(len(cell.times)):
+        maskst = list()
+        for zid in range(len(cell.zs[tid])):
+            masksz = np.array(cell.masks[tid][zid]).astype('int32')
+            maskst.append(masksz)
+        masks.append(maskst)
+    attr_list.append(masks) 
+    
+    # [6]: cell rem
+    attr_list.append(b1(False))
+    
+    # [7]: cell centersi
+    centersi = list()
+    for tid in range(len(cell.times)):
+        centersit = np.array(cell.centersi[tid]).astype('float64')
+        centersi.append(centersit)
+    attr_list.append(centersi)
+
+    # [8]: cell centersj
+    centersj = list()
+    for tid in range(len(cell.times)):
+        centersjt = np.array(cell.centersj[tid]).astype('float64')
+        centersj.append(centersjt)
+    attr_list.append(centersj)
+    
+    # [9]: cell centers
+    centers = list()
+    for tid in range(len(cell.times)):
+        centerst = np.array(cell.centers[tid]).astype('float64')
+        centers.append(centerst)
+    attr_list.append(centers)
+    
+    # [10]: cell centers all
+    centers_all = list()
+    for tid in range(len(cell.times)):
+        centers_allt = list(np.array(cell.centers_all[tid]).astype('float64'))
+        centers_all.append(centers_allt)
+    attr_list.append(centers_all)
+    
+    # [11]: cell centers weight
+    attr_list.append(np.array(cell.times).astype('float64'))
+    
+    # [12]: cell centers weight all
+    centers_all_weight = list()
+    for tid in range(len(cell.times)):
+        centers_all_weightt = np.array(cell.centers_all_weight[tid]).astype('float64')
+        centers_all_weight.append(centers_all_weightt)
+    attr_list.append(centers_all_weight)
+    
+    # [13]: cell disp
+    return attr_list
+
+def contruct_jitCell_from_Cell(cell: Cell):
+    cell_attr = _cell_attr_to_jitcell_attr(cell)
     jitcell   = jitCell(*cell_attr)
     return jitcell
 
+def contruct_Cell_from_jitCell(cell: jitCell):
+    cell_attr = _jitcell_attr_to_cell_attr(cell)
+    jitcell   = Cell(*cell_attr)
+    return jitcell
