@@ -688,7 +688,7 @@ class PlotActionCT(PlotAction):
             for l in labs:
                 c = self._CTget_cell(l)
                 tid = c.times.index(t)
-                ZS = ZS + c.zs[tid]
+                ZS = ZS + list(c.zs[tid])
             
             if len(ZS) != len(set(ZS)):
                 printfancy("ERROR: cells overlap in z")

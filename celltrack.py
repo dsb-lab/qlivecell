@@ -213,13 +213,13 @@ class CellTracking(object):
         printfancy("tracking completed. initialising cells...", clear_prev=1)
 
         self.init_cells(_Outlines, _Masks, _labels, label_correspondance)
+        self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in self.cells])
 
         printfancy("cells initialised. updating labels...", clear_prev=1)
 
         self._init_CT_cell_attributes()
         self.update_labels()
 
-        self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in self.cells])
         
         printfancy("labels updated", clear_prev=1)
         self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
@@ -253,7 +253,8 @@ class CellTracking(object):
             self.one_step_copy()
 
     def one_step_copy(self, t=0):
-        new_copy = backup_CellTrack(t, deepcopy(self.cells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
+        cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
+        new_copy = backup_CellTrack(t, deepcopy(cells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
@@ -415,7 +416,7 @@ class CellTracking(object):
 
             ids    = []
             zs     = []
-            for cell in self.cells:
+            for cell in self.jitcells:
                 # Check if the current time is the first time cell appears
                 if t in cell.times:
                     if cell.times.index(t)==0:
@@ -440,7 +441,7 @@ class CellTracking(object):
         
     def update_labels(self):
         old_labels, new_labels, correspondance = self._order_labels_t()
-        for cell in self.cells:
+        for cell in self.jitcells:
             cell.label = correspondance[cell.label]
 
         print()
@@ -449,20 +450,12 @@ class CellTracking(object):
         end = time.time()
         print("order labels z", end - start)
 
-        start = time.time()
         self.update_label_attributes()
-        end = time.time()
-        print("update label attributes", end - start)
-        
-        #self.cells = [contruct_Cell_from_jitCell(cell) for cell in self.jitcells]
 
         compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
         
         compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
 
-        print()
-        print()
-        
     def _get_hints(self):
         del self.hints[:]
         for t in range(self.times-1):
@@ -503,7 +496,7 @@ class CellTracking(object):
                     self.Masks[t].append([])
                     self.Centersi[t].append([])
                     self.Centersj[t].append([])
-            for cell in self.cells:
+            for cell in self.jitcells:
                 for tid, t in enumerate(cell.times):
                     for zid, z in enumerate(cell.zs[tid]):
                         self.Labels[t][z].append(cell.label)
@@ -523,8 +516,12 @@ class CellTracking(object):
         if mask is None: masks = [[points_within_hull(new_outline_sorted_highres)]]
         else: masks = [mask]
         self._extract_unique_labels_and_max_label()
-        self.cells.append(create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self.stacks))
+        new_cell = create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self.stacks)
+        self.max_label+=1
         self.currentcellid+=1
+        new_jitcell = contruct_jitCell_from_Cell(new_cell)
+        update_jitcell(new_jitcell, self.stacks)        
+        self.jitcells.append(new_jitcell)
         
     def add_cell(self, PACP):
         if self._line_builder_mode == 'points':

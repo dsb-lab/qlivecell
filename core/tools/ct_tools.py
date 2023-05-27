@@ -148,7 +148,6 @@ def get_cell_color(jitcell, label_colors, labels_color_id, alpha):
 
 import time
 def compute_point_stack(point_stack, jitcells, times, labels_per_t, dim_change, label_colors, labels_color_id, alpha, mode=None):
-    start = time.time()
     for t in times:
         point_stack[t] = 0
         labels = labels_per_t[t]
@@ -158,8 +157,6 @@ def compute_point_stack(point_stack, jitcells, times, labels_per_t, dim_change, 
             if mode=="outlines": points = jitcell.outlines
             elif mode=="masks": points = jitcell.masks
             set_cell_color(point_stack, points, jitcell.times, jitcell.zs, np.array(color), dim_change, t=t)
-    end = time.time()
-    print("compute outlines/masks", end - start)
     return point_stack
 
 def get_cell(cells, label=None, cellid=None):
