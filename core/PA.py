@@ -719,7 +719,7 @@ class PlotActionCT(PlotAction):
                 if len(self.CTlist_of_cells)==2:
                     printfancy("ERROR: cannot combine more than 2 cells at once")
                 else:
-                    if self.t not in np.array(self.CTlist_of_cells)[:,1]:
+                    if self.t not in np.array(self.CTlist_of_cells)[:,2]:
                         self.CTlist_of_cells.append(cell)
             else:
                 list_of_cells_t = [[x[0], x[2]] for x in self.CTlist_of_cells]
@@ -742,6 +742,7 @@ class PlotActionCT(PlotAction):
         lab, z = get_cell_PACP(self, event)
         if lab is None: return
         cell = [lab, z, self.t]
+
         # Check if the cell is already on the list
         if len(self.CTlist_of_cells)==0:
             self.CTlist_of_cells.append(cell)

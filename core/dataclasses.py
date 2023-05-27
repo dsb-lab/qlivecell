@@ -57,7 +57,7 @@ specs = [('id', int32),
 
 @jitclass(specs)
 class jitCell(object):
-    def __init__(self, id, label, zs, times, outlines, masks, rem, centersi, centersj, centers, centers_all, centers_weight, centers_weight_all):
+    def __init__(self, id, label, zs, times, outlines, masks, rem, centersi, centersj, centers, centers_all, centers_weight, centers_all_weight):
         self.id    = id
         self.label = label
         self.zs    = zs
@@ -70,7 +70,10 @@ class jitCell(object):
         self.centers = centers
         self.centers_all = centers_all
         self.centers_weight = centers_weight
-        self.centers_all_weight = centers_weight_all
+        self.centers_all_weight = centers_all_weight
+
+    def copy(self):
+        return jitCell(self.id, self.label, self.zs, self.times, self.outlines, self.masks, self._rem, self.centersi, self.centersj, self.centers, self.centers_all, self.centers_weight, self.centers_all_weight)
 
 import numpy as np
 def _cell_attr_to_jitcell_attr(cell: Cell):

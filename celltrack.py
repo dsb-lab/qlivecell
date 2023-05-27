@@ -222,6 +222,9 @@ class CellTracking(object):
 
         
         printfancy("labels updated", clear_prev=1)
+        
+        self.cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
+
         self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
         self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
         self.backups = deque([self._backupCT], self._backup_steps)
@@ -715,7 +718,7 @@ class CellTracking(object):
             return
 
         cell = self._get_cell(cells[0])
-        new_cell = deepcopy(cell)
+        new_cell = cell.copy()
         
         border=cell.times.index(max(Ts))
 
@@ -734,7 +737,7 @@ class CellTracking(object):
         new_cell.id=self.currentcellid
         self.currentcellid+=1
         update_jitcell(new_cell, self.stacks)
-        self.cells.append(new_cell)
+        self.jitcells.append(new_cell)
         
         self.update_label_attributes()
         
