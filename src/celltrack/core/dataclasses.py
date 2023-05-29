@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from numba.experimental import jitclass
 from numba import typed, b1
-from numba.types import ListType, int32, Array, float64
+from numba.types import ListType, Array, float64, int64
 
 
 @dataclass
@@ -40,12 +40,12 @@ class Cell:
     centers_all_weight: list
 
 
-specs = [('id', int32), 
-    ('label', int32), 
-    ('zs', ListType(ListType(int32))), 
-    ('times', ListType(int32)), 
-    ('outlines', ListType(ListType(Array(int32, 2, 'C')))), 
-    ('masks', ListType(ListType(Array(int32, 2, 'C')))), 
+specsjitCell = [('id', int64), 
+    ('label', int64), 
+    ('zs', ListType(ListType(int64))), 
+    ('times', ListType(int64)), 
+    ('outlines', ListType(ListType(Array(int64, 2, 'C')))), 
+    ('masks', ListType(ListType(Array(int64, 2, 'C')))), 
     ('_rem', b1),
     ('centersi', ListType(Array(float64, 1, 'C'))), 
     ('centersj', ListType(Array(float64, 1, 'C'))), 
@@ -55,7 +55,7 @@ specs = [('id', int32),
     ('centers_all_weight', ListType(Array(float64, 1, 'C')))
 ]
 
-@jitclass(specs)
+@jitclass(specsjitCell)
 class jitCell(object):
     def __init__(self, id, label, zs, times, outlines, masks, rem, centersi, centersj, centers, centers_all, centers_weight, centers_all_weight):
         self.id    = id
@@ -81,27 +81,27 @@ def _cell_attr_to_jitcell_attr(cell: Cell):
     attr_list = list()
     
     # [0]: cell id
-    attr_list.append(cell.id)
+    attr_list.append(np.int64(cell.id))
     
     # [1]: cell label
-    attr_list.append(cell.label)
+    attr_list.append(np.int64(cell.label))
     
     # [2]: cell slices per time
     zs = typed.List()
     for tid in range(len(cell.times)):
-        zst = typed.List(np.array(cell.zs[tid]).astype('int32'))
+        zst = typed.List(np.array(cell.zs[tid]).astype('int64'))
         zs.append(zst)
     attr_list.append(zs)
     
     # [3]: cell times
-    attr_list.append(typed.List(np.array(cell.times).astype('int32')))
+    attr_list.append(typed.List(np.array(cell.times).astype('int64')))
     
     # [4]: cell outlines
     outlines = typed.List()
     for tid in range(len(cell.times)):
         outlinest = typed.List()
         for zid in range(len(cell.zs[tid])):
-            outlinesz = np.array(cell.outlines[tid][zid]).astype('int32')
+            outlinesz = np.array(cell.outlines[tid][zid]).astype('int64')
             outlinest.append(outlinesz)
         outlines.append(outlinest)
     attr_list.append(outlines)
@@ -111,7 +111,7 @@ def _cell_attr_to_jitcell_attr(cell: Cell):
     for tid in range(len(cell.times)):
         maskst = typed.List()
         for zid in range(len(cell.zs[tid])):
-            masksz = np.array(cell.masks[tid][zid]).astype('int32')
+            masksz = np.array(cell.masks[tid][zid]).astype('int64')
             maskst.append(masksz)
         masks.append(maskst)
     attr_list.append(masks) 
@@ -173,19 +173,19 @@ def _jitcell_attr_to_cell_attr(cell: jitCell):
     # [2]: cell slices per time
     zs = list()
     for tid in range(len(cell.times)):
-        zst = list(np.array(cell.zs[tid]).astype('int32'))
+        zst = list(np.array(cell.zs[tid]).astype('int64'))
         zs.append(zst)
     attr_list.append(zs)
     
     # [3]: cell times
-    attr_list.append(list(np.array(cell.times).astype('int32')))
+    attr_list.append(list(np.array(cell.times).astype('int64')))
     
     # [4]: cell outlines
     outlines = list()
     for tid in range(len(cell.times)):
         outlinest = list()
         for zid in range(len(cell.zs[tid])):
-            outlinesz = np.array(cell.outlines[tid][zid]).astype('int32')
+            outlinesz = np.array(cell.outlines[tid][zid]).astype('int64')
             outlinest.append(outlinesz)
         outlines.append(outlinest)
     attr_list.append(outlines)
@@ -195,7 +195,7 @@ def _jitcell_attr_to_cell_attr(cell: jitCell):
     for tid in range(len(cell.times)):
         maskst = list()
         for zid in range(len(cell.zs[tid])):
-            masksz = np.array(cell.masks[tid][zid]).astype('int32')
+            masksz = np.array(cell.masks[tid][zid]).astype('int64')
             maskst.append(masksz)
         masks.append(maskst)
     attr_list.append(masks) 
@@ -253,3 +253,19 @@ def contruct_Cell_from_jitCell(cell: jitCell):
     cell_attr = _jitcell_attr_to_cell_attr(cell)
     jitcell   = Cell(*cell_attr)
     return jitcell
+
+specsCTattributes = [('Labels', ListType(ListType(ListType(int64)))), 
+    ('Outlines', ListType(ListType(ListType(Array(int64, 2, 'C'))))), 
+    ('Masks', ListType(ListType(ListType(Array(int64, 2, 'C'))))), 
+    ('Centersi', ListType(ListType(ListType(float64)))), 
+    ('Centersj', ListType(ListType(ListType(float64))))
+]
+
+@jitclass(specsCTattributes)
+class CTattributes(object):
+    def __init__(self, Labels, Outlines, Masks, Centersi, Centersj):
+        self.Labels = Labels
+        self.Outlines = Outlines
+        self.Masks = Masks
+        self.Centersi = Centersi
+        self.Centersj = Centersj

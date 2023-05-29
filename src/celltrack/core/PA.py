@@ -70,8 +70,8 @@ class PlotAction():
         self.CTconflicts = CT.conflicts 
         self.CTplot_masks = CT.plot_masks
         self.CTunique_labels = CT.unique_labels
-        self.CTMasks = CT.Masks
-        self.CTLabels = CT.Labels
+        self.CTMasks = CT.ctattr.Masks
+        self.CTLabels = CT.ctattr.Labels
         # Point to sliders
         CT._time_slider.on_changed(self.update_slider_t)
         self.set_val_t_slider = CT._time_slider.set_val
@@ -100,6 +100,7 @@ class PlotAction():
         self.CTseparate_cells_t = CT.separate_cells_t
         self.CTmitosis = CT.mitosis
         self.CTapoptosis =  CT.apoptosis
+        self.CTupdate_labels = CT.update_labels
         
         self._CTget_cell = CT._get_cell
         
@@ -118,8 +119,8 @@ class PlotAction():
         self.CTconflicts = CT.conflicts 
         self.CTplot_masks = CT.plot_masks
         self.CTunique_labels = CT.unique_labels
-        self.CTMasks = CT.Masks
-        self.CTLabels = CT.Labels
+        self.CTMasks = CT.ctattr.Masks
+        self.CTLabels = CT.ctattr.Labels
 
     def __call__(self, event):
         # To be defined 
@@ -260,6 +261,10 @@ class PlotActionCT(PlotAction):
                 self.current_state="Sep"
                 self.switch_masks(masks=False)
                 self.separate_cells_t()
+            elif event.key == 'u':
+                self.CTupdate_labels()
+                self.visualization()
+                self.update()
             elif event.key == 'z':
                 self.CTundo_corrections(all=False)
                 self.visualization()

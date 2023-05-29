@@ -41,6 +41,7 @@ from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCe
 from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities
 from core.tools.ct_tools import compute_point_stack
 from core.tools.tools import points_within_hull, increase_point_resolution, sort_point_sequence
+from core.tools.tracking_tools import _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes
 
 from core.tracking import greedy_tracking
 from core.utils_ct import printfancy, printclear, progressbar
@@ -168,7 +169,7 @@ class CellTracking(object):
         if self._line_builder_mode not in ['points', 'lasso']: raise Exception
         self._blur_args = blur_args
         if CELLS!=None: 
-            self._init_CT_cell_attributes()
+            self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
             self.update_labels()
             self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
             self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
@@ -210,18 +211,18 @@ class CellTracking(object):
 
         self.cell_tracking(TLabels, TCenters, TOutlines, label_correspondance)
 
-        printfancy("tracking completed. initialising cells...", clear_prev=1)
+        printfancy("tracking completed. initialising cells...", clear_prev=0)
 
         self.init_cells(_Outlines, _Masks, _labels, label_correspondance)
         self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in self.cells])
 
-        printfancy("cells initialised. updating labels...", clear_prev=1)
+        printfancy("cells initialised. updating labels...", clear_prev=0)
 
-        self._init_CT_cell_attributes()
+        self.hints, self.ctattr= _init_CT_cell_attributes(self.jitcells)
         self.update_labels()
 
         
-        printfancy("labels updated", clear_prev=1)
+        printfancy("labels updated", clear_prev=0)
         
         self.cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
 
@@ -229,7 +230,7 @@ class CellTracking(object):
         self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
         self.backups = deque([self._backupCT], self._backup_steps)
         plt.close("all")
-        printclear(2)
+        ##printclear(2)
         print("##############    SEGMENTATION AND TRACKING FINISHED   ##############")
         
     def undo_corrections(self, all=False):
@@ -283,41 +284,41 @@ class CellTracking(object):
 
             printfancy("")
             printfancy("Running segmentation post-processing...")
-            printclear()
+            #printclear()
             printfancy("running concatenation correction... (1/2)")
 
             labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
             separate_concatenated_cells(stack, labels, Outlines, Masks, self._fullmat, self._relative, self._zneigh, self._overlap_th)
             
-            printclear()
+            #printclear()
             printfancy("concatenation correction completed (1/2)")
 
-            printclear()
+            #printclear()
             printfancy("running concatenation correction... (2/2)")
             
             labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
             separate_concatenated_cells(stack, labels, Outlines, Masks, self._fullmat, self._relative, self._zneigh, self._overlap_th)
             
-            printclear()
+            #printclear()
             printfancy("concatenation correction completed (2/2)")
 
-            printclear()
+            #printclear()
             printfancy("running short cell removal...")
             
             labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
             remove_short_cells(stack, labels, Outlines, Masks)
             
-            printclear()
+            #printclear()
             printfancy("short cell removal completed")
-            printclear()
+            #printclear()
             printfancy("computing attributes...")
 
             labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
             labels_per_t, positions_per_t, outlines_per_t = position3d(stack, labels, Outlines, Masks)  
 
-            printclear()
+            #printclear()
             printfancy("attributes computed")
-            printclear()
+            #printclear()
             printfancy("")
             printfancy("Segmentation and corrections completed")
 
@@ -325,7 +326,7 @@ class CellTracking(object):
             printfancy("######   CURRENT TIME = %d/%d   ######" % (t+1, self.times))
             printfancy("")
 
-            printfancy("Segmentation and corrections completed. Proceeding to next time", clear_prev=1)
+            printfancy("Segmentation and corrections completed. Proceeding to next time", clear_prev=0)
             TLabels.append(labels_per_t)
             TCenters.append(positions_per_t)
             TOutlines.append(outlines_per_t)
@@ -336,8 +337,8 @@ class CellTracking(object):
             _Masks.append(Masks)
             _labels.append(labels)
 
-            printclear(n=9)
-        printclear(n=2)
+            #printclear(n=9)
+        #printclear(n=2)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
@@ -382,77 +383,28 @@ class CellTracking(object):
         self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in self.cells])
     
     def _extract_unique_labels_and_max_label(self):
-        _ = np.hstack(self.Labels)
+        _ = np.hstack(self.ctattr.Labels)
         _ = np.hstack(_)
         self.unique_labels = np.unique(_)
         self.max_label = int(max(self.unique_labels))
 
-    def _extract_unique_labels_per_time(self):
-        self.unique_labels_T = list([list(np.unique(np.hstack(self.Labels[i]))) for i in range(self.times)])
-        self.unique_labels_T = [[int(x) for x in sublist] for sublist in self.unique_labels_T]
-
-    def _order_labels_t(self):
-        self._update_CT_cell_attributes()
-        self._extract_unique_labels_and_max_label()
-        self._extract_unique_labels_per_time()
-        P = self.unique_labels_T
-        Q = [[-1 for item in sublist] for sublist in P]
-        C = [[] for item in range(self.max_label+1)]
-        for i, p in enumerate(P):
-            for j, n in enumerate(p):
-                C[n].append([i,j])
-        PQ = [-1 for sublist in C]
-        nmax = 0
-        for i, p in enumerate(P):
-            for j, n in enumerate(p):
-                ids = C[n]
-                if Q[i][j] == -1:
-                    for ij in ids:
-                        Q[ij[0]][ij[1]] = nmax
-                    PQ[n] = nmax
-                    nmax += 1
-        return P,Q,PQ
-
-    def _order_labels_z(self):
-        current_max_label=-1
-        for t in range(self.times):
-
-            ids    = []
-            zs     = []
-            for cell in self.jitcells:
-                # Check if the current time is the first time cell appears
-                if t in cell.times:
-                    if cell.times.index(t)==0:
-                        ids.append(cell.id)
-                        zs.append(cell.centers[0][0])
-
-            sortidxs = np.argsort(zs)
-            ids = np.array(ids)[sortidxs]
-
-            for i, id in enumerate(ids):
-                cell = self._get_cell(cellid = id)
-                current_max_label+=1
-                cell.label=current_max_label
-
     def update_label_attributes(self):
-        self._update_CT_cell_attributes()
+        _reinit_update_CT_cell_attributes(self.jitcells[0], self.slices, self.times, self.ctattr)
+        _update_CT_cell_attributes(self.jitcells, self.ctattr)
         self._extract_unique_labels_and_max_label()       
-        self._extract_unique_labels_per_time()
+        self.unique_labels_T = _extract_unique_labels_per_time(self.ctattr.Labels, self.times)
         self._get_hints()
         self._get_number_of_conflicts()
         self.action_counter+=1
         
     def update_labels(self):
-        old_labels, new_labels, correspondance = self._order_labels_t()
+        self.update_label_attributes()
+        old_labels, new_labels, correspondance = _order_labels_t(self.unique_labels_T, self.max_label)
         for cell in self.jitcells:
             cell.label = correspondance[cell.label]
 
-        print()
-        start = time.time()
-        self._order_labels_z()
-        end = time.time()
-        print("order labels z", end - start)
-
+        _order_labels_z(self.jitcells, self.times)
+        
         self.update_label_attributes()
 
         compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
@@ -472,41 +424,6 @@ class CellTracking(object):
         total_marked_mito = len(self.mitotic_events)*3
         total_marked = total_marked_apo + total_marked_mito
         self.conflicts = total_hints-total_marked
-    
-    def _init_CT_cell_attributes(self):
-        self.hints = []
-        self.Labels   = []
-        self.Outlines = []
-        self.Masks    = []
-        self.Centersi = []
-        self.Centersj = []
-        
-    def _update_CT_cell_attributes(self):
-            del self.Labels[:]
-            del self.Outlines[:]
-            del self.Masks[:]
-            del self.Centersi[:]
-            del self.Centersj[:]
-            for t in range(self.times):
-                self.Labels.append([])
-                self.Outlines.append([])
-                self.Masks.append([])
-                self.Centersi.append([])
-                self.Centersj.append([])
-                for z in range(self.slices):
-                    self.Labels[t].append([])
-                    self.Outlines[t].append([])
-                    self.Masks[t].append([])
-                    self.Centersi[t].append([])
-                    self.Centersj[t].append([])
-            for cell in self.jitcells:
-                for tid, t in enumerate(cell.times):
-                    for zid, z in enumerate(cell.zs[tid]):
-                        self.Labels[t][z].append(cell.label)
-                        self.Outlines[t][z].append(cell.outlines[tid][zid])
-                        self.Masks[t][z].append(cell.masks[tid][zid])
-                        self.Centersi[t][z].append(cell.centersi[tid][zid])
-                        self.Centersj[t][z].append(cell.centersj[tid][zid])
 
     def append_cell_from_outline(self, outline, z, t, mask=None, sort=True):
         if sort:
@@ -596,7 +513,7 @@ class CellTracking(object):
 
     def join_cells(self, PACP):
         labels, Zs, Ts = list(zip(*PACP.list_of_cells))
-        sortids = np.argsort(labels)
+        sortids = np.argsort(np.asarray(labels))
         labels = np.array(labels)[sortids]
         Zs    = np.array(Zs)[sortids]
 
@@ -948,7 +865,7 @@ class CellTracking(object):
                 img = imgs[z,:,:]
                 self.PACP.zs[id] = z
                 self.plot_axis(ax[id], img, z, t)
-                labs = self.Labels[t][z]
+                labs = self.ctattr.Labels[t][z]
                 
                 for lab in labs:
                     cell = self._get_cell(lab)
@@ -998,7 +915,7 @@ class CellTracking(object):
             else:      
                 img = imgs[z,:,:]
                 PACP.zs[id] = z
-                labs = self.Labels[t][z]
+                labs = self.ctattr.Labels[t][z]
                 self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
                 for lab in labs:
                     cell = self._get_cell(lab)
