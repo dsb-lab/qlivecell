@@ -1,6 +1,7 @@
 from .tools import compute_distance_xy, compute_distance_xyz, checkConsecutive, whereNotConsecutive
-from ..dataclasses import Cell
-
+from ..dataclasses import Cell, jitCell
+from numba.typed import List
+from numba import njit
 import numpy as np
 
 def create_cell(id, label, zs, times, outlines, masks, stacks):
@@ -130,6 +131,27 @@ def extract_cell_centers(cell: Cell, stacks):
     cell.centers_weight = centers_weight
     cell.centers_all_weight = centers_all_weight
 
+def update_cell(cell: Cell, stacks):
+    remt = []
+    for tid, t in enumerate(cell.times):
+        if len(cell.zs[tid])==0:
+            remt.append(t)        
+
+    for t in remt:
+        idt = cell.times.index(t)
+        cell.times.pop(idt)  
+        cell.zs.pop(idt)  
+        cell.outlines.pop(idt)
+        cell.masks.pop(idt)
+
+    if len(cell.times)==0:
+        cell._rem=True
+    
+    sort_over_z(cell)
+    sort_over_t(cell)
+    extract_cell_centers(cell, stacks)
+
+    
 def sort_over_z(cell: Cell):
     idxs = []
     for tid, t in enumerate(cell.times):
@@ -174,9 +196,166 @@ def find_z_discontinuities(cell: Cell, stacks, max_label, currentcellid, t):
     else: 
         return None, None
 
-def update_cell(cell: Cell, stacks):
-    remt = []
-    for tid, t in enumerate(cell.times):
+@njit
+def nb_weighted_average(data, weights):
+    
+    numerator = 0
+    for i in range(len(data)):
+        numerator = numerator + data[i]*weights[i]
+        
+    denominator = sum(weights)
+    
+    return numerator/denominator
+
+@njit
+def extract_jitcell_centers(cell: jitCell, stacks):
+    # Function for extracting the cell centers for the masks of a given embryo. 
+    # It is extracted computing the positional centroid weighted with the intensisty of each point. 
+    # It returns list of similar shape as Outlines and Masks. 
+    centersi = List()
+    centersj = List()
+    centers  = List()
+    centers_all = List()
+    centers_weight = np.zeros(len(cell.times))
+    centers_all_weight = List()
+    # Loop over each z-level
+    for tid in range(len(cell.times)):
+        t = cell.times[tid]
+        
+        centersit = np.zeros(len(cell.zs[tid]))
+        centersjt = np.zeros(len(cell.zs[tid]))
+        centers_allt = List()
+        centers_all_weightt = np.zeros(len(cell.zs[tid]))
+    
+        for zid in range(len(cell.zs[tid])):
+            z = cell.zs[tid][zid]
+            mask = cell.masks[tid][zid]
+            # Current xy plane with the intensity of fluorescence 
+            img = stacks[t,z,:,:]
+
+            # x and y coordinates of the centroid.
+            maskx = mask[:,1]
+            masky = mask[:,0]
+            img_mask = np.zeros(len(maskx))
+            
+            for i in range(len(maskx)):
+                img_mask[i] = img[maskx[i], masky[i]]
+                
+            xs = nb_weighted_average(maskx, img_mask)
+            ys = nb_weighted_average(masky, img_mask)
+            
+            centersit[zid] = xs
+            centersjt[zid] = ys
+            centers_allt.append(np.asarray([z,ys,xs]))
+            centers_all_weightt[zid]=np.sum(img_mask)
+
+            if len(centers) < tid+1:
+                centers.append(np.asarray([z,ys,xs]))
+                centers_weight[tid] = np.sum(img_mask)
+            else:
+                curr_weight = np.sum(img_mask)
+                prev_weight = centers_weight[tid]
+                if curr_weight > prev_weight:
+                    centers[tid] = np.asarray([z,ys,xs])
+                    centers_weight[tid] = curr_weight
+    
+        centersi.append(centersit)
+        centersj.append(centersjt)
+        centers_all.append(centers_allt)
+        centers_all_weight.append(centers_all_weightt)
+        
+    cell.centersi = centersi
+    cell.centersj = centersj
+    cell.centers  = centers
+    cell.centers_all = centers_all
+    cell.centers_weight = centers_weight
+    cell.centers_all_weight = centers_all_weight
+
+@njit
+def sort_over_z_jit(cell: jitCell):
+    idxs = List()
+    for tid in range(len(cell.times)):
+        t = cell.times[tid]
+        idxs.append(np.argsort(np.asarray(cell.zs[tid])))
+    
+    newzs = List()
+    for tid in range(len(idxs)):
+        sublist = idxs[tid]
+        newzst = List()
+        for i in sublist:
+            newzst.append(cell.zs[tid][i])
+        newzs.append(newzst)
+
+    newouts = List()
+    for tid in range(len(idxs)):
+        sublist = idxs[tid]
+        newoutst = List()
+        for i in sublist:
+            newoutst.append(cell.outlines[tid][i])
+        newouts.append(newoutst)
+
+    newmasks = List()
+    for tid in range(len(idxs)):
+        sublist = idxs[tid]
+        newmaskst = List()
+        for i in sublist:
+            newmaskst.append(cell.masks[tid][i])
+        newmasks.append(newmaskst)
+    
+    cell.zs = newzs
+    cell.outlines = newouts
+    cell.masks = newmasks
+
+@njit
+def sort_over_t_jit(cell: jitCell):
+    idxs = np.argsort(np.asarray(cell.times))
+    cell.times.sort()
+    
+    newzs = List()
+    for tid in range(len(idxs)):
+        newzs.append(List(cell.zs[tid]))
+
+    newouts = List()
+    for tid in range(len(idxs)):
+        newouts.append(List(cell.outlines[tid]))
+    
+    newmasks = List()
+    for tid in range(len(idxs)):
+        newmasks.append(List(cell.masks[tid]))
+
+    cell.zs = newzs
+    cell.outlines = newouts
+    cell.masks = newmasks
+
+@njit
+def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, t):
+    tid   = cell.times.index(t)
+    if not checkConsecutive(cell.zs[tid]):
+        discontinuities = whereNotConsecutive(cell.zs[tid])
+        for discid, disc in enumerate(discontinuities):
+            try:
+                nextdisc = discontinuities[discid+1]
+            except IndexError:
+                nextdisc = len(cell.zs[tid])
+            newzs = cell.zs[tid][disc:nextdisc]
+            newoutlines = cell.outlines[tid][disc:nextdisc]
+            newmasks    = cell.masks[tid][disc:nextdisc]
+            new_cell = create_cell(currentcellid, max_label+1, [newzs], [t], [newoutlines], [newmasks], stacks)
+            currentcellid+=1
+            max_label+=1
+
+        cell.zs[tid]       = cell.zs[tid][0:discontinuities[0]]
+        cell.outlines[tid] = cell.outlines[tid][0:discontinuities[0]]
+        cell.masks[tid]    = cell.masks[tid][0:discontinuities[0]]
+        return max_label, currentcellid, new_cell
+    else: 
+        return None, None
+
+@njit
+def update_jitcell(cell: jitCell, stacks):
+    remt = List()
+    for tid in range(len(cell.times)):
+        t = cell.times[tid]
         if len(cell.zs[tid])==0:
             remt.append(t)        
 
@@ -190,7 +369,7 @@ def update_cell(cell: Cell, stacks):
     if len(cell.times)==0:
         cell._rem=True
     
-    sort_over_z(cell)
-    sort_over_t(cell)
-    extract_cell_centers(cell, stacks)
+    sort_over_z_jit(cell)
+    sort_over_t_jit(cell)
+    extract_jitcell_centers(cell, stacks)
     
