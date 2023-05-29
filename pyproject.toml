@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "CellTrack"
+version = "0.0.1"
+description = "A small example package"
+authors = [
+  { name = "Example Author", email = "author@example.com" },
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "cellpose>=2",
+    "matplotlib",
+    "numpy>=1.22",
+    "scikit-learn",
+    "scipy",
+    "tifffile",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/dsb-lab/celltrack"
+"Bug Tracker" = "https://github.com/dsb-lab/celltrack/issues"

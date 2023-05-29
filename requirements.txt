@@ -1,7 +1,0 @@
-cellpose==2.1.1
-matplotlib==3.5.2
-numpy==1.21.5
-scikit-learn==1.0.2
-# Editable install with no version control (scipy==1.9.1)
--e /home/pablo/anaconda3/lib/python3.9/site-packages/scipy-1.9.1-py3.9.egg-info
-tifffile==2021.7.2
