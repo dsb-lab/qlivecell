@@ -4,7 +4,7 @@ import random
 from core.utils_ct import printfancy
 
 def increase_point_resolution(outline, min_outline_length):
-    rounds = np.ceil(np.log2(min_outline_length/len(outline))).astype('int32')
+    rounds = np.ceil(np.log2(min_outline_length/len(outline))).astype('uint16')
     if rounds<=0:
             newoutline_new=np.copy(outline)
     for r in range(rounds):
@@ -15,10 +15,10 @@ def increase_point_resolution(outline, min_outline_length):
         newoutline_new = np.copy(pre_outline)
         i=0
         while i < len(pre_outline)*2 - 2:
-            newpoint = np.array([np.rint((newoutline_new[i] + newoutline_new[i+1])/2).astype('int32')])
+            newpoint = np.array([np.rint((newoutline_new[i] + newoutline_new[i+1])/2).astype('uint16')])
             newoutline_new = np.insert(newoutline_new, i+1, newpoint, axis=0)
             i+=2
-        newpoint = np.array([np.rint((pre_outline[-1] + pre_outline[0])/2).astype('int32')])
+        newpoint = np.array([np.rint((pre_outline[-1] + pre_outline[0])/2).astype('uint16')])
         newoutline_new = np.insert(newoutline_new, 0, newpoint, axis=0)
 
     return newoutline_new
@@ -53,7 +53,7 @@ def points_within_hull(hull):
     outx = hull[:,0][sortidx]
     outy = hull[:,1][sortidx]
     curry = outy[0]
-    minx = np.iinfo(np.int32).max
+    minx = np.iinfo(np.uint16).max
     maxx = 0
     for j,y in enumerate(outy):
         done=False
@@ -66,7 +66,7 @@ def points_within_hull(hull):
             else:
                 for x in range(minx, maxx+1):
                     pointsinside.append([x, curry])
-                minx = np.iinfo(np.int32).max
+                minx = np.iinfo(np.uint16).max
                 maxx = 0
                 curry= y
 

@@ -16,10 +16,10 @@ def get_axis_PACP(PACP, event):
             PACP.z = PACP.zs[id]
 
 def get_point_PACP(dim_change, event):
-    x = np.rint(event.xdata).astype(np.int64)
-    y = np.rint(event.ydata).astype(np.int64)
+    x = np.rint(event.xdata).astype(np.uint16)
+    y = np.rint(event.ydata).astype(np.uint16)
     picked_point = np.array([x, y])
-    return np.rint(picked_point / dim_change).astype('int32')
+    return np.rint(picked_point / dim_change).astype('uint16')
 
 def get_cell_PACP(PACP, event):
     dim_change=PACP.dim_change
@@ -328,16 +328,20 @@ class PlotActionCT(PlotAction):
 
                 if self.current_state=="del":
                     self.CP.stopit()
+
                     delattr(self, 'CP')
+
                     self.CTdelete_cell(self)
+
                     del self.list_of_cells[:]
                     self.current_subplot=None
                     self.current_state=None
                     self.ax_sel=None
                     self.z=None
+                    
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+
                     self.visualization()
-                    self.update()
 
                 elif self.current_state=="Com":
                     self.CP.stopit()
@@ -576,10 +580,7 @@ class PlotActionCT(PlotAction):
         self.instructions.set(text="Right-click to delete cell on a plane\nDouble right-click to delete on all planes")
         self.instructions.set_backgroundcolor((1.0,0.0,0.0,0.4))
         self.fig.patch.set_facecolor((1.0,0.0,0.0,0.1))
-        start = time.time()
         self.CP = CellPicker(self.fig.canvas, self.delete_cells_callback)
-        end = time.time()
-        print("Created cell picker", end - start)
         
     def delete_cells_callback(self, event):
         get_axis_PACP(self, event)

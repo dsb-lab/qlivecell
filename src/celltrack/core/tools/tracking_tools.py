@@ -1,9 +1,11 @@
 import numpy as np
 import numba
 from numba import jit, njit, typeof
-from numba.types import ListType, Array, int64, float64, int32
+from numba.types import ListType 
 from numba.typed import List
 from core.dataclasses import jitCell, CTattributes
+from core.tools.segmentation_tools import label_per_z, label_per_z_jit
+from core.tools.cell_tools import create_cell, update_cell
 
 @njit
 def _get_jitcell(jitcells, label=None, cellid=None):
@@ -126,11 +128,31 @@ def _update_CT_cell_attributes(jitcells : ListType(jitCell), ctattr : CTattribut
                 ctattr.Centersi[t][z].append(cell.centersi[tid][zid])
                 ctattr.Centersj[t][z].append(cell.centersj[tid][zid])
 
-@njit
-def foo(n):
-    b = List()
-    for i in range(n):
-        b.append(List([0]))
-        b[-1].pop(0)
-    return b
-B = foo(10)
+import time
+def _init_cell(cellid, lab, times, slices, FinalLabels, label_correspondance, _labels, _Outlines, _Masks):
+    
+    OUTLINES = []
+    MASKS    = []
+    TIMES    = []
+    ZS       = []
+
+    for t in range(times):
+        if lab in FinalLabels[t]:
+            labst = List([List(labstz) for labstz in _labels[t]])
+            Zlabel_l, Zlabel_z = label_per_z_jit(slices, labst)
+            TIMES.append(t)
+            idd  = np.where(np.array(label_correspondance[t])[:,1]==lab)[0][0]
+            _lab = label_correspondance[t][idd][0]
+            _labid = Zlabel_l.index(_lab)
+            ZS.append(Zlabel_z[_labid])
+            OUTLINES.append([])
+            MASKS.append([])
+            
+            for z in ZS[-1]:
+                id_l = np.where(np.array(_labels[t][z])==_lab)[0][0]
+                OUTLINES[-1].append(np.asarray(_Outlines[t][z][id_l] ,dtype='uint16'))
+                MASKS[-1].append(np.asarray(_Masks[t][z][id_l], dtype='uint16'))
+            
+    cell = create_cell(cellid, np.uint16(lab), ZS, TIMES, OUTLINES, MASKS, None)
+    
+    return cell

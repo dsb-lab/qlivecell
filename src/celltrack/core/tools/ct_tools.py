@@ -139,8 +139,8 @@ def set_cell_color(cell_stack, points, times, zs, color, dim_change, t=-1, z=-1)
                     outline = nb_unique(points[tid][zid], axis=0)
                     
                     for p in outline:
-                        x = np.int32(np.floor(p[1]*dim_change))
-                        y = np.int32(np.floor(p[0]*dim_change))
+                        x = np.uint16(np.floor(p[1]*dim_change))
+                        y = np.uint16(np.floor(p[0]*dim_change))
                         cell_stack[tc,zc,x,y] = color
 
 def get_cell_color(jitcell, label_colors, labels_color_id, alpha):

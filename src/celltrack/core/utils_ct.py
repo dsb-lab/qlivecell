@@ -27,7 +27,7 @@ def printfancy(string, finallength=70, clear_prev=0):
     print(new_str)
 
 def progressbar(step, total, width=46):
-    percent = np.rint(step*100/total).astype('int32')
+    percent = np.rint(step*100/total).astype('uint16')
     left = width * percent // 100
     right = width - left
     
@@ -42,6 +42,7 @@ def progressbar(step, total, width=46):
     elif percent > 99:
         print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
 
+# TODO if you put as f an string but that there is not present it works weird
 def get_file_embcode(path_data, f):
     """
     Parameters

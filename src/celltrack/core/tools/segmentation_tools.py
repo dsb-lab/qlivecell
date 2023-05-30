@@ -1,4 +1,23 @@
 import numpy as np
+from numba import typeof, njit
+from numba.typed import List
+
+@njit
+def label_per_z_jit(slices, labels):
+    # Data re-structuring to correct possible alignment of contiguous cells along the z axis. 
+    Zlabel_l = []
+    Zlabel_z = []
+    for z in range(slices):
+        for l in labels[z]:
+            if l not in Zlabel_l:
+                Zlabel_l.append(l)
+                zlabelz = List([z])
+                id = -1
+                Zlabel_z.append(zlabelz)
+            else:
+                id = Zlabel_l.index(l)
+                Zlabel_z[id].append(z)
+    return Zlabel_l, Zlabel_z
 
 def label_per_z(slices, labels):
     # Data re-structuring to correct possible alignment of contiguous cells along the z axis. 

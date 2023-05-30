@@ -38,11 +38,11 @@ from core.utils_ct import read_img_with_resolution, get_file_embcode
 from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose
 from core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
 from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
-from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities
+from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
 from core.tools.ct_tools import compute_point_stack
 from core.tools.tools import points_within_hull, increase_point_resolution, sort_point_sequence
-from core.tools.tracking_tools import _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes
-
+from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes
+from core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
 from core.tracking import greedy_tracking
 from core.utils_ct import printfancy, printclear, progressbar
 
@@ -214,7 +214,6 @@ class CellTracking(object):
         printfancy("tracking completed. initialising cells...", clear_prev=0)
 
         self.init_cells(_Outlines, _Masks, _labels, label_correspondance)
-        self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in self.cells])
 
         printfancy("cells initialised. updating labels...", clear_prev=0)
 
@@ -256,9 +255,10 @@ class CellTracking(object):
         if len(self.backups)==0:
             self.one_step_copy()
 
+# TODO This needs to work for jitcells in a fast way
     def one_step_copy(self, t=0):
-        cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
-        new_copy = backup_CellTrack(t, deepcopy(cells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
+        return
+        new_copy = backup_CellTrack(t, deepcopy(self.jitcells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
@@ -349,44 +349,29 @@ class CellTracking(object):
         self.FinalLabels   = FinalLabels
         self.FinalCenters  = FinalCenters
         self.FinalOutlines = FinalOutlines
-        
+    
     def init_cells(self, _Outlines, _Masks, _labels, label_correspondance):
         self.currentcellid = 0
         self.unique_labels = np.unique(np.hstack(self.FinalLabels))
         self.max_label = int(max(self.unique_labels))
-        self.cells = []
+        self.jitcells = typed.List()
 
-        printfancy("Progress: ")        
+        printfancy("Progress: ")
+
         for l, lab in enumerate(self.unique_labels):
             progressbar(l+1, len(self.unique_labels))
-            OUTLINES = []
-            MASKS    = []
-            TIMES    = []
-            ZS       = []
-            for t in range(self.times):
-                Zlabel_l, Zlabel_z = label_per_z(self.stacks.shape[1], _labels[t])
-                if lab in self.FinalLabels[t]:
-                    TIMES.append(t)
-                    idd  = np.where(np.array(label_correspondance[t])[:,1]==lab)[0][0]
-                    _lab = label_correspondance[t][idd][0]
-                    _labid = Zlabel_l.index(_lab)
-                    ZS.append(Zlabel_z[_labid])
-                    OUTLINES.append([])
-                    MASKS.append([])
-                    for z in ZS[-1]:
-                        id_l = np.where(np.array(_labels[t][z])==_lab)[0][0]
-                        OUTLINES[-1].append(_Outlines[t][z][id_l])
-                        MASKS[-1].append(_Masks[t][z][id_l])
-            
-            self.cells.append(create_cell(self.currentcellid, lab, ZS, TIMES, OUTLINES, MASKS, self.stacks))
-            self.currentcellid+=1
-        self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in self.cells])
-    
+            cell=_init_cell(l, lab, self.times, self.slices, self.FinalLabels, label_correspondance, _labels, _Outlines, _Masks)
+
+            jitcell = contruct_jitCell_from_Cell(cell)
+            update_jitcell(jitcell, self.stacks)
+            self.jitcells.append(jitcell)
+        self.currentcellid = len(self.unique_labels)
+        
     def _extract_unique_labels_and_max_label(self):
         _ = np.hstack(self.ctattr.Labels)
         _ = np.hstack(_)
         self.unique_labels = np.unique(_)
-        self.max_label = int(max(self.unique_labels))
+        self.max_label = np.uint16(max(self.unique_labels))
 
     def update_label_attributes(self):
         _reinit_update_CT_cell_attributes(self.jitcells[0], self.slices, self.times, self.ctattr)
@@ -450,10 +435,11 @@ class CellTracking(object):
         else: PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel)
 
     def complete_add_cell(self, PACP):
+
         if self._line_builder_mode == 'points':
             if len(PACP.linebuilder.xs)<3:
                 return
-            new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(PACP.linebuilder.xs) / self.dim_change).astype(np.int64), np.rint(np.array(PACP.linebuilder.ys) / self.dim_change).astype(np.int64))])
+            new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(PACP.linebuilder.xs) / self.dim_change).astype(np.uint16), np.rint(np.array(PACP.linebuilder.ys) / self.dim_change).astype(np.uint16))])
             if np.max(new_outline)>self.stack_dims[0]:
                 printfancy("ERROR: drawing out of image")
                 return
@@ -461,8 +447,12 @@ class CellTracking(object):
         elif self._line_builder_mode == 'lasso':
             if len(PACP.linebuilder.mask)<6:
                 return
-            new_outline = PACP.linebuilder.outline
-            mask = [PACP.linebuilder.mask]
+            new_outline = np.floor(PACP.linebuilder.outline / self.dim_change)
+            new_outline = new_outline.astype('uint16')
+            if self.dim_change !=1: mask = None
+            mask = np.floor(PACP.linebuilder.mask / self.dim_change)
+            mask = [mask.astype("uint16")]
+            
         self.append_cell_from_outline(new_outline, PACP.z, PACP.t, mask=mask)
                 
         self.update_label_attributes()
@@ -790,6 +780,13 @@ class CellTracking(object):
         
         self.plot_masks=True
         
+        t = self.times
+        z = self.slices
+        x,y = self.plot_stack_dims
+
+        self._masks_stack = np.zeros((t,z,x,y,4))
+        self._outlines_stack = np.zeros((t,z,x,y,4))
+
         compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
         compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
 
@@ -1086,7 +1083,7 @@ class CellTracking(object):
     #     masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
     #     for cell in self.cells:
     #         if cell.label not in labels: continue
-    #         if color is None: _color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('float32')
+    #         if color is None: _color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('float16')
     #         else: _color=color
     #         for tid, tc in enumerate(cell.times):
     #             for zid, zc in enumerate(cell.zs[tid]):

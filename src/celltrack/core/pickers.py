@@ -66,19 +66,19 @@ class LineBuilder_lasso:
         self.mask=None
         
     def onselect(self, verts):
-        self.outline = np.floor([[x[0],x[1]] for x in verts]).astype('int32')
+        self.outline = np.floor([[x[0],x[1]] for x in verts]).astype('uint16')
         self.outline = np.unique(self.outline, axis=0)
 
         fl = 100
         ol = len(self.outline)
-        step = np.ceil(ol/fl).astype('int32')
+        step = np.ceil(ol/fl).astype('uint16')
         self.outline = self.outline[::step]
         
         imin = min(self.outline[:,0])
         imax = max(self.outline[:,0])
         jmin = min(self.outline[:,1])
         jmax = max(self.outline[:,1])
-        self.mask = np.array([[i,j] for i in range(imin, imax+1) for j in  range(jmin, jmax+1)]).astype('int32')
+        self.mask = np.array([[i,j] for i in range(imin, imax+1) for j in  range(jmin, jmax+1)]).astype('uint16')
         path = Path(verts)
         self.ind = np.nonzero(path.contains_points(self.mask))[0]
         self.mask = np.unique(self.mask[self.ind], axis=0)

@@ -4,8 +4,9 @@ from numba.typed import List
 from numba import njit
 import numpy as np
 
-def create_cell(id, label, zs, times, outlines, masks, stacks):
-    cell = Cell(id, label, zs, times, outlines, masks, False, [], [], [], [], [], [])
+def create_cell(id, label, zs, times, outlines, masks, stacks=None):
+    cell = Cell(np.uint16(id), np.uint16(label), zs, times, outlines, masks, False, [np.array([0], dtype='uint8')], [np.array([0], dtype='uint8')], [np.array([0], dtype='uint8')], [[np.array([0], dtype='uint8')]], np.array([0], dtype='uint8'), [np.array([0], dtype='uint8')])
+    if stacks is None: return cell
     update_cell(cell, stacks)
     return cell
             
@@ -150,7 +151,6 @@ def update_cell(cell: Cell, stacks):
     sort_over_z(cell)
     sort_over_t(cell)
     extract_cell_centers(cell, stacks)
-
     
 def sort_over_z(cell: Cell):
     idxs = []
@@ -216,16 +216,16 @@ def extract_jitcell_centers(cell: jitCell, stacks):
     centersj = List()
     centers  = List()
     centers_all = List()
-    centers_weight = np.zeros(len(cell.times))
+    centers_weight = np.zeros(len(cell.times), dtype='float32')
     centers_all_weight = List()
     # Loop over each z-level
     for tid in range(len(cell.times)):
         t = cell.times[tid]
         
-        centersit = np.zeros(len(cell.zs[tid]))
-        centersjt = np.zeros(len(cell.zs[tid]))
+        centersit = np.zeros(len(cell.zs[tid]), dtype='float32')
+        centersjt = np.zeros(len(cell.zs[tid]), dtype='float32')
         centers_allt = List()
-        centers_all_weightt = np.zeros(len(cell.zs[tid]))
+        centers_all_weightt = np.zeros(len(cell.zs[tid]), dtype='float32')
     
         for zid in range(len(cell.zs[tid])):
             z = cell.zs[tid][zid]
@@ -236,7 +236,7 @@ def extract_jitcell_centers(cell: jitCell, stacks):
             # x and y coordinates of the centroid.
             maskx = mask[:,1]
             masky = mask[:,0]
-            img_mask = np.zeros(len(maskx))
+            img_mask = np.zeros(len(maskx), dtype='float32')
             
             for i in range(len(maskx)):
                 img_mask[i] = img[maskx[i], masky[i]]
@@ -246,17 +246,17 @@ def extract_jitcell_centers(cell: jitCell, stacks):
             
             centersit[zid] = xs
             centersjt[zid] = ys
-            centers_allt.append(np.asarray([z,ys,xs]))
+            centers_allt.append(np.asarray([z,ys,xs], dtype='float32'))
             centers_all_weightt[zid]=np.sum(img_mask)
 
             if len(centers) < tid+1:
-                centers.append(np.asarray([z,ys,xs]))
+                centers.append(np.asarray([z,ys,xs], dtype='float32'))
                 centers_weight[tid] = np.sum(img_mask)
             else:
                 curr_weight = np.sum(img_mask)
                 prev_weight = centers_weight[tid]
                 if curr_weight > prev_weight:
-                    centers[tid] = np.asarray([z,ys,xs])
+                    centers[tid] = np.asarray([z,ys,xs], dtype='float32')
                     centers_weight[tid] = curr_weight
     
         centersi.append(centersit)
