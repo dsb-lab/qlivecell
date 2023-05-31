@@ -5,7 +5,13 @@ from numba import njit
 import numpy as np
 
 def create_cell(id, label, zs, times, outlines, masks, stacks=None):
-    cell = Cell(np.uint16(id), np.uint16(label), zs, times, outlines, masks, False, [np.array([0], dtype='uint8')], [np.array([0], dtype='uint8')], [np.array([0], dtype='uint8')], [[np.array([0], dtype='uint8')]], np.array([0], dtype='uint8'), [np.array([0], dtype='uint8')])
+    centersi = [np.array([0], dtype='float32') for tid, t in enumerate(times)]
+    centersj = [np.array([0], dtype='float32') for tid, t in enumerate(times)]
+    centers = [np.array([0], dtype='float32') for tid, t in enumerate(times)]
+    centers_all = [[np.array([0], dtype='float32') for zid, z in enumerate(zs[tid])] for tid, t in enumerate(times)]
+    centers_weight =  np.array([0 for t in times], dtype='float32')
+    centers_all_weight = [np.array([0], dtype='float32') for t in times]
+    cell = Cell(np.uint16(id), np.uint16(label), zs, times, outlines, masks, False, centersi, centersj, centers, centers_all, centers_weight, centers_all_weight)
     if stacks is None: return cell
     update_cell(cell, stacks)
     return cell

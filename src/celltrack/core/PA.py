@@ -215,37 +215,37 @@ class PlotActionCT(PlotAction):
     def __call__(self, event):
         if self.current_state==None:
             if event.key == 'd':
-                self.CTone_step_copy(self.t)
+                #self.CTone_step_copy(self.t)
                 self.current_state="del"
                 self.switch_masks(masks=False)
                 self.delete_cells()
             elif event.key == 'C':
-                self.CTone_step_copy(self.t)
+                #self.CTone_step_copy(self.t)
                 self.current_state="Com"
                 self.switch_masks(masks=False)
                 self.combine_cells_t()
             elif event.key == 'c':
-                self.CTone_step_copy(self.t)
+                #self.CTone_step_copy(self.t)
                 self.current_state="com"
                 self.switch_masks(masks=False)
                 self.combine_cells_z()
             elif event.key == 'j':
-                self.CTone_step_copy(self.t)
+                #self.CTone_step_copy(self.t)
                 self.current_state="joi"
                 self.switch_masks(masks=False)
                 self.join_cells()
             elif event.key == 'M':
-                self.CTone_step_copy(self.t)
+                #self.CTone_step_copy(self.t)
                 self.current_state="mit"
                 self.switch_masks(masks=False)
                 self.mitosis()
             if event.key == 'a':
-                self.CTone_step_copy()
+                #self.CTone_step_copy()
                 self.current_state="add"
                 self.switch_masks(masks=False)
                 self.add_cells()
             elif event.key == 'A':
-                self.CTone_step_copy(self.t)
+                #self.CTone_step_copy(self.t)
                 self.current_state="apo"
                 self.switch_masks(masks=False)
                 self.apoptosis()
@@ -257,7 +257,7 @@ class PlotActionCT(PlotAction):
             elif event.key == 'm':
                 self.switch_masks(masks=None)
             elif event.key == 'S':
-                self.CTone_step_copy(self.t)
+                #self.CTone_step_copy(self.t)
                 self.current_state="Sep"
                 self.switch_masks(masks=False)
                 self.separate_cells_t()
@@ -290,8 +290,11 @@ class PlotActionCT(PlotAction):
                     if hasattr(self, 'linebuilder'):
                         self.linebuilder.stopit()
                         delattr(self, 'linebuilder')
-                self.CP.stopit()
-                delattr(self, 'CP')
+                try:
+                    self.CP.stopit()
+                    delattr(self, 'CP')
+                except AttributeError:
+                    pass
                 
                 del self.list_of_cells[:]
                 del self.CTlist_of_cells[:]
@@ -307,8 +310,11 @@ class PlotActionCT(PlotAction):
 
             elif event.key=='enter':
                 if self.current_state=="add":
-                    self.CP.stopit()
-                    delattr(self, 'CP')
+                    try:
+                        self.CP.stopit()
+                        delattr(self, 'CP')
+                    except AttributeError:
+                        pass
                     if self.current_subplot!=None:
                         self.patch.set_visible(False)
                         self.fig.patches.pop()
@@ -555,6 +561,7 @@ class PlotActionCT(PlotAction):
     def add_cells(self):
         self.title.set(text="ADD CELL MODE", ha='left', x=0.01)
         if hasattr(self, "CP"): self.current_subplot = self.CP.current_subplot
+        if len(self.ax)==1: self.current_subplot = 0
         if self.current_subplot == None:
             self.instructions.set(text="Double left-click to select Z-PLANE")
             self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
@@ -571,8 +578,10 @@ class PlotActionCT(PlotAction):
             self.instructions.set(text="Right click to add points. Press ENTER when finished")
             self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
             self.update()
-    
-            self.z = self.CP.z
+            
+            if len(self.zs)==1: self.z = self.zs[0]
+            else: self.z = self.CP.z
+            
             self.CTadd_cell(self)
             
     def delete_cells(self):
