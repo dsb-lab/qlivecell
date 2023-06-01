@@ -135,8 +135,10 @@ class CellTracking(object):
         
         self.dim_change = self.plot_stack_dims[0] / self.stack_dims[0]
         self._plot_xyresolution= self._xyresolution * self.dim_change
+        
         if not hasattr(plot_layout, '__iter__'): raise # Need to revise this error 
         self.plot_layout       = plot_layout
+        
         self.plot_overlap      = plot_overlap
         self._cmap_name        = masks_cmap
         self._cmap             = cm.get_cmap(self._cmap_name)
@@ -516,8 +518,8 @@ class CellTracking(object):
         
         self.update_label_attributes()
 
-        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=new_labs, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=new_labs, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=new_labs, alpha=0, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=new_labs, alpha=0, mode="outlines")
 
     def join_cells(self, PACP):
         labels, Zs, Ts = list(zip(*PACP.list_of_cells))
@@ -552,8 +554,8 @@ class CellTracking(object):
         
         self.update_label_attributes()
         
-        compute_point_stack(self._masks_stack, self.jitcells, [t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, [t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, [t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, alpha=0, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, [t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, alpha=0, mode="outlines")
 
     def combine_cells_z(self, PACP):
         if len(PACP.list_of_cells)<2:
@@ -590,8 +592,8 @@ class CellTracking(object):
         
         self.update_label_attributes()
         
-        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, alpha=1, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, alpha=1, mode="outlines")
 
     def combine_cells_t(self):
         # 2 cells selected
