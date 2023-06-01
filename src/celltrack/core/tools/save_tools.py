@@ -1,7 +1,8 @@
 from core.utils_ct import correct_path
 import dataclasses, json
 import numpy as np
-from core.dataclasses import Cell
+from core.dataclasses import Cell, CellTracking_info
+from core.tools.cell_tools import create_cell
 
 class EnhancedJSONEncoder(json.JSONEncoder):
         def default(self, o):
@@ -9,7 +10,7 @@ class EnhancedJSONEncoder(json.JSONEncoder):
                 return dataclasses.asdict(o)
             if isinstance(o, np.ndarray):
                 return o.tolist()
-            if isinstance(o, np.uint64):
+            if isinstance(o, np.uint16):
                 return int(o)
 
             return super().default(o)
@@ -33,9 +34,27 @@ class CellJSONDecoder(json.JSONDecoder):
                 for z, masksz in enumerate(maskst):
                     masks[t][z] = np.array(masksz).astype('int32')
 
-            return Cell(cellid, label, zs, times, outlines, masks, False, [], [], [], [], [], [])
+            return create_cell(cellid, label, zs, times, outlines, masks, stacks=None)
         else: return d
 
+class CTinfoJSONDecoder(json.JSONDecoder):
+    def __init__(self, *args, **kwargs):
+        json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, d):
+        if 'xyresolution' in d:
+            xyresolution = d['xyresolution']
+            zresolution = d['zresolution']
+            times = d['times']
+            slices = d['slices']
+            stack_dims = d['stack_dims']
+            time_step = d['time_step']
+            apo_cells = d['apo_cells']
+            mito_cells = d['mito_cells']
+
+            return CellTracking_info(xyresolution, zresolution, times, slices, stack_dims, time_step, apo_cells, mito_cells)
+        else: return d
+        
 def save_cells(cells, CT_info, path=None, filename=None):
     """ save cell objects obtained with celltrack.py
 
@@ -88,6 +107,6 @@ def load_cells(path=None, filename=None):
 
     file_to_store = pthsave+"_info.json"
     with open(file_to_store, 'r', encoding='utf-8') as f:
-        cellinfo_dict = json.load(f, cls=CellJSONDecoder)
+        cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
 
     return cell_dict, cellinfo_dict

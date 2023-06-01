@@ -42,6 +42,8 @@ from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinu
 from core.tools.ct_tools import compute_point_stack
 from core.tools.tools import points_within_hull, increase_point_resolution, sort_point_sequence
 from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes
+from core.tools.save_tools import load_cells
+
 from core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
 from core.tracking import greedy_tracking
 from core.utils_ct import printfancy, printclear, progressbar
@@ -93,6 +95,13 @@ class CellTracking(object):
         line_builder_mode='lasso', 
         blur_args=None):
         
+        self._given_Outlines = given_Outlines
+
+        self.path_to_save      = pthtosave
+        self.embcode           = embcode
+        self.stacks            = stacks
+        self.max_label         = 0
+        
         if CELLS !=None: 
             self._init_with_cells(CELLS, CT_info)
         else:
@@ -118,12 +127,6 @@ class CellTracking(object):
             self.apoptotic_events  = []
             self.mitotic_events    = []
         
-        self._given_Outlines = given_Outlines
-
-        self.path_to_save      = pthtosave
-        self.embcode           = embcode
-        self.stacks            = stacks
-        self.max_label         = 0
 
         ##  Plotting Attributes  ##
         # We assume that both dimension have the same resolution
@@ -168,20 +171,23 @@ class CellTracking(object):
         self._line_builder_mode = line_builder_mode
         if self._line_builder_mode not in ['points', 'lasso']: raise Exception
         self._blur_args = blur_args
-        if CELLS!=None: 
-            self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
-            self.update_labels(backup=False)
-            self.backupCT  = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
-            self._backupCT = backup_CellTrack(0, self.cells, self.apoptotic_events, self.mitotic_events)
-            self.backups = deque([self._backupCT], self._backup_steps)
-            plt.close("all")
-
+        
         t = self.times
         z = self.slices
         x,y = self.plot_stack_dims
 
         self._masks_stack = np.zeros((t,z,x,y,4))
         self._outlines_stack = np.zeros((t,z,x,y,4))
+        
+        if CELLS!=None: 
+            self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
+            self.update_labels(backup=False)
+            cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
+            self.backupCT  = backup_CellTrack(0, cells, self.apoptotic_events, self.mitotic_events)
+            self._backupCT = backup_CellTrack(0, cells, self.apoptotic_events, self.mitotic_events)
+            self.backups = deque([self._backupCT], self._backup_steps)
+            plt.close("all")
+
 
     def _init_with_cells(self, CELLS, CT_info):
         self._xyresolution    = CT_info.xyresolution 
@@ -194,6 +200,7 @@ class CellTracking(object):
         self.mitotic_events   = CT_info.mito_cells
         cells = CELLS
         self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in cells])
+        for cell in self.jitcells: update_jitcell(cell, self.stacks)
         self.extract_currentcellid()
     
     def extract_currentcellid(self):
