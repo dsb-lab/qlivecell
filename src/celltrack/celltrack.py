@@ -66,6 +66,7 @@ class CellTracking(object):
         stacks, 
         pthtosave, 
         embcode, 
+        stacks_for_plotting=None, 
         given_Outlines=None, 
         CELLS=None, 
         CT_info=None, 
@@ -132,7 +133,12 @@ class CellTracking(object):
         # We assume that both dimension have the same resolution
         if plot_stack_dims is not None: self.plot_stack_dims = plot_stack_dims
         else: self.plot_stack_dims = self.stack_dims
-        
+
+        if stacks_for_plotting is None: self.stacks_for_plotting = self.stacks
+        else: 
+            self.stacks_for_plotting = stacks_for_plotting  
+            self.plot_stack_dims = [self.plot_stack_dims[0], self.plot_stack_dims[1], 3]   
+               
         self.dim_change = self.plot_stack_dims[0] / self.stack_dims[0]
         self._plot_xyresolution= self._xyresolution * self.dim_change
         
@@ -176,7 +182,7 @@ class CellTracking(object):
         
         t = self.times
         z = self.slices
-        x,y = self.plot_stack_dims
+        x,y = self.plot_stack_dims[0:2]
 
         self._masks_stack = np.zeros((t,z,x,y,4))
         self._outlines_stack = np.zeros((t,z,x,y,4))
@@ -781,28 +787,35 @@ class CellTracking(object):
         if self.plot_layout[0]*self.plot_layout[1]==1: self.plot_overlap=0
         if plot_outline_width is not None: self._neigh_index = plot_outline_width
         if plot_stack_dims is not None: 
+            if len(self.plot_stack_dims)==3: plot_stack_dims=(*plot_stack_dims, 3)
             self.plot_stack_dims = plot_stack_dims
             self.dim_change = plot_stack_dims[0] / self.stack_dims[0]
             self._plot_xyresolution= self._xyresolution * self.dim_change
-            
+                
         if masks_cmap is not None:
             self._cmap_name    = masks_cmap
             self._cmap         = cm.get_cmap(self._cmap_name)
             self._label_colors = self._cmap.colors
             self._assign_color_to_label()
         if self.dim_change != 1:
-            self.plot_stacks = np.zeros((self.times, self.slices, self.plot_stack_dims[0], self.plot_stack_dims[1]))
+            self.plot_stacks = np.zeros((self.times, self.slices, *self.plot_stack_dims))
+            
             for t in range(self.times):
                 for z in range(self.slices):
-                    self.plot_stacks[t, z] = cv2.resize(self.stacks[t,z], self.plot_stack_dims)
+                    if len(self.plot_stack_dims)==3:
+                        for ch in range(3):
+                            self.plot_stacks[t, z,:,:,ch] = cv2.resize(self.stacks_for_plotting[t,z,:,:,ch], self.plot_stack_dims[0:2])
+                            self.plot_stacks[t, z,:,:,ch] = self.plot_stacks[t, z,:,:,ch]/np.max(self.plot_stacks[t, z,:,:,ch])
+                    else:
+                        self.plot_stacks[t, z] = cv2.resize(self.stacks_for_plotting[t,z], self.plot_stack_dims)
         else:
-            self.plot_stacks = self.stacks
+            self.plot_stacks = self.stacks_for_plotting
         
         self.plot_masks=True
         
         t = self.times
         z = self.slices
-        x,y = self.plot_stack_dims
+        x,y = self.plot_stack_dims[0:2]
 
         self._masks_stack = np.zeros((t,z,x,y,4))
         self._outlines_stack = np.zeros((t,z,x,y,4))
