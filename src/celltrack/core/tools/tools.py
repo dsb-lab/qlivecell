@@ -4,9 +4,9 @@ import random
 from core.utils_ct import printfancy
 
 def increase_point_resolution(outline, min_outline_length):
-    rounds = np.ceil(np.log2(min_outline_length/len(outline))).astype('uint16')
+    rounds = np.ceil(np.log2(min_outline_length/len(outline))).astype('int16')
     if rounds<=0:
-            newoutline_new=np.copy(outline)
+        newoutline_new=np.copy(outline)
     for r in range(rounds):
         if r==0:
             pre_outline=np.copy(outline)
