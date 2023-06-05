@@ -385,9 +385,11 @@ class CellTracking(object):
         self.currentcellid = len(self.unique_labels)
         
     def _extract_unique_labels_and_max_label(self):
-        _ = np.hstack(self.ctattr.Labels)
-        _ = np.hstack(_)
-        self.unique_labels = np.unique(_)
+        self.unique_labels = []
+        for t in range(len(self.ctattr.Labels)):
+            for z in range(len(self.ctattr.Labels[t])):
+                for lab in self.ctattr.Labels[t][z]:
+                    if lab not in self.unique_labels: self.unique_labels.append(lab)
         self.max_label = np.uint16(max(self.unique_labels))
 
     def update_label_attributes(self):
