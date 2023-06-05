@@ -118,3 +118,21 @@ def get_outlines_masks_labels(label_img):
         outline[:] = outline[:, [1,0]]
         outlines.append(outline)
     return outlines, masks
+
+from scipy.ndimage import distance_transform_edt
+# Function based on: https://github.com/scikit-image/scikit-image/blob/v0.20.0/skimage/segmentation/_expand_labels.py#L5-L95
+def increase_outline_width(label_image, neighs):
+
+    distances, nearest_label_coords = distance_transform_edt(label_image == np.array([0.,0.,0.,0.]), return_indices=True)
+    labels_out = np.zeros_like(label_image)
+    dilate_mask = distances <= neighs
+    # build the coordinates to find nearest labels,
+    # in contrast to [1] this implementation supports label arrays
+    # of any dimension
+    masked_nearest_label_coords = [
+        dimension_indices[dilate_mask]
+        for dimension_indices in nearest_label_coords
+    ]
+    nearest_labels = label_image[tuple(masked_nearest_label_coords)]
+    labels_out[dilate_mask] = nearest_labels
+    return labels_out

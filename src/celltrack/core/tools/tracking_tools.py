@@ -127,7 +127,16 @@ def _update_CT_cell_attributes(jitcells : ListType(jitCell), ctattr : CTattribut
                 ctattr.Masks[t][z].append(cell.masks[tid][zid])
                 ctattr.Centersi[t][z].append(cell.centersi[tid][zid])
                 ctattr.Centersj[t][z].append(cell.centersj[tid][zid])
-
+        
+def _extract_unique_labels_and_max_label(Labels):
+    unique_labels = []
+    for t in range(len(Labels)):
+        for z in range(len(Labels[t])):
+            for lab in Labels[t][z]:
+                if lab not in unique_labels: unique_labels.append(lab)
+    max_label = np.uint16(max(unique_labels))
+    return unique_labels, max_label
+    
 def _init_cell(cellid, lab, times, slices, FinalLabels, label_correspondance, Labels_tz, Outlines_tz, Masks_tz):
     
     OUTLINES = []

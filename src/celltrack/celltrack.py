@@ -12,7 +12,6 @@ from matplotlib.lines import lineStyles
 
 import random
 from scipy.spatial import ConvexHull
-from scipy.ndimage import distance_transform_edt
 
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
@@ -40,8 +39,8 @@ from core.tools.segmentation_tools import label_per_z, assign_labels, separate_c
 from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
 from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
 from core.tools.ct_tools import compute_point_stack
-from core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence
-from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes
+from core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence, increase_outline_width
+from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes, _extract_unique_labels_and_max_label
 from core.tools.save_tools import load_cells
 
 from core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
@@ -385,19 +384,11 @@ class CellTracking(object):
             update_jitcell(jitcell, self.stacks)
             self.jitcells.append(jitcell)
         self.currentcellid = len(self.unique_labels)
-        
-    def _extract_unique_labels_and_max_label(self):
-        self.unique_labels = []
-        for t in range(len(self.ctattr.Labels)):
-            for z in range(len(self.ctattr.Labels[t])):
-                for lab in self.ctattr.Labels[t][z]:
-                    if lab not in self.unique_labels: self.unique_labels.append(lab)
-        self.max_label = np.uint16(max(self.unique_labels))
-
+    
     def update_label_attributes(self):
         _reinit_update_CT_cell_attributes(self.jitcells[0], self.slices, self.times, self.ctattr)
         _update_CT_cell_attributes(self.jitcells, self.ctattr)
-        self._extract_unique_labels_and_max_label()       
+        self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(self.ctattr.Labels)       
         self.unique_labels_T = _extract_unique_labels_per_time(self.ctattr.Labels, self.times)
         self._get_hints()
         self._get_number_of_conflicts()
@@ -447,7 +438,7 @@ class CellTracking(object):
         if mask is None: masks = [[mask_from_outline(new_outline_sorted_highres)]]
         else: masks = [[mask]]
         
-        self._extract_unique_labels_and_max_label()
+        self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(self.ctattr.Labels)
         new_cell = create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self.stacks)
         self.max_label+=1
         self.currentcellid+=1
@@ -671,7 +662,9 @@ class CellTracking(object):
         new_cell.times    = new_cell.times[border:]
         new_cell.outlines = new_cell.outlines[border:]
         new_cell.masks    = new_cell.masks[border:]
-        self._extract_unique_labels_and_max_label()
+        
+        self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(self.ctattr.Labels)
+        
         new_cell.label = self.max_label+1
         new_cell.id=self.currentcellid
         self.currentcellid+=1
@@ -735,37 +728,6 @@ class CellTracking(object):
                         break
         
         self.jitcells.pop(idx)
-
-    def point_neighbors(self, outline):
-        self.stack_dims[0]
-        neighs=[[dx,dy] for dx in range(-self._neigh_index, self._neigh_index+1) for dy in range(-self._neigh_index, self._neigh_index+1)] 
-        extra_outline = []
-        for p in outline:
-            neighs_p = self.voisins(neighs, p[0], p[1])
-            extra_outline = extra_outline + neighs_p
-        extra_outline = np.array(extra_outline)
-        outline = np.append(outline, extra_outline, axis=0)
-        return np.unique(outline, axis=0)
-        
-    # based on https://stackoverflow.com/questions/29912408/finding-valid-neighbor-indices-in-2d-array    
-    def voisins(self, neighs,x,y): return [[x+dx,y+dy] for (dx,dy) in neighs]
-
-    # Function based on: https://github.com/scikit-image/scikit-image/blob/v0.20.0/skimage/segmentation/_expand_labels.py#L5-L95
-    def increase_outline_width(self, label_image, neighs):
-
-        distances, nearest_label_coords = distance_transform_edt(label_image == np.array([0.,0.,0.,0.]), return_indices=True)
-        labels_out = np.zeros_like(label_image)
-        dilate_mask = distances <= neighs
-        # build the coordinates to find nearest labels,
-        # in contrast to [1] this implementation supports label arrays
-        # of any dimension
-        masked_nearest_label_coords = [
-            dimension_indices[dilate_mask]
-            for dimension_indices in nearest_label_coords
-        ]
-        nearest_labels = label_image[tuple(masked_nearest_label_coords)]
-        labels_out[dilate_mask] = nearest_labels
-        return labels_out
     
     def plot_axis(self, _ax, img, z, t):
         im = _ax.imshow(img, vmin=0, vmax=255)
