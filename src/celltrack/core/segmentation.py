@@ -1,7 +1,7 @@
 import cv2
 
-from .utils_ct import printfancy, progressbar
-from .tools.tools import increase_point_resolution, mask_from_outline, get_masks_labels
+from .utils_ct import printfancy, progressbar, printclear
+from .tools.tools import increase_point_resolution, mask_from_outline, get_outlines_masks_labels
 import cv2
 
 def cell_segmentation2D_cellpose(img, args):
@@ -36,7 +36,7 @@ def cell_segmentation2D_cellpose(img, args):
         masks, flows, styles, diam = model.eval(img, channels=chs, flow_threshold=fth)
         
     outlines = outlines_list(masks)
-    return outlines, masks
+    return outlines
 
 def cell_segmentation2D_stardist(img, args):
     """
@@ -62,11 +62,11 @@ def cell_segmentation2D_stardist(img, args):
 
     model = args[0]
     
-    labels, _ = model.predict_instances(normalize(img))
-        
-    outlines, masks = get_masks_labels(labels)
+    labels, _ = model.predict_instances(normalize(img), verbose=False, show_tile_progress=False)
+    printclear()
+    outlines, masks = get_outlines_masks_labels(labels)
 
-    return outlines, masks
+    return outlines
 
 def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_args, min_outline_length=100):
     """
@@ -110,8 +110,7 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_ar
         if blur_args is not None:
             img = cv2.GaussianBlur(img, blur_args[0], blur_args[1])
             # Select whether we are using a pre-trained model or a cellpose base-model
-        outlines, masks = segmentation_function(img, segmentation_args)
-
+        outlines = segmentation_function(img, segmentation_args)
         # Append the empty masks list for the current z-level.
         Masks.append([])
 

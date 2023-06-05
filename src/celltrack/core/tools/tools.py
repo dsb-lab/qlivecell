@@ -104,16 +104,17 @@ def checkConsecutive(l):
 def whereNotConsecutive(l):
     return [id+1 for id, val in enumerate(np.diff(l)) if val > 1]
 
-def get_masks_labels(label_img):
+def get_outlines_masks_labels(label_img):
     maxlabel = np.max(label_img)
     outlines = []
     masks = []
-    for lab in range(maxlabel+1):
+    for lab in range(1, maxlabel+1):
         if lab not in label_img: continue
         mask = np.dstack(np.where(label_img == lab))[0]
         masks.append(mask)
         
         hull = ConvexHull(mask)
         outline = mask[hull.vertices]
+        outline[:] = outline[:, [1,0]]
         outlines.append(outline)
     return outlines, masks
