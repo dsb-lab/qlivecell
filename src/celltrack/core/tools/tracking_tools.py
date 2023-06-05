@@ -128,8 +128,7 @@ def _update_CT_cell_attributes(jitcells : ListType(jitCell), ctattr : CTattribut
                 ctattr.Centersi[t][z].append(cell.centersi[tid][zid])
                 ctattr.Centersj[t][z].append(cell.centersj[tid][zid])
 
-import time
-def _init_cell(cellid, lab, times, slices, FinalLabels, label_correspondance, _labels, _Outlines, _Masks):
+def _init_cell(cellid, lab, times, slices, FinalLabels, label_correspondance, Labels_tz, Outlines_tz, Masks_tz):
     
     OUTLINES = []
     MASKS    = []
@@ -138,7 +137,7 @@ def _init_cell(cellid, lab, times, slices, FinalLabels, label_correspondance, _l
 
     for t in range(times):
         if lab in FinalLabels[t]:
-            labst = List([List(labstz) for labstz in _labels[t]])
+            labst = List([List(labstz) for labstz in Labels_tz[t]])
             Zlabel_l, Zlabel_z = label_per_z_jit(slices, labst)
             TIMES.append(t)
             idd  = np.where(np.array(label_correspondance[t])[:,1]==lab)[0][0]
@@ -149,9 +148,9 @@ def _init_cell(cellid, lab, times, slices, FinalLabels, label_correspondance, _l
             MASKS.append([])
             
             for z in ZS[-1]:
-                id_l = np.where(np.array(_labels[t][z])==_lab)[0][0]
-                OUTLINES[-1].append(np.asarray(_Outlines[t][z][id_l] ,dtype='uint16'))
-                MASKS[-1].append(np.asarray(_Masks[t][z][id_l], dtype='uint16'))
+                id_l = np.where(np.array(Labels_tz[t][z])==_lab)[0][0]
+                OUTLINES[-1].append(np.asarray(Outlines_tz[t][z][id_l] ,dtype='uint16'))
+                MASKS[-1].append(np.asarray(Masks_tz[t][z][id_l], dtype='uint16'))
             
     cell = create_cell(cellid, np.uint16(lab), ZS, TIMES, OUTLINES, MASKS, None)
     

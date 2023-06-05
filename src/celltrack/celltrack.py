@@ -218,17 +218,17 @@ class CellTracking(object):
         self.currentcellid+=1
 
     def __call__(self):
-        TLabels, TCenters, TOutlines, label_correspondance, _Outlines, _Masks, _labels = self.cell_segmentation()
+        TLabels, TCenters, TOutlines, TMasks, Labels_tz, Outlines_tz, Masks_tz = self.cell_segmentation()
         
         printfancy("")
         
         printfancy("computing tracking...")
 
-        self.cell_tracking(TLabels, TCenters, TOutlines, label_correspondance)
+        FinalLabels, label_correspondance=self.cell_tracking(TLabels, TCenters)
 
         printfancy("tracking completed. initialising cells...", clear_prev=1)
 
-        self.init_cells(_Outlines, _Masks, _labels, label_correspondance)
+        self.init_cells(FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance)
 
         printfancy("cells initialised. updating labels...", clear_prev=1)
 
@@ -282,7 +282,8 @@ class CellTracking(object):
         TLabels   = []
         TCenters  = []
         TOutlines = []
-        label_correspondance = []
+        TMasks = []
+        
         _Outlines = []
         _Masks    = []
         _labels   = []
@@ -335,7 +336,7 @@ class CellTracking(object):
             printfancy("computing attributes...")
 
             labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
-            labels_per_t, positions_per_t, outlines_per_t = position3d(stack, labels, Outlines, Masks)  
+            labels_per_t, positions_per_t, outlines_per_t, masks_per_t = position3d(stack, labels, Outlines, Masks)  
 
             printclear()
             printfancy("attributes computed")
@@ -351,8 +352,7 @@ class CellTracking(object):
             TLabels.append(labels_per_t)
             TCenters.append(positions_per_t)
             TOutlines.append(outlines_per_t)
-
-            label_correspondance.append([])        
+            TMasks.append(masks_per_t)
 
             _Outlines.append(Outlines)
             _Masks.append(Masks)
@@ -363,17 +363,15 @@ class CellTracking(object):
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
-        return TLabels, TCenters, TOutlines, label_correspondance, _Outlines, _Masks, _labels
+        return TLabels, TCenters, TOutlines, TMasks, _labels, _Outlines, _Masks
 
-    def cell_tracking(self, TLabels, TCenters, TOutlines, label_correspondance):
-        FinalLabels, FinalCenters, FinalOutlines = greedy_tracking(self.times, TLabels, TCenters, TOutlines, label_correspondance, self._xyresolution)
-        self.FinalLabels   = FinalLabels
-        self.FinalCenters  = FinalCenters
-        self.FinalOutlines = FinalOutlines
-    
-    def init_cells(self, _Outlines, _Masks, _labels, label_correspondance):
+    def cell_tracking(self, TLabels, TCenters):
+        FinalLabels, label_correspondance = greedy_tracking(TLabels, TCenters, self._xyresolution)
+        return FinalLabels, label_correspondance
+
+    def init_cells(self, FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance):
         self.currentcellid = 0
-        self.unique_labels = np.unique(np.hstack(self.FinalLabels))
+        self.unique_labels = np.unique(np.hstack(FinalLabels))
         self.max_label = int(max(self.unique_labels))
         self.jitcells = typed.List()
 
@@ -381,7 +379,7 @@ class CellTracking(object):
 
         for l, lab in enumerate(self.unique_labels):
             progressbar(l+1, len(self.unique_labels))
-            cell=_init_cell(l, lab, self.times, self.slices, self.FinalLabels, label_correspondance, _labels, _Outlines, _Masks)
+            cell=_init_cell(l, lab, self.times, self.slices, FinalLabels, label_correspondance, Labels_tz, Outlines_tz, Masks_tz)
 
             jitcell = contruct_jitCell_from_Cell(cell)
             update_jitcell(jitcell, self.stacks)
@@ -435,7 +433,6 @@ class CellTracking(object):
         total_marked = total_marked_apo + total_marked_mito
         self.conflicts = total_hints-total_marked
 
-# TODO whys there the pacp visualization??
     def append_cell_from_outline(self, outline, z, t, mask=None, sort=True):
         
         if sort:
