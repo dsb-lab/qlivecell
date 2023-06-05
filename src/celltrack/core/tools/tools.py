@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial import cKDTree
 import random
 from core.utils_ct import printfancy
+from scipy.spatial import ConvexHull
 
 def increase_point_resolution(outline, min_outline_length):
     rounds = np.ceil(np.log2(min_outline_length/len(outline))).astype('int16')
@@ -103,3 +104,16 @@ def checkConsecutive(l):
 def whereNotConsecutive(l):
     return [id+1 for id, val in enumerate(np.diff(l)) if val > 1]
 
+def get_masks_labels(label_img):
+    maxlabel = np.max(label_img)
+    outlines = []
+    masks = []
+    for lab in range(maxlabel+1):
+        if lab not in label_img: continue
+        mask = np.dstack(np.where(label_img == lab))[0]
+        masks.append(mask)
+        
+        hull = ConvexHull(mask)
+        outline = mask[hull.vertices]
+        outlines.append(outline)
+    return outlines, masks

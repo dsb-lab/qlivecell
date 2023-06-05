@@ -35,7 +35,7 @@ from core.iters import plotRound
 from core.utils_ct import read_img_with_resolution, get_file_embcode
 
 # import segmentation functions
-from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose
+from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist
 from core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
 from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
 from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
@@ -70,13 +70,12 @@ class CellTracking(object):
         given_Outlines=None, 
         CELLS=None, 
         CT_info=None, 
+        segmentation_method='cellpose',
         model=None, 
-        trainedmodel=None, 
-        channels=[0,0], 
-        flow_th_cellpose=0.4, 
+        segmentation_args=[],
         distance_th_z=3.0, 
-        xyresolution=0.2767553, 
-        zresolution=2.0, 
+        xyresolution=None, 
+        zresolution=None, 
         relative_overlap=False, 
         use_full_matrix_to_compute_overlap=True, 
         z_neighborhood=2, 
@@ -103,13 +102,15 @@ class CellTracking(object):
         self.stacks            = stacks
         self.max_label         = 0
         
+        self.available_segmentation = ['cellpose', 'stardist']
+        self.segmentation_method = segmentation_method
+        
         if CELLS !=None: 
             self._init_with_cells(CELLS, CT_info)
         else:
             self._model            = model
-            self._trainedmodel     = trainedmodel
-            self._channels         = channels
-            self._flow_th_cellpose = flow_th_cellpose
+            self._seg_args     = segmentation_args
+
             self._distance_th_z    = distance_th_z
             self._xyresolution     = xyresolution
             self._zresolution      = zresolution
@@ -127,7 +128,6 @@ class CellTracking(object):
             ##  Mito and Apo events
             self.apoptotic_events  = []
             self.mitotic_events    = []
-        
 
         ##  Plotting Attributes  ##
         # We assume that both dimension have the same resolution
@@ -296,8 +296,12 @@ class CellTracking(object):
             printfancy("")
 
             stack = self.stacks[t,:,:,:]
-            segmentation_args = [self._model, self._trainedmodel, self._channels, self._flow_th_cellpose]
-            Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_cellpose, segmentation_args, self._blur_args)
+            segmentation_args = [self._model, *self._seg_args]
+            
+            if self.segmentation_method == 'cellpose':
+                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_cellpose, segmentation_args, self._blur_args)
+            elif self.segmentation_method == 'stardist':
+                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_stardist, segmentation_args, self._blur_args)
 
             printfancy("")
             printfancy("Running segmentation post-processing...")
@@ -558,7 +562,7 @@ class CellTracking(object):
 
         hull = ConvexHull(pre_outline)
         outline = pre_outline[hull.vertices]
-        self.TEST = outline
+
         self.append_cell_from_outline(outline, z, t, sort=False)
         
         self.update_label_attributes()

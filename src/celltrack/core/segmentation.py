@@ -1,8 +1,8 @@
 import cv2
 
-from cellpose import utils as utilscp
 from .utils_ct import printfancy, progressbar
-from .tools.tools import increase_point_resolution, mask_from_outline
+from .tools.tools import increase_point_resolution, mask_from_outline, get_masks_labels
+import cv2
 
 def cell_segmentation2D_cellpose(img, args):
     """
@@ -24,6 +24,8 @@ def cell_segmentation2D_cellpose(img, args):
     masks: list of lists
         Contains the 2D of the points inside the outlines
     """    
+    from cellpose.utils import outlines_list
+
     model = args[0]
     trained_model = args[1]
     chs = args[2]
@@ -33,9 +35,39 @@ def cell_segmentation2D_cellpose(img, args):
     else:
         masks, flows, styles, diam = model.eval(img, channels=chs, flow_threshold=fth)
         
-    outlines = utilscp.outlines_list(masks)
+    outlines = outlines_list(masks)
     return outlines, masks
-                
+
+def cell_segmentation2D_stardist(img, args):
+    """
+    Parameters
+    ----------
+    img : 2D ndarray
+    args: list
+        Contains cellpose arguments:
+        - model : cellpose model
+        - trained_model : Bool
+        - chs : list    
+        - fth : float
+        See https://cellpose.readthedocs.io/en/latest/api.html for more information
+    
+    Returns
+    -------
+    outlines : list of lists
+        Contains the 2D of the points forming the outlines
+    masks: list of lists
+        Contains the 2D of the points inside the outlines
+    """    
+    from csbdeep.utils import normalize
+
+    model = args[0]
+    
+    labels, _ = model.predict_instances(normalize(img))
+        
+    outlines, masks = get_masks_labels(labels)
+
+    return outlines, masks
+
 def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_args, min_outline_length=100):
     """
     Parameters
@@ -106,4 +138,3 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_ar
         # Keep the ouline for the current z-level
         Outlines.append(outlines)
     return Outlines, Masks
-
