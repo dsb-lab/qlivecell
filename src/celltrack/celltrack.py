@@ -40,7 +40,7 @@ from core.tools.segmentation_tools import label_per_z, assign_labels, separate_c
 from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
 from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
 from core.tools.ct_tools import compute_point_stack
-from core.tools.tools import points_within_hull, increase_point_resolution, sort_point_sequence
+from core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence
 from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes
 from core.tools.save_tools import load_cells
 
@@ -431,15 +431,19 @@ class CellTracking(object):
 
 # TODO whys there the pacp visualization??
     def append_cell_from_outline(self, outline, z, t, mask=None, sort=True):
+        
         if sort:
             new_outline_sorted, _ = sort_point_sequence(outline, self._nearest_neighs, self.PACP.visualization)
             if new_outline_sorted is None: return
         else:
             new_outline_sorted = outline
+        
         new_outline_sorted_highres = increase_point_resolution(new_outline_sorted, self._min_outline_length)
         outlines = [[new_outline_sorted_highres]]
-        if mask is None: masks = [[points_within_hull(new_outline_sorted_highres)]]
-        else: masks = [mask]
+        
+        if mask is None: masks = [[mask_from_outline(new_outline_sorted_highres)]]
+        else: masks = [[mask]]
+        
         self._extract_unique_labels_and_max_label()
         new_cell = create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self.stacks)
         self.max_label+=1
@@ -456,23 +460,22 @@ class CellTracking(object):
 
     def complete_add_cell(self, PACP):
         if self._line_builder_mode == 'points':
-            if len(PACP.linebuilder.xs)<3:
-                return
-            new_outline = np.asarray([list(a) for a in zip(np.rint(np.array(PACP.linebuilder.xs) / self.dim_change).astype(np.uint16), np.rint(np.array(PACP.linebuilder.ys) / self.dim_change).astype(np.uint16))])
+            
+            if len(PACP.linebuilder.xs)<3: return
+            
+            new_outline = np.dstack((PACP.linebuilder.xs, PACP.linebuilder.ys))[0]
+            new_outline = np.floor(new_outline / self.dim_change).astype('uint16')
+            
             if np.max(new_outline)>self.stack_dims[0]:
                 printfancy("ERROR: drawing out of image")
                 return
-            mask = None
+
         elif self._line_builder_mode == 'lasso':
-            if len(PACP.linebuilder.mask)<6:
-                return
+            if len(PACP.linebuilder.outline)<3: return
             new_outline = np.floor(PACP.linebuilder.outline / self.dim_change)
             new_outline = new_outline.astype('uint16')
-            if self.dim_change !=1: mask = None
-            mask = np.floor(PACP.linebuilder.mask / self.dim_change)
-            mask = [mask.astype("uint16")]
         
-        self.append_cell_from_outline(new_outline, PACP.z, PACP.t, mask=mask)
+        self.append_cell_from_outline(new_outline, PACP.z, PACP.t, mask=None)
                 
         self.update_label_attributes()
         
@@ -958,10 +961,11 @@ class CellTracking(object):
                             sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                             self._pos_scatters.append(sc)
                         else:
-                            sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
-                            self._pos_scatters.append(sc)
-                        anno = PACP.ax[id].annotate(str(lab), xy=(ys, xs), c="white")
-                        self._annotations.append(anno)              
+                            pass
+                            #sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
+                            #self._pos_scatters.append(sc)
+                        #anno = PACP.ax[id].annotate(str(lab), xy=(ys, xs), c="white")
+                        #self._annotations.append(anno)              
                         
                         for mitoev in self.mitotic_events:
                             for ev in mitoev:

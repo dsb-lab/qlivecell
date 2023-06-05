@@ -2,7 +2,7 @@ import cv2
 
 from cellpose import utils as utilscp
 from .utils_ct import printfancy, progressbar
-from .tools.tools import increase_point_resolution, points_within_hull
+from .tools.tools import increase_point_resolution, mask_from_outline
 
 def cell_segmentation2D_cellpose(img, args):
     """
@@ -89,7 +89,7 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_ar
             outlines[cell] = increase_point_resolution(outline,min_outline_length)
 
             # Compute cell mask
-            ptsin = points_within_hull(outlines[cell])
+            ptsin = mask_from_outline(outlines[cell])
 
             # Check for empty masks and keep the corresponding cell index. 
             if len(ptsin)==0:

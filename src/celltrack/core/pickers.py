@@ -1,4 +1,5 @@
 import numpy as np
+from core.tools.tools import mask_from_outline
 
 class SubplotPicker_add():
     def __init__(self, ax, canvas, zs, callback):
@@ -46,7 +47,6 @@ class LineBuilder_points:
         self.line.figure.canvas.mpl_disconnect(self.cid)
         self.line.remove()
 
-from matplotlib.path import Path
 from .extraclasses import CustomLassoSelector
 
 class LineBuilder_lasso:
@@ -63,7 +63,6 @@ class LineBuilder_lasso:
         self.canvas = ax.figure.canvas
         self.lasso = CustomLassoSelector(ax, onselect=self.onselect, button=3)
         self.outline = []
-        self.mask=None
         
     def onselect(self, verts):
         self.outline = np.floor([[x[0],x[1]] for x in verts]).astype('uint16')
@@ -73,15 +72,6 @@ class LineBuilder_lasso:
         ol = len(self.outline)
         step = np.ceil(ol/fl).astype('uint16')
         self.outline = self.outline[::step]
-        
-        imin = min(self.outline[:,0])
-        imax = max(self.outline[:,0])
-        jmin = min(self.outline[:,1])
-        jmax = max(self.outline[:,1])
-        self.mask = np.array([[i,j] for i in range(imin, imax+1) for j in  range(jmin, jmax+1)]).astype('uint16')
-        path = Path(verts)
-        self.ind = np.nonzero(path.contains_points(self.mask))[0]
-        self.mask = np.unique(self.mask[self.ind], axis=0)
         
     def stopit(self):
         self.lasso.disconnect_events()

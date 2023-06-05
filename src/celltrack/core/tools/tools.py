@@ -46,12 +46,12 @@ def sort_point_sequence(outline, nearest_neighs, callback):
             return None, None
     return np.array(new_outline), used_idxs
     
-def points_within_hull(hull):
+def mask_from_outline(outline):
     # With this function we compute the points contained within a hull or outline.
-    pointsinside=[]
-    sortidx = np.argsort(hull[:,1])
-    outx = hull[:,0][sortidx]
-    outy = hull[:,1][sortidx]
+    mask=[]
+    sortidx = np.argsort(outline[:,1])
+    outx = outline[:,0][sortidx]
+    outy = outline[:,1][sortidx]
     curry = outy[0]
     minx = np.iinfo(np.uint16).max
     maxx = 0
@@ -65,13 +65,30 @@ def points_within_hull(hull):
                 curry=y
             else:
                 for x in range(minx, maxx+1):
-                    pointsinside.append([x, curry])
+                    mask.append([x, curry])
                 minx = np.iinfo(np.uint16).max
                 maxx = 0
                 curry= y
 
-    pointsinside=np.array(pointsinside)
-    return pointsinside
+    mask=np.array(mask)
+    return mask
+
+from matplotlib.path import Path
+def _mask_from_outline(outline):
+    imin = min(outline[:,0])
+    imax = max(outline[:,0])
+    jmin = min(outline[:,1])
+    jmax = max(outline[:,1])
+    
+    # minimal rectangle containing the mask
+    X,Y = np.meshgrid(range(imin, imax+1), range(jmin, jmax+1))
+    mask = np.dstack((X,Y)).astype('uint16')
+
+    path = Path(outline)
+    ind = np.nonzero(path.contains_points(mask))[0]
+    mask = np.unique(mask[ind], axis=0)
+    
+    return mask
 
 def compute_distance_xy(x1, x2, y1, y2):
     return np.sqrt((x2-x1)**2 + (y2-y1)**2)
@@ -85,3 +102,11 @@ def checkConsecutive(l):
 
 def whereNotConsecutive(l):
     return [id+1 for id, val in enumerate(np.diff(l)) if val > 1]
+
+
+import numpy as np
+xs = [1,2,3]
+ys = [1,2,3]
+
+xy = np.dstack((xs, ys))[0]
+xy.shape
