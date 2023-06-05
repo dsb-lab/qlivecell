@@ -46,7 +46,7 @@ def sort_point_sequence(outline, nearest_neighs, callback):
             return None, None
     return np.array(new_outline), used_idxs
     
-def mask_from_outline(outline):
+def _mask_from_outline(outline):
     # With this function we compute the points contained within a hull or outline.
     mask=[]
     sortidx = np.argsort(outline[:,1])
@@ -74,7 +74,7 @@ def mask_from_outline(outline):
     return mask
 
 from matplotlib.path import Path
-def _mask_from_outline(outline):
+def mask_from_outline(outline):
     imin = min(outline[:,0])
     imax = max(outline[:,0])
     jmin = min(outline[:,1])
@@ -82,7 +82,7 @@ def _mask_from_outline(outline):
     
     # minimal rectangle containing the mask
     X,Y = np.meshgrid(range(imin, imax+1), range(jmin, jmax+1))
-    mask = np.dstack((X,Y)).astype('uint16')
+    mask = np.dstack((X.flatten(),Y.flatten())).astype('uint16')[0]
 
     path = Path(outline)
     ind = np.nonzero(path.contains_points(mask))[0]
@@ -103,10 +103,3 @@ def checkConsecutive(l):
 def whereNotConsecutive(l):
     return [id+1 for id, val in enumerate(np.diff(l)) if val > 1]
 
-
-import numpy as np
-xs = [1,2,3]
-ys = [1,2,3]
-
-xy = np.dstack((xs, ys))[0]
-xy.shape
