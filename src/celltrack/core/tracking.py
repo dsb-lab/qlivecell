@@ -1,4 +1,6 @@
 import numpy as np 
+from scipy.spatial.distance import directed_hausdorff
+from munkres import Munkres
 
 def greedy_tracking(TLabels, TCenters, xyresolution, dist_th=7.5, z_th=2):
     FinalLabels   = []
@@ -93,3 +95,80 @@ def greedy_tracking(TLabels, TCenters, xyresolution, dist_th=7.5, z_th=2):
     
     return FinalLabels, label_correspondance
 
+
+def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, z_th=2):
+
+    FinalLabels   = []
+    label_correspondance = []
+
+    FinalLabels.append(TLabels[0])
+    lc = [[l, l] for l in TLabels[0]]
+    label_correspondance.append(lc)
+    print(label_correspondance)
+    labmax=0
+    for t in range(1, len(TLabels)):
+        
+        FinalLabels_t = []
+        label_correspondance_t = []
+
+        labs1 = TLabels[t-1]
+        labs2 = TLabels[t]
+        
+        pos1 = TCenters[t-1]
+        pos2 = TCenters[t]
+        
+        masks1 = TMasks[t-1]
+        masks2 = TMasks[t]
+        
+        outs1 = TOutlines[t-1]
+        outs2 = TOutlines[t]
+        
+        cost_matrix = []
+        for i in range(len(labs1)):
+            row = []
+            for j in range(len(labs2)):
+                
+                if np.abs(pos1[i][0] - pos2[j][0]) > z_th:
+                    distance=100.0
+                else:
+                    distance = ((pos1[i][1] - pos2[j][1]) ** 2 +
+                                (pos1[i][2] - pos2[j][2]) ** 2) ** 0.5
+                    distance *= xy_resolution
+                
+                vol1 = len(masks1[i])
+                vol2 = len(masks2[j])
+                volume_diff = abs(vol1 - vol2)
+                shape_diff = directed_hausdorff(outs1[i], outs2[j])[0]  # Hausdorff distance
+                cost = 0.6*distance + 0.2*volume_diff + 0.2*shape_diff
+                row.append(cost)
+                
+            cost_matrix.append(row)
+
+        # Create an instance of the Munkres class
+        m = Munkres()
+
+        # Solve the assignment problem using the Hungarian algorithm
+        indexes = m.compute(cost_matrix)
+
+        # Print the matched cell pairs
+        for row, column in indexes:
+            label1 = labs1[row]
+            # get the updated corresponding label
+            label1idx = np.where(np.array(label_correspondance[t-1])[:,0] == label1)[0][0]
+
+            label1 = np.array(label_correspondance[t-1])[:,1][label1idx]
+
+            label2 = labs2[column]
+            label_correspondance_t.append([label2, label1])
+            FinalLabels_t.append(label1)
+
+        labmax = np.maximum(np.max(FinalLabels[t-1]), labmax)
+        for lab in labs2: 
+            if lab not in np.array(label_correspondance_t)[:,0]:
+                labmax+=1
+                label_correspondance_t.append([lab, labmax])
+                FinalLabels_t.append(labmax)
+        FinalLabels.append(FinalLabels_t)
+        label_correspondance.append(label_correspondance_t)
+    
+    return FinalLabels, label_correspondance

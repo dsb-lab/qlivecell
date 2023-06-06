@@ -44,7 +44,7 @@ from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_tim
 from core.tools.save_tools import load_cells
 
 from core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
-from core.tracking import greedy_tracking
+from core.tracking import greedy_tracking, hungarian_tracking
 from core.utils_ct import printfancy, printclear, progressbar
 
 import warnings
@@ -79,6 +79,7 @@ class CellTracking(object):
         use_full_matrix_to_compute_overlap=True, 
         z_neighborhood=2, 
         overlap_gradient_th=0.3, 
+        tracking_method='greedy',
         plot_layout=(2,3), 
         plot_overlap=1, 
         masks_cmap='tab10', 
@@ -104,6 +105,9 @@ class CellTracking(object):
         self.available_segmentation = ['cellpose', 'stardist']
         self.segmentation_method = segmentation_method
         
+        self.available_tracking = ['greedy', 'hungarian']
+        self.tracking_method = tracking_method
+
         if CELLS !=None: 
             self._init_with_cells(CELLS, CT_info)
         else:
@@ -223,7 +227,7 @@ class CellTracking(object):
         
         printfancy("computing tracking...")
 
-        FinalLabels, label_correspondance=self.cell_tracking(TLabels, TCenters)
+        FinalLabels, label_correspondance=self.cell_tracking(TLabels, TCenters, TOutlines, TMasks)
 
         printfancy("tracking completed. initialising cells...", clear_prev=1)
 
@@ -364,8 +368,11 @@ class CellTracking(object):
 
         return TLabels, TCenters, TOutlines, TMasks, _labels, _Outlines, _Masks
 
-    def cell_tracking(self, TLabels, TCenters):
-        FinalLabels, label_correspondance = greedy_tracking(TLabels, TCenters, self._xyresolution)
+    def cell_tracking(self, TLabels, TCenters, TOutlines, TMasks):
+        if self.tracking_method=='greedy':
+            FinalLabels, label_correspondance = greedy_tracking(TLabels, TCenters, self._xyresolution)
+        elif self.tracking_method=='hungarian':
+            FinalLabels, label_correspondance = hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, self._xyresolution)
         return FinalLabels, label_correspondance
 
     def init_cells(self, FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance):
