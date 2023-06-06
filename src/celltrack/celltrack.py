@@ -71,7 +71,7 @@ class CellTracking(object):
         CT_info=None, 
         segmentation_method='cellpose',
         model=None, 
-        segmentation_args=[],
+        segmentation_args={},
         distance_th_z=3.0, 
         xyresolution=None, 
         zresolution=None, 
@@ -80,6 +80,7 @@ class CellTracking(object):
         z_neighborhood=2, 
         overlap_gradient_th=0.3, 
         tracking_method='greedy',
+        tracking_arguments={},
         plot_layout=(2,3), 
         plot_overlap=1, 
         masks_cmap='tab10', 
@@ -104,16 +105,35 @@ class CellTracking(object):
         
         self.available_segmentation = ['cellpose', 'stardist']
         self.segmentation_method = segmentation_method
-        
+
+        if segmentation_method=='cellpose':
+            self._seg_args = {'model':model, 'trained_model':True, 'channels':[0,0], 'flow_threshold':0.4}
+        elif segmentation_method=='stardist':
+            self._seg_args = {'model':model}
+
+        for sarg in segmentation_args:
+            try:
+                self._seg_args[sarg] = segmentation_args[sarg]
+            except:
+                printfancy('ERROR: wrong segmentation argument keys')
+
         self.available_tracking = ['greedy', 'hungarian']
         self.tracking_method = tracking_method
 
-        if CELLS !=None: 
+        if tracking_method=='hungarian':
+            self._track_args={'z_th':2, 'cost_attributes':['distance', 'volume', 'shape'], 'cost_ratios':[0.6,0.2,0.2]}
+        elif tracking_method=='greedy':
+            self._track_args={'dist_th':7.5, 'z_th':2}
+
+        for targ in tracking_arguments:
+            try:
+                self._track_args[targ] = tracking_arguments[targ]
+            except:
+                printfancy('ERROR: wrong tracking argument keys')
+
+        if CELLS !=None:    
             self._init_with_cells(CELLS, CT_info)
         else:
-            self._model            = model
-            self._seg_args     = segmentation_args
-
             self._distance_th_z    = distance_th_z
             self._xyresolution     = xyresolution
             self._zresolution      = zresolution
@@ -230,7 +250,7 @@ class CellTracking(object):
         FinalLabels, label_correspondance=self.cell_tracking(TLabels, TCenters, TOutlines, TMasks)
 
         printfancy("tracking completed. initialising cells...", clear_prev=1)
-
+        
         self.init_cells(FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance)
 
         printfancy("cells initialised. updating labels...", clear_prev=1)
@@ -300,12 +320,11 @@ class CellTracking(object):
             printfancy("")
 
             stack = self.stacks[t,:,:,:]
-            segmentation_args = [self._model, *self._seg_args]
             
             if self.segmentation_method == 'cellpose':
-                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_cellpose, segmentation_args, self._blur_args)
+                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_cellpose, self._seg_args, self._blur_args)
             elif self.segmentation_method == 'stardist':
-                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_stardist, segmentation_args, self._blur_args)
+                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_stardist, self._seg_args, self._blur_args)
 
             printfancy("")
             printfancy("Running segmentation post-processing...")
@@ -370,9 +389,9 @@ class CellTracking(object):
 
     def cell_tracking(self, TLabels, TCenters, TOutlines, TMasks):
         if self.tracking_method=='greedy':
-            FinalLabels, label_correspondance = greedy_tracking(TLabels, TCenters, self._xyresolution)
+            FinalLabels, label_correspondance = greedy_tracking(TLabels, TCenters, self._xyresolution, self._track_args)
         elif self.tracking_method=='hungarian':
-            FinalLabels, label_correspondance = hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, self._xyresolution)
+            FinalLabels, label_correspondance = hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, self._xyresolution, self._track_args)
         return FinalLabels, label_correspondance
 
     def init_cells(self, FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance):

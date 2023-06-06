@@ -2,7 +2,12 @@ import numpy as np
 from scipy.spatial.distance import directed_hausdorff
 from munkres import Munkres
 
-def greedy_tracking(TLabels, TCenters, xyresolution, dist_th=7.5, z_th=2):
+def greedy_tracking(TLabels, TCenters, xyresolution, extra_args):
+
+    dist_th = extra_args['dist_th']
+    z_th = extra_args['z_th']
+
+
     FinalLabels   = []
     FinalCenters  = []
     label_correspondance = []
@@ -96,7 +101,13 @@ def greedy_tracking(TLabels, TCenters, xyresolution, dist_th=7.5, z_th=2):
     return FinalLabels, label_correspondance
 
 
-def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, z_th=2):
+def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, extra_args):
+
+    z_th = extra_args['z_th']
+    cost_attributes = extra_args['cost_attributes']
+    cost_ratios = extra_args['cost_ratios']
+
+    cost_dict = dict(zip(cost_attributes, cost_ratios))
 
     FinalLabels   = []
     label_correspondance = []
@@ -104,7 +115,7 @@ def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, z_th
     FinalLabels.append(TLabels[0])
     lc = [[l, l] for l in TLabels[0]]
     label_correspondance.append(lc)
-    print(label_correspondance)
+
     labmax=0
     for t in range(1, len(TLabels)):
         
@@ -139,7 +150,10 @@ def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, z_th
                 vol2 = len(masks2[j])
                 volume_diff = abs(vol1 - vol2)
                 shape_diff = directed_hausdorff(outs1[i], outs2[j])[0]  # Hausdorff distance
-                cost = 0.6*distance + 0.2*volume_diff + 0.2*shape_diff
+                cost = 0
+                if 'distance' in cost_attributes: cost+=distance*cost_dict['distance']
+                if 'volume' in cost_attributes: cost+=volume_diff*cost_dict['volume']
+                if 'shape' in cost_attributes: cost+=shape_diff*cost_dict['shape']
                 row.append(cost)
                 
             cost_matrix.append(row)

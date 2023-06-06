@@ -26,10 +26,11 @@ def cell_segmentation2D_cellpose(img, args):
     """    
     from cellpose.utils import outlines_list
 
-    model = args[0]
-    trained_model = args[1]
-    chs = args[2]
-    fth = args[3]
+    model = args['model']
+    trained_model = args['trained_model']
+    chs = args['channels']
+    fth = args['flow_threshold']
+
     if trained_model:
         masks, flows, styles = model.eval(img)
     else:
@@ -60,7 +61,7 @@ def cell_segmentation2D_stardist(img, args):
     """    
     from csbdeep.utils import normalize
 
-    model = args[0]
+    model = args['model']
     
     labels, _ = model.predict_instances(normalize(img), verbose=False, show_tile_progress=False)
     printclear()
