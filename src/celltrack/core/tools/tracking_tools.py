@@ -146,7 +146,14 @@ def _init_cell(cellid, lab, times, slices, FinalLabels, label_correspondance, La
 
     for t in range(times):
         if lab in FinalLabels[t]:
-            labst = List([List(labstz) for labstz in Labels_tz[t]])
+
+            labst = List()
+            for labstz in Labels_tz[t]:
+                if len(labstz)==0: 
+                    labst.append(List([-1]))
+                    labst[-1].pop(0)
+                else: labst.append(List(labstz))
+
             Zlabel_l, Zlabel_z = label_per_z_jit(slices, labst)
             TIMES.append(t)
             idd  = np.where(np.array(label_correspondance[t])[:,1]==lab)[0][0]
