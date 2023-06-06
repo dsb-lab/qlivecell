@@ -10,7 +10,6 @@ time1_outlines = [np.array([[1, 1], [1, 2], [2, 2], [2, 1]]),  # Example outline
                   np.array([[2, 2], [2, 3], [3, 3], [3, 2]]),  # Example outline for cell 2
                   np.array([[3, 3], [3, 4], [4, 4], [4, 3]])]  # Example outline for cell 3
 
-
 time2_labels = [2,0,1,3]
 time2_cells = [(3, 3), (5,5), (2, 2), (4, 4)]  # List of (x, y) positions for time 2
 time2_volumes = [18, 20,12, 22]  # List of volumes for time 2
