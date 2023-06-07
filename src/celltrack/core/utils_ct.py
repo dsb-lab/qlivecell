@@ -1,19 +1,14 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import pickle
 import tifffile
 from tifffile import TiffFile
 import os
 import random
 import cv2
 
-from .dataclasses import CellTracking_info
-
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
 
 def printclear(n=1):
-    return
     LINE_UP = '\033[1A'
     LINE_CLEAR = '\x1b[2K'
     for i in range(n):

@@ -4,7 +4,6 @@ import numpy as np
 
 from copy import deepcopy, copy
 import itertools
-import time 
 
 from matplotlib import cm
 import matplotlib.pyplot as plt
@@ -23,8 +22,6 @@ from collections import deque
 
 from copy import deepcopy, copy
 
-from tifffile import imwrite
-import subprocess
 import gc
 
 from core.pickers import LineBuilder_lasso, LineBuilder_points
