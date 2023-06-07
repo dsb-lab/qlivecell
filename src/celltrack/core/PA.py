@@ -1,7 +1,7 @@
 import numpy as np
 from copy import copy
 import matplotlib as mtp
-from .pickers import SubplotPicker_add, CellPicker, CellPicker_mit, CellPicker_apo, CellPicker_CM, CellPicker_CP
+from .pickers import SubplotPicker_add, CellPicker, CellPicker_CM, CellPicker_CP
 from .tools.ct_tools import set_cell_color
 from core.tools.save_tools import save_cells
 from .dataclasses import contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
@@ -31,7 +31,19 @@ def get_cell_PACP(PACP, event):
                 lab = PACP.CTLabels[PACP.t][z][i]
                 return lab, z
     return None, None
-    
+
+def _get_cell(jitcells, label=None, cellid=None):
+        if label==None:
+            for cell in jitcells:
+                    if cell.id == cellid:
+                        return cell
+        else:
+            for cell in jitcells:
+                    if cell.label == label:
+                        return cell
+        return None
+
+
 class PlotAction():
     def __init__(self, fig, ax, CT, mode):
         self.fig=fig
@@ -113,8 +125,11 @@ class PlotAction():
         
         self.CTlist_of_cells = CT.list_of_cells
         self.CTmito_cells = CT.mito_cells
+        
         self.CTapoptotic_events = CT.apoptotic_events
         self.CTmitotic_events = CT.mitotic_events
+        
+        print("reinit", self.CTmitotic_events)
         self.CThints = CT.hints
         self.CTconflicts = CT.conflicts 
         self.CTplot_masks = CT.plot_masks
@@ -787,14 +802,74 @@ class PlotActionCT(PlotAction):
         self.instructions.set(text="Right-click to SELECT THE MOTHER (1) AND DAUGHTER (2) CELLS")
         self.instructions.set_backgroundcolor((0.0,1.0,0.0,0.4))
         self.fig.patch.set_facecolor((0.0,1.0,0.0,0.1))
-        self.CP = CellPicker_mit(self)
+        self.CP = CellPicker(self.fig.canvas, self.mitosis_callback)
 
+    def mitosis_callback(self, event):
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
+        if lab is None: return
+        CT_cell = _get_cell(self.jitcells, label=lab)
+        cellid = CT_cell.id
+        cont = True
+        cell = [lab, cellid, self.t]
+        if cell not in self.CTmito_cells:
+            if len(self.CTmito_cells)==3:
+                printfancy("ERROR: cannot select more than 3 cells")
+                cont=False
+            if len(self.CTmito_cells)!=0:
+                if cell[2]<=self.CTmito_cells[0][2]:
+                    printfancy("ERROR: Check instructions for mitosis marking")
+                    cont=False
+        idxtopop=[]
+        pop_cell=False
+        if cont:
+            for jj, _cell in enumerate(self.CTmito_cells):
+                _cellid = _cell[0]
+                _t   = _cell[2]
+                if _cellid == cellid:
+                    pop_cell=True
+                    idxtopop.append(jj)
+            if pop_cell:
+                idxtopop.sort(reverse=True)
+                for jj in idxtopop:
+                    self.CTmito_cells.pop(jj)
+            else:
+                self.CTmito_cells.append(cell)
+                
+        self.update()
+        self.reploting()
+        
     def apoptosis(self):
         self.title.set(text="DETECT APOPTOSIS", ha='left', x=0.01)
         self.instructions.set(text="Double left-click to select Z-PLANE")
         self.instructions.set_backgroundcolor((0.0,0.0,0.0,0.4))
         self.fig.patch.set_facecolor((0.0,0.0,0.0,0.1))
-        self.CP = CellPicker_apo(self)
+        self.CP = CellPicker(self.fig.canvas, self.apoptosis_callback)
+
+    def apoptosis_callback(self, event):
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
+        if lab is None: return
+        CT_cell = _get_cell(self.jitcells, label=lab)
+        cellid = CT_cell.id
+        cell = [lab, cellid, self.t]
+        idxtopop=[]
+        pop_cell=False
+        for jj, _cell in enumerate(self.list_of_cells):
+            _lab = _cell[0]
+            _t   = _cell[2]
+            if _lab == lab:
+                pop_cell=True
+                idxtopop.append(jj)
+        if pop_cell:
+            idxtopop.sort(reverse=True)
+            for jj in idxtopop:
+                self.list_of_cells.pop(jj)
+        else:
+            self.list_of_cells.append(cell)
+            
+        self.update()
+        self.reploting()
 
     def visualization(self):
         self.update()

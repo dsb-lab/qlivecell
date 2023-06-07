@@ -90,59 +90,6 @@ class CellPicker():
     def stopit(self):
         self.canvas.mpl_disconnect(self.cid)
         
-class CellPicker_apo(CellPicker):
-    def _action(self, event):
-        lab, z = self._get_cell(event)
-        if lab is None: return
-        cell = [lab, z, self.PACP.t]
-        idxtopop=[]
-        pop_cell=False
-        for jj, _cell in enumerate(self.PACP.list_of_cells):
-            _lab = _cell[0]
-            _t   = _cell[1]
-            if _lab == lab:
-                pop_cell=True
-                idxtopop.append(jj)
-        if pop_cell:
-            idxtopop.sort(reverse=True)
-            for jj in idxtopop:
-                self.PACP.list_of_cells.pop(jj)
-        else:
-            self.PACP.list_of_cells.append(cell)
-        self._update()
-
-class CellPicker_mit(CellPicker):
-                            
-    def _action(self, event):
-        lab, z = self._get_cell(event)
-        if lab is None: return
-        cont = True
-        cell = [lab, self.PACP.t]
-        if cell not in self.PACP.CT.mito_cells:
-            if len(self.PACP.CT.mito_cells)==3:
-                self.PACP.CT.printfancy("ERROR: Eres un cabezaalberca. cannot select more than 3 cells")
-                cont=False
-            if len(self.PACP.CT.mito_cells)!=0:
-                if cell[1]<=self.PACP.CT.mito_cells[0][1]:
-                    self.PACP.CT.printfancy("ERROR: Desde que altura te caiste de pequeño? Check instructions for mitosis marking")
-                    cont=False
-        idxtopop=[]
-        pop_cell=False
-        if cont:
-            for jj, _cell in enumerate(self.PACP.CT.mito_cells):
-                _lab = _cell[0]
-                _t   = _cell[1]
-                if _lab == lab:
-                    pop_cell=True
-                    idxtopop.append(jj)
-            if pop_cell:
-                idxtopop.sort(reverse=True)
-                for jj in idxtopop:
-                    self.PACP.CT.mito_cells.pop(jj)
-            else:
-                self.PACP.CT.mito_cells.append(cell)
-        self._update()
-
 class CellPicker_CP(CellPicker):
     
     def _action(self, event):

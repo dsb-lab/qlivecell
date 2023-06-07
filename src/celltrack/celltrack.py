@@ -265,8 +265,8 @@ class CellTracking(object):
         
         cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
 
-        self.backupCT  = backup_CellTrack(0, cells, self.apoptotic_events, self.mitotic_events)
-        self._backupCT = backup_CellTrack(0, cells, self.apoptotic_events, self.mitotic_events)
+        self.backupCT  = backup_CellTrack(0, deepcopy(cells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
+        self._backupCT = backup_CellTrack(0, deepcopy(cells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
         self.backups = deque([self._backupCT], self._backup_steps)
         plt.close("all")
         printclear(2)
@@ -288,7 +288,7 @@ class CellTracking(object):
 
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
-        
+
         self.PACP.reinit(self)
 
         # Make sure there is always a backup on the list
@@ -299,6 +299,7 @@ class CellTracking(object):
     def one_step_copy(self, t=0):
         cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
         new_copy = backup_CellTrack(t, deepcopy(cells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
+
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
@@ -512,6 +513,7 @@ class CellTracking(object):
         compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=cells, mode="masks", rem=True)
         compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=cells, mode="outlines", rem=True)
 
+        labs_to_replot = []
         for i,lab in enumerate(cells):
             z=Zs[i]
             cell  = self._get_cell(lab)
@@ -526,8 +528,9 @@ class CellTracking(object):
             if cell._rem:
                 idrem = cell.id
                 cellids.remove(idrem)
-                self._del_cell(lab)  
-
+                self._del_cell(lab) 
+            else: labs_to_replot.append(lab)
+        
         new_labs = []
         for i,cellid in enumerate(np.unique(cellids)):
             z=Zs[i]
@@ -546,9 +549,8 @@ class CellTracking(object):
             except ValueError: pass
         
         self.update_label_attributes()
-
-        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=new_labs, alpha=0, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=new_labs, alpha=0, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=[*new_labs, *labs_to_replot], alpha=0, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=[*new_labs, *labs_to_replot], alpha=1, mode="outlines")
 
     def join_cells(self, PACP):
         labels, Zs, Ts = list(zip(*PACP.list_of_cells))
@@ -704,9 +706,8 @@ class CellTracking(object):
 
     def apoptosis(self, list_of_cells):
         for cell_att in list_of_cells:
-            lab, z, t = cell_att
-            cell = self._get_cell(lab)
-            attributes = [cell.id, t]
+            lab, cellid, t = cell_att
+            attributes = [cellid, t]
             if attributes not in self.apoptotic_events:
                 self.apoptotic_events.append(attributes)
             else:
@@ -715,12 +716,12 @@ class CellTracking(object):
     def mitosis(self):
         if len(self.mito_cells) != 3:
             return 
-        cell  = self._get_cell(self.mito_cells[0][0]) 
-        mito0 = [cell.id, self.mito_cells[0][1]]
-        cell  = self._get_cell(self.mito_cells[1][0])
-        mito1 = [cell.id, self.mito_cells[1][1]]
-        cell  = self._get_cell(self.mito_cells[2][0]) 
-        mito2 = [cell.id, self.mito_cells[2][1]]
+        cell  = self._get_cell(cellid = self.mito_cells[0][1]) 
+        mito0 = [cell.id, self.mito_cells[0][2]]
+        cell  = self._get_cell(cellid = self.mito_cells[1][1])
+        mito1 = [cell.id, self.mito_cells[1][2]]
+        cell  = self._get_cell(cellid = self.mito_cells[2][1]) 
+        mito2 = [cell.id, self.mito_cells[2][2]]
         
         mito_ev = [mito0, mito1, mito2]
         
@@ -953,16 +954,17 @@ class CellTracking(object):
                             self._pos_scatters.append(sc)
                         else:
                             pass
-                            #sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
-                            #self._pos_scatters.append(sc)
-                        #anno = PACP.ax[id].annotate(str(lab), xy=(ys, xs), c="white")
-                        #self._annotations.append(anno)              
+                            sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
+                            self._pos_scatters.append(sc)
+                        anno = PACP.ax[id].annotate(str(lab), xy=(ys, xs), c="white")
+                        self._annotations.append(anno)              
                         
                         for mitoev in self.mitotic_events:
                             for ev in mitoev:
-                                if [cell.id, PACP.t]==ev:
-                                    sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="red")
-                                    self._pos_scatters.append(sc)
+                                if cell.id==ev[0]:
+                                    if PACP.t==ev[1]:
+                                        sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="red")
+                                        self._pos_scatters.append(sc)
 
         plt.subplots_adjust(bottom=0.075)
 
