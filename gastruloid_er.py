@@ -4,9 +4,8 @@ import os
 home = os.path.expanduser('~')
 path_parent = home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsheet/'
 path_data=path_parent+'movies/'
-path_save=path_parent+'CellTrackObjects/'
 
-file, embcode = get_file_embcode(path_data, 0)
+file, embcode = get_file_embcode(path_data, 1)
 
 # Extract both channels
 IMGS_ch0, xyres, zres = read_img_with_resolution(path_data+file, channel=0)
