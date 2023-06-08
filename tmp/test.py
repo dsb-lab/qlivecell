@@ -13,6 +13,16 @@ file, embcode = get_file_embcode(path_data, "082119_p1")
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
 IMGS = IMGS[0:2]
 
+MASKS0, _, _ = read_img_with_resolution(path_save+embcode+'_masks.tiff', channel=0)
+MASKS1, _, _ = read_img_with_resolution(path_save+embcode+'_masks.tiff', channel=0)
+MASKS2, _, _ = read_img_with_resolution(path_save+embcode+'_masks.tiff', channel=0)
+import numpy as np
+
+MASKS0 = MASKS0.reshape((*MASKS0.shape, 1))
+MASKS1 = MASKS1.reshape((*MASKS1.shape, 1))
+MASKS2 = MASKS2.reshape((*MASKS2.shape, 1))
+MASKS = np.append(MASKS0, MASKS1, MASKS2, axis=4)
+
 from cellpose import models
 model_c  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
 # model  = models.Cellpose(gpu=True, model_type='nuclei')
@@ -54,5 +64,4 @@ CT.plot_tracking(plot_layout=(1,2), plot_overlap=1, plot_stack_dims=(512, 512))
 
 # CT.plot_cell_movement()
 # CT.plot_masks3D_Imagej(cell_selection=False)
-
-CT.save_masks3D_stack()
+# CT.save_masks3D_stack()

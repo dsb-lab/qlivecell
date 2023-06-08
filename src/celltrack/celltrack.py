@@ -39,7 +39,7 @@ from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinu
 from core.tools.ct_tools import compute_point_stack
 from core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence, increase_outline_width
 from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes, _extract_unique_labels_and_max_label
-from core.tools.save_tools import load_cells
+from core.tools.save_tools import load_cells, save_masks4D_stack
 
 from core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
 from core.tracking import greedy_tracking, hungarian_tracking
@@ -1096,48 +1096,6 @@ class CellTracking(object):
     #     labels = copy(self.PACP.label_list)
     #     return labels
 
-    def save_masks3D_stack(self
-                         , cell_selection=False
-                         , plot_layout=None
-                         , plot_overlap=None
-                         , masks_cmap=None
-                         , color=None
-                         , channel_name=""):
-        
-        if cell_selection:
-            labels = self._select_cells(plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap)
-        else:
-            labels = self.unique_labels
-        masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('int8')
-        for cell in self.jitcells:
-            if cell.label not in labels: continue
-            if color is None: _color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('int8')
-            else: _color=color
-            for tid, tc in enumerate(cell.times):
-                for zid, zc in enumerate(cell.zs[tid]):
-                    mask = cell.masks[tid][zid]
-                    xids = mask[:,1]
-                    yids = mask[:,0]
-                    masks[tc][zc][0][xids,yids]=_color[0]
-                    masks[tc][zc][1][xids,yids]=_color[1]
-                    masks[tc][zc][2][xids,yids]=_color[2]
-        masks[0][0][0][0,0] = 255
-        masks[0][0][1][0,0] = 255
-        masks[0][0][2][0,0] = 255
-
-        imwrite(
-            self.path_to_save+self.embcode+"_masks"+channel_name+".tiff",
-            masks,
-            imagej=True,
-            resolution=(1/self._xyresolution, 1/self._xyresolution),
-            photometric='rgb',
-            metadata={
-                'spacing': self._zresolution,
-                'unit': 'um',
-                'finterval': 300,
-                'axes': 'TZCYX',
-            }
-        )
     
     # def plot_masks3D_Imagej(self
     #                       , verbose=False

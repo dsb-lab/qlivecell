@@ -110,3 +110,33 @@ def load_cells(path=None, filename=None):
         cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
 
     return cell_dict, cellinfo_dict
+
+from tifffile import imwrite
+import numpy as np
+
+def save_masks4D_stack(path, filename, stack_4D, xyresolution, zresolution, imagejformat='TZCYX'):
+
+    sh =  stack_4D.shape
+    
+    new_masks = np.zeros((sh[0], sh[1], 3, sh[2], sh[3]))
+
+    for t in range(sh[0]):
+        for z in range(sh[1]):
+            new_masks[t,z,0] =   stack_4D[t,z,:,:,0]*255
+            new_masks[t,z,1] =   stack_4D[t,z,:,:,1]*255
+            new_masks[t,z,2] =   stack_4D[t,z,:,:,2]*255
+
+    new_masks = new_masks.astype('uint8')
+    imwrite(
+        path+filename+"_masks.tiff",
+        new_masks,
+        imagej=True,
+        resolution=(1/xyresolution, 1/xyresolution),
+        metadata={
+            'spacing': zresolution,
+            'unit': 'um',
+            # 'finterval': 300,
+            'axes': imagejformat,
+        }
+    )
+    
