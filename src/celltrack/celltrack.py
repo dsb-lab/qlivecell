@@ -1108,10 +1108,10 @@ class CellTracking(object):
             labels = self._select_cells(plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap)
         else:
             labels = self.unique_labels
-        masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
+        masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('int8')
         for cell in self.jitcells:
             if cell.label not in labels: continue
-            if color is None: _color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('float16')
+            if color is None: _color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('int8')
             else: _color=color
             for tid, tc in enumerate(cell.times):
                 for zid, zc in enumerate(cell.zs[tid]):
