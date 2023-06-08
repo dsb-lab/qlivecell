@@ -4,6 +4,7 @@ import numpy as np
 
 from copy import deepcopy, copy
 import itertools
+from tifffile import imwrite
 
 from matplotlib import cm
 import matplotlib.pyplot as plt
@@ -1095,48 +1096,48 @@ class CellTracking(object):
     #     labels = copy(self.PACP.label_list)
     #     return labels
 
-    # def save_masks3D_stack(self
-    #                      , cell_selection=False
-    #                      , plot_layout=None
-    #                      , plot_overlap=None
-    #                      , masks_cmap=None
-    #                      , color=None
-    #                      , channel_name=""):
+    def save_masks3D_stack(self
+                         , cell_selection=False
+                         , plot_layout=None
+                         , plot_overlap=None
+                         , masks_cmap=None
+                         , color=None
+                         , channel_name=""):
         
-    #     if cell_selection:
-    #         labels = self._select_cells(plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap)
-    #     else:
-    #         labels = self.unique_labels
-    #     masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
-    #     for cell in self.cells:
-    #         if cell.label not in labels: continue
-    #         if color is None: _color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('float16')
-    #         else: _color=color
-    #         for tid, tc in enumerate(cell.times):
-    #             for zid, zc in enumerate(cell.zs[tid]):
-    #                 mask = cell.masks[tid][zid]
-    #                 xids = mask[:,1]
-    #                 yids = mask[:,0]
-    #                 masks[tc][zc][0][xids,yids]=_color[0]
-    #                 masks[tc][zc][1][xids,yids]=_color[1]
-    #                 masks[tc][zc][2][xids,yids]=_color[2]
-    #     masks[0][0][0][0,0] = 255
-    #     masks[0][0][1][0,0] = 255
-    #     masks[0][0][2][0,0] = 255
+        if cell_selection:
+            labels = self._select_cells(plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap)
+        else:
+            labels = self.unique_labels
+        masks = np.zeros((self.times, self.slices,3, self.stack_dims[0], self.stack_dims[1])).astype('float32')
+        for cell in self.jitcells:
+            if cell.label not in labels: continue
+            if color is None: _color = np.array(np.array(self._label_colors[self._labels_color_id[cell.label]])*255).astype('float16')
+            else: _color=color
+            for tid, tc in enumerate(cell.times):
+                for zid, zc in enumerate(cell.zs[tid]):
+                    mask = cell.masks[tid][zid]
+                    xids = mask[:,1]
+                    yids = mask[:,0]
+                    masks[tc][zc][0][xids,yids]=_color[0]
+                    masks[tc][zc][1][xids,yids]=_color[1]
+                    masks[tc][zc][2][xids,yids]=_color[2]
+        masks[0][0][0][0,0] = 255
+        masks[0][0][1][0,0] = 255
+        masks[0][0][2][0,0] = 255
 
-    #     imwrite(
-    #         self.path_to_save+self.embcode+"_masks"+channel_name+".tiff",
-    #         masks,
-    #         imagej=True,
-    #         resolution=(1/self._xyresolution, 1/self._xyresolution),
-    #         photometric='rgb',
-    #         metadata={
-    #             'spacing': self._zresolution,
-    #             'unit': 'um',
-    #             'finterval': 300,
-    #             'axes': 'TZCYX',
-    #         }
-    #     )
+        imwrite(
+            self.path_to_save+self.embcode+"_masks"+channel_name+".tiff",
+            masks,
+            imagej=True,
+            resolution=(1/self._xyresolution, 1/self._xyresolution),
+            photometric='rgb',
+            metadata={
+                'spacing': self._zresolution,
+                'unit': 'um',
+                'finterval': 300,
+                'axes': 'TZCYX',
+            }
+        )
     
     # def plot_masks3D_Imagej(self
     #                       , verbose=False

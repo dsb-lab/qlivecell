@@ -1,72 +1,58 @@
-import numpy as np
-from scipy.spatial.distance import directed_hausdorff
-from munkres import Munkres
+import sys
+sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/celltrack/src/celltrack')
 
-# Example cell positions, volumes, and outlines for time 1 and time 2
-time1_labels = [1,2,3]
-time1_cells = [(1, 1), (2, 2), (3, 3)]  # List of (x, y) positions for time 1
-time1_volumes = [10, 15, 20]  # List of volumes for time 1
-time1_outlines = [np.array([[1, 1], [1, 2], [2, 2], [2, 1]]),  # Example outline for cell 1
-                  np.array([[2, 2], [2, 3], [3, 3], [3, 2]]),  # Example outline for cell 2
-                  np.array([[3, 3], [3, 4], [4, 4], [4, 3]])]  # Example outline for cell 3
+from celltrack import CellTracking, get_file_embcode, read_img_with_resolution
 
-time2_labels = [2,0,1,3]
-time2_cells = [(3, 3), (5,5), (2, 2), (4, 4)]  # List of (x, y) positions for time 2
-time2_volumes = [18, 20,12, 22]  # List of volumes for time 2
-time2_outlines = [np.array([[2, 2], [2, 3], [3, 3], [3, 2]]),
-                  np.array([[5, 5], [2, 2], [1, 1], [6, 6]]), 
-                  np.array([[4, 4], [4, 5], [5, 5], [5, 4]]),  
-                  np.array([[3, 3], [3, 4], [4, 4], [4, 3]])]  
+import os 
+home = os.path.expanduser('~')
+path_data=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
+path_save=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects/'
 
-time3_labels = [1,2,3]
-time3_cells = [(1, 1), (2, 2), (3, 3)]  # List of (x, y) positions for time 1
-time3_volumes = [10, 15, 20]  # List of volumes for time 1
-time3_outlines = [np.array([[1, 1], [1, 2], [2, 2], [2, 1]]),  # Example outline for cell 1
-                  np.array([[2, 2], [2, 3], [3, 3], [3, 2]]),  # Example outline for cell 2
-                  np.array([[3, 3], [3, 4], [4, 4], [4, 3]])]  # Example outline for cell 3
+file, embcode = get_file_embcode(path_data, "082119_p1")
 
-labels = [time1_labels, time2_labels, time3_labels]
-positions = [time1_cells, time2_cells, time3_cells]
-volumes = [time1_volumes, time2_volumes, time3_volumes]
-outlines = [time1_outlines, time2_outlines, time3_outlines]
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
+IMGS = IMGS[0:2]
 
-# Calculate the cost matrix based on the Euclidean distance, volume differences, and shape similarity
-for t in range(len(labels)-1):
-    print('t =',t)
-    labs1 = labels[t]
-    labs2 = labels[t+1]
-    
-    pos1 = positions[t]
-    pos2 = positions[t+1]
-    
-    vols1 = volumes[t]
-    vols2 = volumes[t+1]
-    
-    outs1 = outlines[t]
-    outs2 = outlines[t+1]
-    
-    cost_matrix = []
-    for i in range(len(labs1)):
-        row = []
-        for j in range(len(labs2)):
-            
-            distance = ((pos1[i][0] - pos2[j][0]) ** 2 +
-                        (pos1[i][1] - pos2[j][1]) ** 2) ** 0.5
-            volume_diff = abs(vols1[i] - vols2[j])
-            shape_diff = directed_hausdorff(outs1[i], outs2[j])[0]  # Hausdorff distance
-            cost = distance + volume_diff + shape_diff
-            row.append(cost)
-            
-        cost_matrix.append(row)
+from cellpose import models
+model_c  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
+# model  = models.Cellpose(gpu=True, model_type='nuclei')
+segmentation_method = 'cellpose'
 
-    # Create an instance of the Munkres class
-    m = Munkres()
+# from stardist.models import StarDist2D
+# model_s= StarDist2D.from_pretrained('2D_versatile_fluo')
+# segmentation_method = 'stardist'
 
-    # Solve the assignment problem using the Hungarian algorithm
-    indexes = m.compute(cost_matrix)
+CT = CellTracking(IMGS, path_save, embcode
+    , segmentation_method = segmentation_method
+    , model = model_c
+    , segmentation_args = {}
+    , distance_th_z=3.0
+    , xyresolution=xyres # microns per pixel
+    , zresolution =zres # microns per pixel
+    , relative_overlap=False
+    , use_full_matrix_to_compute_overlap=True
+    , z_neighborhood=2
+    , overlap_gradient_th=0.15
+    , tracking_method = 'hungarian'
+    , tracking_arguments = {}
+    , plot_layout=(1,1)
+    , plot_overlap=1
+    , masks_cmap='tab10'
+    , min_outline_length=200
+    , neighbors_for_sequence_sorting=30
+    , backup_steps=20
+    , time_step=5 # minutes
+    , cell_distance_axis="xy"
+    , movement_computation_method="center"
+    , mean_substraction_cell_movement=False
+    , line_builder_mode='lasso'
+    , blur_args=[[5,5], 1])
 
-    # Print the matched cell pairs
-    for row, column in indexes:
-        label1 = labs1[row]
-        label2 = labs2[column]
-        print(label1, label2)
+CT()
+
+CT.plot_tracking(plot_layout=(1,2), plot_overlap=1, plot_stack_dims=(512, 512))
+
+# CT.plot_cell_movement()
+# CT.plot_masks3D_Imagej(cell_selection=False)
+
+CT.save_masks3D_stack()
