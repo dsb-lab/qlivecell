@@ -11,11 +11,10 @@ path_save=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/
 file, embcode = get_file_embcode(path_data, "082119_p1")
 
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
-IMGS = IMGS[0:2]
+IMGS = IMGS[0:2, 0:10]   
 
 from cellpose import models
-model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
-# model  = models.Cellpose(gpu=False, model_type='nuclei')
+model  = models.CellposeModel(gpu=False, model_type='nuclei')
 segmentation_method = 'cellpose'
 
 # from stardist.models import StarDist2D
@@ -50,15 +49,6 @@ CT = CellTracking(IMGS, path_save, embcode
 
 CT()
 
-import numpy as np
-labels_stack = np.zeros_like(IMGS).astype('int16')
-labels_stack = compute_labels_stack(labels_stack, CT.jitcells, range(CT.times))
+CT.plot_tracking()
 
-t = 0
-z = 3
-_imgsl = [labels_stack[t][z]]
-_imgs= [IMGS[t][z]]
-
-
-model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
-model.train(_imgs, _imgsl, channels = [0,0], save_path=path_save, model_name='test')
+model = CT.train_segmentation_model()

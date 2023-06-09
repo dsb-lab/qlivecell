@@ -1,6 +1,7 @@
 from numba import njit
 from numba import typed 
 import numpy as np
+from datetime import datetime
 
 from copy import deepcopy, copy
 import itertools
@@ -30,6 +31,7 @@ from core.PA import PlotActionCT, PlotActionCellPicker
 from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
 from core.utils_ct import read_img_with_resolution, get_file_embcode
+from core.segmentation_training import train_CellposeModel, train_StardistModel, get_training_set
 
 # import segmentation functions
 from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist
@@ -69,6 +71,8 @@ class CellTracking(object):
         CT_info=None, 
         segmentation_method='cellpose',
         model=None, 
+        model_save_path=None,
+        model_name=None,
         segmentation_args={},
         distance_th_z=3.0, 
         xyresolution=None, 
@@ -104,8 +108,22 @@ class CellTracking(object):
         self.available_segmentation = ['cellpose', 'stardist']
         self.segmentation_method = segmentation_method
 
+        # count number of actions done during manual curation
+        # this is not reset after training
+        self.nactions = 0
+        
+        # create list to stare lists of [t,z] actions performed
+        # This list is reseted after training
+        self._tz_actions = [] 
+        
         if segmentation_method=='cellpose':
-            self._seg_args = {'model':model, 'trained_model':True, 'channels':[0,0], 'flow_threshold':0.4}
+            if model_save_path is None: model_save_path = self.path_to_save
+            if model_name is None: 
+                now = datetime.now()
+                dt = now.strftime(self.segmentation_method+"_%d-%m-%Y_%H-%M-%S")
+                model_name=dt
+            self._seg_args = {'model':model, 'model_save_path':model_save_path, 'model_name':model_name,'trained_model':True, 'channels':[0,0], 'flow_threshold':0.4}
+            
         elif segmentation_method=='stardist':
             self._seg_args = {'model':model}
 
@@ -501,13 +519,20 @@ class CellTracking(object):
         compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, labels=[self.jitcells[-1].label], mode="masks")
         compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, labels=[self.jitcells[-1].label], mode="outlines")
 
-    def delete_cell(self, PACP):
+        self.nactions+=1
+        self._tz_actions.append([PACP.t, PACP.z])
+        
+    def delete_cell(self, PACP, count_action=True):
         cells = [x[0] for x in PACP.list_of_cells]
         cellids = []
         Zs    = [x[1] for x in PACP.list_of_cells]
         if len(cells) == 0:
             return
         
+        if count_action:
+            self.nactions+=1
+            for z in Zs: self._tz_actions.append([PACP.t, z])
+            
         compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=cells, mode="masks", rem=True)
         compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=cells, mode="outlines", rem=True)
 
@@ -561,6 +586,10 @@ class CellTracking(object):
 
         t = Ts[0]
         z = Zs[1]
+        
+        self.nactions+=1
+        self._tz_actions.append([t, z])
+        
         cells = [self._get_cell(label=lab) for lab in labels]
 
         cell = cells[0]
@@ -574,7 +603,7 @@ class CellTracking(object):
             zid  = cell.zs[tid].index(z)
             pre_outline = np.concatenate((pre_outline, cell.outlines[tid][zid]), axis=0)
 
-        self.delete_cell(PACP)
+        self.delete_cell(PACP, count_action=False)
 
         hull = ConvexHull(pre_outline)
         outline = pre_outline[hull.vertices]
@@ -593,6 +622,10 @@ class CellTracking(object):
         cells.sort()
         t = PACP.t
 
+        Zs = [x[1] for x in PACP.list_of_cells]
+        self.nactions+=1
+        # for z in Zs: self._tz_actions.append([t, z])
+        
         cell1 = self._get_cell(cells[0])
         tid_cell1 = cell1.times.index(t)
         for lab in cells[1:]:
@@ -662,6 +695,8 @@ class CellTracking(object):
         compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
         compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
 
+        self.nactions +=1
+    
     def separate_cells_t(self):
         # 2 cells selected
         if len(self.list_of_cells)!=2:
@@ -702,6 +737,8 @@ class CellTracking(object):
         compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
         compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
 
+        self.nactions +=1
+        
     def apoptosis(self, list_of_cells):
         for cell_att in list_of_cells:
             lab, cellid, t = cell_att
@@ -710,6 +747,8 @@ class CellTracking(object):
                 self.apoptotic_events.append(attributes)
             else:
                 self.apoptotic_events.remove(attributes)
+        
+        self.nactions +=1
 
     def mitosis(self):
         if len(self.mito_cells) != 3:
@@ -727,7 +766,37 @@ class CellTracking(object):
             self.mitotic_events.remove(mito_ev)
         else:
             self.mitotic_events.append(mito_ev)
-    
+
+        self.nactions +=1
+        
+    def train_segmentation_model(self):
+        
+        plt.close("all")
+        if hasattr(self, 'PACP'): del self.PACP
+        
+        labels_stack = np.zeros_like(self.stacks).astype('int16')
+        labels_stack = compute_labels_stack(labels_stack, self.jitcells, range(self.times))
+
+        train_imgs, train_masks = get_training_set(self.stacks, labels_stack, self._tz_actions)
+        
+        model_path = self._seg_args['model_save_path']
+        model_name = self._seg_args['model_name']
+        
+        if self.segmentation_method=='cellpose':
+            model = train_CellposeModel(train_imgs, train_masks, self._seg_args['model'], self._seg_args['channels'], model_path, model_name)
+            self._seg_args['model'] = model
+        
+        elif self.segmentation_method=='stardist':
+            model = train_StardistModel()
+            self._seg_args['model'] = model
+        
+        self._seg_args['model'] = model
+        
+        self.__call__()
+        self._tz_actions = [] 
+        self.plot_tracking()
+        return model
+
     def _get_cell(self, label=None, cellid=None):
         if label==None:
             for cell in self.jitcells:
@@ -970,152 +1039,3 @@ class CellTracking(object):
         coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
         self._labels_color_id = [next(coloriter) for i in range(10000)]
     
-    # def compute_cell_movement(self, movement_computation_method):
-    #     for cell in self.cells:
-    #         cell.compute_movement(self._cdaxis, movement_computation_method)
-
-    # def compute_mean_cell_movement(self):
-    #     nrm = np.zeros(self.times-1)
-    #     self.cell_movement = np.zeros(self.times-1)
-    #     for cell in self.cells:
-    #         time_ids = np.array(cell.times)[:-1]
-    #         nrm[time_ids]+=np.ones(len(time_ids))
-    #         self.cell_movement[time_ids]+=cell.disp
-    #     self.cell_movement /= nrm
-            
-    # def cell_movement_substract_mean(self):
-    #     for cell in self.cells:
-    #         new_disp = []
-    #         for i,t in enumerate(cell.times[:-1]):
-    #             new_val = cell.disp[i] - self.cell_movement[t]
-    #             new_disp.append(new_val)
-    #         cell.disp = new_disp
-
-    # def plot_cell_movement(self
-    #                      , label_list=None
-    #                      , plot_mean=True
-    #                      , substract_mean=None
-    #                      , plot_tracking=True
-    #                      , plot_layout=None
-    #                      , plot_overlap=None
-    #                      , masks_cmap=None
-    #                      , movement_computation_method=None):
-        
-    #     if movement_computation_method is None: movement_computation_method=self._movement_computation_method
-    #     else: self._movement_computation_method=movement_computation_method
-    #     if substract_mean is None: substract_mean=self._mscm
-    #     else: self._mscm=substract_mean
-        
-    #     self.compute_cell_movement(movement_computation_method)
-    #     self.compute_mean_cell_movement()
-    #     if substract_mean:
-    #         self.cell_movement_substract_mean()
-    #         self.compute_mean_cell_movement()
-
-    #     ymax  = max([max(cell.disp) if len(cell.disp)>0 else 0 for cell in self.cells])+1
-    #     ymin  = min([min(cell.disp) if len(cell.disp)>0 else 0 for cell in self.cells])-1
-
-    #     if label_list is None: label_list=list(copy(self.unique_labels))
-        
-    #     used_markers = []
-    #     used_styles  = []
-    #     if hasattr(self, "fig_cellmovement"):
-    #         if plt.fignum_exists(self.fig_cellmovement.number):
-    #             firstcall=False
-    #             self.ax_cellmovement.cla()
-    #         else:
-    #             firstcall=True
-    #             self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
-    #     else:
-    #         firstcall=True
-    #         self.fig_cellmovement, self.ax_cellmovement = plt.subplots(figsize=(10,10))
-        
-    #     len_cmap = len(self._label_colors)
-    #     len_ls   = len_cmap*len(PLTMARKERS)
-    #     countm   = 0
-    #     markerid = 0
-    #     linestyleid = 0
-    #     for cell in self.cells:
-    #         label = cell.label
-    #         if label in label_list:
-    #             c  = self._label_colors[self._labels_color_id[label]]
-    #             m  = PLTMARKERS[markerid]
-    #             ls = PLTLINESTYLES[linestyleid]
-    #             if m not in used_markers: used_markers.append(m)
-    #             if ls not in used_styles: used_styles.append(ls)
-    #             tplot = [cell.times[i]*self._tstep for i in range(1,len(cell.times))]
-    #             self.ax_cellmovement.plot(tplot, cell.disp, c=c, marker=m, linewidth=2, linestyle=ls,label="%d" %label)
-    #         countm+=1
-    #         if countm==len_cmap:
-    #             countm=0
-    #             markerid+=1
-    #             if markerid==len(PLTMARKERS): 
-    #                 markerid=0
-    #                 linestyleid+=1
-    #     if plot_mean:
-    #         tplot = [i*self._tstep for i in range(1,self.times)]
-    #         self.ax_cellmovement.plot(tplot, self.cell_movement, c='k', linewidth=4, label="mean")
-    #         leg_patches = [Line2D([0], [0], color="k", lw=4, label="mean")]
-    #     else:
-    #         leg_patches = []
-
-    #     label_list_lastdigit = [int(str(l)[-1]) for l in label_list]
-    #     for i, col in enumerate(self._label_colors):
-    #         if i in label_list_lastdigit:
-    #             leg_patches.append(Line2D([0], [0], color=col, lw=2, label=str(i)))
-
-    #     count = 0
-    #     for i, m in enumerate(used_markers):
-    #         leg_patches.append(Line2D([0], [0], marker=m, color='k', label="+%d" %count, markersize=10))
-    #         count+=len_cmap
-
-    #     count = 0
-    #     for i, ls in enumerate(used_styles):
-    #         leg_patches.append(Line2D([0], [0], linestyle=ls, color='k', label="+%d" %count, linewidth=2))
-    #         count+=len_ls
-
-    #     self.ax_cellmovement.set_ylabel("cell movement")
-    #     self.ax_cellmovement.set_xlabel("time (min)")
-    #     self.ax_cellmovement.xaxis.set_major_locator(MaxNLocator(integer=True))
-    #     self.ax_cellmovement.legend(handles=leg_patches, bbox_to_anchor=(1.04, 1))
-    #     self.ax_cellmovement.set_ylim(ymin,ymax)
-    #     self.fig_cellmovement.tight_layout()
-        
-    #     if firstcall:
-    #         if plot_tracking:
-    #             self.plot_tracking(windows=1, cell_picker=True, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, mode="CM")
-    #         else: plt.show()
-
-    # def _select_cells(self
-    #                 , plot_layout=None
-    #                 , plot_overlap=None
-    #                 , masks_cmap=None):
-        
-    #     self.plot_tracking(windows=1, cell_picker=True, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, mode="CP")
-    #     self.PACP.CP.stopit()
-    #     labels = copy(self.PACP.label_list)
-    #     return labels
-
-    
-    # def plot_masks3D_Imagej(self
-    #                       , verbose=False
-    #                       , cell_selection=False
-    #                       , plot_layout=None
-    #                       , plot_overlap=None
-    #                       , masks_cmap=None
-    #                       , keep=True
-    #                       , color=None
-    #                       , channel_name=""):
-        
-    #     self.save_masks3D_stack(cell_selection, plot_layout=plot_layout, plot_overlap=plot_overlap, masks_cmap=masks_cmap, color=color, channel_name=channel_name)
-    #     file=self.embcode+"_masks"+channel_name+".tiff"
-    #     pth=self.path_to_save
-    #     fullpath = pth+file
-        
-    #     if verbose:
-    #         subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--ij2', '--console', '-macro', '/home/pablo/Desktop/PhD/projects/CellTracking/utils/imj_3D.ijm', fullpath])
-    #     else:
-    #         subprocess.run(['/opt/Fiji.app/ImageJ-linux64', '--ij2', '--console', '-macro', '/home/pablo/Desktop/PhD/projects/CellTracking/utils/imj_3D.ijm', fullpath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    #     if not keep:
-    #         subprocess.run(["rm", fullpath])
