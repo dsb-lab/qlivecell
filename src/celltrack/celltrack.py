@@ -36,7 +36,7 @@ from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose,
 from core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
 from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
 from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
-from core.tools.ct_tools import compute_point_stack
+from core.tools.ct_tools import compute_point_stack, compute_labels_stack
 from core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence, increase_outline_width
 from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes, _extract_unique_labels_and_max_label
 from core.tools.save_tools import load_cells, save_masks4D_stack

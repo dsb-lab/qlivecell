@@ -170,3 +170,12 @@ def get_cell(cells, label=None, cellid=None):
                 if cell.label == label:
                     return cell
     return None
+
+
+def compute_labels_stack(point_stack, jitcells, times):
+    for t in times:
+        for jitcell in jitcells:
+            color=jitcell.label+1
+            points = jitcell.masks
+            set_cell_color(point_stack, points, jitcell.times, jitcell.zs, color, 1, t=t)
+    return point_stack

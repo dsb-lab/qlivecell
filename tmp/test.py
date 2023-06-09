@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/celltrack/src/celltrack')
 
-from celltrack import CellTracking, get_file_embcode, read_img_with_resolution
+from celltrack import CellTracking, get_file_embcode, read_img_with_resolution, load_cells, compute_labels_stack
 
 import os 
 home = os.path.expanduser('~')
@@ -13,19 +13,9 @@ file, embcode = get_file_embcode(path_data, "082119_p1")
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
 IMGS = IMGS[0:2]
 
-MASKS0, _, _ = read_img_with_resolution(path_save+embcode+'_masks.tiff', channel=0)
-MASKS1, _, _ = read_img_with_resolution(path_save+embcode+'_masks.tiff', channel=0)
-MASKS2, _, _ = read_img_with_resolution(path_save+embcode+'_masks.tiff', channel=0)
-import numpy as np
-
-MASKS0 = MASKS0.reshape((*MASKS0.shape, 1))
-MASKS1 = MASKS1.reshape((*MASKS1.shape, 1))
-MASKS2 = MASKS2.reshape((*MASKS2.shape, 1))
-MASKS = np.append(MASKS0, MASKS1, MASKS2, axis=4)
-
 from cellpose import models
-model_c  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
-# model  = models.Cellpose(gpu=True, model_type='nuclei')
+model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
+# model  = models.Cellpose(gpu=False, model_type='nuclei')
 segmentation_method = 'cellpose'
 
 # from stardist.models import StarDist2D
@@ -34,8 +24,8 @@ segmentation_method = 'cellpose'
 
 CT = CellTracking(IMGS, path_save, embcode
     , segmentation_method = segmentation_method
-    , model = model_c
-    , segmentation_args = {}
+    , model = model
+    , segmentation_args = {'trained_model':True}
     , distance_th_z=3.0
     , xyresolution=xyres # microns per pixel
     , zresolution =zres # microns per pixel
@@ -60,8 +50,15 @@ CT = CellTracking(IMGS, path_save, embcode
 
 CT()
 
-CT.plot_tracking(plot_layout=(1,2), plot_overlap=1, plot_stack_dims=(512, 512))
+import numpy as np
+labels_stack = np.zeros_like(IMGS).astype('int16')
+labels_stack = compute_labels_stack(labels_stack, CT.jitcells, range(CT.times))
 
-# CT.plot_cell_movement()
-# CT.plot_masks3D_Imagej(cell_selection=False)
-# CT.save_masks3D_stack()
+t = 0
+z = 3
+_imgsl = [labels_stack[t][z]]
+_imgs= [IMGS[t][z]]
+
+
+model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
+model.train(_imgs, _imgsl, channels = [0,0], save_path=path_save, model_name='test')

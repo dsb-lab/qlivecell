@@ -34,7 +34,7 @@ def cell_segmentation2D_cellpose(img, args):
     if trained_model:
         masks, flows, styles = model.eval(img)
     else:
-        masks, flows, styles, diam = model.eval(img, channels=chs, flow_threshold=fth)
+        masks, flows, styles, diam = model.eval(img, channels=chs, flow_threshold=fth, model_loaded=True)
         
     outlines = outlines_list(masks)
     return outlines
