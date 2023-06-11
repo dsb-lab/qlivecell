@@ -4,7 +4,6 @@ import numpy as np
 from datetime import datetime
 
 from copy import deepcopy, copy
-import itertools
 from tifffile import imwrite
 
 from matplotlib import cm
@@ -30,22 +29,20 @@ from core.pickers import LineBuilder_lasso, LineBuilder_points
 from core.PA import PlotActionCT, PlotActionCellPicker
 from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
-from core.utils_ct import read_img_with_resolution, get_file_embcode
+from core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar
 from core.segmentation_training import train_CellposeModel, train_StardistModel, get_training_set, check_train_segmentation_args, fill_train_segmentation_args
-
-# import segmentation functions
 from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist, check_segmentation_args, fill_segmentation_args
-from core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
+from core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
+from core.tracking import greedy_tracking, hungarian_tracking, check_tracking_args, fill_tracking_args
+from core.plotting import check_and_fill_plot_args, check_stacks_for_plotting
 from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
+
+from core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
 from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
 from core.tools.ct_tools import compute_point_stack, compute_labels_stack
 from core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence, increase_outline_width
 from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes, _extract_unique_labels_and_max_label
 from core.tools.save_tools import load_cells, save_masks4D_stack
-
-from core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
-from core.tracking import greedy_tracking, hungarian_tracking, check_tracking_args, fill_tracking_args
-from core.utils_ct import printfancy, printclear, progressbar
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
@@ -77,18 +74,18 @@ class CellTracking(object):
         z_neighborhood=2, 
         overlap_gradient_th=0.3, 
         
-        plot_layout=(2,3), 
-        plot_overlap=1, 
-        masks_cmap='tab10', 
+ 
         min_outline_length=200, 
         neighbors_for_sequence_sorting=7, 
         backup_steps=5, 
         time_step=None, 
+        
+        plot_args={},
+        
         cell_distance_axis="xy", 
         movement_computation_method="center", 
         mean_substraction_cell_movement=False, 
-        plot_stack_dims=None, 
-        plot_outline_width=1, 
+        
         line_builder_mode='lasso', 
         stacks_for_plotting=None, 
         given_Outlines=None, 
@@ -115,7 +112,7 @@ class CellTracking(object):
         self._given_Outlines = given_Outlines
 
         # pre-define max label
-        self.max_label         = 0
+        self.max_label = 0
         
         if CELLS !=None:
             self._init_with_cells(CELLS, CT_info)
@@ -138,31 +135,9 @@ class CellTracking(object):
             self.apoptotic_events  = []
             self.mitotic_events    = []
 
-        ##  Plotting Attributes  ##
-        # We assume that both dimension have the same resolution
-        if plot_stack_dims is not None: self.plot_stack_dims = plot_stack_dims
-        else: self.plot_stack_dims = self.stack_dims
-
-        if stacks_for_plotting is None: self.stacks_for_plotting = self.stacks
-        else: 
-            self.stacks_for_plotting = stacks_for_plotting  
-            self.plot_stack_dims = [self.plot_stack_dims[0], self.plot_stack_dims[1], 3]   
-               
-        self.dim_change = self.plot_stack_dims[0] / self.stack_dims[0]
-        self._plot_xyresolution= self._xyresolution * self.dim_change
+        #  Plotting Attributes
+        self._plot_args = check_and_fill_plot_args(plot_args, (self.stacks.shape[2], self.stacks.shape[3]))
         
-        if not hasattr(plot_layout, '__iter__'): raise # Need to revise this error 
-        self.plot_layout       = plot_layout
-        
-        self.plot_overlap      = plot_overlap
-        self._cmap_name        = masks_cmap
-        self._cmap             = cm.get_cmap(self._cmap_name)
-        self._label_colors     = self._cmap.colors
-        self.plot_masks = True
-        self._backup_steps= backup_steps
-        self._neigh_index = plot_outline_width
-        self._assign_color_to_label()
-
         ##  Cell movement parameters  ##
         self._cdaxis = cell_distance_axis
         self._movement_computation_method = movement_computation_method
@@ -190,11 +165,12 @@ class CellTracking(object):
         
         t = self.times
         z = self.slices
-        x,y = self.plot_stack_dims[0:2]
+        x,y = self._plot_args['plot_stack_dims'][0:2]
 
         self._masks_stack = np.zeros((t,z,x,y,4))
         self._outlines_stack = np.zeros((t,z,x,y,4))
         
+        self._backup_steps= backup_steps
         if CELLS!=None: 
             self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
             self.update_labels(backup=False)
@@ -250,8 +226,8 @@ class CellTracking(object):
         self.hints, self.ctattr= _init_CT_cell_attributes(self.jitcells)
         self.update_labels(backup=False)
 
-        compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
 
         printfancy("labels updated", clear_prev=1)
         
@@ -275,8 +251,8 @@ class CellTracking(object):
         self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in cells])
         self.update_label_attributes()
         
-        compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
 
         self.apoptotic_events = deepcopy(backup.apo_evs)
         self.mitotic_events = deepcopy(backup.mit_evs)
@@ -426,9 +402,9 @@ class CellTracking(object):
         
         self.update_label_attributes()
 
-        compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
+        compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
         
-        compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+        compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
         
         if backup: self.one_step_copy()
         
@@ -480,7 +456,7 @@ class CellTracking(object):
             if len(PACP.linebuilder.xs)<3: return
             
             new_outline = np.dstack((PACP.linebuilder.xs, PACP.linebuilder.ys))[0]
-            new_outline = np.floor(new_outline / self.dim_change).astype('uint16')
+            new_outline = np.floor(new_outline / self._plot_args['dim_change']).astype('uint16')
             
             if np.max(new_outline)>self.stack_dims[0]:
                 printfancy("ERROR: drawing out of image")
@@ -488,15 +464,15 @@ class CellTracking(object):
 
         elif self._line_builder_mode == 'lasso':
             if len(PACP.linebuilder.outline)<3: return
-            new_outline = np.floor(PACP.linebuilder.outline / self.dim_change)
+            new_outline = np.floor(PACP.linebuilder.outline / self._plot_args['dim_change'])
             new_outline = new_outline.astype('uint16')
         
         self.append_cell_from_outline(new_outline, PACP.z, PACP.t, mask=None)
                 
         self.update_label_attributes()
         
-        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, labels=[self.jitcells[-1].label], mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, labels=[self.jitcells[-1].label], mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, labels=[self.jitcells[-1].label], mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, labels=[self.jitcells[-1].label], mode="outlines")
 
         self.nactions+=1
         self._tz_actions.append([PACP.t, PACP.z])
@@ -512,8 +488,8 @@ class CellTracking(object):
             self.nactions+=1
             for z in Zs: self._tz_actions.append([PACP.t, z])
             
-        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=cells, mode="masks", rem=True)
-        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=cells, mode="outlines", rem=True)
+        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], labels=cells, mode="masks", rem=True)
+        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], labels=cells, mode="outlines", rem=True)
 
         labs_to_replot = []
         for i,lab in enumerate(cells):
@@ -551,8 +527,8 @@ class CellTracking(object):
             except ValueError: pass
         
         self.update_label_attributes()
-        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=[*new_labs, *labs_to_replot], alpha=0, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, labels=[*new_labs, *labs_to_replot], alpha=1, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], labels=[*new_labs, *labs_to_replot], alpha=0, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], labels=[*new_labs, *labs_to_replot], alpha=1, mode="outlines")
 
     def join_cells(self, PACP):
         labels, Zs, Ts = list(zip(*PACP.list_of_cells))
@@ -591,8 +567,8 @@ class CellTracking(object):
         
         self.update_label_attributes()
         
-        compute_point_stack(self._masks_stack, self.jitcells, [t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, alpha=0, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, [t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, alpha=0, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, [t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], alpha=0, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, [t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], alpha=0, mode="outlines")
 
     def combine_cells_z(self, PACP):
         if len(PACP.list_of_cells)<2:
@@ -633,8 +609,8 @@ class CellTracking(object):
         
         self.update_label_attributes()
         
-        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, alpha=1, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, alpha=1, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], alpha=1, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], alpha=1, mode="outlines")
 
     def combine_cells_t(self):
         # 2 cells selected
@@ -656,8 +632,8 @@ class CellTracking(object):
             printfancy("ERROR: cells overlap in time")
                     
             self.update_label_attributes()
-            compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
-            compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+            compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
+            compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
 
             return
 
@@ -671,8 +647,8 @@ class CellTracking(object):
         self._del_cell(maxlab)
         
         self.update_label_attributes()
-        compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
 
         self.nactions +=1
     
@@ -713,8 +689,8 @@ class CellTracking(object):
         
         self.update_label_attributes()
         
-        compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
 
         self.nactions +=1
         
@@ -816,55 +792,29 @@ class CellTracking(object):
         self._titles.append(title)
         _ = _ax.axis(False)
 
-    def plot_tracking(self
-                    , plot_layout=None
-                    , plot_overlap=None
-                    , cell_picker=False
-                    , masks_cmap=None
-                    , mode=None
-                    , plot_outline_width=None
-                    , plot_stack_dims=None):
-
-        if plot_layout is not None: self.plot_layout=plot_layout
-        if plot_overlap is not None: self.plot_overlap=plot_overlap
-        if self.plot_layout[0]*self.plot_layout[1]==1: self.plot_overlap=0
-        if plot_outline_width is not None: self._neigh_index = plot_outline_width
-        if plot_stack_dims is not None: 
-            if len(self.plot_stack_dims)==3: plot_stack_dims=(*plot_stack_dims, 3)
-            self.plot_stack_dims = plot_stack_dims
-            self.dim_change = plot_stack_dims[0] / self.stack_dims[0]
-            self._plot_xyresolution= self._xyresolution * self.dim_change
-                
-        if masks_cmap is not None:
-            self._cmap_name    = masks_cmap
-            self._cmap         = cm.get_cmap(self._cmap_name)
-            self._label_colors = self._cmap.colors
-            self._assign_color_to_label()
-        if self.dim_change != 1:
-            self.plot_stacks = np.zeros((self.times, self.slices, *self.plot_stack_dims))
-            
-            for t in range(self.times):
-                for z in range(self.slices):
-                    if len(self.plot_stack_dims)==3:
-                        for ch in range(3):
-                            self.plot_stacks[t, z,:,:,ch] = cv2.resize(self.stacks_for_plotting[t,z,:,:,ch], self.plot_stack_dims[0:2])
-                            self.plot_stacks[t, z,:,:,ch] = self.plot_stacks[t, z,:,:,ch]/np.max(self.plot_stacks[t, z,:,:,ch])
-                    else:
-                        self.plot_stacks[t, z] = cv2.resize(self.stacks_for_plotting[t,z], self.plot_stack_dims)
-        else:
-            self.plot_stacks = self.stacks_for_plotting
+    def plot_tracking(self,
+        plot_args=None,
+        stacks_for_plotting=None,
+        cell_picker=False,
+        mode=None,
+    ):
         
-        self.plot_masks=True
+        if plot_args is None: plot_args =  self._plot_args
+        #  Plotting Attributes
+        check_and_fill_plot_args(plot_args, (self.stacks.shape[2], self.stacks.shape[3]))
+        self.plot_stacks=check_stacks_for_plotting(stacks_for_plotting, self.stacks, plot_args, self.times, self.slices, self._xyresolution)
+        
+        self._plot_args['plot_masks']=True
         
         t = self.times
         z = self.slices
-        x,y = self.plot_stack_dims[0:2]
+        x,y = self._plot_args['plot_stack_dims'][0:2]
 
         self._masks_stack = np.zeros((t,z,x,y,4))
         self._outlines_stack = np.zeros((t,z,x,y,4))
 
-        compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self.dim_change, self._label_colors, self._labels_color_id, 1, mode="outlines")
+        compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
+        compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
 
         self._imshows          = []
         self._imshows_masks    = []
@@ -874,7 +824,7 @@ class CellTracking(object):
         self._annotations      = []
         self.list_of_cellsm    = []
         
-        counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=0)
+        counter = plotRound(layout=self._plot_args['plot_layout'],totalsize=self.slices, overlap=self._plot_args['plot_overlap'], round=0)
         fig, ax = plt.subplots(counter.layout[0],counter.layout[1], figsize=(10,10))
         if not hasattr(ax, '__iter__'): ax = np.array([ax])
         ax = ax.flatten()
@@ -901,8 +851,8 @@ class CellTracking(object):
         axslide = fig.add_axes([0.10, 0.04, 0.75, 0.03])
         sliderstr = "/%d" %(self.slices)
         
-        groupsize  = self.plot_layout[0] * self.plot_layout[1]
-        max_round = int(np.ceil((self.slices - groupsize)/(groupsize - self.plot_overlap)))
+        groupsize  = self._plot_args['plot_layout'][0] * self._plot_args['plot_layout'][1]
+        max_round = int(np.ceil((self.slices - groupsize)/(groupsize - self._plot_args['plot_overlap'])))
 
 
         z_slider = Slider_z(
@@ -944,8 +894,8 @@ class CellTracking(object):
                     cell = self._get_cell(lab)
                     tid = cell.times.index(t)
                     zz, ys, xs = cell.centers[tid]
-                    xs = round(xs*self.dim_change)
-                    ys = round(ys*self.dim_change)
+                    xs = round(xs*self._plot_args['dim_change'])
+                    ys = round(ys*self._plot_args['dim_change'])
                     if zz == z:
                         pos = ax[id].scatter([ys], [xs], s=1.0, c="white")
                         self._pos_scatters.append(pos)
@@ -967,7 +917,7 @@ class CellTracking(object):
     def replot_tracking(self, PACP, plot_outlines=True):
         
         t = PACP.t
-        counter = plotRound(layout=self.plot_layout,totalsize=self.slices, overlap=self.plot_overlap, round=PACP.cr)
+        counter = plotRound(layout=self._plot_args['plot_layout'],totalsize=self.slices, overlap=self._plot_args['plot_overlap'], round=PACP.cr)
         zidxs  = np.unravel_index(range(counter.groupsize), counter.layout)
         imgs   = self.plot_stacks[t,:,:,:]
         # Plot all our Zs in the corresponding round
@@ -980,7 +930,7 @@ class CellTracking(object):
         for z, id, r in counter:
             # select current z plane
             if z == None:
-                img = np.zeros(self.plot_stack_dims)
+                img = np.zeros(self._plot_args['plot_stack_dims'])
                 self._imshows[id].set_data(img)
                 self._imshows_masks[id].set_data(img)
                 self._imshows_outlines[id].set_data(img)
@@ -994,8 +944,8 @@ class CellTracking(object):
                     cell = self._get_cell(lab)
                     tid = cell.times.index(t)
                     zz, ys, xs = cell.centers[tid]
-                    xs = round(xs*self.dim_change)
-                    ys = round(ys*self.dim_change)
+                    xs = round(xs*self._plot_args['dim_change'])
+                    ys = round(ys*self._plot_args['dim_change'])
                     if zz == z:
                         if [cell.id, PACP.t] in self.apoptotic_events:
                             sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
@@ -1015,8 +965,3 @@ class CellTracking(object):
                                         self._pos_scatters.append(sc)
 
         plt.subplots_adjust(bottom=0.075)
-
-    def _assign_color_to_label(self):
-        coloriter = itertools.cycle([i for i in range(len(self._label_colors))])
-        self._labels_color_id = [next(coloriter) for i in range(10000)]
-    

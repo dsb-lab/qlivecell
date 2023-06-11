@@ -1,5 +1,15 @@
 import math
 
+class CyclicList:
+    def __init__(self, items):
+        self.items = items
+        if len(self.items) == 0:
+            raise IndexError("CyclicList is empty")
+
+    def __getitem__(self, index):
+        normalized_index = index % len(self.items)
+        return self.items[normalized_index]
+    
 class plotCounter:
     def __init__(self, layout, totalsize, overlap ):
         self.current = -1

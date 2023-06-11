@@ -48,25 +48,30 @@ tracking_args = {
     'cost_ratios':[0.6,0.2,0.2]
 }
 
+plot_args = {
+    'plot_layout': (1,1),
+    'plot_overlap': 1,
+    'masks_cmap': 'tab10',
+    'plot_stack_dims': (512, 512), 
+}
+
 CT = CellTracking(IMGS, path_save, embcode, xyres, zres, segmentation_args,
     train_segmentation_args = train_segmentation_args,
     tracking_args = tracking_args, 
+    time_step=5, # minutes
+    
     distance_th_z=3.0,
     relative_overlap=False,
     use_full_matrix_to_compute_overlap=True,
     z_neighborhood=2,
     overlap_gradient_th=0.15,
-    plot_layout=(1,1),
-    plot_overlap=1,
-    masks_cmap='tab10',
-    min_outline_length=200,
+    
+    min_outline_length=100,
     neighbors_for_sequence_sorting=30,
     backup_steps=20,
-    time_step=5, # minutes
-    cell_distance_axis="xy",
-    movement_computation_method="center",
-    mean_substraction_cell_movement=False,
+    
     line_builder_mode='lasso',
+    plot_args = plot_args,
 )
 
 CT()
@@ -74,3 +79,4 @@ CT()
 CT.plot_tracking()
 
 model = CT.train_segmentation_model()
+
