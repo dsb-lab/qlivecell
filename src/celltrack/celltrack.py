@@ -137,7 +137,8 @@ class CellTracking(object):
 
         #  Plotting Attributes
         self._plot_args = check_and_fill_plot_args(plot_args, (self.stacks.shape[2], self.stacks.shape[3]))
-        
+        self.plot_stacks=check_stacks_for_plotting(stacks_for_plotting, self.stacks, plot_args, self.times, self.slices, self._xyresolution)
+
         ##  Cell movement parameters  ##
         self._cdaxis = cell_distance_axis
         self._movement_computation_method = movement_computation_method
@@ -802,7 +803,9 @@ class CellTracking(object):
         if plot_args is None: plot_args =  self._plot_args
         #  Plotting Attributes
         check_and_fill_plot_args(plot_args, (self.stacks.shape[2], self.stacks.shape[3]))
-        self.plot_stacks=check_stacks_for_plotting(stacks_for_plotting, self.stacks, plot_args, self.times, self.slices, self._xyresolution)
+        
+        if stacks_for_plotting is not None: self.plot_stacks=stacks_for_plotting
+        self.plot_stacks=check_stacks_for_plotting(self.plot_stacks, self.stacks, plot_args, self.times, self.slices, self._xyresolution)
         
         self._plot_args['plot_masks']=True
         
