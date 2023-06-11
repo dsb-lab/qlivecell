@@ -31,10 +31,10 @@ from core.PA import PlotActionCT, PlotActionCellPicker
 from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
 from core.utils_ct import read_img_with_resolution, get_file_embcode
-from core.segmentation_training import train_CellposeModel, train_StardistModel, get_training_set
+from core.segmentation_training import train_CellposeModel, train_StardistModel, get_training_set, check_train_segmentation_args, fill_train_segmentation_args
 
 # import segmentation functions
-from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist
+from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist, check_segmentation_args, fill_segmentation_args
 from core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d
 from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
 from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
@@ -44,7 +44,7 @@ from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_tim
 from core.tools.save_tools import load_cells, save_masks4D_stack
 
 from core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
-from core.tracking import greedy_tracking, hungarian_tracking
+from core.tracking import greedy_tracking, hungarian_tracking, check_tracking_args, fill_tracking_args
 from core.utils_ct import printfancy, printclear, progressbar
 
 import warnings
@@ -65,24 +65,18 @@ class CellTracking(object):
         stacks, 
         pthtosave, 
         embcode, 
-        stacks_for_plotting=None, 
-        given_Outlines=None, 
-        CELLS=None, 
-        CT_info=None, 
-        segmentation_method='cellpose',
-        model=None, 
-        model_save_path=None,
-        model_name=None,
-        segmentation_args={},
+        xyresolution, 
+        zresolution,
+        segmentation_args,
+        train_segmentation_args = {},
+        tracking_args = {},
+        
         distance_th_z=3.0, 
-        xyresolution=None, 
-        zresolution=None, 
         relative_overlap=False, 
         use_full_matrix_to_compute_overlap=True, 
         z_neighborhood=2, 
         overlap_gradient_th=0.3, 
-        tracking_method='greedy',
-        tracking_arguments={},
+        
         plot_layout=(2,3), 
         plot_overlap=1, 
         masks_cmap='tab10', 
@@ -96,58 +90,34 @@ class CellTracking(object):
         plot_stack_dims=None, 
         plot_outline_width=1, 
         line_builder_mode='lasso', 
-        blur_args=None):
+        stacks_for_plotting=None, 
+        given_Outlines=None, 
+        CELLS=None, 
+        CT_info=None):
         
-        self._given_Outlines = given_Outlines
-
+        # Basic arguments
         self.path_to_save      = pthtosave
         self.embcode           = embcode
         self.stacks            = stacks
+        
+        # check and fill segmentation arguments
+        check_segmentation_args(segmentation_args, available_segmentation=['cellpose', 'stardist'])
+        self._seg_args = fill_segmentation_args(segmentation_args)
+        
+        # In case you want to do training, check training argumnets
+        check_train_segmentation_args(train_segmentation_args)
+        self._train_seg_args = fill_train_segmentation_args(train_segmentation_args, self.path_to_save, self._seg_args)
+        
+        # check and fill tracking arguments
+        check_tracking_args(tracking_args, available_tracking=['greedy', 'hungarian'])
+        self._track_args = fill_tracking_args(tracking_args)
+
+        self._given_Outlines = given_Outlines
+
+        # pre-define max label
         self.max_label         = 0
         
-        self.available_segmentation = ['cellpose', 'stardist']
-        self.segmentation_method = segmentation_method
-
-        # count number of actions done during manual curation
-        # this is not reset after training
-        self.nactions = 0
-        
-        # create list to stare lists of [t,z] actions performed
-        # This list is reseted after training
-        self._tz_actions = [] 
-        
-        if segmentation_method=='cellpose':
-            if model_save_path is None: model_save_path = self.path_to_save
-            if model_name is None: 
-                now = datetime.now()
-                dt = now.strftime(self.segmentation_method+"_%d-%m-%Y_%H-%M-%S")
-                model_name=dt
-            self._seg_args = {'model':model, 'model_save_path':model_save_path, 'model_name':model_name,'trained_model':True, 'channels':[0,0], 'flow_threshold':0.4}
-            
-        elif segmentation_method=='stardist':
-            self._seg_args = {'model':model}
-
-        for sarg in segmentation_args:
-            try:
-                self._seg_args[sarg] = segmentation_args[sarg]
-            except:
-                printfancy('ERROR: wrong segmentation argument keys')
-
-        self.available_tracking = ['greedy', 'hungarian']
-        self.tracking_method = tracking_method
-
-        if tracking_method=='hungarian':
-            self._track_args={'z_th':2, 'cost_attributes':['distance', 'volume', 'shape'], 'cost_ratios':[0.6,0.2,0.2]}
-        elif tracking_method=='greedy':
-            self._track_args={'dist_th':7.5, 'z_th':2}
-
-        for targ in tracking_arguments:
-            try:
-                self._track_args[targ] = tracking_arguments[targ]
-            except:
-                printfancy('ERROR: wrong tracking argument keys')
-
-        if CELLS !=None:    
+        if CELLS !=None:
             self._init_with_cells(CELLS, CT_info)
         else:
             self._distance_th_z    = distance_th_z
@@ -158,7 +128,7 @@ class CellTracking(object):
             self.stack_dims        = np.shape(stacks)[-2:]
             self._tstep = time_step
 
-            ##  Segmentation and tracking attributes  ##
+            ##  Segmentation attributes  ##
             self._relative         = relative_overlap
             self._fullmat          = use_full_matrix_to_compute_overlap
             self._zneigh           = z_neighborhood
@@ -217,7 +187,6 @@ class CellTracking(object):
         
         self._line_builder_mode = line_builder_mode
         if self._line_builder_mode not in ['points', 'lasso']: raise Exception
-        self._blur_args = blur_args
         
         t = self.times
         z = self.slices
@@ -235,6 +204,13 @@ class CellTracking(object):
             self.backups = deque([self._backupCT], self._backup_steps)
             plt.close("all")
 
+        # count number of actions done during manual curation
+        # this is not reset after training
+        self.nactions = 0
+        
+        # create list to stare lists of [t,z] actions performed
+        # This list is reseted after training
+        self._tz_actions = [] 
 
     def _init_with_cells(self, CELLS, CT_info):
         self._xyresolution    = CT_info.xyresolution 
@@ -338,10 +314,10 @@ class CellTracking(object):
 
             stack = self.stacks[t,:,:,:]
             
-            if self.segmentation_method == 'cellpose':
-                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_cellpose, self._seg_args, self._blur_args)
-            elif self.segmentation_method == 'stardist':
-                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_stardist, self._seg_args, self._blur_args)
+            if self._seg_args['method'] == 'cellpose':
+                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_cellpose, self._seg_args)
+            elif self._seg_args['method'] == 'stardist':
+                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_stardist, self._seg_args)
 
             printfancy("")
             printfancy("Running segmentation post-processing...")
@@ -405,16 +381,19 @@ class CellTracking(object):
         return TLabels, TCenters, TOutlines, TMasks, _labels, _Outlines, _Masks
 
     def cell_tracking(self, TLabels, TCenters, TOutlines, TMasks):
-        if self.tracking_method=='greedy':
+        if self._track_args['method']=='greedy':
             FinalLabels, label_correspondance = greedy_tracking(TLabels, TCenters, self._xyresolution, self._track_args)
-        elif self.tracking_method=='hungarian':
+        elif self._track_args['method']=='hungarian':
             FinalLabels, label_correspondance = hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, self._xyresolution, self._track_args)
         return FinalLabels, label_correspondance
 
     def init_cells(self, FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance):
         self.currentcellid = 0
         self.unique_labels = np.unique(np.hstack(FinalLabels))
-        self.max_label = int(max(self.unique_labels))
+        
+        if len(self.unique_labels)==0: self.max_label=0
+        else: self.max_label = int(max(self.unique_labels))
+        
         self.jitcells = typed.List()
 
         printfancy("Progress: ")
@@ -769,25 +748,27 @@ class CellTracking(object):
 
         self.nactions +=1
         
-    def train_segmentation_model(self):
+    def train_segmentation_model(self, times=None, slices=None):
         
         plt.close("all")
         if hasattr(self, 'PACP'): del self.PACP
         
         labels_stack = np.zeros_like(self.stacks).astype('int16')
         labels_stack = compute_labels_stack(labels_stack, self.jitcells, range(self.times))
-
-        train_imgs, train_masks = get_training_set(self.stacks, labels_stack, self._tz_actions)
         
-        model_path = self._seg_args['model_save_path']
-        model_name = self._seg_args['model_name']
+        actions = self._tz_actions
+        if isinstance(times, list):
+            if isinstance(slices, list):
+                actions = [[t,z] for z in slices for t in times]
+
+        train_imgs, train_masks = get_training_set(self.stacks, labels_stack, actions, self._train_seg_args)
         
         if self.segmentation_method=='cellpose':
-            model = train_CellposeModel(train_imgs, train_masks, self._seg_args['model'], self._seg_args['channels'], model_path, model_name)
+            model = train_CellposeModel(train_imgs, train_masks, self._train_seg_args, self._seg_args['model'], self._seg_args['channels'])
             self._seg_args['model'] = model
         
         elif self.segmentation_method=='stardist':
-            model = train_StardistModel()
+            model = train_StardistModel(train_imgs, train_masks, self._train_seg_args, self._seg_args['model'])
             self._seg_args['model'] = model
         
         self._seg_args['model'] = model

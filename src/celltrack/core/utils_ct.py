@@ -14,7 +14,7 @@ def printclear(n=1):
     for i in range(n):
         print(LINE_UP, end=LINE_CLEAR)
 
-def printfancy(string, finallength=70, clear_prev=0):
+def printfancy(string="", finallength=70, clear_prev=0):
     new_str = "#   "+string
     while len(new_str)<finallength-1:
         new_str+=" "
@@ -188,7 +188,9 @@ def read_img_with_resolution(path_to_file, channel=0):
         yres = unit/npix
         assert(xres == yres)
         xyres = xres
-        zres = imagej_metadata['spacing']
+        
+        try: zres = imagej_metadata['spacing']
+        except KeyError: zres = 1.0
     return IMGS, xyres, zres
 
 def generate_set(paths_data, path_to_save ,number_of_images, channels=0, zrange=None, exclude_if_in_path=None, data_subtype=None, blur_args=None):

@@ -1,8 +1,7 @@
-import cv2
+from cv2 import GaussianBlur
 
 from .utils_ct import printfancy, progressbar, printclear
 from .tools.tools import increase_point_resolution, mask_from_outline, get_outlines_masks_labels
-import cv2
 
 def cell_segmentation2D_cellpose(img, args):
     """
@@ -69,7 +68,7 @@ def cell_segmentation2D_stardist(img, args):
 
     return outlines
 
-def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_args, min_outline_length=100):
+def cell_segmentation3D(stack, segmentation_function, segmentation_args, min_outline_length=100):
     """
     Parameters
     ----------
@@ -100,7 +99,7 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_ar
     Masks    = []
 
     slices = stack.shape[0]
-    
+    blur_args = segmentation_args['blur']
     # Number of z-levels
     printfancy("Progress: ")
     # Loop over the z-levels
@@ -109,7 +108,7 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_ar
         # Current xy plane
         img = stack[z,:,:]
         if blur_args is not None:
-            img = cv2.GaussianBlur(img, blur_args[0], blur_args[1])
+            img = GaussianBlur(img, blur_args[0], blur_args[1])
             # Select whether we are using a pre-trained model or a cellpose base-model
         outlines = segmentation_function(img, segmentation_args)
         # Append the empty masks list for the current z-level.
@@ -138,3 +137,30 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, blur_ar
         # Keep the ouline for the current z-level
         Outlines.append(outlines)
     return Outlines, Masks
+
+def check_segmentation_args(segmentation_args, available_segmentation=['cellpose', 'stardist']):
+    if 'method' not in segmentation_args.keys():
+        raise Exception('no segmentation method provided') 
+    if 'model' not in segmentation_args.keys():
+        raise Exception('no model provided') 
+    if segmentation_args['method'] not in available_segmentation: 
+        raise Exception('invalid segmentation method') 
+    return
+
+def fill_segmentation_args(segmentation_args):
+    segmentation_method = segmentation_args['method']
+
+    if segmentation_method=='cellpose':
+        new_segmentation_args = {'method': None, 'model': None, 'trained_model':True, 'channels':[0,0], 'flow_threshold':0.4, 'blur': None}
+        
+    elif segmentation_method=='stardist':
+        new_segmentation_args = {'method': None, 'model': None, 'blur': None}
+
+    for sarg in segmentation_args.keys():
+        try:
+            new_segmentation_args[sarg] = segmentation_args[sarg]
+        except KeyError:
+            raise Exception("key %s is not a correct argument for the selected segmentation method" %sarg)
+            
+    return new_segmentation_args
+

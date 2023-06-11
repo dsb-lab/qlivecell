@@ -1,11 +1,12 @@
 import numpy as np 
 from scipy.spatial.distance import directed_hausdorff
 from munkres import Munkres
+from .utils_ct import printfancy
 
-def greedy_tracking(TLabels, TCenters, xyresolution, extra_args):
+def greedy_tracking(TLabels, TCenters, xyresolution, track_args):
 
-    dist_th = extra_args['dist_th']
-    z_th = extra_args['z_th']
+    dist_th = track_args['dist_th']
+    z_th = track_args['z_th']
 
 
     FinalLabels   = []
@@ -101,11 +102,11 @@ def greedy_tracking(TLabels, TCenters, xyresolution, extra_args):
     return FinalLabels, label_correspondance
 
 
-def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, extra_args):
+def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, track_args):
 
-    z_th = extra_args['z_th']
-    cost_attributes = extra_args['cost_attributes']
-    cost_ratios = extra_args['cost_ratios']
+    z_th = track_args['z_th']
+    cost_attributes = track_args['cost_attributes']
+    cost_ratios = track_args['cost_ratios']
 
     cost_dict = dict(zip(cost_attributes, cost_ratios))
 
@@ -162,7 +163,8 @@ def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, extr
         m = Munkres()
 
         # Solve the assignment problem using the Hungarian algorithm
-        indexes = m.compute(cost_matrix)
+        try: indexes = m.compute(cost_matrix)
+        except IndexError: indexes = []
 
         # Print the matched cell pairs
         for row, column in indexes:
@@ -176,7 +178,7 @@ def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, extr
             label_correspondance_t.append([label2, label1])
             FinalLabels_t.append(label1)
 
-        labmax = np.maximum(np.max(FinalLabels[t-1]), labmax)
+        if len(FinalLabels[t-1])!=0: labmax = np.maximum(np.max(FinalLabels[t-1]), labmax)
         for lab in labs2: 
             if lab not in np.array(label_correspondance_t)[:,0]:
                 labmax+=1
@@ -186,3 +188,37 @@ def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, extr
         label_correspondance.append(label_correspondance_t)
     
     return FinalLabels, label_correspondance
+
+
+"""
+checks necessary arguments.
+"""
+def check_tracking_args(tracking_arguments, available_tracking=['greedy', 'hungarian']):
+    if 'method' not in tracking_arguments.keys():
+        printfancy("No tracking method provided. Using greedy algorithm")
+        printfancy()
+        tracking_arguments['method'] = 'greedy'
+    
+    if tracking_arguments['method'] not in available_tracking: 
+        raise Exception('invalid segmentation method') 
+    return
+
+"""
+fills rest of arguments
+"""
+def fill_tracking_args(tracking_arguments):
+    tracking_method = tracking_arguments['method']
+    
+    if tracking_method=='hungarian':
+        new_tracking_arguments = {'method': 'hungarian', 'z_th':2, 'cost_attributes':['distance', 'volume', 'shape'], 'cost_ratios':[0.6,0.2,0.2]}
+        
+    elif tracking_method=='greedy':
+        new_tracking_arguments = {'method': 'greedy', 'dist_th':7.5, 'z_th':2}
+
+    for targ in tracking_arguments.keys():
+        try:
+            new_tracking_arguments[targ] = tracking_arguments[targ]
+        except KeyError:
+            raise Exception("key %s is not a correct argument for the selected tracking method" %targ)
+            
+    return new_tracking_arguments

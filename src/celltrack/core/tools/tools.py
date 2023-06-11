@@ -112,7 +112,7 @@ def get_outlines_masks_labels(label_img):
         if lab not in label_img: continue
         mask = np.dstack(np.where(label_img == lab))[0]
         masks.append(mask)
-        
+        if len(mask)<3: continue
         hull = ConvexHull(mask)
         outline = mask[hull.vertices]
         outline[:] = outline[:, [1,0]]
