@@ -78,5 +78,5 @@ CT()
 
 CT.plot_tracking()
 
-model = CT.train_segmentation_model()
+# model = CT.train_segmentation_model()
 

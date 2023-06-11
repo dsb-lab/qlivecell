@@ -21,8 +21,7 @@ def get_point_PACP(dim_change, event):
     return np.rint(picked_point / dim_change).astype('uint16')
 
 def get_cell_PACP(PACP, event):
-    dim_change=PACP.dim_change
-    picked_point = get_point_PACP(dim_change, event)
+    picked_point = get_point_PACP(PACP._plot_args['dim_change'], event)
     for i ,mask in enumerate(PACP.CTMasks[PACP.t][PACP.z]):
         for point in mask:
             if (picked_point==point).all():
@@ -65,10 +64,10 @@ class PlotAction():
         self.filename = CT.embcode
         self.jitcells = CT.jitcells
         self.CT_info = CT.CT_info
-        self._label_colors = CT._label_colors
-        self._labels_color_id =  CT._labels_color_id
+        
+        self._plot_args = CT._plot_args
+        
         self._masks_stack = CT._masks_stack
-        self.dim_change = CT.dim_change
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
         self.times = CT.times
         self._tstep = CT._tstep
@@ -79,7 +78,7 @@ class PlotAction():
         self.CTmitotic_events = CT.mitotic_events
         self.CThints = CT.hints
         self.CTconflicts = CT.conflicts 
-        self.CTplot_masks = CT.plot_masks
+        self.CTplot_masks = self._plot_args['plot_masks']
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
@@ -90,8 +89,8 @@ class PlotAction():
         CT._z_slider.on_changed(self.update_slider_z)
         self.set_val_z_slider = CT._z_slider.set_val
 
-        groupsize  = CT.plot_layout[0] * CT.plot_layout[1]
-        self.max_round = int(np.ceil((CT.slices - groupsize)/(groupsize - CT.plot_overlap)))
+        groupsize  = self._plot_args['plot_layout'][0] * self._plot_args['plot_layout'][1]
+        self.max_round = int(np.ceil((CT.slices - groupsize)/(groupsize - self._plot_args['plot_overlap'])))
         self.get_size()
         self.mode=mode   
         self.plot_outlines=True     
@@ -128,10 +127,9 @@ class PlotAction():
         self.CTapoptotic_events = CT.apoptotic_events
         self.CTmitotic_events = CT.mitotic_events
         
-        print("reinit", self.CTmitotic_events)
         self.CThints = CT.hints
         self.CTconflicts = CT.conflicts 
-        self.CTplot_masks = CT.plot_masks
+        self.CTplot_masks = self._plot_args['plot_masks']
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
@@ -483,8 +481,8 @@ class PlotActionCT(PlotAction):
 
         for i, lab_z_t in enumerate(labs_z_to_plot):
             jitcell = self._CTget_cell(label=lab_z_t[0])
-            color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], 1)
-            set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.dim_change, t=lab_z_t[2], z=lab_z_t[1])
+            color = np.append(self._plot_args['labels_colors'][jitcell.label], 1)
+            set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self._plot_args['dim_change'], t=lab_z_t[2], z=lab_z_t[1])
 
         labs_z_to_remove = [lab_z_t for lab_z_t in self._pre_labs_z_to_plot if lab_z_t not in labs_z_to_plot]
 
@@ -492,8 +490,8 @@ class PlotActionCT(PlotAction):
             jitcell = self._CTget_cell(label=lab_z_t[0])
             if jitcell is None: continue
             
-            color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], 0)
-            set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.dim_change, t=lab_z_t[2], z=lab_z_t[1])
+            color = np.append(self._plot_args['labels_colors'][jitcell.label], 0)
+            set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self._plot_args['dim_change'], t=lab_z_t[2], z=lab_z_t[1])
 
         self._pre_labs_z_to_plot = labs_z_to_plot
 
@@ -568,8 +566,8 @@ class PlotActionCT(PlotAction):
 
             if self.CTplot_masks: alpha = 1
             else: alpha = 0
-            color = np.append(self._label_colors[self._labels_color_id[jitcell.label]], alpha)
-            set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self.dim_change, t=-1, z=-1)
+            color = np.append(self._plot_args['labels_colors'][jitcell.label], alpha)
+            set_cell_color(self._masks_stack, jitcell.masks, jitcell.times, jitcell.zs, color, self._plot_args['dim_change'], t=-1, z=-1)
         self.visualization()
 
     def add_cells(self):
