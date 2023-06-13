@@ -74,23 +74,15 @@ class CellTracking(object):
         z_neighborhood=2, 
         overlap_gradient_th=0.3, 
         
- 
         min_outline_length=200, 
         neighbors_for_sequence_sorting=7, 
         backup_steps=5, 
         time_step=None, 
         
         plot_args={},
-        
-        cell_distance_axis="xy", 
-        movement_computation_method="center", 
-        mean_substraction_cell_movement=False, 
-        
+
         line_builder_mode='lasso', 
-        stacks_for_plotting=None, 
-        given_Outlines=None, 
-        CELLS=None, 
-        CT_info=None):
+    ):
         
         # Basic arguments
         self.path_to_save      = pthtosave
@@ -109,56 +101,37 @@ class CellTracking(object):
         check_tracking_args(tracking_args, available_tracking=['greedy', 'hungarian'])
         self._track_args = fill_tracking_args(tracking_args)
 
-        self._given_Outlines = given_Outlines
-
         # pre-define max label
         self.max_label = 0
         
-        if CELLS !=None:
-            self._init_with_cells(CELLS, CT_info)
-        else:
-            self._distance_th_z    = distance_th_z
-            self._xyresolution     = xyresolution
-            self._zresolution      = zresolution
-            self.times             = np.shape(stacks)[0]
-            self.slices            = np.shape(stacks)[1]
-            self.stack_dims        = np.shape(stacks)[-2:]
-            self._tstep = time_step
+        self._distance_th_z    = distance_th_z
+        self._xyresolution     = xyresolution
+        self._zresolution      = zresolution
+        self.times             = np.shape(stacks)[0]
+        self.slices            = np.shape(stacks)[1]
+        self.stack_dims        = np.shape(stacks)[-2:]
+        self._tstep = time_step
 
-            ##  Segmentation attributes  ##
-            self._relative         = relative_overlap
-            self._fullmat          = use_full_matrix_to_compute_overlap
-            self._zneigh           = z_neighborhood
-            self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
-            
-            ##  Mito and Apo events
-            self.apoptotic_events  = []
-            self.mitotic_events    = []
+        ##  Segmentation attributes  ##
+        self._relative         = relative_overlap
+        self._fullmat          = use_full_matrix_to_compute_overlap
+        self._zneigh           = z_neighborhood
+        self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
+        
+        ##  Mito and Apo events
+        self.apoptotic_events  = []
+        self.mitotic_events    = []
 
         #  Plotting Attributes
         self._plot_args = check_and_fill_plot_args(plot_args, (self.stacks.shape[2], self.stacks.shape[3]))
-
-        ##  Cell movement parameters  ##
-        self._cdaxis = cell_distance_axis
-        self._movement_computation_method = movement_computation_method
-        self._mscm   = mean_substraction_cell_movement
-
+        
         ##  Extra attributes  ##
         self._min_outline_length = min_outline_length
         self._nearest_neighs     = neighbors_for_sequence_sorting
         self.list_of_cells     = []
         self.mito_cells        = []
         
-        self.action_counter = -1
-        self.CT_info = CellTracking_info(
-            self._xyresolution, 
-            self._zresolution, 
-            self.times, 
-            self.slices,
-            self.stack_dims,
-            self._tstep,
-            self.apoptotic_events,
-            self.mitotic_events)
+        self.CT_info = self.init_CT_info()
         
         self._line_builder_mode = line_builder_mode
         if self._line_builder_mode not in ['points', 'lasso']: raise Exception
@@ -171,14 +144,6 @@ class CellTracking(object):
         self._outlines_stack = np.zeros((t,z,x,y,4))
         
         self._backup_steps= backup_steps
-        if CELLS!=None: 
-            self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
-            self.update_labels(backup=False)
-            cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
-            self.backupCT  = backup_CellTrack(0, cells, self.apoptotic_events, self.mitotic_events)
-            self._backupCT = backup_CellTrack(0, cells, self.apoptotic_events, self.mitotic_events)
-            self.backups = deque([self._backupCT], self._backup_steps)
-            plt.close("all")
 
         # count number of actions done during manual curation
         # this is not reset after training
@@ -188,19 +153,28 @@ class CellTracking(object):
         # This list is reseted after training
         self._tz_actions = [] 
 
-    def _init_with_cells(self, CELLS, CT_info):
-        self._xyresolution    = CT_info.xyresolution 
-        self._zresolution     = CT_info.zresolution  
-        self.times            = CT_info.times
-        self.slices           = CT_info.slices
-        self.stack_dims       = CT_info.stack_dims
-        self._tstep           = CT_info.time_step
-        self.apoptotic_events = CT_info.apo_cells
-        self.mitotic_events   = CT_info.mito_cells
-        cells = CELLS
-        self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in cells])
-        for cell in self.jitcells: update_jitcell(cell, self.stacks)
-        self.extract_currentcellid()
+
+    def init_CT_info(self):
+        CT_info = CellTracking_info(
+        self._xyresolution, 
+        self._zresolution, 
+        self.times, 
+        self.slices,
+        self.stack_dims,
+        self._tstep,
+        self.apoptotic_events,
+        self.mitotic_events)
+        return CT_info
+    
+    def store_CT_info(self):
+        self.CT_info.xyresolution = self._xyresolution
+        self.CT_info.zresolution = self._zresolution
+        self.CT_info.times = self.times
+        self.CT_info.slices = self.slices
+        self.CT_info.stack_dims = self.stack_dims
+        self.CT_info.time_step = self._tstep
+        self.CT_info.apo_cells = self.apoptotic_events
+        self.CT_info.mito_cells = self.mitotic_events
     
     def extract_currentcellid(self):
         self.currentcellid=0
@@ -390,7 +364,6 @@ class CellTracking(object):
         self.unique_labels_T = _extract_unique_labels_per_time(self.ctattr.Labels, self.times)
         self._get_hints()
         self._get_number_of_conflicts()
-        self.action_counter+=1
         
     def update_labels(self, backup=True):
         self.update_label_attributes()
