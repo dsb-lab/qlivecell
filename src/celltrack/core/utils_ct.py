@@ -227,7 +227,7 @@ def generate_set(paths_data, path_to_save ,number_of_images, channels=0, zrange=
         tifffile.imwrite(path_file_save, img, imagej=True, resolution=(xres, yres), metadata=mdata)
         current_img+=1
 
-def fill_error_correction_args(error_correction_args):
+def check_and_fill_error_correction_args(error_correction_args):
     new_error_correction_args = {
         'backup_steps': 10,
         'line_builder_mode': 'lasso',
