@@ -76,7 +76,8 @@ CT = CellTracking(IMGS, path_save, embcode, xyres, zres, segmentation_args,
 
 CT()
 
-CT.plot_tracking()
+plot_args['plot_stack_dims'] = (512, 256)
+CT.plot_tracking(plot_args)
 
 # model = CT.train_segmentation_model()
 
