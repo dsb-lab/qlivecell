@@ -226,3 +226,20 @@ def generate_set(paths_data, path_to_save ,number_of_images, channels=0, zrange=
 
         tifffile.imwrite(path_file_save, img, imagej=True, resolution=(xres, yres), metadata=mdata)
         current_img+=1
+
+def fill_error_correction_args(error_correction_args):
+    new_error_correction_args = {
+        'backup_steps': 10,
+        'line_builder_mode': 'lasso',
+    }
+
+    for ecarg in error_correction_args.keys():
+        try:
+            new_error_correction_args[ecarg] = error_correction_args[ecarg]
+        except KeyError:
+            raise Exception("key %s is not a correct argument for error correction" %ecarg)
+
+    if new_error_correction_args['line_builder_mode'] not in ['points', 'lasso']: 
+        raise Exception('not supported line builder mode chose from: (points, lasso)')
+            
+    return new_error_correction_args

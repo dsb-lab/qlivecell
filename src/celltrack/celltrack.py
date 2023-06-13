@@ -29,9 +29,9 @@ from core.pickers import LineBuilder_lasso, LineBuilder_points
 from core.PA import PlotActionCT, PlotActionCellPicker
 from core.extraclasses import Slider_t, Slider_z
 from core.iters import plotRound
-from core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar
+from core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar, check_and_fill_error_correction_args
 from core.segmentation_training import train_CellposeModel, train_StardistModel, get_training_set, check_train_segmentation_args, fill_train_segmentation_args
-from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist, check_segmentation_args, fill_segmentation_args
+from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist, check_segmentation_args, fill_segmentation_args, check_and_fill_concatenation3D_args
 from core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
 from core.tracking import greedy_tracking, hungarian_tracking, check_tracking_args, fill_tracking_args
 from core.plotting import check_and_fill_plot_args, check_stacks_for_plotting
@@ -65,23 +65,12 @@ class CellTracking(object):
         xyresolution, 
         zresolution,
         segmentation_args,
+        segment3D=False,
+        concatenation3D_args = {},
         train_segmentation_args = {},
         tracking_args = {},
-        
-        distance_th_z=3.0, 
-        relative_overlap=False, 
-        use_full_matrix_to_compute_overlap=True, 
-        z_neighborhood=2, 
-        overlap_gradient_th=0.3, 
-        
-        min_outline_length=200, 
-        neighbors_for_sequence_sorting=7, 
-        backup_steps=5, 
-        time_step=None, 
-        
+        error_correction_args={},        
         plot_args={},
-
-        line_builder_mode='lasso', 
     ):
         
         # Basic arguments
@@ -101,40 +90,40 @@ class CellTracking(object):
         check_tracking_args(tracking_args, available_tracking=['greedy', 'hungarian'])
         self._track_args = fill_tracking_args(tracking_args)
 
+        # check if the segmentation is directly in 3D or it needs concatenation
+        self.segment3D = segment3D
+        if not self.segment3D:
+            # check and fill 3D concatenation arguments
+            self._conc3D_args = check_and_fill_concatenation3D_args(concatenation3D_args)
+        
+        # check and fill error correction arguments
+        self._err_corr_args = check_and_fill_error_correction_args(error_correction_args)
+
+        # check and fill plot arguments
+        self._plot_args = check_and_fill_plot_args(plot_args, (self.stacks.shape[2], self.stacks.shape[3]))
+
         # pre-define max label
         self.max_label = 0
         
-        self._distance_th_z    = distance_th_z
         self._xyresolution     = xyresolution
         self._zresolution      = zresolution
         self.times             = np.shape(stacks)[0]
         self.slices            = np.shape(stacks)[1]
         self.stack_dims        = np.shape(stacks)[-2:]
-        self._tstep = time_step
 
-        ##  Segmentation attributes  ##
-        self._relative         = relative_overlap
-        self._fullmat          = use_full_matrix_to_compute_overlap
-        self._zneigh           = z_neighborhood
-        self._overlap_th       = overlap_gradient_th # is used to separed cells that could be consecutive on z
-        
         ##  Mito and Apo events
         self.apoptotic_events  = []
         self.mitotic_events    = []
 
         #  Plotting Attributes
-        self._plot_args = check_and_fill_plot_args(plot_args, (self.stacks.shape[2], self.stacks.shape[3]))
-        
+
         ##  Extra attributes  ##
-        self._min_outline_length = min_outline_length
-        self._nearest_neighs     = neighbors_for_sequence_sorting
+        self._min_outline_length = 50
+        self._nearest_neighs     = self._min_outline_length
         self.list_of_cells     = []
         self.mito_cells        = []
         
         self.CT_info = self.init_CT_info()
-        
-        self._line_builder_mode = line_builder_mode
-        if self._line_builder_mode not in ['points', 'lasso']: raise Exception
         
         t = self.times
         z = self.slices
@@ -143,7 +132,6 @@ class CellTracking(object):
         self._masks_stack = np.zeros((t,z,x,y,4))
         self._outlines_stack = np.zeros((t,z,x,y,4))
         
-        self._backup_steps= backup_steps
 
         # count number of actions done during manual curation
         # this is not reset after training
@@ -161,7 +149,7 @@ class CellTracking(object):
         self.times, 
         self.slices,
         self.stack_dims,
-        self._tstep,
+        self._track_args['time_step'],
         self.apoptotic_events,
         self.mitotic_events)
         return CT_info
@@ -172,7 +160,7 @@ class CellTracking(object):
         self.CT_info.times = self.times
         self.CT_info.slices = self.slices
         self.CT_info.stack_dims = self.stack_dims
-        self.CT_info.time_step = self._tstep
+        self.CT_info.time_step = self._track_args['time_step']
         self.CT_info.apo_cells = self.apoptotic_events
         self.CT_info.mito_cells = self.mitotic_events
     
@@ -181,7 +169,7 @@ class CellTracking(object):
         for cell in self.jitcells:
             self.currentcellid=max(self.currentcellid, cell.id)
         self.currentcellid+=1
-
+    
     def __call__(self):
         TLabels, TCenters, TOutlines, TMasks, Labels_tz, Outlines_tz, Masks_tz = self.cell_segmentation()
         
@@ -209,7 +197,7 @@ class CellTracking(object):
 
         self.backupCT  = backup_CellTrack(0, deepcopy(cells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
         self._backupCT = backup_CellTrack(0, deepcopy(cells), deepcopy(self.apoptotic_events), deepcopy(self.mitotic_events))
-        self.backups = deque([self._backupCT], self._backup_steps)
+        self.backups = deque([self._backupCT], self._err_corr_arg['backup_steps'])
         plt.close("all")
         printclear(2)
         print("##############    SEGMENTATION AND TRACKING FINISHED   ###############")
@@ -274,8 +262,8 @@ class CellTracking(object):
             printclear()
             printfancy("running concatenation correction... (1/2)")
 
-            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
-            separate_concatenated_cells(stack, labels, Outlines, Masks, self._fullmat, self._relative, self._zneigh, self._overlap_th)
+            labels = assign_labels(stack, Outlines, Masks, self._conc3D_args['distance_th_z'], self._xyresolution)
+            separate_concatenated_cells(stack, labels, Outlines, Masks, self._conc3D_args)
             
             printclear()
             printfancy("concatenation correction completed (1/2)")
@@ -283,8 +271,8 @@ class CellTracking(object):
             printclear()
             printfancy("running concatenation correction... (2/2)")
             
-            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
-            separate_concatenated_cells(stack, labels, Outlines, Masks, self._fullmat, self._relative, self._zneigh, self._overlap_th)
+            labels = assign_labels(stack, Outlines, Masks, self._conc3D_args['distance_th_z'], self._xyresolution)
+            separate_concatenated_cells(stack, labels, Outlines, Masks, self._conc3D_args)
             
             printclear()
             printfancy("concatenation correction completed (2/2)")
@@ -292,7 +280,7 @@ class CellTracking(object):
             printclear()
             printfancy("running short cell removal...")
             
-            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
+            labels = assign_labels(stack, Outlines, Masks, self._conc3D_args['distance_th_z'], self._xyresolution)
             remove_short_cells(stack, labels, Outlines, Masks)
             
             printclear()
@@ -300,7 +288,7 @@ class CellTracking(object):
             printclear()
             printfancy("computing attributes...")
 
-            labels = assign_labels(stack, Outlines, Masks, self._distance_th_z, self._xyresolution)
+            labels = assign_labels(stack, Outlines, Masks, self._conc3D_args['distance_th_z'], self._xyresolution)
             labels_per_t, positions_per_t, outlines_per_t, masks_per_t = position3d(stack, labels, Outlines, Masks)  
 
             printclear()
@@ -418,13 +406,13 @@ class CellTracking(object):
         self.jitcells.append(new_jitcell)
         
     def add_cell(self, PACP):
-        if self._line_builder_mode == 'points':
+        if self._err_corr_arg['line_builder_mode'] == 'points':
             line, = self.PACP.ax_sel.plot([], [], linestyle="none", marker="o", color="r", markersize=2)
             PACP.linebuilder = LineBuilder_points(line)
         else: PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel)
 
     def complete_add_cell(self, PACP):
-        if self._line_builder_mode == 'points':
+        if self._err_corr_arg['line_builder_mode'] == 'points':
             
             if len(PACP.linebuilder.xs)<3: return
             
@@ -435,7 +423,7 @@ class CellTracking(object):
                 printfancy("ERROR: drawing out of image")
                 return
 
-        elif self._line_builder_mode == 'lasso':
+        elif self._err_corr_arg['line_builder_mode'] == 'lasso':
             if len(PACP.linebuilder.outline)<3: return
             new_outline = np.floor(PACP.linebuilder.outline / self._plot_args['dim_change'])
             new_outline = new_outline.astype('uint16')

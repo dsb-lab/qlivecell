@@ -33,7 +33,16 @@ segmentation_args={
     'trained_model':True, 
     'channels':[0,0], 
     'flow_threshold':0.4, 
-    'blur': [[5,5], 1]}
+    'blur': [[5,5], 1]
+}
+
+concatenation3d_args = {
+    'distance_th_z': 3.0, 
+    'relative_overlap':False, 
+    'use_full_matrix_to_compute_overlap':True, 
+    'z_neighborhood':2, 
+    'overlap_gradient_th':0.3, 
+}
 
 train_segmentation_args = {
     'model_save_path': path_save,
@@ -42,6 +51,7 @@ train_segmentation_args = {
 }
 
 tracking_args = {
+    'time_step': 5, # minutes
     'method': 'hungarian', 
     'z_th':2, 
     'cost_attributes':['distance', 'volume', 'shape'], 
@@ -55,22 +65,17 @@ plot_args = {
     'plot_stack_dims': (512, 512), 
 }
 
+error_correction_args = {
+    'backup_steps': 10,
+    'line_builder_mode': 'lasso',
+}
+
 CT = CellTracking(IMGS, path_save, embcode, xyres, zres, segmentation_args,
+    segment3D=False,
+    concatenation3D_args=concatenation3d_args,
     train_segmentation_args = train_segmentation_args,
     tracking_args = tracking_args, 
-    time_step=5, # minutes
-    
-    distance_th_z=3.0,
-    relative_overlap=False,
-    use_full_matrix_to_compute_overlap=True,
-    z_neighborhood=2,
-    overlap_gradient_th=0.15,
-    
-    min_outline_length=100,
-    neighbors_for_sequence_sorting=30,
-    backup_steps=20,
-    
-    line_builder_mode='lasso',
+    error_correction_args=error_correction_args,    
     plot_args = plot_args,
 )
 

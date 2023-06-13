@@ -151,10 +151,21 @@ def fill_segmentation_args(segmentation_args):
     segmentation_method = segmentation_args['method']
 
     if segmentation_method=='cellpose':
-        new_segmentation_args = {'method': None, 'model': None, 'trained_model':True, 'channels':[0,0], 'flow_threshold':0.4, 'blur': None}
+        new_segmentation_args = {
+            'method': None, 
+            'model': None, 
+            'trained_model':True, 
+            'channels':[0,0], 
+            'flow_threshold':0.4, 
+            'blur': None
+        }
         
     elif segmentation_method=='stardist':
-        new_segmentation_args = {'method': None, 'model': None, 'blur': None}
+        new_segmentation_args = {
+            'method': None, 
+            'model': None, 
+            'blur': None
+            }
 
     for sarg in segmentation_args.keys():
         try:
@@ -163,4 +174,21 @@ def fill_segmentation_args(segmentation_args):
             raise Exception("key %s is not a correct argument for the selected segmentation method" %sarg)
             
     return new_segmentation_args
+
+def check_and_fill_concatenation3D_args(concatenation3D_args):
+    new_concatenation3d_args = {
+        'distance_th_z': 3.0, 
+        'relative_overlap':False, 
+        'use_full_matrix_to_compute_overlap':True, 
+        'z_neighborhood':2, 
+        'overlap_gradient_th':0.3, 
+    }
+
+    for sarg in concatenation3D_args.keys():
+        try:
+            new_concatenation3d_args[sarg] = concatenation3D_args[sarg]
+        except KeyError:
+            raise Exception("key %s is not a correct argument for the selected segmentation method" %sarg)
+            
+    return new_concatenation3d_args
 

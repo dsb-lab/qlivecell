@@ -168,7 +168,13 @@ def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overla
             cellbarriers[-1].pop(i)
     return cellbarriers
 
-def separate_concatenated_cells(stack, labels, Outlines, Masks, fullmat, relative, zneigh, overlap_th):
+def separate_concatenated_cells(stack, labels, Outlines, Masks, conc3D_args):
+    
+    fullmat = conc3D_args['use_full_matrix_to_compute_overlap']
+    relative = conc3D_args['relative_overlap']
+    zneigh = conc3D_args['z_neighborhood']
+    overlap_th = conc3D_args['overlap_gradient_th']
+
     Zlabel_l, Zlabel_z = label_per_z(stack.shape[0], labels)
     cellbarriers = detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overlap_th)
     zids_remove = []

@@ -199,6 +199,11 @@ def check_tracking_args(tracking_arguments, available_tracking=['greedy', 'hunga
         printfancy()
         tracking_arguments['method'] = 'greedy'
     
+    if 'time_step' not in tracking_arguments.keys():
+        printfancy("No time step provided, using 1 minute.")
+        printfancy()
+        tracking_arguments['time_step'] = 1
+    
     if tracking_arguments['method'] not in available_tracking: 
         raise Exception('invalid segmentation method') 
     return
@@ -210,10 +215,21 @@ def fill_tracking_args(tracking_arguments):
     tracking_method = tracking_arguments['method']
     
     if tracking_method=='hungarian':
-        new_tracking_arguments = {'method': 'hungarian', 'z_th':2, 'cost_attributes':['distance', 'volume', 'shape'], 'cost_ratios':[0.6,0.2,0.2]}
+        new_tracking_arguments = {
+            'time_step':1,
+            'method': 'hungarian', 
+            'z_th':2, 
+            'cost_attributes':['distance', 'volume', 'shape'], 
+            'cost_ratios':[0.6,0.2,0.2]
+        }
         
     elif tracking_method=='greedy':
-        new_tracking_arguments = {'method': 'greedy', 'dist_th':7.5, 'z_th':2}
+        new_tracking_arguments = {
+            'time_step': 1,
+            'method': 'greedy', 
+            'dist_th':7.5, 
+            'z_th':2
+        }
 
     for targ in tracking_arguments.keys():
         try:
