@@ -70,7 +70,7 @@ class PlotAction():
         self._masks_stack = CT._masks_stack
         self.scl = fig.canvas.mpl_connect('scroll_event', self.onscroll)
         self.times = CT.times
-        self._tstep = CT._tstep
+        self._tstep = CT._train_seg_args['time_step']
         
         self.CTlist_of_cells = CT.list_of_cells
         self.CTmito_cells = CT.mito_cells
