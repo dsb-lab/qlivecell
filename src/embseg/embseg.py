@@ -1,5 +1,5 @@
 from skimage.segmentation import morphological_chan_vese, checkerboard_level_set
-from utils_ES import *
+from .core.utils_ES import *
 import matplotlib.pyplot as plt
 import numpy as np
 
