@@ -88,8 +88,10 @@ class CellTracking(object):
         self._plot_args = check_and_fill_plot_args(plot_args, (self.stacks.shape[2], self.stacks.shape[3]))
         
         # check if cells should be loaded using path_to_save and embcose
-        if loadcells: 
+        if loadcells==True: loadcells=self.path_to_save
+        if isinstance(loadcells, str): 
             self.init_from_cells(
+                loadcells,
                 segmentation_args, 
                 segment3D, 
                 concatenation3D_args, 
@@ -115,6 +117,7 @@ class CellTracking(object):
 
     def init_from_cells(
         self, 
+        loadcells,
         segmentation_args, 
         segment3D, 
         concatenation3D_args, 
@@ -122,7 +125,7 @@ class CellTracking(object):
         tracking_args,
     ):
         
-        cells, CT_info = load_cells(self.path_to_save, self.embcode)
+        cells, CT_info = load_cells(loadcells, self.embcode)
         self.CT_info = CT_info
         args = self.CT_info.args
         self.loaded_args=args

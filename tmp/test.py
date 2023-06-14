@@ -89,3 +89,9 @@ CT = CellTracking(
 CT.plot_tracking(plot_args)
 
 # model = CT.train_segmentation_model()
+
+a = "que pasa prim"
+if a: 
+    print(a)
+    
+print()
