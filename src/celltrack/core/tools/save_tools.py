@@ -1,8 +1,8 @@
-from core.utils_ct import correct_path
+from ..utils_ct import correct_path
 import dataclasses, json
 import numpy as np
-from core.dataclasses import Cell, CellTracking_info
-from core.tools.cell_tools import create_cell
+from ..dataclasses import Cell, CellTracking_info
+from .cell_tools import create_cell
 
 class EnhancedJSONEncoder(json.JSONEncoder):
         def default(self, o):

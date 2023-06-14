@@ -1,11 +1,10 @@
 import numpy as np
-import numba
 from numba import jit, njit, typeof
 from numba.types import ListType 
 from numba.typed import List
-from core.dataclasses import jitCell, CTattributes
-from core.tools.segmentation_tools import label_per_z, label_per_z_jit
-from core.tools.cell_tools import create_cell, update_cell
+from ..dataclasses import jitCell, CTattributes
+from ..tools.segmentation_tools import label_per_z, label_per_z_jit
+from ..tools.cell_tools import create_cell, update_cell
 
 @njit
 def _get_jitcell(jitcells, label=None, cellid=None):

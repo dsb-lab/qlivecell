@@ -1,5 +1,5 @@
 import numpy as np
-from core.tools.tools import mask_from_outline
+from .tools.tools import mask_from_outline
 
 class SubplotPicker_add():
     def __init__(self, ax, canvas, zs, callback):

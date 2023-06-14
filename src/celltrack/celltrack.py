@@ -25,24 +25,24 @@ from copy import deepcopy, copy
 
 import gc
 
-from core.pickers import LineBuilder_lasso, LineBuilder_points
-from core.PA import PlotActionCT, PlotActionCellPicker
-from core.extraclasses import Slider_t, Slider_z
-from core.iters import plotRound
-from core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar, check_and_fill_error_correction_args
-from core.segmentation_training import train_CellposeModel, train_StardistModel, get_training_set, check_train_segmentation_args, fill_train_segmentation_args
-from core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist, check_segmentation_args, fill_segmentation_args, check_and_fill_concatenation3D_args
-from core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
-from core.tracking import greedy_tracking, hungarian_tracking, check_tracking_args, fill_tracking_args
-from core.plotting import check_and_fill_plot_args, check_stacks_for_plotting
-from core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
+from .core.pickers import LineBuilder_lasso, LineBuilder_points
+from .core.PA import PlotActionCT, PlotActionCellPicker
+from .core.extraclasses import Slider_t, Slider_z
+from .core.iters import plotRound
+from .core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar, check_and_fill_error_correction_args
+from .core.segmentation_training import train_CellposeModel, train_StardistModel, get_training_set, check_train_segmentation_args, fill_train_segmentation_args
+from .core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist, check_segmentation_args, fill_segmentation_args, check_and_fill_concatenation3D_args
+from .core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
+from .core.tracking import greedy_tracking, hungarian_tracking, check_tracking_args, fill_tracking_args
+from .core.plotting import check_and_fill_plot_args, check_stacks_for_plotting
+from .core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
 
-from core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d, concatenate_to_3D
-from core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
-from core.tools.ct_tools import compute_point_stack, compute_labels_stack, check_and_override_args
-from core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence, increase_outline_width
-from core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes, _extract_unique_labels_and_max_label
-from core.tools.save_tools import load_cells, save_masks4D_stack
+from .core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d, concatenate_to_3D
+from .core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
+from .core.tools.ct_tools import compute_point_stack, compute_labels_stack, check_and_override_args
+from .core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence, increase_outline_width
+from .core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes, _extract_unique_labels_and_max_label
+from .core.tools.save_tools import load_cells, save_masks4D_stack
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 

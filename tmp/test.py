@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/celltrack/src/celltrack')
 
-from celltrack import CellTracking, get_file_embcode, read_img_with_resolution, load_cells, compute_labels_stack
+from celltrack import CellTracking, get_file_embcode, read_img_with_resolution
 
 import os 
 home = os.path.expanduser('~')
@@ -89,9 +89,3 @@ CT = CellTracking(
 CT.plot_tracking(plot_args)
 
 # model = CT.train_segmentation_model()
-
-a = "que pasa prim"
-if a: 
-    print(a)
-    
-print()

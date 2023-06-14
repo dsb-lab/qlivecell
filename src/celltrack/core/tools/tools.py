@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial import cKDTree
 import random
-from core.utils_ct import printfancy
+from ..utils_ct import printfancy
 from scipy.spatial import ConvexHull
 
 def increase_point_resolution(outline, min_outline_length):
