@@ -51,8 +51,10 @@ class CTinfoJSONDecoder(json.JSONDecoder):
             time_step = d['time_step']
             apo_cells = d['apo_cells']
             mito_cells = d['mito_cells']
-
-            return CellTracking_info(xyresolution, zresolution, times, slices, stack_dims, time_step, apo_cells, mito_cells)
+            nactions = d['nactions']
+            args = d['args']
+            
+            return CellTracking_info(xyresolution, zresolution, times, slices, stack_dims, time_step, apo_cells, mito_cells, nactions, args)
         else: return d
         
 def save_cells(cells, CT_info, path=None, filename=None):

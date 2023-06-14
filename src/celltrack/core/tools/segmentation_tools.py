@@ -1,6 +1,7 @@
 import numpy as np
 from numba import typeof, njit
 from numba.typed import List
+from ..utils_ct import printfancy, printclear
 
 @njit
 def label_per_z_jit(slices, labels):
@@ -360,3 +361,40 @@ def position3d(stack, labels, Outlines, Masks):
                     centers_weight_per_t[idx_prev] = curr_weight
 
     return labels_per_t, positions_per_t, outlines_per_t, masks_per_t
+
+def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
+    printfancy("")
+    printfancy("running concatenation correction... (1/2)")
+
+    labels = assign_labels(stack, Outlines, Masks, conc3D_args['distance_th_z'], xyresolution)
+    separate_concatenated_cells(stack, labels, Outlines, Masks, conc3D_args)
+    
+    printclear()
+    printfancy("concatenation correction completed (1/2)")
+
+    printclear()
+    printfancy("running concatenation correction... (2/2)")
+    
+    labels = assign_labels(stack, Outlines, Masks, conc3D_args['distance_th_z'], xyresolution)
+    separate_concatenated_cells(stack, labels, Outlines, Masks, conc3D_args)
+    
+    printclear()
+    printfancy("concatenation correction completed (2/2)")
+
+    printclear()
+    printfancy("running short cell removal...")
+    
+    labels = assign_labels(stack, Outlines, Masks, conc3D_args['distance_th_z'], xyresolution)
+    remove_short_cells(stack, labels, Outlines, Masks)
+    
+    printclear()
+    printfancy("short cell removal completed")
+    printclear()
+    printfancy("computing attributes...")
+    printclear()
+    printfancy("attributes computed")
+    printclear()
+    
+    labels = assign_labels(stack, Outlines, Masks, conc3D_args['distance_th_z'], xyresolution)
+    labels_per_t, positions_per_t, outlines_per_t, masks_per_t = position3d(stack, labels, Outlines, Masks)  
+    return labels, labels_per_t, positions_per_t, outlines_per_t, masks_per_t

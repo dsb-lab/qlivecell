@@ -171,7 +171,6 @@ def get_cell(cells, label=None, cellid=None):
                     return cell
     return None
 
-
 def compute_labels_stack(point_stack, jitcells, times):
     for t in times:
         for jitcell in jitcells:
@@ -179,3 +178,15 @@ def compute_labels_stack(point_stack, jitcells, times):
             points = jitcell.masks
             set_cell_color(point_stack, points, jitcell.times, jitcell.zs, color, 1, t=t)
     return point_stack
+
+from copy import deepcopy
+def check_and_override_args(args_preferred, args_unpreferred):
+    new_args = deepcopy(args_unpreferred)
+    for arg in args_preferred.keys():
+        if arg not in new_args.keys():
+            raise Exception('argument %s is not a supported argument' %arg)
+        else:
+            new_args[arg] = args_preferred[arg]
+
+    return new_args
+

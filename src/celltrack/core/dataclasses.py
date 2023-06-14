@@ -15,6 +15,8 @@ class CellTracking_info:
     time_step: float
     apo_cells: list
     mito_cells: list
+    nactions: int
+    args: dict
 
 @dataclass
 class backup_CellTrack():

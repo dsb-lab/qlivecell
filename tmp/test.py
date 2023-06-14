@@ -70,7 +70,14 @@ error_correction_args = {
     'line_builder_mode': 'lasso',
 }
 
-CT = CellTracking(IMGS, path_save, embcode, xyres, zres, segmentation_args,
+CT = CellTracking(
+    IMGS, 
+    path_save, 
+    embcode, 
+    xyresolution=xyres, 
+    zresolution=zres, 
+    loadcells=True,
+    segmentation_args=segmentation_args,
     segment3D=False,
     concatenation3D_args=concatenation3d_args,
     train_segmentation_args = train_segmentation_args,
@@ -79,10 +86,6 @@ CT = CellTracking(IMGS, path_save, embcode, xyres, zres, segmentation_args,
     plot_args = plot_args,
 )
 
-CT()
-
-plot_args['plot_stack_dims'] = (512, 512)
 CT.plot_tracking(plot_args)
 
 # model = CT.train_segmentation_model()
-
