@@ -1,5 +1,5 @@
 import os
-from ERKKTR import *
+from src.cytodonut.cytodonut import *
 
 import sys
 sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")

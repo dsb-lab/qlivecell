@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
-from scipy.spatial import Delaunay,ConvexHull
-from utils_ERKKTR import *
+from scipy.spatial import Delaunay, ConvexHull
+from .core.utils_ERKKTR import *
 
 def comptute_donut_masks(donut, cell_masks):
     donut.compute_donut_masks(cell_masks)

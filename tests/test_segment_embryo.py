@@ -3,7 +3,7 @@ from cellpose.io import imread
 import os
 import sys
 sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")
-from utils_ERKKTR import segment_embryo
+from src.cytodonut.core.utils_ERKKTR import segment_embryo
 
 home = os.path.expanduser('~')
 path_data=home+'/Desktop/PhD/projects/Data/blastocysts/movies/2h_claire_ERK-KTR_MKATE2/registered/'
