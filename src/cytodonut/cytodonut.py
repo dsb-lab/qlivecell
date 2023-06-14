@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from scipy.spatial import Delaunay, ConvexHull
-from .core.utils_ERKKTR import *
+from .core.utils_cd import *
+from .core.tools.cell_tools import compute_distance_cell, extract_all_XYZ_positions_cell, update_cell
 
 def comptute_donut_masks(donut, cell_masks):
     donut.compute_donut_masks(cell_masks)
@@ -268,9 +269,8 @@ class ERKKTR():
     def execute_erkktr(self, cell, innerpad, outterpad, donut_width, min_outline_length):
         return ERKKTR_donut(cell, innerpad, outterpad, donut_width, min_outline_length, "delaunay")
 
-    def create_donuts(self, cells, EmbSeg, innerpad=None, outterpad=None, donut_width=None, change_threads=False):
-        for cell in cells:
-            cell.extract_all_XYZ_positions()
+    def create_donuts(self, cells, IMGS, EmbSeg, innerpad=None, outterpad=None, donut_width=None, change_threads=False):
+
         if innerpad is None: innerpad = self.inpad
         if outterpad is None: outterpad = self.outpad
         if donut_width is None: donut_width = self.dwidht
@@ -280,6 +280,7 @@ class ERKKTR():
             else: threads = change_threads
         
         # Check for multi or single processing
+        for cell in cells: update_cell(cell, IMGS)
         if threads is None:
             tcells = len(cells)
             for celli, cell in enumerate(cells):
@@ -347,7 +348,7 @@ class ERKKTR():
 
             for cell_j_id, cell_j in enumerate(Cells):
                 if cell_i.label == cell_j.label: continue
-                dist = cell_i.compute_distance_cell(cell_j, t, z, axis='xy')
+                dist = compute_distance_cell(cell_i, cell_j, t, z, axis='xy')
                 if dist < dist_th: 
                     cells_close.append(cell_j_id)
 
