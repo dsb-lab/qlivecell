@@ -1,4 +1,4 @@
-from utils.utils_general import create_dir, remove_dir, correct_path
+from .utils_general import create_dir, remove_dir, correct_path
 import tifffile
 import os
 import subprocess
