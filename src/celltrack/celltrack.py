@@ -513,6 +513,7 @@ class CellTracking(object):
         cells = [x[0] for x in PACP.list_of_cells]
         cellids = []
         Zs    = [x[1] for x in PACP.list_of_cells]
+
         if len(cells) == 0:
             return
         
@@ -539,7 +540,9 @@ class CellTracking(object):
                 idrem = cell.id
                 cellids.remove(idrem)
                 self._del_cell(lab) 
-            else: labs_to_replot.append(lab)
+                if lab in labs_to_replot: labs_to_replot.remove(lab)
+            else:
+                if lab not in labs_to_replot: labs_to_replot.append(lab)
         
         new_labs = []
         for i,cellid in enumerate(np.unique(cellids)):
@@ -600,7 +603,7 @@ class CellTracking(object):
         self.update_label_attributes()
         
         compute_point_stack(self._masks_stack, self.jitcells, [t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], alpha=0, mode="masks")
-        compute_point_stack(self._outlines_stack, self.jitcells, [t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], alpha=0, mode="outlines")
+        compute_point_stack(self._outlines_stack, self.jitcells, [t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], alpha=1, mode="outlines")
 
     def combine_cells_z(self, PACP):
         if len(PACP.list_of_cells)<2:

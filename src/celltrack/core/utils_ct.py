@@ -39,7 +39,7 @@ def progressbar(step, total, width=46):
         print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
 
 # TODO if you put as f an string but that there is not present it works weird
-def get_file_embcode(path_data, f):
+def get_file_embcode(path_data, f, returnfiles=False):
     """
     Parameters
     ----------
@@ -55,12 +55,20 @@ def get_file_embcode(path_data, f):
         full file path and file name.
     """    
     files = os.listdir(path_data)
+    
+    fid=-1
     if isinstance(f, str):
         for i, file in enumerate(files): 
             if f in file: fid=i
+        
+        if fid==-1: raise Exception("given file name extract is not present in any file name")
     else: fid=f
+    
+    if fid>len(files): raise Exception("given file index is greater than number of files")
+    
     file = files[fid]
     name=file.split('.')[0]
+    if returnfiles: return file, name, files
     return file, name
 
 def compute_distance_xy(x1, x2, y1, y2):
@@ -155,7 +163,7 @@ def correct_path(path):
     if path[-1] != '/': path=path+'/'
     return path
 
-def read_img_with_resolution(path_to_file, channel=0):
+def read_img_with_resolution(path_to_file, channel=None):
     """
     Parameters
     ----------

@@ -430,7 +430,7 @@ class PlotActionCT(PlotAction):
                     self.current_state=None
                     self.ax_sel=None
                     self.z=None
-                    del self.CTmito_cells
+                    del self.CTmito_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.update()

@@ -137,7 +137,7 @@ def save_masks4D_stack(path, filename, stack_4D, xyresolution, zresolution, imag
         metadata={
             'spacing': zresolution,
             'unit': 'um',
-            # 'finterval': 300,
+            'finterval': 300,
             'axes': imagejformat,
         }
     )
