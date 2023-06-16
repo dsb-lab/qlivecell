@@ -435,6 +435,7 @@ class CellTracking(object):
         self.update_label_attributes()
 
         compute_point_stack(self._masks_stack, self.jitcells, range(self.times), self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
+        self._plot_args['plot_masks'] = True
         
         compute_point_stack(self._outlines_stack, self.jitcells, range(self.times), self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
         
@@ -503,7 +504,7 @@ class CellTracking(object):
                 
         self.update_label_attributes()
         
-        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, labels=[self.jitcells[-1].label], mode="masks")
+        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 0, labels=[self.jitcells[-1].label], mode="masks")
         compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, labels=[self.jitcells[-1].label], mode="outlines")
 
         self.nactions+=1
@@ -644,7 +645,7 @@ class CellTracking(object):
         
         self.update_label_attributes()
         
-        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], alpha=1, mode="masks")
+        compute_point_stack(self._masks_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], alpha=0, mode="masks")
         compute_point_stack(self._outlines_stack, self.jitcells, [PACP.t], self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], alpha=1, mode="outlines")
 
     def combine_cells_t(self):
@@ -667,7 +668,7 @@ class CellTracking(object):
             printfancy("ERROR: cells overlap in time")
                     
             self.update_label_attributes()
-            compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
+            compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 0, mode="masks")
             compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
 
             return
@@ -682,7 +683,7 @@ class CellTracking(object):
         self._del_cell(maxlab)
         
         self.update_label_attributes()
-        compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
+        compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 0, mode="masks")
         compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
 
         self.nactions +=1
@@ -724,7 +725,7 @@ class CellTracking(object):
         
         self.update_label_attributes()
         
-        compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="masks")
+        compute_point_stack(self._masks_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 0, mode="masks")
         compute_point_stack(self._outlines_stack, self.jitcells, Ts, self.unique_labels_T, self._plot_args['dim_change'], self._plot_args['labels_colors'], 1, mode="outlines")
 
         self.nactions +=1
