@@ -252,11 +252,11 @@ def compute_distances_with_pre_post_z(stack, Outlines, Masks, distance_th_z, xyr
                         distances_val[z][cell][1].append(dist)
     return distances_idx, distances_val
 
-def remove_short_cells(stack, labels, Outlines, Masks):
+def remove_short_cells(stack, labels, Outlines, Masks, min_cell_planes):
     Zlabel_l, Zlabel_z = label_per_z(stack.shape[0], labels)
     labels_to_remove = []
     for id, l in enumerate(Zlabel_l):        
-        if len(Zlabel_z[id]) < 2: # Threshold for how many planes a cell has to be to be considered
+        if len(Zlabel_z[id]) < min_cell_planes: # Threshold for how many planes a cell has to be to be considered
             labels_to_remove.append(l)
     for z, labs in enumerate(labels):
         for l in labels_to_remove:
@@ -385,7 +385,7 @@ def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
     printfancy("running short cell removal...")
     
     labels = assign_labels(stack, Outlines, Masks, conc3D_args['distance_th_z'], xyresolution)
-    remove_short_cells(stack, labels, Outlines, Masks)
+    remove_short_cells(stack, labels, Outlines, Masks, conc3D_args['min_cell_planes'])
     
     printclear()
     printfancy("short cell removal completed")

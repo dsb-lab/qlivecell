@@ -42,7 +42,7 @@ from .core.tools.cell_tools import create_cell, update_jitcell, find_z_discontin
 from .core.tools.ct_tools import compute_point_stack, compute_labels_stack, check_and_override_args
 from .core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence, increase_outline_width
 from .core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes, _extract_unique_labels_and_max_label
-from .core.tools.save_tools import load_cells, save_masks4D_stack
+from .core.tools.save_tools import load_cells, save_4Dstack, save_3Dstack
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
@@ -286,7 +286,6 @@ class CellTracking(object):
         
         printfancy("")
         printfancy("computing tracking...")
-
         FinalLabels, label_correspondance=self.cell_tracking(TLabels, TCenters, TOutlines, TMasks)
 
         printfancy("tracking completed. initialising cells...", clear_prev=1)
@@ -391,9 +390,9 @@ class CellTracking(object):
     
     def cell_tracking(self, TLabels, TCenters, TOutlines, TMasks):
         if self._track_args['method']=='greedy':
-            FinalLabels, label_correspondance = greedy_tracking(TLabels, TCenters, self._xyresolution, self._track_args)
+            FinalLabels, label_correspondance = greedy_tracking(TLabels, TCenters, self._xyresolution, self._zresolution, self._track_args)
         elif self._track_args['method']=='hungarian':
-            FinalLabels, label_correspondance = hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, self._xyresolution, self._track_args)
+            FinalLabels, label_correspondance = hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, self._xyresolution, self._zresolution, self._track_args)
         return FinalLabels, label_correspondance
 
     def init_cells(self, FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance):
@@ -837,7 +836,7 @@ class CellTracking(object):
         
         if plot_args is None: plot_args =  self._plot_args
         #  Plotting Attributes
-        check_and_fill_plot_args(plot_args, self.stacks.shape[2:4])
+        self._plot_args = check_and_fill_plot_args(plot_args, self.stacks.shape[2:4])
         self.plot_stacks=check_stacks_for_plotting(stacks_for_plotting, self.stacks, plot_args, self.times, self.slices, self._xyresolution)
         
         self._plot_args['plot_masks']=True
@@ -918,6 +917,8 @@ class CellTracking(object):
         for z, id, _round in counter:
             # select current z plane
             ax[id].axis(False)
+            _ = ax[id].set_xticks([])
+            _ = ax[id].set_yticks([])
             if z == None:
                 pass
             else:      
@@ -933,12 +934,13 @@ class CellTracking(object):
                     xs = round(xs*self._plot_args['dim_change'])
                     ys = round(ys*self._plot_args['dim_change'])
                     if zz == z:
-                        pos = ax[id].scatter([ys], [xs], s=1.0, c="white")
-                        self._pos_scatters.append(pos)
-                        ano = ax[id].annotate(str(lab), xy=(ys, xs), c="white")
-                        self._annotations.append(ano)
-                        _ = ax[id].set_xticks([])
-                        _ = ax[id].set_yticks([])
+                        if self._plot_args['plot_centers'][0]:
+                            pos = ax[id].scatter([ys], [xs], s=1.0, c="white")
+                            self._pos_scatters.append(pos)
+                        if self._plot_args['plot_centers'][1]:
+                            ano = ax[id].annotate(str(lab), xy=(ys, xs), c="white")
+                            self._annotations.append(ano)
+           
                         
         plt.subplots_adjust(bottom=0.075)
         plt.show()
@@ -987,12 +989,13 @@ class CellTracking(object):
                             sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                             self._pos_scatters.append(sc)
                         else:
-                            pass
-                            sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
-                            self._pos_scatters.append(sc)
-                        anno = PACP.ax[id].annotate(str(lab), xy=(ys, xs), c="white")
-                        self._annotations.append(anno)              
-                        
+                            if self._plot_args['plot_centers'][0]:
+                                sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
+                                self._pos_scatters.append(sc)
+                        if self._plot_args['plot_centers'][1]:
+                            anno = PACP.ax[id].annotate(str(lab), xy=(ys, xs), c="white")
+                            self._annotations.append(anno)              
+                            
                         for mitoev in self.mitotic_events:
                             for ev in mitoev:
                                 if cell.id==ev[0]:

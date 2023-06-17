@@ -116,7 +116,7 @@ def load_cells(path=None, filename=None):
 from tifffile import imwrite
 import numpy as np
 
-def save_masks4D_stack(path, filename, stack_4D, xyresolution, zresolution, imagejformat='TZCYX'):
+def save_4Dstack(path, filename, stack_4D, xyresolution, zresolution, imagejformat='TZCYX'):
 
     sh =  stack_4D.shape
     
@@ -138,6 +138,31 @@ def save_masks4D_stack(path, filename, stack_4D, xyresolution, zresolution, imag
             'spacing': zresolution,
             'unit': 'um',
             'finterval': 300,
+            'axes': imagejformat,
+        }
+    )
+    
+def save_3Dstack(path, filename, stack_3D, xyresolution, zresolution, imagejformat='ZCYX'):
+
+    sh =  stack_3D.shape
+    
+    new_masks = np.zeros((sh[0], 3, sh[1], sh[2]))
+
+    for t in range(sh[0]):
+        for z in range(sh[1]):
+            new_masks[z,0] =   stack_3D[z,:,:,0]*255
+            new_masks[z,1] =   stack_3D[z,:,:,1]*255
+            new_masks[z,2] =   stack_3D[z,:,:,2]*255
+
+    new_masks = new_masks.astype('uint8')
+    imwrite(
+        path+filename+"_masks.tiff",
+        new_masks,
+        imagej=True,
+        resolution=(1/xyresolution, 1/xyresolution),
+        metadata={
+            'spacing': zresolution,
+            'unit': 'um',
             'axes': imagejformat,
         }
     )

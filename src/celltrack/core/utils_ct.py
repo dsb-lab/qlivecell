@@ -163,7 +163,7 @@ def correct_path(path):
     if path[-1] != '/': path=path+'/'
     return path
 
-def read_img_with_resolution(path_to_file, channel=None):
+def read_img_with_resolution(path_to_file, channel=None, stack=True):
     """
     Parameters
     ----------
@@ -181,12 +181,22 @@ def read_img_with_resolution(path_to_file, channel=None):
     with TiffFile(path_to_file) as tif:
         preIMGS = tif.asarray()
         shapeimg = preIMGS.shape
-        if channel==None: 
-            if len(shapeimg) == 3: IMGS = np.array([tif.asarray()])
-            else: IMGS = np.array(tif.asarray())
-        else: 
-            if len(shapeimg) == 4: IMGS = np.array([tif.asarray()[:,channel,:,:]])
-            else: IMGS = np.array(tif.asarray()[:,:,channel,:,:])
+        if stack:
+            if channel==None: 
+                if len(shapeimg) == 3: IMGS = np.array([tif.asarray()])
+                else: IMGS = np.array(tif.asarray())
+            else: 
+                if len(shapeimg) == 4: IMGS = np.array([tif.asarray()[:,channel,:,:]])
+                else: IMGS = np.array(tif.asarray()[:,:,channel,:,:])
+        else:
+            if channel==None: 
+                if len(shapeimg) == 2: IMGS = np.array([tif.asarray()])
+                else: IMGS = np.array(tif.asarray())
+            else: 
+                if len(shapeimg) == 3: IMGS = np.array([tif.asarray()[channel,:,:]])
+                else: IMGS = np.array(tif.asarray()[:,channel,:,:])
+        
+        if len(IMGS.shape)==3: IMGS=np.array([IMGS])
         imagej_metadata = tif.imagej_metadata
         tags = tif.pages[0].tags
         # parse X, Y resolution

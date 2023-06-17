@@ -3,12 +3,12 @@ from scipy.spatial.distance import directed_hausdorff
 from munkres import Munkres
 from .utils_ct import printfancy
 
-def greedy_tracking(TLabels, TCenters, xyresolution, track_args):
+def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args):
 
     dist_th = track_args['dist_th']
     z_th = track_args['z_th']
 
-
+    z_th_units = int(np.rint(z_th/zresolution))
     FinalLabels   = []
     FinalCenters  = []
     label_correspondance = []
@@ -47,7 +47,10 @@ def greedy_tracking(TLabels, TCenters, xyresolution, track_args):
                 Dists[i,j] = np.linalg.norm(poscell1-poscell2)
                 
                 # check if cell cell centers are separated by more than z_th slices
-                if np.abs(FinalCenters[t-1][i][0] - TCenters[t][j][0])>z_th:
+                zdisp = np.abs(FinalCenters[t-1][i][0] - TCenters[t][j][0])
+                zdisp_units = int(np.rint(zdisp/zresolution))
+                
+                if zdisp_units>z_th_units:
                     
                     # if so, set the distance to a large number (e.g. 100)
                     Dists[i,j] = 100.0
@@ -102,9 +105,11 @@ def greedy_tracking(TLabels, TCenters, xyresolution, track_args):
     return FinalLabels, label_correspondance
 
 
-def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, track_args):
+def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xyresolution, zresolution, track_args):
 
     z_th = track_args['z_th']
+    z_th_units = int(np.rint(z_th/zresolution))
+    
     cost_attributes = track_args['cost_attributes']
     cost_ratios = track_args['cost_ratios']
 
@@ -140,12 +145,15 @@ def hungarian_tracking(TLabels, TCenters, TOutlines, TMasks, xy_resolution, trac
             row = []
             for j in range(len(labs2)):
                 
-                if np.abs(pos1[i][0] - pos2[j][0]) > z_th:
+                zdisp = np.abs(pos1[i][0] - pos2[j][0])
+                zdisp_units = int(np.rint(zdisp/zresolution))
+                
+                if zdisp_units>z_th_units:                    
                     distance=100.0
                 else:
                     distance = ((pos1[i][1] - pos2[j][1]) ** 2 +
                                 (pos1[i][2] - pos2[j][2]) ** 2) ** 0.5
-                    distance *= xy_resolution
+                    distance *= xyresolution
                 
                 vol1 = len(masks1[i])
                 vol2 = len(masks2[j])
