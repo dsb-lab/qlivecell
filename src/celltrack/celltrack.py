@@ -29,7 +29,7 @@ from .core.pickers import LineBuilder_lasso, LineBuilder_points
 from .core.PA import PlotActionCT, PlotActionCellPicker
 from .core.extraclasses import Slider_t, Slider_z
 from .core.iters import plotRound
-from .core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar, check_and_fill_error_correction_args
+from .core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar, check_and_fill_error_correction_args, get_default_args
 from .core.segmentation_training import train_CellposeModel, train_StardistModel, get_training_set, check_train_segmentation_args, fill_train_segmentation_args
 from .core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist, check_segmentation_args, fill_segmentation_args, check_and_fill_concatenation3D_args
 from .core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
@@ -72,12 +72,19 @@ class CellTracking(object):
         tracking_args = {},
         error_correction_args={},        
         plot_args={},
+        use_channel=0
     ):
         
         # Basic arguments
         self.path_to_save      = pthtosave
         self.embcode           = embcode
-        self.stacks            = stacks
+        if len(stacks.shape)==5:
+            self._stacks = stacks[:,:,:,:,use_channel]
+            self.STACKS = stacks
+        elif len(stacks.shape)==4:
+            self._stacks = stacks
+            self.STACKS = stacks
+
         self._xyresolution     = xyresolution
         self._zresolution      = zresolution
         
@@ -85,7 +92,7 @@ class CellTracking(object):
         self._err_corr_args = check_and_fill_error_correction_args(error_correction_args)
 
         # check and fill plot arguments
-        self._plot_args = check_and_fill_plot_args(plot_args, (self.stacks.shape[2], self.stacks.shape[3]))
+        self._plot_args = check_and_fill_plot_args(plot_args, (self._stacks.shape[2], self._stacks.shape[3]))
         
         # check if cells should be loaded using path_to_save and embcose
         if loadcells==True: loadcells=self.path_to_save
@@ -132,7 +139,7 @@ class CellTracking(object):
         
         # check and fill segmentation arguments
         check_segmentation_args(args['seg_args'], available_segmentation=['cellpose', 'stardist'])
-        self._seg_args = fill_segmentation_args(args['seg_args'])
+        self._seg_args, self._seg_method_args = fill_segmentation_args(args['seg_args'])
         self._seg_args= check_and_override_args(segmentation_args, self._seg_args)
 
         # In case you want to do training, check training argumnets
@@ -163,7 +170,7 @@ class CellTracking(object):
         self.nactions=self.CT_info.nactions
             
         self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in cells])
-        for jitcell in self.jitcells: update_jitcell(jitcell, self.stacks)
+        for jitcell in self.jitcells: update_jitcell(jitcell, self._stacks)
         self.extract_currentcellid()
         
         self.hints, self.ctattr= _init_CT_cell_attributes(self.jitcells)
@@ -196,7 +203,7 @@ class CellTracking(object):
         
         # check and fill segmentation arguments
         check_segmentation_args(segmentation_args, available_segmentation=['cellpose', 'stardist'])
-        self._seg_args = fill_segmentation_args(segmentation_args)
+        self._seg_args, self._seg_method_args = fill_segmentation_args(segmentation_args)
         
         # In case you want to do training, check training argumnets
         check_train_segmentation_args(train_segmentation_args)
@@ -215,9 +222,11 @@ class CellTracking(object):
         # pre-define max label
         self.max_label = 0
         
-        self.times             = np.shape(self.stacks)[0]
-        self.slices            = np.shape(self.stacks)[1]
-        self.stack_dims        = np.shape(self.stacks)[-2:]
+        self.times             = np.shape(self._stacks)[0]
+        self.slices            = np.shape(self._stacks)[1]
+
+        # array could have an extra dimension if RGB
+        self.stack_dims        = np.shape(self._stacks)[2:4]
 
         ##  Mito and Apo events
         self.apoptotic_events  = []
@@ -355,13 +364,14 @@ class CellTracking(object):
             printfancy("######   CURRENT TIME = %d/%d   ######" % (t+1, self.times))
             printfancy("")
 
-            stack = self.stacks[t,:,:,:]
+            stack_seg = self.STACKS[t]
             
             if self._seg_args['method'] == 'cellpose':
-                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_cellpose, self._seg_args)
+                Outlines, Masks = cell_segmentation3D(stack_seg, self._seg_args, self._seg_method_args)
             elif self._seg_args['method'] == 'stardist':
-                Outlines, Masks = cell_segmentation3D(stack, cell_segmentation2D_stardist, self._seg_args)
-
+                Outlines, Masks = cell_segmentation3D(stack_seg, self._seg_args, self._seg_method_args)
+            
+            stack = self._stacks[t]
             labels, labels_per_t, positions_per_t, outlines_per_t, masks_per_t = concatenate_to_3D(stack, Outlines, Masks, self._conc3D_args, self._xyresolution)
 
             printfancy("")
@@ -411,7 +421,7 @@ class CellTracking(object):
             cell=_init_cell(l, lab, self.times, self.slices, FinalLabels, label_correspondance, Labels_tz, Outlines_tz, Masks_tz)
 
             jitcell = contruct_jitCell_from_Cell(cell)
-            update_jitcell(jitcell, self.stacks)
+            update_jitcell(jitcell, self._stacks)
             self.jitcells.append(jitcell)
         self.currentcellid = len(self.unique_labels)
     
@@ -469,11 +479,11 @@ class CellTracking(object):
         else: masks = [[mask]]
         
         self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(self.ctattr.Labels)
-        new_cell = create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self.stacks)
+        new_cell = create_cell(self.currentcellid, self.max_label+1, [[z]], [t], outlines, masks, self._stacks)
         self.max_label+=1
         self.currentcellid+=1
         new_jitcell = contruct_jitCell_from_Cell(new_cell)
-        update_jitcell(new_jitcell, self.stacks)        
+        update_jitcell(new_jitcell, self._stacks)        
         self.jitcells.append(new_jitcell)
         
     def add_cell(self, PACP):
@@ -535,7 +545,7 @@ class CellTracking(object):
             cell.zs[tid].pop(idrem)
             cell.outlines[tid].pop(idrem)
             cell.masks[tid].pop(idrem)
-            update_jitcell(cell, self.stacks)
+            update_jitcell(cell, self._stacks)
             if cell._rem:
                 idrem = cell.id
                 cellids.remove(idrem)
@@ -550,14 +560,14 @@ class CellTracking(object):
             cell  = self._get_cell(cellid=cellid)
             new_labs.append(cell.label)
             try: 
-                new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities(cell, self.stacks, self.max_label, self.currentcellid, PACP.t)
-                update_jitcell(cell, self.stacks)
+                new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities(cell, self._stacks, self.max_label, self.currentcellid, PACP.t)
+                update_jitcell(cell, self._stacks)
                 if new_maxlabel is not None:
                     new_jitcell = contruct_jitCell_from_Cell(new_cell)
                     new_labs.append(new_jitcell.label)
                     self.max_label = new_maxlabel
                     self.currentcellid = new_currentcellid
-                    update_jitcell(new_jitcell, self.stacks)
+                    update_jitcell(new_jitcell, self._stacks)
                     self.jitcells.append(new_jitcell)
             except ValueError: pass
         
@@ -632,13 +642,13 @@ class CellTracking(object):
                 cell1.zs[tid_cell1].append(z)
                 cell1.outlines[tid_cell1].append(outlines_cell2[zid])
                 cell1.masks[tid_cell1].append(masks_cell2[zid])
-            update_jitcell(cell1, self.stacks)
+            update_jitcell(cell1, self._stacks)
 
             cell2.times.pop(tid_cell2)
             cell2.zs.pop(tid_cell2)
             cell2.outlines.pop(tid_cell2)
             cell2.masks.pop(tid_cell2)
-            update_jitcell(cell2, self.stacks)
+            update_jitcell(cell2, self._stacks)
             if cell2._rem:
                 self._del_cell(cellid=cell2.id)
         
@@ -678,7 +688,7 @@ class CellTracking(object):
             cellmin.outlines.append(cellmax.outlines[tid])
             cellmin.masks.append(cellmax.masks[tid])
         
-        update_jitcell(cellmin, self.stacks)
+        update_jitcell(cellmin, self._stacks)
         self._del_cell(maxlab)
         
         self.update_label_attributes()
@@ -707,7 +717,7 @@ class CellTracking(object):
         cell.times    = cell.times[:border]
         cell.outlines = cell.outlines[:border]
         cell.masks    = cell.masks[:border]
-        update_jitcell(cell, self.stacks)
+        update_jitcell(cell, self._stacks)
 
         new_cell.zs       = new_cell.zs[border:]
         new_cell.times    = new_cell.times[border:]
@@ -719,7 +729,7 @@ class CellTracking(object):
         new_cell.label = self.max_label+1
         new_cell.id=self.currentcellid
         self.currentcellid+=1
-        update_jitcell(new_cell, self.stacks)
+        update_jitcell(new_cell, self._stacks)
         self.jitcells.append(new_cell)
         
         self.update_label_attributes()
@@ -764,7 +774,7 @@ class CellTracking(object):
         plt.close("all")
         if hasattr(self, 'PACP'): del self.PACP
         
-        labels_stack = np.zeros_like(self.stacks).astype('int16')
+        labels_stack = np.zeros_like(self._stacks).astype('int16')
         labels_stack = compute_labels_stack(labels_stack, self.jitcells, range(self.times))
         
         actions = self._tz_actions
@@ -772,7 +782,7 @@ class CellTracking(object):
             if isinstance(slices, list):
                 actions = [[t,z] for z in slices for t in times]
 
-        train_imgs, train_masks = get_training_set(self.stacks, labels_stack, actions, self._train_seg_args)
+        train_imgs, train_masks = get_training_set(self._stacks, labels_stack, actions, self._train_seg_args)
         
         if self.segmentation_method=='cellpose':
             model = train_CellposeModel(train_imgs, train_masks, self._train_seg_args, self._seg_args['model'], self._seg_args['channels'])
@@ -836,8 +846,8 @@ class CellTracking(object):
         
         if plot_args is None: plot_args =  self._plot_args
         #  Plotting Attributes
-        self._plot_args = check_and_fill_plot_args(plot_args, self.stacks.shape[2:4])
-        self.plot_stacks=check_stacks_for_plotting(stacks_for_plotting, self.stacks, plot_args, self.times, self.slices, self._xyresolution)
+        self._plot_args = check_and_fill_plot_args(plot_args, self._stacks.shape[2:4])
+        self.plot_stacks=check_stacks_for_plotting(stacks_for_plotting, self.STACKS, plot_args, self.times, self.slices, self._xyresolution)
         
         self._plot_args['plot_masks']=True
         

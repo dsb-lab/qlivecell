@@ -1,9 +1,9 @@
 from cv2 import GaussianBlur
 
-from .utils_ct import printfancy, progressbar, printclear
+from .utils_ct import printfancy, progressbar, printclear, get_default_args
 from .tools.tools import increase_point_resolution, mask_from_outline, get_outlines_masks_labels
 
-def cell_segmentation2D_cellpose(img, args):
+def cell_segmentation2D_cellpose(img, args, seg_method_args):
     """
     Parameters
     ----------
@@ -26,19 +26,13 @@ def cell_segmentation2D_cellpose(img, args):
     from cellpose.utils import outlines_list
 
     model = args['model']
-    trained_model = args['trained_model']
-    chs = args['channels']
-    fth = args['flow_threshold']
 
-    if trained_model:
-        masks, flows, styles = model.eval(img)
-    else:
-        masks, flows, styles, diam = model.eval(img, channels=chs, flow_threshold=fth, model_loaded=True)
+    masks, flows, styles = model.eval(img, **seg_method_args)
         
     outlines = outlines_list(masks)
     return outlines
 
-def cell_segmentation2D_stardist(img, args):
+def cell_segmentation2D_stardist(img, args, seg_method_args):
     """
     Parameters
     ----------
@@ -62,13 +56,13 @@ def cell_segmentation2D_stardist(img, args):
 
     model = args['model']
     
-    labels, _ = model.predict_instances(normalize(img), verbose=False, show_tile_progress=False)
+    labels, _ = model.predict_instances(normalize(img), **seg_method_args)
     printclear()
     outlines, masks = get_outlines_masks_labels(labels)
 
     return outlines
 
-def cell_segmentation3D(stack, segmentation_function, segmentation_args, min_outline_length=100):
+def cell_segmentation3D(stack, segmentation_args, segmentation_method_args, min_outline_length=100):
     """
     Parameters
     ----------
@@ -103,6 +97,13 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, min_out
     # Number of z-levels
     printfancy("Progress: ")
     # Loop over the z-levels
+    
+    if  segmentation_args['method'] == 'cellpose': 
+        segmentation_function=cell_segmentation2D_cellpose
+        
+    elif  segmentation_args['method'] == 'stardist': 
+        segmentation_function=cell_segmentation2D_stardist
+        
     for z in range(slices):
         progressbar(z+1, slices)
         # Current xy plane
@@ -110,7 +111,7 @@ def cell_segmentation3D(stack, segmentation_function, segmentation_args, min_out
         if blur_args is not None:
             img = GaussianBlur(img, blur_args[0], blur_args[1])
             # Select whether we are using a pre-trained model or a cellpose base-model
-        outlines = segmentation_function(img, segmentation_args)
+        outlines = segmentation_function(img, segmentation_args, segmentation_method_args)
         # Append the empty masks list for the current z-level.
         Masks.append([])
 
@@ -154,11 +155,10 @@ def fill_segmentation_args(segmentation_args):
         new_segmentation_args = {
             'method': None, 
             'model': None, 
-            'trained_model':True, 
-            'channels':[0,0], 
-            'flow_threshold':0.4, 
             'blur': None
         }
+        model = segmentation_args['model']
+        seg_method_args = get_default_args(model.eval)
         
     elif segmentation_method=='stardist':
         new_segmentation_args = {
@@ -166,14 +166,18 @@ def fill_segmentation_args(segmentation_args):
             'model': None, 
             'blur': None
             }
+        model = segmentation_args['model']
+        seg_method_args = get_default_args(model.predict_instances)
 
     for sarg in segmentation_args.keys():
-        try:
+        if sarg in new_segmentation_args.keys():
             new_segmentation_args[sarg] = segmentation_args[sarg]
-        except KeyError:
+        elif sarg in seg_method_args.keys():
+            seg_method_args[sarg] = segmentation_args[sarg]
+        else:
             raise Exception("key %s is not a correct argument for the selected segmentation method" %sarg)
             
-    return new_segmentation_args
+    return new_segmentation_args, seg_method_args
 
 def check_and_fill_concatenation3D_args(concatenation3D_args):
     new_concatenation3d_args = {

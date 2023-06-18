@@ -38,7 +38,6 @@ def progressbar(step, total, width=46):
     elif percent > 99:
         print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
 
-# TODO if you put as f an string but that there is not present it works weird
 def get_file_embcode(path_data, f, returnfiles=False):
     """
     Parameters
@@ -71,6 +70,19 @@ def get_file_embcode(path_data, f, returnfiles=False):
     if returnfiles: return file, name, files
     return file, name
 
+import inspect
+
+"""
+    copied from https://stackoverflow.com/questions/12627118/get-a-function-arguments-default-value
+"""
+def get_default_args(func):
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
+    
 def compute_distance_xy(x1, x2, y1, y2):
     """
     Parameters

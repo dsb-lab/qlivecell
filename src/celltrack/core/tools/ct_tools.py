@@ -151,6 +151,7 @@ def compute_point_stack(point_stack, jitcells, times, labels_per_t, dim_change, 
         if labels is None: 
             point_stack[t] = 0
             _labels = labels_per_t[t]
+        else: _labels=labels
         for lab in _labels:
             jitcell = get_cell(jitcells, lab)
             if rem: color=np.zeros(4)

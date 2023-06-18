@@ -32,7 +32,7 @@ def check_stacks_for_plotting(stacks_for_plotting, stacks, plot_args, times, sli
         if stacks_for_plotting.shape==5:
             plot_args['plot_stack_dims'] = [plot_args['plot_stack_dims'][0], plot_args['plot_stack_dims'][1], 3]   
             
-    plot_args['dim_change'] = plot_args['plot_stack_dims'][0] / stacks.shape[-1]
+    plot_args['dim_change'] = plot_args['plot_stack_dims'][0] / stacks.shape[3]
     plot_args['_plot_xyresolution'] = xyresolution * plot_args['dim_change']
 
     if plot_args['dim_change'] != 1:
