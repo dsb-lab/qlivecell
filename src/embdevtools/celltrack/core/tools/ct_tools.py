@@ -76,7 +76,7 @@ def np_all(x, axis=None):
 
         return _np_all_impl
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def nb_unique(input_data, axis=0):
     """2D np.unique(a, return_index=True, return_counts=True)
     
