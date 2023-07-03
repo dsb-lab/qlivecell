@@ -29,7 +29,7 @@ from .core.pickers import LineBuilder_lasso, LineBuilder_points
 from .core.PA import PlotActionCT, PlotActionCellPicker
 from .core.extraclasses import Slider_t, Slider_z
 from .core.iters import plotRound
-from .core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar, check_and_fill_error_correction_args, get_default_args
+from .core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar, check_and_fill_error_correction_args, get_default_args, construct_RGB
 from .core.segmentation_training import train_CellposeModel, train_StardistModel, get_training_set, check_train_segmentation_args, fill_train_segmentation_args
 from .core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist, check_segmentation_args, fill_segmentation_args, check_and_fill_concatenation3D_args
 from .core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
@@ -140,7 +140,7 @@ class CellTracking(object):
         # check and fill segmentation arguments
         check_segmentation_args(args['seg_args'], available_segmentation=['cellpose', 'stardist'])
         self._seg_args, self._seg_method_args = fill_segmentation_args(args['seg_args'])
-        self._seg_args= check_and_override_args(segmentation_args, self._seg_args)
+        # self._seg_args= check_and_override_args(segmentation_args, self._seg_args)
 
         # In case you want to do training, check training argumnets
         check_train_segmentation_args(args['train_seg_args'])

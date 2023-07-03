@@ -158,7 +158,8 @@ def fill_segmentation_args(segmentation_args):
             'blur': None
         }
         model = segmentation_args['model']
-        seg_method_args = get_default_args(model.eval)
+        if model is None:seg_method_args={}
+        else: seg_method_args = get_default_args(model.eval)
         
     elif segmentation_method=='stardist':
         new_segmentation_args = {
@@ -167,7 +168,8 @@ def fill_segmentation_args(segmentation_args):
             'blur': None
             }
         model = segmentation_args['model']
-        seg_method_args = get_default_args(model.predict_instances)
+        if model is None:seg_method_args={}
+        else: seg_method_args = get_default_args(model.predict_instances)
 
     for sarg in segmentation_args.keys():
         if sarg in new_segmentation_args.keys():

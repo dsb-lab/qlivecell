@@ -28,10 +28,9 @@ def check_and_fill_plot_args(plot_args, stack_dims):
 def check_stacks_for_plotting(stacks_for_plotting, stacks, plot_args, times, slices, xyresolution):
     
     if stacks_for_plotting is None: stacks_for_plotting = stacks
-    else: 
-        if stacks_for_plotting.shape==5:
-            plot_args['plot_stack_dims'] = [plot_args['plot_stack_dims'][0], plot_args['plot_stack_dims'][1], 3]   
-            
+    if len(stacks_for_plotting.shape)==5:
+        plot_args['plot_stack_dims'] = [plot_args['plot_stack_dims'][0], plot_args['plot_stack_dims'][1], 3]   
+        
     plot_args['dim_change'] = plot_args['plot_stack_dims'][0] / stacks.shape[3]
     plot_args['_plot_xyresolution'] = xyresolution * plot_args['dim_change']
 
@@ -43,7 +42,9 @@ def check_stacks_for_plotting(stacks_for_plotting, stacks, plot_args, times, sli
                 if len(plot_args['plot_stack_dims'])==3:
                     for ch in range(3):
                         plot_stacks[t, z,:,:,ch] = resize(stacks_for_plotting[t,z,:,:,ch], plot_args['plot_stack_dims'][0:2])
-                        plot_stacks[t, z,:,:,ch] = plot_stacks[t, z,:,:,ch]/np.max(plot_stacks[t, z,:,:,ch])
+                        norm_factor=np.max(plot_stacks[t, z,:,:,ch])
+                        if norm_factor < 0.01: norm_factor=1.0
+                        plot_stacks[t, z,:,:,ch] = plot_stacks[t, z,:,:,ch]/norm_factor
                 else:
                     plot_stacks[t, z] = resize(stacks_for_plotting[t,z], plot_args['plot_stack_dims'])
     else:

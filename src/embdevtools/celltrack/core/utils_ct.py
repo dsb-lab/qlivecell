@@ -273,3 +273,27 @@ def check_and_fill_error_correction_args(error_correction_args):
         raise Exception('not supported line builder mode chose from: (points, lasso)')
             
     return new_error_correction_args
+
+def construct_RGB(R=None, G=None, B=None):
+    
+    stack = R
+    if R is None:
+        stack = G
+        if G is None:
+            stack=B
+            if B is None: raise Exception("provide a valid stack")
+            
+    if R is None: stackR = np.zeros_like(stack)
+    else: stackR = R
+    if G is None: stackG = np.zeros_like(stack)
+    else: stackG = G
+    if B is None: stackB = np.zeros_like(stack)
+    else: stackB = B
+            
+    stackR = stackR.reshape((*stackR.shape, 1))
+    stackG = stackG.reshape((*stackG.shape, 1))
+    stackB = stackB.reshape((*stackB.shape, 1))
+    
+    IMGS = np.append(stackR,stackG, axis=-1)
+    IMGS = np.append(IMGS, stackB, axis=-1)
+    return IMGS
