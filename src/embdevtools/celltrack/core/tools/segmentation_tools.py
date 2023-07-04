@@ -324,44 +324,6 @@ def assign_labels(stack, Outlines, Masks, distance_th_z, xyresolution):
             labels[z].append(label)
     return labels
 
-def position3d(stack, labels, Outlines, Masks):
-    centersi, centersj = extract_cell_centers(stack, Outlines, Masks)
-    slices = stack.shape[0]
-
-    labels_per_t = []
-    positions_per_t = []
-    centers_weight_per_t = []
-    outlines_per_t = []
-    masks_per_t = []
-
-    for z in range(slices):
-        img = stack[z,:,:]
-
-        for cell, outline in enumerate(Outlines[z]):
-            mask = Masks[z][cell]
-            xs = centersi[z][cell]
-            ys = centersj[z][cell]
-            label = labels[z][cell]
-
-            if label not in labels_per_t:
-                labels_per_t.append(label)
-                positions_per_t.append([z,ys,xs])
-                centers_weight_per_t.append(np.sum(img[mask[:,1], mask[:,0]]))
-                outlines_per_t.append(outline)
-                masks_per_t.append(mask)
-            else:
-                curr_weight = np.sum(img[mask[:,1], mask[:,0]])
-                idx_prev    = np.where(np.array(labels_per_t)==label)[0][0]
-                prev_weight = centers_weight_per_t[idx_prev]
-
-                if curr_weight > prev_weight:
-                    positions_per_t[idx_prev] = [z, ys, xs]
-                    outlines_per_t[idx_prev]  = outline
-                    masks_per_t[idx_prev] = mask
-                    centers_weight_per_t[idx_prev] = curr_weight
-
-    return labels_per_t, positions_per_t, outlines_per_t, masks_per_t
-
 def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
     printfancy("")
     printfancy("running concatenation correction... (1/2)")
@@ -396,8 +358,24 @@ def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
     printclear()
     
     labels = assign_labels(stack, Outlines, Masks, conc3D_args['distance_th_z'], xyresolution)
-    labels_per_t, positions_per_t, outlines_per_t, masks_per_t = position3d(stack, labels, Outlines, Masks)  
-    return labels, labels_per_t, positions_per_t, outlines_per_t, masks_per_t
+    
+    return labels
 
 def check3Dmethod(method):
     return True if '3D' in method else False
+
+def reshape_segmentation_results(labels, Outlines, Masks):
+    labels_tlz = []
+    Outlines_tlz = []
+    Masks_tlz = []
+    Zs_tl = []
+    Times_l = []
+    
+    for t in range(len(labels)):
+        for z in range(len(labels[t])):
+            for l in range(len(labels[t][z])):
+                lab = labels[t][z][l]
+                outline = Outlines[t][z][l]
+                mask = Masks[t][z][l]
+
+    return labels_tlz, Outlines_tlz, Masks_tlz, Zs_tl, Times_l

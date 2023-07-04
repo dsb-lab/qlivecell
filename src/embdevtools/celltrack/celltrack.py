@@ -37,11 +37,11 @@ from .core.tracking import greedy_tracking, hungarian_tracking, check_tracking_a
 from .core.plotting import check_and_fill_plot_args, check_stacks_for_plotting
 from .core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
 
-from .core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d, concatenate_to_3D, check3Dmethod
+from .core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, concatenate_to_3D, check3Dmethod
 from .core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
 from .core.tools.ct_tools import compute_point_stack, compute_labels_stack, check_and_override_args
 from .core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence, increase_outline_width
-from .core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes, _extract_unique_labels_and_max_label
+from .core.tools.tracking_tools import _init_cell, _extract_unique_labels_per_time, _order_labels_z, _order_labels_t, _init_CT_cell_attributes, _reinit_update_CT_cell_attributes, _update_CT_cell_attributes, _extract_unique_labels_and_max_label, get_labels_centers
 from .core.tools.save_tools import load_cells, save_4Dstack, save_3Dstack
 
 import warnings
@@ -286,15 +286,20 @@ class CellTracking(object):
         self.currentcellid+=1
     
     def __call__(self):
-        TLabels, TCenters, TOutlines, TMasks, Labels_tz, Outlines_tz, Masks_tz = self.cell_segmentation()
+        
+        # Result of segmentation has shape (t,z,l)
+        Labels, Outlines, Masks = self.cell_segmentation()
         
         printfancy("")
         printfancy("computing tracking...")
+        
+        # For tracking only the planes of the cell centers are used so shapes are (t,l)
+        TLabels, TOutlines, TMasks, TCenters = get_labels_centers(self._stacks, Labels, Outlines, Masks)
         FinalLabels, label_correspondance=self.cell_tracking(TLabels, TCenters, TOutlines, TMasks)
 
         printfancy("tracking completed. initialising cells...", clear_prev=1)
         
-        self.init_cells(FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance)
+        self.init_cells(FinalLabels, Labels, Outlines, Masks, label_correspondance)
 
         printfancy("cells initialised. updating labels...", clear_prev=1)
 
@@ -342,14 +347,9 @@ class CellTracking(object):
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
-        TLabels   = []
-        TCenters  = []
-        TOutlines = []
-        TMasks = []
-        
-        _Outlines = []
-        _Masks    = []
-        _labels   = []
+        Outlines = []
+        Masks    = []
+        Labels   = []
         
         print()
         print("######################   BEGIN SEGMENTATIONS   #######################")
@@ -361,11 +361,12 @@ class CellTracking(object):
 
             stack_seg = self.STACKS[t]
 
-            Outlines, Masks = cell_segmentation3D(stack_seg, self._seg_args, self._seg_method_args)
+            outlines, masks = cell_segmentation3D(stack_seg, self._seg_args, self._seg_method_args)
             
             if not self.segment3D:
                 stack = self._stacks[t]
-                labels, labels_per_t, positions_per_t, outlines_per_t, masks_per_t = concatenate_to_3D(stack, Outlines, Masks, self._conc3D_args, self._xyresolution)
+                # outlines and masks are modified in place
+                labels = concatenate_to_3D(stack, outlines, masks, self._conc3D_args, self._xyresolution)
             else:
                 pass
             
@@ -377,21 +378,17 @@ class CellTracking(object):
             printfancy("")
 
             printfancy("Segmentation and corrections completed. Proceeding to next time", clear_prev=1)
-            TLabels.append(labels_per_t)
-            TCenters.append(positions_per_t)
-            TOutlines.append(outlines_per_t)
-            TMasks.append(masks_per_t)
 
-            _Outlines.append(Outlines)
-            _Masks.append(Masks)
-            _labels.append(labels)
+            Outlines.append(outlines)
+            Masks.append(masks)
+            Labels.append(labels)
 
             printclear(n=9)
         printclear(n=2)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
-        return TLabels, TCenters, TOutlines, TMasks, _labels, _Outlines, _Masks
+        return Labels, Outlines, Masks
     
     def cell_tracking(self, TLabels, TCenters, TOutlines, TMasks):
         if self._track_args['method']=='greedy':

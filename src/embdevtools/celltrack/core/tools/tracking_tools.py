@@ -3,7 +3,7 @@ from numba import jit, njit, typeof
 from numba.types import ListType 
 from numba.typed import List
 from ..dataclasses import jitCell, CTattributes
-from ..tools.segmentation_tools import label_per_z, label_per_z_jit
+from ..tools.segmentation_tools import label_per_z, label_per_z_jit, extract_cell_centers
 from ..tools.cell_tools import create_cell, update_cell
 
 @njit
@@ -170,3 +170,57 @@ def _init_cell(cellid, lab, times, slices, FinalLabels, label_correspondance, La
     cell = create_cell(cellid, np.uint16(lab), ZS, TIMES, OUTLINES, MASKS, None)
     
     return cell
+
+def get_label_center_t(stack, labels, outlines, masks):
+    centersi, centersj = extract_cell_centers(stack, outlines, masks)
+    slices = stack.shape[0]
+
+    labels_per_t = []
+    positions_per_t = []
+    centers_weight_per_t = []
+    outlines_per_t = []
+    masks_per_t = []
+
+    for z in range(slices):
+        img = stack[z,:,:]
+
+        for cell, outline in enumerate(outlines[z]):
+            mask = masks[z][cell]
+            xs = centersi[z][cell]
+            ys = centersj[z][cell]
+            label = labels[z][cell]
+
+            if label not in labels_per_t:
+                labels_per_t.append(label)
+                positions_per_t.append([z,ys,xs])
+                centers_weight_per_t.append(np.sum(img[mask[:,1], mask[:,0]]))
+                outlines_per_t.append(outline)
+                masks_per_t.append(mask)
+            else:
+                curr_weight = np.sum(img[mask[:,1], mask[:,0]])
+                idx_prev    = np.where(np.array(labels_per_t)==label)[0][0]
+                prev_weight = centers_weight_per_t[idx_prev]
+
+                if curr_weight > prev_weight:
+                    positions_per_t[idx_prev] = [z, ys, xs]
+                    outlines_per_t[idx_prev]  = outline
+                    masks_per_t[idx_prev] = mask
+                    centers_weight_per_t[idx_prev] = curr_weight
+
+    return labels_per_t, positions_per_t, outlines_per_t, masks_per_t
+
+def get_labels_centers(stacks, Labels, Outlines, Masks):
+    TLabels = []
+    TOutlines = []
+    TMasks = []
+    TCenters = []
+    
+    for t in range(len(Labels)):
+        labels, centers, outlines, masks = get_label_center_t(stacks[t], Labels[t], Outlines[t], Masks[t])
+        TLabels.append(labels)
+        TOutlines.append(outlines)
+        TMasks.append(masks)
+        TCenters.append(centers)
+        
+    return TLabels, TOutlines, TMasks, TCenters
+
