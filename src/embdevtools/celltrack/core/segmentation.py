@@ -2,6 +2,7 @@ from cv2 import GaussianBlur
 
 from .utils_ct import printfancy, progressbar, printclear, get_default_args
 from .tools.tools import increase_point_resolution, mask_from_outline, get_outlines_masks_labels
+from .tools.segmentation_tools import check3Dmethod
 
 def cell_segmentation2D_cellpose(img, args, seg_method_args):
     """
@@ -55,14 +56,19 @@ def cell_segmentation2D_stardist(img, args, seg_method_args):
     from csbdeep.utils import normalize
 
     model = args['model']
-    
     labels, _ = model.predict_instances(normalize(img), **seg_method_args)
     printclear()
     outlines, masks = get_outlines_masks_labels(labels)
 
     return outlines
 
-def cell_segmentation3D(stack, segmentation_args, segmentation_method_args, min_outline_length=100):
+def cell_segmentation3D_cellpose(stack, segmentation_args, segmentation_method_args, min_outline_length):
+    return
+
+def cell_segmentation3D_stardist(stack, segmentation_args, segmentation_method_args, min_outline_length):
+    return
+
+def cell_segmentation3D_from2D(stack, segmentation_args, segmentation_method_args, min_outline_length):
     """
     Parameters
     ----------
@@ -98,10 +104,10 @@ def cell_segmentation3D(stack, segmentation_args, segmentation_method_args, min_
     printfancy("Progress: ")
     # Loop over the z-levels
     
-    if  segmentation_args['method'] == 'cellpose': 
+    if 'cellpose' in segmentation_args['method']: 
         segmentation_function=cell_segmentation2D_cellpose
         
-    elif  segmentation_args['method'] == 'stardist': 
+    elif 'stardist' in segmentation_args['method']: 
         segmentation_function=cell_segmentation2D_stardist
         
     for z in range(slices):
@@ -139,7 +145,20 @@ def cell_segmentation3D(stack, segmentation_args, segmentation_method_args, min_
         Outlines.append(outlines)
     return Outlines, Masks
 
-def check_segmentation_args(segmentation_args, available_segmentation=['cellpose', 'stardist']):
+def cell_segmentation3D_from3D(stack, segmentation_args, segmentation_method_args, min_outline_length):
+    return 
+
+def cell_segmentation3D(stack, segmentation_args, segmentation_method_args, min_outline_length=100):
+    seg3d = check3Dmethod(segmentation_args['method'])
+    if seg3d: 
+        segmentation_function=cell_segmentation3D_from3D
+    else:
+        segmentation_function=cell_segmentation3D_from2D
+    
+    Outlines, Masks = segmentation_function(stack, segmentation_args, segmentation_method_args, min_outline_length)
+    return Outlines, Masks
+
+def check_segmentation_args(segmentation_args, available_segmentation=['cellpose2D', 'cellpose3D', 'stardist2D', 'stardist3D']):
     if 'method' not in segmentation_args.keys():
         raise Exception('no segmentation method provided') 
     if 'model' not in segmentation_args.keys():
@@ -151,7 +170,7 @@ def check_segmentation_args(segmentation_args, available_segmentation=['cellpose
 def fill_segmentation_args(segmentation_args):
     segmentation_method = segmentation_args['method']
 
-    if segmentation_method=='cellpose':
+    if 'cellpose' in segmentation_method:
         new_segmentation_args = {
             'method': None, 
             'model': None, 
@@ -161,7 +180,7 @@ def fill_segmentation_args(segmentation_args):
         if model is None:seg_method_args={}
         else: seg_method_args = get_default_args(model.eval)
         
-    elif segmentation_method=='stardist':
+    elif 'stardist' in segmentation_method:
         new_segmentation_args = {
             'method': None, 
             'model': None, 

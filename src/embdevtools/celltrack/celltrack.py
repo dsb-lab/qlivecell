@@ -37,7 +37,7 @@ from .core.tracking import greedy_tracking, hungarian_tracking, check_tracking_a
 from .core.plotting import check_and_fill_plot_args, check_stacks_for_plotting
 from .core.dataclasses import CellTracking_info, backup_CellTrack, contruct_jitCell_from_Cell, contruct_Cell_from_jitCell
 
-from .core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d, concatenate_to_3D
+from .core.tools.segmentation_tools import label_per_z, assign_labels, separate_concatenated_cells, remove_short_cells, position3d, concatenate_to_3D, check3Dmethod
 from .core.tools.cell_tools import create_cell, update_jitcell, find_z_discontinuities, update_cell
 from .core.tools.ct_tools import compute_point_stack, compute_labels_stack, check_and_override_args
 from .core.tools.tools import mask_from_outline, increase_point_resolution, sort_point_sequence, increase_outline_width
@@ -66,7 +66,6 @@ class CellTracking(object):
         zresolution=1,
         loadcells=False,
         segmentation_args={},
-        segment3D=None,
         concatenation3D_args = {},
         train_segmentation_args = {},
         tracking_args = {},
@@ -100,7 +99,6 @@ class CellTracking(object):
             self.init_from_cells(
                 loadcells,
                 segmentation_args, 
-                segment3D, 
                 concatenation3D_args, 
                 train_segmentation_args, 
                 tracking_args,
@@ -108,7 +106,6 @@ class CellTracking(object):
         else: 
             self.init_from_args(
                 segmentation_args, 
-                segment3D, 
                 concatenation3D_args, 
                 train_segmentation_args, 
                 tracking_args,
@@ -126,7 +123,6 @@ class CellTracking(object):
         self, 
         loadcells,
         segmentation_args, 
-        segment3D, 
         concatenation3D_args, 
         train_segmentation_args, 
         tracking_args,
@@ -138,7 +134,7 @@ class CellTracking(object):
         self.loaded_args=args
         
         # check and fill segmentation arguments
-        check_segmentation_args(args['seg_args'], available_segmentation=['cellpose', 'stardist'])
+        check_segmentation_args(args['seg_args'], available_segmentation=['cellpose2D', 'cellpose3D', 'stardist2D', 'stardist3D'])
         self._seg_args, self._seg_method_args = fill_segmentation_args(args['seg_args'])
         # self._seg_args= check_and_override_args(segmentation_args, self._seg_args)
 
@@ -153,7 +149,7 @@ class CellTracking(object):
         self._track_args= check_and_override_args(tracking_args, self._track_args)
 
         # check if the segmentation is directly in 3D or it needs concatenation
-        self.segment3D = segment3D if segment3D is not None else args['segment3D'] 
+        self.segment3D = check3Dmethod(self._seg_args['method'])
         if not self.segment3D:
             # check and fill 3D concatenation arguments
             self._conc3D_args = check_and_fill_concatenation3D_args(args['conc3D_args'])
@@ -195,14 +191,13 @@ class CellTracking(object):
     def init_from_args(
         self, 
         segmentation_args, 
-        segment3D, 
         concatenation3D_args, 
         train_segmentation_args, 
         tracking_args,
     ):
         
         # check and fill segmentation arguments
-        check_segmentation_args(segmentation_args, available_segmentation=['cellpose', 'stardist'])
+        check_segmentation_args(segmentation_args, available_segmentation=['cellpose2D', 'cellpose3D', 'stardist2D', 'stardist3D'])
         self._seg_args, self._seg_method_args = fill_segmentation_args(segmentation_args)
         
         # In case you want to do training, check training argumnets
@@ -214,7 +209,7 @@ class CellTracking(object):
         self._track_args = fill_tracking_args(tracking_args)
 
         # check if the segmentation is directly in 3D or it needs concatenation
-        self.segment3D = segment3D if segment3D is not None else False
+        self.segment3D = check3Dmethod(self._seg_args['method'])
         if not self.segment3D:
             # check and fill 3D concatenation arguments
             self._conc3D_args = check_and_fill_concatenation3D_args(concatenation3D_args)
@@ -365,15 +360,15 @@ class CellTracking(object):
             printfancy("")
 
             stack_seg = self.STACKS[t]
-            
-            if self._seg_args['method'] == 'cellpose':
-                Outlines, Masks = cell_segmentation3D(stack_seg, self._seg_args, self._seg_method_args)
-            elif self._seg_args['method'] == 'stardist':
-                Outlines, Masks = cell_segmentation3D(stack_seg, self._seg_args, self._seg_method_args)
-            
-            stack = self._stacks[t]
-            labels, labels_per_t, positions_per_t, outlines_per_t, masks_per_t = concatenate_to_3D(stack, Outlines, Masks, self._conc3D_args, self._xyresolution)
 
+            Outlines, Masks = cell_segmentation3D(stack_seg, self._seg_args, self._seg_method_args)
+            
+            if not self.segment3D:
+                stack = self._stacks[t]
+                labels, labels_per_t, positions_per_t, outlines_per_t, masks_per_t = concatenate_to_3D(stack, Outlines, Masks, self._conc3D_args, self._xyresolution)
+            else:
+                pass
+            
             printfancy("")
             printfancy("Segmentation and corrections completed")
 
@@ -784,11 +779,11 @@ class CellTracking(object):
 
         train_imgs, train_masks = get_training_set(self._stacks, labels_stack, actions, self._train_seg_args)
         
-        if self.segmentation_method=='cellpose':
+        if 'cellpose' in self.segmentation_method:
             model = train_CellposeModel(train_imgs, train_masks, self._train_seg_args, self._seg_args['model'], self._seg_args['channels'])
             self._seg_args['model'] = model
         
-        elif self.segmentation_method=='stardist':
+        elif 'stardist' in self.segmentation_method:
             model = train_StardistModel(train_imgs, train_masks, self._train_seg_args, self._seg_args['model'])
             self._seg_args['model'] = model
         

@@ -398,3 +398,6 @@ def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
     labels = assign_labels(stack, Outlines, Masks, conc3D_args['distance_th_z'], xyresolution)
     labels_per_t, positions_per_t, outlines_per_t, masks_per_t = position3d(stack, labels, Outlines, Masks)  
     return labels, labels_per_t, positions_per_t, outlines_per_t, masks_per_t
+
+def check3Dmethod(method):
+    return True if '3D' in method else False
