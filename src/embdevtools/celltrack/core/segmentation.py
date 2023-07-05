@@ -134,7 +134,32 @@ def cell_segmentation3D_from2D(stack, segmentation_args, segmentation_method_arg
     return Outlines, Masks, None
 
 def cell_segmentation3D_cellpose(stack, segmentation_args, segmentation_method_args):
-    return
+    """
+    Parameters
+    ----------
+    img : 2D ndarray
+    args: 
+    TODO
+        See https://cellpose.readthedocs.io/en/latest/api.html for more information
+    
+    Returns
+    -------
+    outlines : list of lists
+        Contains the 2D of the points forming the outlines
+    """   
+     
+    segmentation_method_args['do_3D']=True
+
+    model = segmentation_args['model']
+    masks, flows, styles = model.eval(stack, **segmentation_method_args)
+    
+    Outlines = []
+    Labels = []
+    for z in range(masks.shape[0]):
+        outlines, _, labs = get_outlines_masks_labels(masks[z,:,:])
+        Outlines.append(outlines)
+        Labels.append([l-1 for l in labs])
+    return Outlines, Labels
 
 def cell_segmentation3D_stardist(stack, segmentation_args, segmentation_method_args):
     """

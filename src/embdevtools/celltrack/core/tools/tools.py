@@ -3,6 +3,7 @@ from scipy.spatial import cKDTree
 import random
 from ..utils_ct import printfancy
 from scipy.spatial import ConvexHull
+from  scipy.spatial._qhull import QhullError
 
 def increase_point_resolution(outline, min_outline_length):
     rounds = np.ceil(np.log2(min_outline_length/len(outline))).astype('int16')
@@ -107,7 +108,8 @@ def whereNotConsecutive(l):
 def get_outlines_masks_labels(label_img):
 
     maxlabel = np.max(label_img)
-    minlabel = np.min(label_img[np.nonzero(label_img)])
+    if maxlabel==0: minlabel=0
+    else: minlabel = np.min(label_img[np.nonzero(label_img)])
 
     outlines = []
     masks = []
@@ -115,18 +117,22 @@ def get_outlines_masks_labels(label_img):
     labels=[]
     for lab in pre_labels:
         
-        if lab not in label_img: 
+        if lab not in label_img or lab==0: 
             continue
         
         mask = np.dstack(np.where(label_img == lab))[0]
-        masks.append(mask)
+
         if len(mask)<3: 
-            
             continue
-        hull = ConvexHull(mask)
+        
+        try: hull = ConvexHull(mask)
+        except QhullError: continue
+        
         outline = mask[hull.vertices]
         outline[:] = outline[:, [1,0]]
+        
         outlines.append(outline)
+        masks.append(mask)
         labels.append(lab)
     return outlines, masks, labels
 
