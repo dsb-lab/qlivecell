@@ -105,19 +105,30 @@ def whereNotConsecutive(l):
     return [id+1 for id, val in enumerate(np.diff(l)) if val > 1]
 
 def get_outlines_masks_labels(label_img):
+
     maxlabel = np.max(label_img)
+    minlabel = np.min(label_img[np.nonzero(label_img)])
+
     outlines = []
     masks = []
-    for lab in range(1, maxlabel+1):
-        if lab not in label_img: continue
+    pre_labels = [l for l in range(minlabel, maxlabel+1)]
+    labels=[]
+    for lab in pre_labels:
+        
+        if lab not in label_img: 
+            continue
+        
         mask = np.dstack(np.where(label_img == lab))[0]
         masks.append(mask)
-        if len(mask)<3: continue
+        if len(mask)<3: 
+            
+            continue
         hull = ConvexHull(mask)
         outline = mask[hull.vertices]
         outline[:] = outline[:, [1,0]]
         outlines.append(outline)
-    return outlines, masks
+        labels.append(lab)
+    return outlines, masks, labels
 
 from scipy.ndimage import distance_transform_edt
 # Function based on: https://github.com/scikit-image/scikit-image/blob/v0.20.0/skimage/segmentation/_expand_labels.py#L5-L95

@@ -213,6 +213,7 @@ class CellTracking(object):
         if not self.segment3D:
             # check and fill 3D concatenation arguments
             self._conc3D_args = check_and_fill_concatenation3D_args(concatenation3D_args)
+        else: self._conc3D_args = {}
 
         # pre-define max label
         self.max_label = 0
@@ -289,7 +290,7 @@ class CellTracking(object):
         
         # Result of segmentation has shape (t,z,l)
         Labels, Outlines, Masks = self.cell_segmentation()
-        
+
         printfancy("")
         printfancy("computing tracking...")
         
@@ -297,6 +298,8 @@ class CellTracking(object):
         TLabels, TOutlines, TMasks, TCenters = get_labels_centers(self._stacks, Labels, Outlines, Masks)
         FinalLabels, label_correspondance=self.cell_tracking(TLabels, TCenters, TOutlines, TMasks)
 
+        self.lc = label_correspondance
+        
         printfancy("tracking completed. initialising cells...", clear_prev=1)
         
         self.init_cells(FinalLabels, Labels, Outlines, Masks, label_correspondance)
@@ -361,14 +364,12 @@ class CellTracking(object):
 
             stack_seg = self.STACKS[t]
 
-            outlines, masks = cell_segmentation3D(stack_seg, self._seg_args, self._seg_method_args)
-            
+            outlines, masks, labels = cell_segmentation3D(stack_seg, self._seg_args, self._seg_method_args)
+
             if not self.segment3D:
                 stack = self._stacks[t]
                 # outlines and masks are modified in place
                 labels = concatenate_to_3D(stack, outlines, masks, self._conc3D_args, self._xyresolution)
-            else:
-                pass
             
             printfancy("")
             printfancy("Segmentation and corrections completed")
@@ -387,7 +388,7 @@ class CellTracking(object):
         printclear(n=2)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
-
+    
         return Labels, Outlines, Masks
     
     def cell_tracking(self, TLabels, TCenters, TOutlines, TMasks):

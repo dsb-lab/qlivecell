@@ -161,7 +161,6 @@ def _init_cell(cellid, lab, times, slices, FinalLabels, label_correspondance, La
             ZS.append(Zlabel_z[_labid])
             OUTLINES.append([])
             MASKS.append([])
-            
             for z in ZS[-1]:
                 id_l = np.where(np.array(Labels_tz[t][z])==_lab)[0][0]
                 OUTLINES[-1].append(np.asarray(Outlines_tz[t][z][id_l] ,dtype='uint16'))
