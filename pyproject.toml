@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "EmbDevTools"
+name = "embdevtools"
 version = "0.0.1"
 description = "A small example package"
 authors = [
@@ -19,11 +19,16 @@ classifiers = [
 requires-python = ">=3.7"
 dependencies = [
     "cellpose>=2",
+    "stardist==0.8.3",
     "matplotlib",
+    "tensorflow==2.12.0",
     "numpy>=1.22",
     "scikit-learn",
     "scipy",
     "tifffile",
+    "opencv-python==4.6.*",
+    "munkres==1.1.4",
+    "scikit-image==0.19.2",
 ]
 
 [project.urls]
