@@ -486,7 +486,6 @@ class CellTracking(object):
             else:
                 stack_seg = pre_stack_seg
 
-            print(stack_seg.shape)
             outlines, masks, labels = cell_segmentation3D(
                 stack_seg, self._seg_args, self._seg_method_args
             )
