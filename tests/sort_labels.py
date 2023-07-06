@@ -1,11 +1,13 @@
-P = [[0,1,3,5], [0,1,2,6], [1,2,4,7]]
+P = [[0, 1, 3, 5], [0, 1, 2, 6], [1, 2, 4, 7]]
+
+
 def sort_labels(P):
     Q = [[-1 for item in sublist] for sublist in P]
-    C = [[] for item in range(max([sublist[-1] for sublist in P])+1)]
+    C = [[] for item in range(max([sublist[-1] for sublist in P]) + 1)]
     PQ = [-1 for sublist in C]
     for i, p in enumerate(P):
         for j, n in enumerate(p):
-            C[n].append([i,j])
+            C[n].append([i, j])
     nmax = 0
     for i, p in enumerate(P):
         for j, n in enumerate(p):
@@ -16,14 +18,17 @@ def sort_labels(P):
                 PQ[n] = nmax
                 nmax += 1
     return Q, PQ
+
+
 Q, PQ = sort_labels(P)
 
 from copy import deepcopy
+
 newP = deepcopy(P)
 
 for i, p in enumerate(newP):
     for j, n in enumerate(p):
         newP[i][j] = PQ[n]
 
-assert(newP == Q)
+assert newP == Q
 print("TEST PASSED")

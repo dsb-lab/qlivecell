@@ -1,15 +1,12 @@
 import numba as nb
-from numba import jit, njit
-
 import numpy as np
-
-from numba import types
-from numba.extending import overload, register_jitable
+from numba import jit, njit, types
 from numba.core.errors import TypingError
+from numba.extending import overload, register_jitable
+
 
 @overload(np.all)
 def np_all(x, axis=None):
-
     # ndarray.all with axis arguments for 2D arrays.
 
     @register_jitable
@@ -76,10 +73,11 @@ def np_all(x, axis=None):
 
         return _np_all_impl
 
+
 @jit(nopython=True, cache=False)
 def nb_unique(input_data, axis=0):
     """2D np.unique(a, return_index=True, return_counts=True)
-    
+
     Parameters
     ----------
     input_data : 2D numeric array
@@ -128,66 +126,99 @@ def nb_unique(input_data, axis=0):
     counts = counts - idx
     return data[idx]
 
+
 @njit()
 def set_cell_color(cell_stack, points, times, zs, color, dim_change, t=-1, z=-1):
     for tid in nb.prange(len(times)):
-        tc=times[tid]
-        if t<0 or t==tc:
+        tc = times[tid]
+        if t < 0 or t == tc:
             for zid in nb.prange(len(zs[tid])):
                 zc = zs[tid][zid]
-                if z<0 or z==zc:
+                if z < 0 or z == zc:
                     outline = nb_unique(points[tid][zid], axis=0)
-                    
+
                     for p in outline:
-                        x = np.uint16(np.floor(p[1]*dim_change))
-                        y = np.uint16(np.floor(p[0]*dim_change))
-                        cell_stack[tc,zc,x,y] = color
+                        x = np.uint16(np.floor(p[1] * dim_change))
+                        y = np.uint16(np.floor(p[0] * dim_change))
+                        cell_stack[tc, zc, x, y] = color
+
 
 def get_cell_color(jitcell, labels_colors, alpha):
     return np.append(labels_colors[jitcell.label], alpha)
 
-def compute_point_stack(point_stack, jitcells, times, labels_per_t, dim_change, labels_colors, alpha=1, labels=None, mode=None, rem=False):
+
+def compute_point_stack(
+    point_stack,
+    jitcells,
+    times,
+    labels_per_t,
+    dim_change,
+    labels_colors,
+    alpha=1,
+    labels=None,
+    mode=None,
+    rem=False,
+):
     for t in times:
-        if labels is None: 
+        if labels is None:
             point_stack[t] = 0
             _labels = labels_per_t[t]
-        else: _labels=labels
+        else:
+            _labels = labels
         for lab in _labels:
             jitcell = get_cell(jitcells, lab)
-            if rem: color=np.zeros(4)
-            else: color = get_cell_color(jitcell, labels_colors, alpha)
-            if mode=="outlines": points = jitcell.outlines
-            elif mode=="masks": points = jitcell.masks
-            set_cell_color(point_stack, points, jitcell.times, jitcell.zs, np.array(color), dim_change, t=t)
+            if rem:
+                color = np.zeros(4)
+            else:
+                color = get_cell_color(jitcell, labels_colors, alpha)
+            if mode == "outlines":
+                points = jitcell.outlines
+            elif mode == "masks":
+                points = jitcell.masks
+            set_cell_color(
+                point_stack,
+                points,
+                jitcell.times,
+                jitcell.zs,
+                np.array(color),
+                dim_change,
+                t=t,
+            )
     return point_stack
 
+
 def get_cell(cells, label=None, cellid=None):
-    if label==None:
+    if label == None:
         for cell in cells:
-                if cell.id == cellid:
-                    return cell
+            if cell.id == cellid:
+                return cell
     else:
         for cell in cells:
-                if cell.label == label:
-                    return cell
+            if cell.label == label:
+                return cell
     return None
+
 
 def compute_labels_stack(point_stack, jitcells, times):
     for t in times:
         for jitcell in jitcells:
-            color=jitcell.label+1
+            color = jitcell.label + 1
             points = jitcell.masks
-            set_cell_color(point_stack, points, jitcell.times, jitcell.zs, color, 1, t=t)
+            set_cell_color(
+                point_stack, points, jitcell.times, jitcell.zs, color, 1, t=t
+            )
     return point_stack
 
+
 from copy import deepcopy
+
+
 def check_and_override_args(args_preferred, args_unpreferred):
     new_args = deepcopy(args_unpreferred)
     for arg in args_preferred.keys():
         if arg not in new_args.keys():
-            raise Exception('argument %s is not a supported argument' %arg)
+            raise Exception("argument %s is not a supported argument" % arg)
         else:
             new_args[arg] = args_preferred[arg]
 
     return new_args
-
