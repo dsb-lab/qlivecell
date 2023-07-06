@@ -1,91 +1,30 @@
-import sys
-sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/celltrack/src/celltrack')
+import numpy as np
+from scipy.ndimage import zoom
 
-from celltrack import CellTracking, get_file_embcode, read_img_with_resolution
+# Assuming your original image is stored in a NumPy array called 'image'
+# with dimensions (1, 3)
 
-import os 
-home = os.path.expanduser('~')
-path_data=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
-path_save=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects/'
+# Define the original resolutions
+image = np.asarray([[1.0,2.0,3.0],
+                    [3.0,2.0,1.0]])
 
+resolutions = (1.0, 2.0)  # (Resolution of first dimension, Resolution of second dimension)
 
-file, embcode = get_file_embcode(path_data, "082119_p1")
+# Compute the target resolutions (making the first dimension same as the second dimension)
+target_resolutions = (resolutions[1], resolutions[1])
 
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
-IMGS = IMGS[0:2, 0:10]   
+# Compute the zoom factor for the first dimension
+zoom_factor = target_resolutions[0] / resolutions[0]
 
-from cellpose import models
-model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
-# model  = models.CellposeModel(gpu=False, model_type='nuclei')
-segmentation_method = 'cellpose'
+# Perform the interpolation using zoom function
+isotropic_image = zoom(image, (10/2,1), order=1)
 
-# from stardist.models import StarDist2D
-# import shutil 
-# # make a copy of a pretrained model into folder 'mymodel'
-# model_pretrained = StarDist2D.from_pretrained('2D_versatile_fluo')
-# shutil.copytree(model_pretrained.logdir, '/home/pablo/mymodel', dirs_exist_ok=True)
-# model = StarDist2D(None, '/home/pablo/mymodel')
-# segmentation_method = 'stardist'
+# 'isotropic_image' will now have isotropic resolutions in both dimensions
 
-segmentation_args={
-    'method': 'cellpose', 
-    'model': model, 
-    'trained_model':True, 
-    'channels':[0,0], 
-    'flow_threshold':0.4, 
-    'blur': [[5,5], 1]
-}
+# Optionally, you can also update the resolutions information
+# to reflect the new isotropic values
+isotropic_resolutions = (target_resolutions[1], target_resolutions[1])
 
-concatenation3d_args = {
-    'distance_th_z': 3.0, 
-    'relative_overlap':False, 
-    'use_full_matrix_to_compute_overlap':True, 
-    'z_neighborhood':2, 
-    'overlap_gradient_th':0.3, 
-}
-
-train_segmentation_args = {
-    'model_save_path': path_save,
-    'model_name': None,
-    'blur': [[5,5], 1]
-}
-
-tracking_args = {
-    'time_step': 5, # minutes
-    'method': 'hungarian', 
-    'z_th':2, 
-    'cost_attributes':['distance', 'volume', 'shape'], 
-    'cost_ratios':[0.6,0.2,0.2]
-}
-
-plot_args = {
-    'plot_layout': (1,1),
-    'plot_overlap': 1,
-    'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), 
-}
-
-error_correction_args = {
-    'backup_steps': 10,
-    'line_builder_mode': 'lasso',
-}
-
-CT = CellTracking(
-    IMGS, 
-    path_save, 
-    embcode, 
-    xyresolution=xyres, 
-    zresolution=zres, 
-    loadcells=True,
-    segmentation_args=segmentation_args,
-    segment3D=False,
-    concatenation3D_args=concatenation3d_args,
-    train_segmentation_args = train_segmentation_args,
-    tracking_args = tracking_args, 
-    error_correction_args=error_correction_args,    
-    plot_args = plot_args,
-)
-
-CT.plot_tracking(plot_args)
-
-# model = CT.train_segmentation_model()
+# You can access the new resolutions as:
+isotropic_first_resolution = isotropic_resolutions[0]
+isotropic_second_resolution = isotropic_resolutions[1]

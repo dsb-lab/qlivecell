@@ -12,6 +12,7 @@ from matplotlib.lines import lineStyles
 
 import random
 from scipy.spatial import ConvexHull
+from scipy.ndimage import zoom
 
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MaxNLocator
@@ -29,7 +30,7 @@ from .core.pickers import LineBuilder_lasso, LineBuilder_points
 from .core.PA import PlotActionCT, PlotActionCellPicker
 from .core.extraclasses import Slider_t, Slider_z
 from .core.iters import plotRound
-from .core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar, check_and_fill_error_correction_args, get_default_args, construct_RGB
+from .core.utils_ct import read_img_with_resolution, get_file_embcode, printfancy, printclear, progressbar, check_and_fill_error_correction_args, get_default_args, construct_RGB, isotropize_stack, isotropize_stackRGB
 from .core.segmentation_training import train_CellposeModel, train_StardistModel, get_training_set, check_train_segmentation_args, fill_train_segmentation_args
 from .core.segmentation import cell_segmentation3D, cell_segmentation2D_cellpose, cell_segmentation2D_stardist, check_segmentation_args, fill_segmentation_args, check_and_fill_concatenation3D_args
 from .core.multiprocessing import worker, multiprocess_start, multiprocess_add_tasks, multiprocess_get_results, multiprocess_end
@@ -362,10 +363,23 @@ class CellTracking(object):
             printfancy("######   CURRENT TIME = %d/%d   ######" % (t+1, self.times))
             printfancy("")
 
-            stack_seg = self.STACKS[t]
-
+            pre_stack_seg = self.STACKS[t]
+            
+            if self._seg_args['make_isotropic'][0]:
+                iso_frac=self._seg_args['make_isotropic'][1]
+                zres = self._zresolution
+                xyres=self._xyresolution
+                if len(pre_stack_seg.shape)==4: stack_seg, ori_idxs=isotropize_stackRGB(pre_stack_seg, zres, xyres, isotropic_fraction=iso_frac, return_original_idxs=True)
+                elif len(pre_stack_seg.shape)==3: stack_seg, ori_idxs=isotropize_stack(pre_stack_seg, zres, xyres, isotropic_fraction=iso_frac, return_original_idxs=True) 
+            else:stack_seg =pre_stack_seg
+            
+            print(stack_seg.shape)
             outlines, masks, labels = cell_segmentation3D(stack_seg, self._seg_args, self._seg_method_args)
-
+            if self._seg_args['make_isotropic'][0]:
+                outlines = [outlines[i] for i in ori_idxs]
+                masks = [masks[i] for i in ori_idxs]
+                labels = [labels[i] for i in ori_idxs]
+                
             if not self.segment3D:
                 stack = self._stacks[t]
                 # outlines and masks are modified in place

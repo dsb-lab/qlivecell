@@ -4,6 +4,7 @@ from tifffile import TiffFile
 import os
 import random
 import cv2
+from scipy.ndimage import zoom
 
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
@@ -297,3 +298,58 @@ def construct_RGB(R=None, G=None, B=None):
     IMGS = np.append(stackR,stackG, axis=-1)
     IMGS = np.append(IMGS, stackB, axis=-1)
     return IMGS
+
+def isotropize_stack(stack, zres, xyres, isotropic_fraction=1.0, return_original_idxs=True):
+    # factor = final n of slices / initial n of slices
+    if zres > xyres:
+        fres = (zres/(xyres)) * isotropic_fraction
+        S = stack.shape[0]
+        N = np.rint((S-1)*fres).astype('int16')
+        if N<S: N=S
+        zoom_factors = (N/S, 1.0, 1.0)
+        isotropic_image = np.zeros((N, *stack.shape[1:]))
+    
+    else: raise Exception("z resolution is higher than xy, cannot isotropize")
+
+    zoom(stack, zoom_factors, order=1, output=isotropic_image)
+    
+    NN = [i for i in range(N)]
+    SS = [i for i in range(S)]
+    ori_idxs = [np.rint(i*N/(S-1)).astype("int16") for i in SS]
+    ori_idxs[-1] = NN[-1]
+
+    if return_original_idxs:
+        NN = [i for i in range(N)]
+        SS = [i for i in range(S)]
+        ori_idxs = [np.rint(i*N/(S-1)).astype("int16") for i in SS]
+        ori_idxs[-1] = NN[-1]
+        assert(len(ori_idxs) == S)
+        
+        return isotropic_image, ori_idxs
+    
+    return isotropic_image
+
+def isotropize_stackRGB(stack, zres, xyres, isotropic_fraction=1.0, return_original_idxs=True):
+    # factor = final n of slices / initial n of slices
+    if zres > xyres:
+        fres = (zres/(xyres)) * isotropic_fraction
+        S = stack.shape[0]
+        N = np.rint((S-1)*fres).astype('int16')
+        if N<S: N=S
+        zoom_factors = (N/S, 1.0, 1.0)
+        isotropic_image = np.zeros((N, *stack.shape[1:]))
+    
+    else: raise Exception("z resolution is higher than xy, cannot isotropize")
+
+    for ch in range(stack.shape[-1]):
+        zoom(stack[:,:,:,ch], zoom_factors, order=1, output=isotropic_image[:,:,:,ch])
+
+    if return_original_idxs:
+        NN = [i for i in range(N)]
+        SS = [i for i in range(S)]
+        ori_idxs = [np.rint(i*N/(S-1)).astype("int16") for i in SS]
+        ori_idxs[-1] = NN[-1]
+        assert(len(ori_idxs) == S)
+        return isotropic_image, ori_idxs
+    
+    return isotropic_image

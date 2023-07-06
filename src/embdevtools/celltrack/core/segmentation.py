@@ -287,7 +287,8 @@ def fill_segmentation_args(segmentation_args):
         new_segmentation_args = {
             'method': None, 
             'model': None, 
-            'blur': None
+            'blur': None,
+            'make_isotropic': [False, 1.0],
         }
         model = segmentation_args['model']
         if model is None:seg_method_args={}
@@ -297,7 +298,8 @@ def fill_segmentation_args(segmentation_args):
         new_segmentation_args = {
             'method': None, 
             'model': None, 
-            'blur': None
+            'blur': None,
+            'make_isotropic': [False, 1.0],
             }
         model = segmentation_args['model']
         if model is None:seg_method_args={}
