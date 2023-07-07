@@ -463,6 +463,9 @@ class CellTracking(object):
 
             pre_stack_seg = self.STACKS[t]
 
+            # If not 3D, don't isotropize
+            if not self.segment3D: self._seg_args["make_isotropic"][0]=False
+
             if self._seg_args["make_isotropic"][0]:
                 iso_frac = self._seg_args["make_isotropic"][1]
                 zres = self._zresolution
