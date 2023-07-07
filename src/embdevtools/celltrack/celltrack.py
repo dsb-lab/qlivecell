@@ -518,7 +518,7 @@ class CellTracking(object):
             Labels.append(labels)
 
             printclear(n=9)
-        printclear(n=2)
+        if not self.segment3D: printclear(n=2)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
