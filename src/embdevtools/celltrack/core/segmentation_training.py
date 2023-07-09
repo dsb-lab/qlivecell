@@ -27,6 +27,17 @@ def train_StardistModel(train_imgs, train_masks, model, train_seg_args):
     return model
 
 
+
+def blur_imgs(img, blur_args):
+    blur_img = img.copy()
+    if len(img.shape)==3:
+        for ch in range(img.shape[-1]):
+            blur_img[:,:,ch] = GaussianBlur(img[:,:,ch], blur_args[0], blur_args[1])
+    else: 
+        blur_img[:,:,ch] = GaussianBlur(img, blur_args[0], blur_args[1])
+    return blur_img
+
+
 from cv2 import GaussianBlur
 
 
@@ -43,13 +54,11 @@ def get_training_set(IMGS, Masks_stack, tz_actions, train_args):
         img = IMGS[t, z]
         msk = Masks_stack[t, z]
         if blur_args is not None:
-            img = GaussianBlur(img, blur_args[0], blur_args[1])
-            msk = GaussianBlur(img, blur_args[0], blur_args[1])
+            img = blur_imgs(img, blur_args)
         train_imgs.append(img)
         train_masks.append(msk)
 
     return train_imgs, train_masks
-
 
 from datetime import datetime
 
@@ -89,12 +98,15 @@ def check_and_fill_train_segmentation_args(train_segmentation_args, model, seg_m
         
         if path_save_arg not in train_segmentation_args.keys():
             train_segmentation_args[path_save_arg] = path_to_save
-    
+
         if model_name_arg not in train_segmentation_args.keys() or train_segmentation_args[model_name_arg] is None:
             now = datetime.now()
             dt = now.strftime(seg_method + "_%d-%m-%Y_%H-%M-%S")
             train_segmentation_args[model_name_arg] = dt
     
+        model.base_dir = train_segmentation_args.pop(path_save_arg)
+        model.name = train_segmentation_args.pop(model_name_arg)
+        
         config_args = model.config.__dict__
 
     for tsarg in train_segmentation_args.keys():

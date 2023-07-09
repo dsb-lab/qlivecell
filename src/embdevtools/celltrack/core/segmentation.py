@@ -27,7 +27,6 @@ def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_arg
     masks, flows, styles = model.eval(img, **segmentation_method_args)
 
     outlines = outlines_list(masks)
-    print("N OUTLINES =", len(outlines))
     return outlines
 
 

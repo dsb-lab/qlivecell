@@ -454,7 +454,10 @@ class CellTracking(object):
             printfancy("######   CURRENT TIME = %d/%d   ######" % (t + 1, self.times))
             printfancy("")
 
-            pre_stack_seg = self.STACKS[t]
+            if "stardist" in self._seg_args['method']:
+                pre_stack_seg = self._stacks[t]
+            elif "cellpose" in self._seg_args['method']:
+                pre_stack_seg = self.STACKS[t]
 
             # If not 3D, don't isotropize
             if not self.segment3D: self._seg_args["make_isotropic"][0]=False
@@ -1158,12 +1161,11 @@ class CellTracking(object):
         
         # If there have been no actions or times+slices provided, raise error
         if len(actions)==0: raise Exception("no training data for available")
-        
-        train_imgs, train_masks = get_training_set(
-            self._stacks, labels_stack, actions, self._train_seg_args
-        )
 
         if "cellpose" in self._seg_args["method"]:
+            train_imgs, train_masks = get_training_set(
+                self.STACKS, labels_stack, actions, self._train_seg_args
+            )
             model = train_CellposeModel(
                 train_imgs,
                 train_masks,
@@ -1172,6 +1174,9 @@ class CellTracking(object):
             )
 
         elif "stardist" in self._seg_args["method"]:
+            train_imgs, train_masks = get_training_set(
+                self._stacks, labels_stack, actions, self._train_seg_args
+            )
             model = train_StardistModel(
                 train_imgs, 
                 train_masks, 
