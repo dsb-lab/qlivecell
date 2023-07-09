@@ -362,6 +362,9 @@ class CellTracking(object):
 
         printfancy("cells initialised. updating labels...", clear_prev=1)
 
+        if len(self.jitcells)==0: 
+            raise Warning("No cells found")
+        
         self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
         self.update_labels(backup=False)
 

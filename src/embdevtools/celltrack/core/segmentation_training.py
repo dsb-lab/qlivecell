@@ -50,6 +50,7 @@ def get_training_set(IMGS, Masks_stack, tz_actions, train_args):
 
     return train_imgs, train_masks
 
+
 from datetime import datetime
 
 
@@ -73,26 +74,26 @@ def check_and_fill_train_segmentation_args(train_segmentation_args, model, seg_m
         model_name_arg = "model_name"
         
         if path_save_arg not in train_segmentation_args.keys():
-            new_train_segmentation_args[path_save_arg] = path_to_save
+            train_segmentation_args[path_save_arg] = path_to_save
     
-        if model_name_arg not in train_segmentation_args.keys():
+        if model_name_arg not in train_segmentation_args.keys() or train_segmentation_args[model_name_arg] is None: 
             now = datetime.now()
             dt = now.strftime(seg_method + "_%d-%m-%Y_%H-%M-%S")
-            new_train_segmentation_args[model_name_arg] = dt
+            train_segmentation_args[model_name_arg] = dt
             
         config_args = {}
-        
+    
     elif 'stardist' in seg_method:
         path_save_arg = "base_fir"
         model_name_arg = "name"
         
         if path_save_arg not in train_segmentation_args.keys():
-            new_train_segmentation_args[path_save_arg] = path_to_save
+            train_segmentation_args[path_save_arg] = path_to_save
     
-        if model_name_arg not in train_segmentation_args.keys():
+        if model_name_arg not in train_segmentation_args.keys() or train_segmentation_args[model_name_arg] is None:
             now = datetime.now()
             dt = now.strftime(seg_method + "_%d-%m-%Y_%H-%M-%S")
-            new_train_segmentation_args[model_name_arg] = dt
+            train_segmentation_args[model_name_arg] = dt
     
         config_args = model.config.__dict__
 
