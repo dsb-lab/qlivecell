@@ -1,9 +1,7 @@
 import numpy as np
+from .utils_ct import get_default_args
 
-
-def train_CellposeModel(train_imgs, train_masks, train_seg_args, model, channels):
-    path_save = train_seg_args["model_save_path"]
-    model_name = train_seg_args["model_name"]
+def train_CellposeModel(train_imgs, train_masks, model, train_seg_args):
 
     from cellpose import models
 
@@ -13,26 +11,18 @@ def train_CellposeModel(train_imgs, train_masks, train_seg_args, model, channels
     modelpath = model.train(
         train_imgs,
         train_masks,
-        channels=channels,
-        save_path=path_save,
-        model_name=model_name,
+        **train_seg_args
     )
     model = models.CellposeModel(gpu=model.gpu, pretrained_model=modelpath)
     return model
 
 
-def train_StardistModel(train_imgs, train_masks, train_seg_args, model):
-    path_save = train_seg_args["model_save_path"]
-    model_name = train_seg_args["model_name"]
-
-    model.basedir = path_save
-    model.name = model_name
+def train_StardistModel(train_imgs, train_masks, model, train_seg_args):
+    
     model.train(
         train_imgs,
         train_masks,
-        validation_data=(train_imgs, train_masks),
-        epochs=2,
-        steps_per_epoch=10,
+        **train_seg_args
     )
     return model
 
@@ -60,27 +50,64 @@ def get_training_set(IMGS, Masks_stack, tz_actions, train_args):
 
     return train_imgs, train_masks
 
-
-def check_train_segmentation_args(train_segmentation_args):
-    if "model_save_path" not in train_segmentation_args.keys():
-        train_segmentation_args["model_save_path"] = None
-
-    if "model_name" not in train_segmentation_args.keys():
-        train_segmentation_args["model_name"] = None
-
-    if "blur" not in train_segmentation_args.keys():
-        train_segmentation_args["blur"] = None
-
-
 from datetime import datetime
 
 
-def fill_train_segmentation_args(train_segmentation_args, path_to_save, seg_args):
-    if train_segmentation_args["model_save_path"] is None:
-        train_segmentation_args["model_save_path"] = path_to_save
-    if train_segmentation_args["model_name"] is None:
-        now = datetime.now()
-        dt = now.strftime(seg_args["method"] + "_%d-%m-%Y_%H-%M-%S")
-        train_segmentation_args["model_name"] = dt
+def check_and_fill_train_segmentation_args(train_segmentation_args, model, seg_method, path_to_save):
+    
+    if model is None:
+        return None, None
+    else:
+        train_seg_args = get_default_args(model.train)
+    
+    new_train_segmentation_args = {
+            "blur": None,
+        }
 
-    return train_segmentation_args
+    if "blur" not in train_segmentation_args.keys():
+        new_train_segmentation_args["blur"] = None
+    
+    # Define model save dir and name for all segmentation methods
+    if 'cellpose' in seg_method:
+        path_save_arg = "save_path"
+        model_name_arg = "model_name"
+        
+        if path_save_arg not in train_segmentation_args.keys():
+            new_train_segmentation_args[path_save_arg] = path_to_save
+    
+        if model_name_arg not in train_segmentation_args.keys():
+            now = datetime.now()
+            dt = now.strftime(seg_method + "_%d-%m-%Y_%H-%M-%S")
+            new_train_segmentation_args[model_name_arg] = dt
+            
+        config_args = {}
+        
+    elif 'stardist' in seg_method:
+        path_save_arg = "base_fir"
+        model_name_arg = "name"
+        
+        if path_save_arg not in train_segmentation_args.keys():
+            new_train_segmentation_args[path_save_arg] = path_to_save
+    
+        if model_name_arg not in train_segmentation_args.keys():
+            now = datetime.now()
+            dt = now.strftime(seg_method + "_%d-%m-%Y_%H-%M-%S")
+            new_train_segmentation_args[model_name_arg] = dt
+    
+        config_args = model.config.__dict__
+
+    for tsarg in train_segmentation_args.keys():
+        if tsarg in new_train_segmentation_args.keys():
+             new_train_segmentation_args[tsarg] = train_segmentation_args[tsarg]
+        elif tsarg in train_seg_args.keys():
+            train_seg_args[tsarg] = train_segmentation_args[tsarg]
+        # In the case of Stardist, most training arguments are part of the model config
+        elif tsarg in config_args.keys():
+            model.config.__dict__[tsarg]=train_segmentation_args[tsarg]
+        else:
+            raise Exception(
+                "key %s is not a correct training argument for the selected segmentation method"
+                % tsarg
+            )
+            
+    return new_train_segmentation_args, train_seg_args

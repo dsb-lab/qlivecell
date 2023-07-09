@@ -33,8 +33,7 @@ from .core.segmentation import (cell_segmentation2D_cellpose,
                                 check_and_fill_concatenation3D_args,
                                 check_segmentation_args,
                                 fill_segmentation_args)
-from .core.segmentation_training import (check_train_segmentation_args,
-                                         fill_train_segmentation_args,
+from .core.segmentation_training import (check_and_fill_train_segmentation_args,
                                          get_training_set, train_CellposeModel,
                                          train_StardistModel)
 from .core.tools.cell_tools import (create_cell, find_z_discontinuities,
@@ -169,13 +168,7 @@ class CellTracking(object):
         # self._seg_args= check_and_override_args(segmentation_args, self._seg_args)
 
         # In case you want to do training, check training argumnets
-        check_train_segmentation_args(args["train_seg_args"])
-        self._train_seg_args = fill_train_segmentation_args(
-            args["train_seg_args"], self.path_to_save, self._seg_args
-        )
-        self._train_seg_args = check_and_override_args(
-            train_segmentation_args, self._train_seg_args
-        )
+        self._train_seg_args, self._train_seg_method_args = check_and_fill_train_segmentation_args(args["train_seg_args"], self._seg_args['model'], self._seg_args['method'], self.path_to_save)
 
         # check and fill tracking arguments
         check_tracking_args(
@@ -259,10 +252,7 @@ class CellTracking(object):
         )
 
         # In case you want to do training, check training argumnets
-        check_train_segmentation_args(train_segmentation_args)
-        self._train_seg_args = fill_train_segmentation_args(
-            train_segmentation_args, self.path_to_save, self._seg_args
-        )
+        self._train_seg_args, self._train_seg_method_args = check_and_fill_train_segmentation_args(train_segmentation_args, self._seg_args['model'], self._seg_args['method'], self.path_to_save)
 
         # check and fill tracking arguments
         check_tracking_args(tracking_args, available_tracking=["greedy", "hungarian"])
@@ -1141,48 +1131,62 @@ class CellTracking(object):
 
         self.nactions += 1
 
-    def train_segmentation_model(self, times=None, slices=None):
+
+    def train_segmentation_model(self, train_segmentation_args=None, model=None, times=None, slices=None, set_model=False):
         plt.close("all")
         if hasattr(self, "PACP"):
             del self.PACP
 
+        if model is None: model=self._seg_args["model"]
+        if model is None: raise Exception("no model provided for training")
+        
+        if train_segmentation_args is not None:
+            self._train_seg_args, self._train_seg_method_args = check_and_fill_train_segmentation_args(train_segmentation_args, model, self._seg_args['method'], self.path_to_save)        
+        
         labels_stack = np.zeros_like(self._stacks).astype("int16")
-        labels_stack = compute_labels_stack(
+        labels_stack = compute_labels_stack(        
             labels_stack, self.jitcells, range(self.times)
         )
-
+        
         actions = self._tz_actions
         if isinstance(times, list):
             if isinstance(slices, list):
                 actions = [[t, z] for z in slices for t in times]
-
+        
+        # If there have been no actions or times+slices provided, raise error
+        if len(actions)==0: raise Exception("no training data for available")
+        
         train_imgs, train_masks = get_training_set(
             self._stacks, labels_stack, actions, self._train_seg_args
         )
 
-        if "cellpose" in self.segmentation_method:
+        if "cellpose" in self._seg_args["method"]:
             model = train_CellposeModel(
                 train_imgs,
                 train_masks,
-                self._train_seg_args,
-                self._seg_args["model"],
-                self._seg_args["channels"],
+                model,
+                self._train_seg_method_args,
             )
-            self._seg_args["model"] = model
 
-        elif "stardist" in self.segmentation_method:
+        elif "stardist" in self._seg_args["method"]:
             model = train_StardistModel(
-                train_imgs, train_masks, self._train_seg_args, self._seg_args["model"]
+                train_imgs, 
+                train_masks, 
+                model,
+                self._train_seg_method_args,
             )
-            self._seg_args["model"] = model
 
-        self._seg_args["model"] = model
-
-        self.__call__()
+        if set_model: self._seg_args["model"] = model
+        
         self._tz_actions = []
-        self.plot_tracking()
         return model
 
+    def set_model(self, model):
+        self._seg_args['model'] = model
+        
+    def get_model(self):
+        return self._seg_args['model']
+               
     def _get_cell(self, label=None, cellid=None):
         if label == None:
             for cell in self.jitcells:
