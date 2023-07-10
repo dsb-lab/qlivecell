@@ -22,9 +22,16 @@ def train_StardistModel(train_imgs, train_masks, model, train_seg_args):
     config = train_seg_args.pop('config')
     name = train_seg_args.pop('name')
     basedir = train_seg_args.pop('basedir')
+    train_new_model = train_seg_args.pop('train_new_model')
     
-    new_model = model.__class__(config, name=name, basedir=basedir)
-
+    if train_new_model:
+        new_model = model.__class__(config, name=name, basedir=basedir)
+    else: 
+        shutil.copytree(model.logdir, basedir+name, dirs_exist_ok=True)
+        new_model = model.__class__(None, name=name, basedir=basedir)
+        new_model.config = config
+        new_model._update_and_check_config()
+        
     new_model.train(
         train_imgs,
         train_masks,
@@ -108,11 +115,15 @@ def check_and_fill_train_segmentation_args(train_segmentation_args, model, seg_m
             dt = now.strftime(seg_method + "_%d-%m-%Y_%H-%M-%S")
             train_segmentation_args[model_name_arg] = dt
     
+        if "train_new_model" not in train_segmentation_args.keys():
+            train_segmentation_args['train_new_model']=False
+            
         train_seg_args['basedir'] = train_segmentation_args.pop(path_save_arg)
         train_seg_args['name'] = train_segmentation_args.pop(model_name_arg)
         config_args_dict = model.config.__dict__
         train_seg_args['config'] = model.config
-
+        train_seg_args['train_new_model'] =  train_segmentation_args.pop('train_new_model')
+        
     for tsarg in train_segmentation_args.keys():
         if tsarg in new_train_segmentation_args.keys():
              new_train_segmentation_args[tsarg] = train_segmentation_args[tsarg]
