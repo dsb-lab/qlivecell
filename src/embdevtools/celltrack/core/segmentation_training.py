@@ -54,7 +54,7 @@ def blur_imgs(img, blur_args):
 from cv2 import GaussianBlur
 
 
-def get_training_set(IMGS, Masks_stack, tz_actions, train_args):
+def get_training_set(IMGS, Masks_stack, tz_actions, train_args, train3D=False):
     blur_args = train_args["blur"]
 
     tzt = np.asarray(tz_actions)
@@ -64,10 +64,15 @@ def get_training_set(IMGS, Masks_stack, tz_actions, train_args):
 
     for act in tzt:
         t, z = act
-        img = IMGS[t, z]
-        msk = Masks_stack[t, z]
-        if blur_args is not None:
-            img = blur_imgs(img, blur_args)
+        
+        if train3D: 
+            img = IMGS[t]
+            msk = Masks_stack[t]
+        else:
+            img = IMGS[t, z]
+            msk = Masks_stack[t, z]
+            if blur_args is not None:
+                img = blur_imgs(img, blur_args)
         train_imgs.append(img)
         train_masks.append(msk)
 

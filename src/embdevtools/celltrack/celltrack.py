@@ -59,7 +59,7 @@ from .core.tracking import (check_tracking_args, fill_tracking_args,
                             greedy_tracking, hungarian_tracking)
 from .core.utils_ct import (check_and_fill_error_correction_args,
                             construct_RGB, get_default_args, get_file_embcode,
-                            isotropize_stack, isotropize_stackRGB, printclear,
+                            isotropize_stack, isotropize_stackRGB, isotropize_hyperstack, printclear,
                             printfancy, progressbar, read_img_with_resolution)
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
@@ -113,7 +113,7 @@ class CellTracking(object):
         self._plot_args = check_and_fill_plot_args(
             plot_args, (self._stacks.shape[2], self._stacks.shape[3])
         )
-
+        
         # check if cells should be loaded using path_to_save and embcose
         if loadcells == True:
             loadcells = self.path_to_save
@@ -132,7 +132,7 @@ class CellTracking(object):
                 train_segmentation_args,
                 tracking_args,
             )
-
+        
         # list of cells used by the pickers
         self.list_of_cells = []
         self.mito_cells = []
@@ -153,7 +153,7 @@ class CellTracking(object):
         self.CT_info = CT_info
         args = self.CT_info.args
         self.loaded_args = args
-
+        
         # check and fill segmentation arguments
         check_segmentation_args(
             args["seg_args"],
@@ -167,6 +167,11 @@ class CellTracking(object):
         self._seg_args, self._seg_method_args = fill_segmentation_args(args["seg_args"])
         # self._seg_args= check_and_override_args(segmentation_args, self._seg_args)
 
+        if 'cellpose' in self._seg_arg['method']: 
+            if len(self.STACKS.shape) == 5:
+                ch = max(self._seg_method_args['channels'][0] - 1, 0)
+                self._stacks = self.STACKS[:, :, :, :, ch]
+                
         # In case you want to do training, check training argumnets
         self._train_seg_args, self._train_seg_method_args = check_and_fill_train_segmentation_args(args["train_seg_args"], self._seg_args['model'], self._seg_args['method'], self.path_to_save)
 
@@ -250,6 +255,11 @@ class CellTracking(object):
         self._seg_args, self._seg_method_args = fill_segmentation_args(
             segmentation_args
         )
+
+        if 'cellpose' in self._seg_args['method']: 
+            if len(self.STACKS.shape) == 5:
+                ch = self._seg_method_args['channels'][0] - 1
+                self._stacks = self.STACKS[:, :, :, :, ch]
 
         # In case you want to do training, check training argumnets
         self._train_seg_args, self._train_seg_method_args = check_and_fill_train_segmentation_args(train_segmentation_args, self._seg_args['model'], self._seg_args['method'], self.path_to_save)
@@ -460,7 +470,6 @@ class CellTracking(object):
                 pre_stack_seg = self.STACKS[t]
 
             # If not 3D, don't isotropize
-            if not self.segment3D: self._seg_args["make_isotropic"][0]=False
 
             if self._seg_args["make_isotropic"][0]:
                 iso_frac = self._seg_args["make_isotropic"][1]
@@ -474,6 +483,7 @@ class CellTracking(object):
                         isotropic_fraction=iso_frac,
                         return_original_idxs=True,
                     )
+                    
                 elif len(pre_stack_seg.shape) == 3:
                     stack_seg, ori_idxs = isotropize_stack(
                         pre_stack_seg,
@@ -1164,7 +1174,7 @@ class CellTracking(object):
 
         if "cellpose" in self._seg_args["method"]:
             train_imgs, train_masks = get_training_set(
-                self.STACKS, labels_stack, actions, self._train_seg_args
+                self.STACKS, labels_stack, actions, self._train_seg_args, train3D=self.segment3D
             )
             model = train_CellposeModel(
                 train_imgs,
@@ -1175,7 +1185,7 @@ class CellTracking(object):
 
         elif "stardist" in self._seg_args["method"]:
             train_imgs, train_masks = get_training_set(
-                self._stacks, labels_stack, actions, self._train_seg_args
+                self._stacks, labels_stack, actions, self._train_seg_args, train3D=self.segment3D
             )
             model = train_StardistModel(
                 train_imgs, 

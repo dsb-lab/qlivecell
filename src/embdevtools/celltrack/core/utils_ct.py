@@ -428,3 +428,36 @@ def isotropize_stackRGB(
         return isotropic_image, ori_idxs
 
     return isotropic_image
+
+def isotropize_hyperstack(stacks, zres, xyres, isotropic_fraction=1.0, return_new_zres=True):
+    
+    iso_stacks = []
+    for t in range(stacks.shape[0]): 
+        stack = stacks[t]
+        if len(stack.shape) == 4:
+            iso_stack = isotropize_stackRGB(
+                stack,
+                zres,
+                xyres,
+                isotropic_fraction=isotropic_fraction,
+                return_original_idxs=False,
+            )
+
+        elif len(stack.shape) == 3:
+            iso_stack = isotropize_stack(
+                stack,
+                zres,
+                xyres,
+                isotropic_fraction=isotropic_fraction,
+                return_original_idxs=False,
+            )
+
+        iso_stacks.append(iso_stack)
+    
+    if return_new_zres:
+        slices_pre = stacks.shape[1]
+        new_slices = iso_stacks[0].shape[1]
+        new_zres = (slices_pre * zres) / new_slices
+            
+        return np.asarray(iso_stacks).astype('int16'), new_zres
+    return np.asarray(iso_stacks).astype('int16')

@@ -344,6 +344,8 @@ def fill_segmentation_args(segmentation_args):
                 "key %s is not a correct argument for the selected segmentation method"
                 % sarg
             )
+    
+    if '3D' not in new_segmentation_args['method']: new_segmentation_args["make_isotropic"][0]=False
 
     return new_segmentation_args, seg_method_args
 
