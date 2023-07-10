@@ -165,16 +165,22 @@ class CellTracking(object):
             ],
         )
         self._seg_args, self._seg_method_args = fill_segmentation_args(args["seg_args"])
-        # self._seg_args= check_and_override_args(segmentation_args, self._seg_args)
+        self._seg_args = check_and_override_args(segmentation_args, self._seg_args, raise_exception=False)
+        self._seg_method_args = check_and_override_args(segmentation_args, self._seg_method_args, raise_exception=False)
 
-        if 'cellpose' in self._seg_arg['method']: 
+        if 'cellpose' in self._seg_args['method']: 
             if len(self.STACKS.shape) == 5:
-                ch = max(self._seg_method_args['channels'][0] - 1, 0)
+                if 'channels' not in self._seg_method_args.keys():
+                    ch = 0
+                else:
+                    ch = max(self._seg_method_args['channels'][0] - 1, 0)
                 self._stacks = self.STACKS[:, :, :, :, ch]
                 
         # In case you want to do training, check training argumnets
         self._train_seg_args, self._train_seg_method_args = check_and_fill_train_segmentation_args(args["train_seg_args"], self._seg_args['model'], self._seg_args['method'], self.path_to_save)
-
+        self._train_seg_args = check_and_override_args(train_segmentation_args, self._train_seg_args, raise_exception=False)
+        self._train_seg_method_args = check_and_override_args(train_segmentation_args, self._train_seg_method_args, raise_exception=False)
+        
         # check and fill tracking arguments
         check_tracking_args(
             args["track_args"], available_tracking=["greedy", "hungarian"]

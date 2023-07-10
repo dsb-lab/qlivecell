@@ -1,29 +1,29 @@
 import sys
 
-sys.path.append("/home/pablo/Desktop/PhD/projects/embdevtools")
+sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
 
 import os
 
-from embdevtools import (embryoregistration, get_file_embcode,
+from embdevtools.embdevtools import (embryoregistration, get_file_embcode,
                          read_img_with_resolution)
 
 home = os.path.expanduser("~")
 path_parent = (
-    home + "/Desktop/PhD/projects/Data/blastocysts/Lana/16cell_blastocyst/cropped8bit/"
+    home + '/'
 )
 path_data = path_parent + "volumes/"
 
 import numpy as np
 
-file, embcode, files = get_file_embcode(path_data, "0.tif", returnfiles=True)
+file, embcode, files = get_file_embcode(path_data, "combined.tif", returnfiles=True)
 IMGS, xyres, zres = read_img_with_resolution(path_data + file)
-IMGS = IMGS[0:2, :, 1:-2, :]
-for i in range(1, 10):
-    file, embcode, files = get_file_embcode(path_data, "00%d.tif" % i, returnfiles=True)
+IMGS = IMGS[:, :, :, 5:-6]
+# for i in range(1, 10):
+#     file, embcode, files = get_file_embcode(path_data, "00%d.tif" % i, returnfiles=True)
 
-    _IMGS, xyres, zres = read_img_with_resolution(path_data + file)
-    _IMGS = _IMGS[0:2, :, 1:-2, :]
-    IMGS = np.append(IMGS, _IMGS, axis=0)
+#     _IMGS, xyres, zres = read_img_with_resolution(path_data + file)
+#     _IMGS = _IMGS[0:2, :, 1:-2, :]
+#     IMGS = np.append(IMGS, _IMGS, axis=0)
 
 # Combine channels into single stack
 t, z, x, y = np.where(IMGS > 255)

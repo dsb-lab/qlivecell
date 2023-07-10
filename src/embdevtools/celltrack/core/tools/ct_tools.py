@@ -213,11 +213,12 @@ def compute_labels_stack(point_stack, jitcells, times):
 from copy import deepcopy
 
 
-def check_and_override_args(args_preferred, args_unpreferred):
+def check_and_override_args(args_preferred, args_unpreferred, raise_exception=True):
     new_args = deepcopy(args_unpreferred)
     for arg in args_preferred.keys():
         if arg not in new_args.keys():
-            raise Exception("argument %s is not a supported argument" % arg)
+            if raise_exception:
+                raise Exception("argument %s is not a supported argument" % arg)
         else:
             new_args[arg] = args_preferred[arg]
 
