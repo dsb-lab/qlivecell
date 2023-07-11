@@ -14,7 +14,6 @@ LINE_CLEAR = "\x1b[2K"
 def printclear(n=1):
     LINE_UP = "\033[1A"
     LINE_CLEAR = "\x1b[2K"
-    return
     for i in range(n):
         print(LINE_UP, end=LINE_CLEAR)
 

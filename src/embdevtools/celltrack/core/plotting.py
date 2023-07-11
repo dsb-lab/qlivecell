@@ -48,27 +48,28 @@ def check_stacks_for_plotting(
     plot_args["_plot_xyresolution"] = xyresolution * plot_args["dim_change"]
 
     if plot_args["dim_change"] != 1:
-        plot_stacks = np.zeros((times, slices, *plot_args["plot_stack_dims"]))
-
+        plot_stacks = np.zeros((times, slices, *plot_args["plot_stack_dims"]), dtype="uint8")
+        plot_stack = np.zeros_like(plot_stacks[0,0], dtype='float16')
         for t in range(times):
             for z in range(slices):
+                
                 if len(plot_args["plot_stack_dims"]) == 3:
                     for ch in range(3):
-                        plot_stacks[t, z, :, :, ch] = resize(
+                        plot_stack = resize(
                             stacks_for_plotting[t, z, :, :, ch],
                             plot_args["plot_stack_dims"][0:2],
                         )
                         norm_factor = np.max(plot_stacks[t, z, :, :, ch])
                         if norm_factor < 0.01:
                             norm_factor = 1.0
-                        plot_stacks[t, z, :, :, ch] = (
-                            plot_stacks[t, z, :, :, ch] / norm_factor
-                        )
+                        plot_stack[:, :, ch] = plot_stack / norm_factor
+                        
                 else:
-                    plot_stacks[t, z] = resize(
+                    plot_stack = resize(
                         stacks_for_plotting[t, z], plot_args["plot_stack_dims"]
                     )
+                plot_stacks[t, z] = np.rint(plot_stack * 255).astype('uint8')
     else:
         plot_stacks = stacks_for_plotting
 
-    return np.rint(plot_stacks * 255).astype('uint8')
+    return plot_stacks

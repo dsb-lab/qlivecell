@@ -358,7 +358,7 @@ class CellTracking(object):
         # Result of segmentation has shape (t,z,l)
         Labels, Outlines, Masks = self.cell_segmentation()
 
-        printfancy("")
+        # printfancy("")
         printfancy("computing tracking...")
 
         # For tracking only the planes of the cell centers are used so shapes are (t,l)
@@ -531,7 +531,7 @@ class CellTracking(object):
 
             if not self.segment3D: printclear(n=2)
             printclear(n=7)
-        if not self.segment3D: printclear(n=2)
+        if not self.segment3D: printclear(n=1)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
@@ -1240,8 +1240,6 @@ class CellTracking(object):
         self.jitcells.pop(idx)
 
     def plot_axis(self, _ax, img, z, t):
-        print(img.max())
-        print(img.dtype)
         im = _ax.imshow(img, vmin=0, vmax=255)
         im_masks = _ax.imshow(self._masks_stack[t][z])
         im_outlines = _ax.imshow(self._outlines_stack[t][z])
