@@ -120,7 +120,7 @@ for ch, IMGS_ch in enumerate(IMGS_chs):
     # Run Beanshell script
     pth_beanshell_script = (
         embryoregistration.correct_path(
-            "/home/pablo/Desktop/PhD/projects/embdevtools/pyjiyama/"
+            "/home/pablo/Desktop/PhD/projects/embdevtools/src/embdevtools/pyjiyama/"
         )
         + "utils/apply_transformation.bsh"
     )

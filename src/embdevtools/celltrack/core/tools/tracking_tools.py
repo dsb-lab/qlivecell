@@ -3,7 +3,7 @@ from numba import jit, njit, typeof
 from numba.typed import List
 from numba.types import ListType
 
-from ..dataclasses import CTattributes, jitCell
+from ..dataclasses import CTattributes, jitCell, contruct_jitCell_from_Cell
 from ..tools.cell_tools import create_cell, update_cell
 from ..tools.segmentation_tools import (extract_cell_centers, label_per_z,
                                         label_per_z_jit)
@@ -44,10 +44,18 @@ def _order_labels_z(jitcells, times):
             cell.label = current_max_label
 
 
+def isListEmpty(inList):
+    if isinstance(inList, List) or isinstance(inList, list): # Is a list
+        return all( map(isListEmpty, inList) )
+    return False # Not a list
+
 def _extract_unique_labels_per_time(Labels, times):
     unique_labels_T = list(
         [list(np.unique(np.hstack(Labels[i]))) for i in range(times)]
     )
+    
+    if isListEmpty(Labels): return unique_labels_T
+
     unique_labels_T = List(
         [List([int(x) for x in sublist]) for sublist in unique_labels_T]
     )
@@ -89,21 +97,36 @@ def _order_labels_t(unique_labels_T, max_label):
                 nmax += 1
     return P, Q, PQ
 
+def create_toy_cell():
+    cell = create_cell(-1, -1, [[0]], [0], [[np.asarray([[0,0]]).astype('int16')]], [[np.asarray([[0,0]]).astype('int16')]], stacks=None)
+    return cell
 
 def _init_CT_cell_attributes(jitcells: ListType(jitCell)):
     hints = []
-    Labels = List.empty_list(ListType(ListType(typeof(jitcells[0].label))))
-    Outlines = List.empty_list(ListType(ListType(typeof(jitcells[0].outlines[0][0]))))
-    Masks = List.empty_list(ListType(ListType(typeof(jitcells[0].masks[0][0]))))
-    Centersi = List.empty_list(ListType(ListType(typeof(jitcells[0].centersi[0][0]))))
-    Centersj = List.empty_list(ListType(ListType(typeof(jitcells[0].centersj[0][0]))))
+    if len(jitcells)==0: 
+        cell = create_toy_cell()
+        jitcell = contruct_jitCell_from_Cell(cell)
+    else: 
+        jitcell = jitcells[0]
+    
+    Labels = List.empty_list(ListType(ListType(typeof(jitcell.label))))
+    Outlines = List.empty_list(ListType(ListType(typeof(jitcell.outlines[0][0]))))
+    Masks = List.empty_list(ListType(ListType(typeof(jitcell.masks[0][0]))))
+    Centersi = List.empty_list(ListType(ListType(typeof(jitcell.centersi[0][0]))))
+    Centersj = List.empty_list(ListType(ListType(typeof(jitcell.centersj[0][0]))))
     ctattr = CTattributes(Labels, Outlines, Masks, Centersi, Centersj)
     return hints, ctattr
 
 
 def _reinit_update_CT_cell_attributes(
-    jitcell: jitCell, slices, times, ctattr: CTattributes
+    jitcells: ListType(jitCell), slices, times, ctattr: CTattributes
 ):
+    if len(jitcells)==0: 
+        cell = create_toy_cell()
+        jitcell = contruct_jitCell_from_Cell(cell)
+    else: 
+        jitcell = jitcells[0]
+    
     del ctattr.Labels[:]
     del ctattr.Outlines[:]
     del ctattr.Masks[:]
@@ -149,7 +172,10 @@ def _extract_unique_labels_and_max_label(Labels):
             for lab in Labels[t][z]:
                 if lab not in unique_labels:
                     unique_labels.append(lab)
-    max_label = np.uint16(max(unique_labels))
+    if unique_labels:
+        max_label = np.uint16(max(unique_labels))
+    else: 
+        max_label=-1
     return unique_labels, max_label
 
 
