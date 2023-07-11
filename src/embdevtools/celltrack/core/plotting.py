@@ -71,4 +71,4 @@ def check_stacks_for_plotting(
     else:
         plot_stacks = stacks_for_plotting
 
-    return plot_stacks
+    return np.rint(plot_stacks * 255).astype('uint8')

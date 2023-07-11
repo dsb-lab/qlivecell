@@ -6,7 +6,6 @@ import numpy as np
 from ..dataclasses import Cell, CellTracking_info
 from ..utils_ct import correct_path
 from .cell_tools import create_cell
-from ...celltrack import CellTracking
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -104,38 +103,7 @@ def save_cells(cells, CT_info, path=None, filename=None):
     file_to_store = pthsave + "_info.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
-
-
-
-def load_CellTracking(
-    stacks,
-    pthtosave,
-    embcode,
-    xyresolution=1,
-    zresolution=1,
-    segmentation_args={},
-    concatenation3D_args={},
-    train_segmentation_args={},
-    tracking_args={},
-    error_correction_args={},
-    plot_args={},
-    use_channel=0,
-):
-    CT = CellTracking(
-        stacks, 
-        pthtosave, 
-        embcode, 
-        xyresolution=xyresolution, 
-        zresolution=zresolution,
-        segmentation_args=segmentation_args,
-        concatenation3D_args=concatenation3D_args,
-        train_segmentation_args = train_segmentation_args,
-        tracking_args = tracking_args, 
-        error_correction_args=error_correction_args,    
-        plot_args = plot_args,
-        _loadcells=True
-    )
-    return CT
+        
 
 def load_cells(path=None, filename=None):
     """load cell objects obtained with celltrack.py

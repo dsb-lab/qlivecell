@@ -39,7 +39,7 @@ from .core.tools.cell_tools import (create_cell, find_z_discontinuities,
                                     update_cell, update_jitcell)
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack)
-from .core.tools.save_tools import load_cells, save_3Dstack, save_4Dstack, load_CellTracking
+from .core.tools.save_tools import load_cells, save_3Dstack, save_4Dstack
 from .core.tools.segmentation_tools import (assign_labels, check3Dmethod,
                                             concatenate_to_3D, label_per_z,
                                             remove_short_cells,
@@ -220,8 +220,8 @@ class CellTracking(object):
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
-        self._masks_stack = np.zeros((t, z, x, y, 4))
-        self._outlines_stack = np.zeros((t, z, x, y, 4))
+        self._masks_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
+        self._outlines_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
 
         self.update_labels(backup=False)
 
@@ -309,8 +309,8 @@ class CellTracking(object):
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
-        self._masks_stack = np.zeros((t, z, x, y, 4))
-        self._outlines_stack = np.zeros((t, z, x, y, 4))
+        self._masks_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
+        self._outlines_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
 
     def init_CT_info(self):
         segargs = deepcopy(self._seg_args)
@@ -609,8 +609,9 @@ class CellTracking(object):
         self._get_number_of_conflicts()
 
     def update_labels(self, backup=True):
-        self.update_label_attributes()
         
+        self.update_label_attributes()
+
         if self.jitcells:
             old_labels, new_labels, correspondance = _order_labels_t(
                 self.unique_labels_T, self.max_label
@@ -619,7 +620,7 @@ class CellTracking(object):
                 cell.label = correspondance[cell.label]
 
             _order_labels_z(self.jitcells, self.times)
-
+        
         self.update_label_attributes()
 
         compute_point_stack(
@@ -1239,6 +1240,8 @@ class CellTracking(object):
         self.jitcells.pop(idx)
 
     def plot_axis(self, _ax, img, z, t):
+        print(img.max())
+        print(img.dtype)
         im = _ax.imshow(img, vmin=0, vmax=255)
         im_masks = _ax.imshow(self._masks_stack[t][z])
         im_outlines = _ax.imshow(self._outlines_stack[t][z])
@@ -1276,8 +1279,8 @@ class CellTracking(object):
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
-        self._masks_stack = np.zeros((t, z, x, y, 4))
-        self._outlines_stack = np.zeros((t, z, x, y, 4))
+        self._masks_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
+        self._outlines_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
 
         if self.jitcells:
             compute_point_stack(
@@ -1477,3 +1480,33 @@ class CellTracking(object):
                                         self._pos_scatters.append(sc)
 
         plt.subplots_adjust(bottom=0.075)
+
+def load_CellTracking(
+    stacks,
+    pthtosave,
+    embcode,
+    xyresolution=1,
+    zresolution=1,
+    segmentation_args={},
+    concatenation3D_args={},
+    train_segmentation_args={},
+    tracking_args={},
+    error_correction_args={},
+    plot_args={},
+    use_channel=0,
+):
+    CT = CellTracking(
+        stacks, 
+        pthtosave, 
+        embcode, 
+        xyresolution=xyresolution, 
+        zresolution=zresolution,
+        segmentation_args=segmentation_args,
+        concatenation3D_args=concatenation3D_args,
+        train_segmentation_args = train_segmentation_args,
+        tracking_args = tracking_args, 
+        error_correction_args=error_correction_args,    
+        plot_args = plot_args,
+        _loadcells=True
+    )
+    return CT
