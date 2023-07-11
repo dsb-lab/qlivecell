@@ -26,7 +26,6 @@ dependencies = [
     "scikit-learn",
     "scipy",
     "tifffile",
-    "opencv-python==4.6.*",
     "munkres==1.1.4",
     "scikit-image==0.19.2",
 ]

@@ -115,11 +115,11 @@ class CellTracking(object):
         )
         
         # check if cells should be loaded using path_to_save and embcose
-        if loadcells == True:
-            loadcells = self.path_to_save
-        if isinstance(loadcells, str):
+        if _loadcells==True:
+            _loadcells = self.path_to_save
+        if isinstance(_loadcells, str):
             self.init_from_cells(
-                loadcells,
+                _loadcells,
                 segmentation_args,
                 concatenation3D_args,
                 train_segmentation_args,
@@ -143,13 +143,13 @@ class CellTracking(object):
 
     def init_from_cells(
         self,
-        loadcells,
+        path_to_cells,
         segmentation_args,
         concatenation3D_args,
         train_segmentation_args,
         tracking_args,
     ):
-        cells, CT_info = load_cells(loadcells, self.embcode)
+        cells, CT_info = load_cells(path_to_cells, self.embcode)
         self.CT_info = CT_info
         args = self.CT_info.args
         self.loaded_args = args

@@ -1,9 +1,9 @@
 import os
 import random
 
-import cv2
 import numpy as np
 import tifffile
+import skimage
 from scipy.ndimage import zoom
 from tifffile import TiffFile
 
@@ -295,7 +295,7 @@ def generate_set(
         z = random.choice(range(len(IMGS[t])))
         img = IMGS[t, z]
         if blur_args is not None:
-            img = cv2.GaussianBlur(img, blur_args[0], blur_args[1])
+            img = skimage.filters.gaussian(img, sigma=blur_args[0], truncate=blur_args[1])
         path_file_save = path_to_save + embcode + "_t%d" % t + "_z%d" % z + ".tif"
 
         if exclude_if_in_path is not None:

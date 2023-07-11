@@ -1,5 +1,4 @@
-from cv2 import GaussianBlur
-
+import skimage
 from .tools.segmentation_tools import check3Dmethod
 from .tools.tools import (get_outlines_masks_labels, increase_point_resolution,
                           mask_from_outline)
@@ -109,7 +108,7 @@ def cell_segmentation3D_from2D(
         # Current xy plane
         img = stack[z, :, :]
         if blur_args is not None:
-            img = GaussianBlur(img, blur_args[0], blur_args[1])
+            img = skimage.filters.gaussian(img, sigma=blur_args[0], truncate=blur_args[1])
             # Select whether we are using a pre-trained model or a cellpose base-model
         outlines = segmentation_function(
             img, segmentation_args, segmentation_method_args

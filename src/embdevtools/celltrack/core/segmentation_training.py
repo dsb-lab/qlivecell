@@ -1,6 +1,7 @@
 import numpy as np
 from .utils_ct import get_default_args
 import shutil 
+import skimage
 
 def train_CellposeModel(train_imgs, train_masks, model, train_seg_args):
 
@@ -45,13 +46,10 @@ def blur_imgs(img, blur_args):
     blur_img = img.copy()
     if len(img.shape)==3:
         for ch in range(img.shape[-1]):
-            blur_img[:,:,ch] = GaussianBlur(img[:,:,ch], blur_args[0], blur_args[1])
+            blur_img[:,:,ch] = skimage.filters.gaussian(img[:,:,ch], sigma=blur_args[0], truncate=blur_args[1])
     else: 
-        blur_img[:,:,ch] = GaussianBlur(img, blur_args[0], blur_args[1])
+        blur_img[:,:,ch] = skimage.filters.gaussian(img, sigma=blur_args[0], truncate=blur_args[1])
     return blur_img
-
-
-from cv2 import GaussianBlur
 
 
 def get_training_set(IMGS, Masks_stack, tz_actions, train_args, train3D=False):
