@@ -44,6 +44,7 @@ def correct_path(path):
     return path
 
 def square_stack2D(img):
+
     x,y = img.shape
     if x==y: return
 
@@ -64,7 +65,7 @@ def square_stack2D(img):
 def square_stack3D(stack):
     slices = stack.shape[0]
     testimg = square_stack2D(stack[0])
-    new_stack = np.zeros((slices, *testimg.shape))
+    new_stack = np.zeros((slices, *testimg.shape), dtype='uint8')
     for z in range(slices):
         new_stack[z] = square_stack2D(stack[z])
     return new_stack
@@ -72,8 +73,8 @@ def square_stack3D(stack):
 def square_stack4D(hyperstack):
     times = hyperstack.shape[0]
     teststack = square_stack3D(hyperstack[0])
-    new_hyperstack = np.zeros((times, *teststack.shape))
+    new_hyperstack = np.zeros((times, *teststack.shape), dtype='uint8')
     for t in range(times):
-        new_hyperstack[t] = square_stack2D(hyperstack[t])
+        new_hyperstack[t] = square_stack3D(hyperstack[t])
     return new_hyperstack
 

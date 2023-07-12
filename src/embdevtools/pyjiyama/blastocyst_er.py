@@ -3,7 +3,7 @@ import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
 
 import os
-
+import gc
 from embdevtools.embdevtools import (embryoregistration, get_file_embcode,
                          read_img_with_resolution)
 
@@ -11,14 +11,15 @@ home = os.path.expanduser("~")
 path_parent = (
     home + '/'
 )
-path_data = path_parent + "volumes/"
+path_data = path_parent + "Downloads/stack_2_channel_0_obj_bottom/volumes/"
 
 import numpy as np
 
-file, embcode, files = get_file_embcode(path_data, "combined.tif", returnfiles=True)
-IMGS, xyres, zres = read_img_with_resolution(path_data + file)
+file, embcode, files = get_file_embcode(path_data, "16ce", returnfiles=True)
+_IMGS, xyres, zres = read_img_with_resolution(path_data + file)
 
-IMGS = embryoregistration.square_stack4D(IMGS)
+IMGS = embryoregistration.square_stack4D(_IMGS)
+del _IMGS
 
 # for i in range(1, 10):
 #     file, embcode, files = get_file_embcode(path_data, "00%d.tif" % i, returnfiles=True)
@@ -34,7 +35,8 @@ IMGS = IMGS.astype("uint8")
 
 ### PREPROCESSING ###
 # Run centroid correction prior to Fijiyama registration to improve performance
-IMGS_corrected = embryoregistration.centroid_correction_3d_based_on_mid_plane(IMGS)
+IMGS_corrected = embryoregistration.centroid_correction_3d_based_on_mid_plane(IMGS[:10])
+del IMGS
 # Check whether correction is good enough
 # err = test_mid_plane_centroid_correction(IMGS_corrected, 0, pixel_tolerance=1)
 
@@ -47,7 +49,7 @@ IMGS_corrected = IMGS_corrected.astype("uint8")
     path_output,
     path_movies_reg,
 ) = embryoregistration.generate_fijiyama_file_system(
-    path_parent, "movies_registered", embcode
+    path_data, "movies_registered", embcode
 )
 
 # Save registration stacks into input folder
