@@ -244,17 +244,25 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
         imagej_metadata = tif.imagej_metadata
         tags = tif.pages[0].tags
         # parse X, Y resolution
-        npix, unit = tags["XResolution"].value
-        xres = unit / npix
-        npix, unit = tags["YResolution"].value
-        yres = unit / npix
-        assert xres == yres
-        xyres = xres
+        try:
+            npix, unit = tags["XResolution"].value
+            xres = unit / npix
+        except KeyError:
+            xres = None
+        
+        try: 
+            npix, unit = tags["YResolution"].value
+            yres = unit / npix
+        except KeyError: 
+            yres = None
 
         try:
             zres = imagej_metadata["spacing"]
         except KeyError:
-            zres = 1.0
+            zres = None
+        
+        if xres == yres: xyres=xres
+        else: xyres = (xres, yres)
     return IMGS, xyres, zres
 
 
