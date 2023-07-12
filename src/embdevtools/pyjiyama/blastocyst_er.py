@@ -17,7 +17,9 @@ import numpy as np
 
 file, embcode, files = get_file_embcode(path_data, "combined.tif", returnfiles=True)
 IMGS, xyres, zres = read_img_with_resolution(path_data + file)
-IMGS = IMGS[:, :, :, 5:-6]
+
+IMGS = embryoregistration.square_stack4D(IMGS)
+
 # for i in range(1, 10):
 #     file, embcode, files = get_file_embcode(path_data, "00%d.tif" % i, returnfiles=True)
 
