@@ -7,10 +7,11 @@ def train_CellposeModel(train_imgs, train_masks, model, train_seg_args):
 
     from cellpose import models
 
-    # new_model = models.CellposeModel(
-    #     gpu=model.gpu, pretrained_model=model.pretrained_model[0]
-    # )
-    modelpath = model.train(
+    new_model = models.CellposeModel(
+        gpu=model.gpu, pretrained_model=model.pretrained_model[0]
+    )
+    
+    modelpath = new_model.train(
         train_imgs,
         train_masks,
         **train_seg_args

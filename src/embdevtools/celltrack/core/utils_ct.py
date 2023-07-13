@@ -336,7 +336,7 @@ def check_and_fill_error_correction_args(error_correction_args):
     return new_error_correction_args
 
 
-def construct_RGB(R=None, G=None, B=None):
+def construct_RGB(R=None, G=None, B=None, order='XYC'):
     stack = R
     if R is None:
         stack = G
@@ -358,12 +358,20 @@ def construct_RGB(R=None, G=None, B=None):
     else:
         stackB = B
 
-    stackR = stackR.reshape((*stackR.shape, 1))
-    stackG = stackG.reshape((*stackG.shape, 1))
-    stackB = stackB.reshape((*stackB.shape, 1))
+    if order=='XYC':
+        stackR = stackR.reshape((*stackR.shape, 1))
+        stackG = stackG.reshape((*stackG.shape, 1))
+        stackB = stackB.reshape((*stackB.shape, 1))
 
-    IMGS = np.append(stackR, stackG, axis=-1)
-    IMGS = np.append(IMGS, stackB, axis=-1)
+        IMGS = np.append(stackR, stackG, axis=-1)
+        IMGS = np.append(IMGS, stackB, axis=-1)
+    elif order=='CXY':
+        stackR = stackR.reshape((1, *stackR.shape))
+        stackG = stackG.reshape((1, *stackG.shape))
+        stackB = stackB.reshape((1, *stackB.shape))
+
+        IMGS = np.append(stackR, stackG, axis=0)
+        IMGS = np.append(IMGS, stackB, axis=0)
     return IMGS
 
 
