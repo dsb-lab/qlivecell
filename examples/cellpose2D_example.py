@@ -55,12 +55,12 @@ plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), 
+    # 'plot_stack_dims': (256, 256), 
     'plot_centers':[True, True]
 }
 
 error_correction_args = {
-    'backup_steps': 10,
+    'backup_steps': 2,
     'line_builder_mode': 'lasso',
 }
 
@@ -81,7 +81,7 @@ error_correction_args = {
 
 
 ### RUN SEGMENTATION AND TRACKING ###
-CT.run()
+# CT.run()
 
 
 ### PLOTTING ###
@@ -106,6 +106,7 @@ CT=load_CellTracking(
 ### SAVE RESULTS AS MASKS HYPERSTACK
 del IMGS
 del CT._outlines_stack
+
 save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
 
 

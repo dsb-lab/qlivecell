@@ -150,7 +150,6 @@ def save_4Dstack(
             new_masks[t, z, 1] = stack_4D[t, z, :, :, 1] * 255
             new_masks[t, z, 2] = stack_4D[t, z, :, :, 2] * 255
 
-    new_masks = new_masks.astype("uint8")
     imwrite(
         path + filename + "_masks.tif",
         new_masks,
