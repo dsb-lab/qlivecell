@@ -152,7 +152,7 @@ def save_4Dstack(
 
     new_masks = new_masks.astype("uint8")
     imwrite(
-        path + filename + "_masks.tiff",
+        path + filename + "_masks.tif",
         new_masks,
         imagej=True,
         resolution=(1 / xyresolution, 1 / xyresolution),
@@ -180,7 +180,7 @@ def save_3Dstack(
 
     new_masks = new_masks.astype("uint8")
     imwrite(
-        path + filename + "_masks.tiff",
+        path + filename + "_masks.tif",
         new_masks,
         imagej=True,
         resolution=(1 / xyresolution, 1 / xyresolution),

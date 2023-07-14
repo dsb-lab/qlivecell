@@ -3,7 +3,7 @@ import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
 
 import os
-import gc
+
 from embdevtools.embdevtools import (embryoregistration, get_file_embcode,
                          read_img_with_resolution)
 
@@ -11,11 +11,11 @@ home = os.path.expanduser("~")
 path_parent = (
     home + '/'
 )
-path_data = path_parent + "Downloads/stack_2_channel_0_obj_bottom/volumes/"
+path_data = path_parent + "volumes/volumes/"
 
 import numpy as np
 
-file, embcode, files = get_file_embcode(path_data, "16ce", returnfiles=True)
+file, embcode, files = get_file_embcode(path_data, "combined", returnfiles=True)
 _IMGS, xyres, zres = read_img_with_resolution(path_data + file)
 
 IMGS = embryoregistration.square_stack4D(_IMGS[:91])

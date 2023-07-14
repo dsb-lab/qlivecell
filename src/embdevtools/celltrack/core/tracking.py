@@ -13,7 +13,7 @@ def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args):
     FinalLabels = []
     FinalCenters = []
     label_correspondance = []
-
+    print(TLabels)
     # for each time track to the previous one
     for t in range(len(TLabels)):
         label_correspondance.append([])

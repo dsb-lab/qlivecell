@@ -185,7 +185,7 @@ class CellTracking(object):
             args["track_args"], available_tracking=["greedy", "hungarian"]
         )
         self._track_args = fill_tracking_args(args["track_args"])
-        self._track_args = check_and_override_args(tracking_args, self._track_args)
+        # self._track_args = check_and_override_args(tracking_args, self._track_args)
 
         # check if the segmentation is directly in 3D or it needs concatenation
         self.segment3D = check3Dmethod(self._seg_args["method"])
@@ -720,7 +720,7 @@ class CellTracking(object):
                 return
 
             new_outline = np.dstack((PACP.linebuilder.xs, PACP.linebuilder.ys))[0]
-            new_outline = np.floor(new_outline / self._plot_args["dim_change"]).astype(
+            new_outline = np.rint(new_outline / self._plot_args["dim_change"]).astype(
                 "uint16"
             )
 
@@ -1171,6 +1171,7 @@ class CellTracking(object):
         labels_stack = compute_labels_stack(        
             labels_stack, self.jitcells, range(self.times)
         )
+        self.labs_stack=labels_stack
         
         actions = self._tz_actions
         if isinstance(times, list):
