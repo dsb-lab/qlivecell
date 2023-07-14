@@ -1,21 +1,21 @@
 import sys
 
-sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
+sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools')
 
 import os
 
-from embdevtools.embdevtools import (embryoregistration, get_file_embcode,
+from src.embdevtools.embdevtools import (embryoregistration, get_file_embcode,
                          read_img_with_resolution)
 
 home = os.path.expanduser("~")
 path_parent = (
     home + '/'
 )
-path_data = path_parent + "volumes/volumes/"
+path_data = path_parent + "Downloads/stack_2_channel_0_obj_bottom/volumes/"
 
 import numpy as np
 
-file, embcode, files = get_file_embcode(path_data, "combined", returnfiles=True)
+file, embcode, files = get_file_embcode(path_data, "16ce", returnfiles=True)
 _IMGS, xyres, zres = read_img_with_resolution(path_data + file)
 
 IMGS = embryoregistration.square_stack4D(_IMGS[:91])
@@ -141,7 +141,7 @@ for ch, IMGS_ch in enumerate(IMGS_chs):
     tfiles = os.listdir(path_movies_reg_embcode_ch_reg)
     for _t, tfile in enumerate(tfiles):
         registered_IMGS_chs[ch]
-        t = int(tfile.split(".")[0][-1]) - 1
+        t = int(tfile.split(".")[0].split("t")[-1]) - 1
         print(t)
         IMG_t, xyres, zres = read_img_with_resolution(
             embryoregistration.correct_path(path_movies_reg_embcode_ch_reg) + tfile,
@@ -149,16 +149,15 @@ for ch, IMGS_ch in enumerate(IMGS_chs):
         )
         registered_IMGS_chs[ch][t] = IMG_t
 
+registered_IMGS_chs = registered_IMGS_chs.astype('uint8')
+
 # Reorder stack from CTZXY to the imagej structure TZCXY
 sh = registered_IMGS_chs.shape
-final_registered_IMGS_chs = np.zeros((sh[1], sh[2], sh[0], sh[3], sh[4]))
+final_registered_IMGS_chs = np.zeros((sh[1], sh[2], sh[0], sh[3], sh[4])).astype('uint8')
 for ch in range(sh[0]):
     for t in range(sh[1]):
         for z in range(sh[2]):
             final_registered_IMGS_chs[t, z, ch] = registered_IMGS_chs[ch, t, z]
-
-# Convert again to 8 bit
-final_registered_IMGS_chs = final_registered_IMGS_chs.astype("uint8")
 
 # Save final stack and remove unncessary intermediate files
 fullpath = path_movies_reg_embcode + ".tif"
