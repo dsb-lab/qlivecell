@@ -18,7 +18,7 @@ import numpy as np
 file, embcode, files = get_file_embcode(path_data, "16ce", returnfiles=True)
 _IMGS, xyres, zres = read_img_with_resolution(path_data + file)
 
-IMGS = embryoregistration.square_stack4D(_IMGS)
+IMGS = embryoregistration.square_stack4D(_IMGS[:91])
 del _IMGS
 
 # for i in range(1, 10):
@@ -35,7 +35,7 @@ IMGS = IMGS.astype("uint8")
 
 ### PREPROCESSING ###
 # Run centroid correction prior to Fijiyama registration to improve performance
-IMGS_corrected = embryoregistration.centroid_correction_3d_based_on_mid_plane(IMGS[:10])
+IMGS_corrected = embryoregistration.centroid_correction_3d_based_on_mid_plane(IMGS)
 del IMGS
 # Check whether correction is good enough
 # err = test_mid_plane_centroid_correction(IMGS_corrected, 0, pixel_tolerance=1)
