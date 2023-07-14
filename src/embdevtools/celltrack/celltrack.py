@@ -220,8 +220,8 @@ class CellTracking(object):
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
-        self._masks_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
-        self._outlines_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
+        self._masks_stack = np.zeros((t, z, x, y, 4), dtype='uint8')
+        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype='uint8')
 
         self.update_labels(backup=False)
 
@@ -309,8 +309,8 @@ class CellTracking(object):
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
-        self._masks_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
-        self._outlines_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
+        self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
+        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype='uint8')
 
     def init_CT_info(self):
         segargs = deepcopy(self._seg_args)
@@ -1278,8 +1278,8 @@ class CellTracking(object):
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
-        self._masks_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
-        self._outlines_stack = np.zeros((t, z, x, y, 4)).astype('uint8')
+        self._masks_stack = np.zeros((t, z, x, y, 4), dtype='uint8')
+        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype='uint8')
 
         if self.jitcells:
             compute_point_stack(

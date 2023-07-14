@@ -142,7 +142,7 @@ def save_4Dstack(
 ):
     sh = stack_4D.shape
 
-    new_masks = np.zeros((sh[0], sh[1], 3, sh[2], sh[3]))
+    new_masks = np.zeros((sh[0], sh[1], 3, sh[2], sh[3]), dtype='uint8')
 
     for t in range(sh[0]):
         for z in range(sh[1]):

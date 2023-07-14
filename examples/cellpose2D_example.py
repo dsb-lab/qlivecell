@@ -1,24 +1,25 @@
 import sys
-sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
+sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools')
 
 ### LOAD PACKAGE ###
-from embdevtools.embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
+from src.embdevtools.embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
 
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects/'
 
+path_data='/home/pablo/Downloads/stack_2_channel_0_obj_bottom/volumes/movies_registered/'
+path_save='/home/pablo/Downloads/stack_2_channel_0_obj_bottom/volumes/movies_registered/'
+
 
 ### GET FULL FILE NAME AND FILE CODE ###
-file, embcode, files = get_file_embcode(path_data, 10, returnfiles=True)
-file, embcode, files = get_file_embcode(path_data, 'Lineage_2hr_082119_p1.tif', returnfiles=True)
+# file, embcode, files = get_file_embcode(path_data, 10, returnfiles=True)
+file, embcode, files = get_file_embcode(path_data, '.tif', returnfiles=True)
 
 
 ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=1)
-IMGS = IMGS[:2,:10]
-
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True)
 
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
@@ -29,7 +30,7 @@ model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/Ph
 segmentation_args={
     'method': 'cellpose2D', 
     'model': model, 
-    'blur': None, 
+    'blur': [5,1], 
     'channels': [0,0],
     'flow_threshold': 0.4,
 }
@@ -40,7 +41,7 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 2,
+    'min_cell_planes': 4,
 }
 
 tracking_args = {
@@ -65,18 +66,18 @@ error_correction_args = {
 
 
 ### CREATE CELLTRACKING CLASS ###
-CT = CellTracking(
-    IMGS, 
-    path_save, 
-    embcode, 
-    xyresolution=xyres, 
-    zresolution=zres,
-    segmentation_args=segmentation_args,
-    concatenation3D_args=concatenation3D_args,
-    tracking_args = tracking_args, 
-    error_correction_args=error_correction_args,    
-    plot_args = plot_args,
-)
+# CT = CellTracking(
+#     IMGS, 
+#     path_save, 
+#     embcode, 
+#     xyresolution=xyres, 
+#     zresolution=zres,
+#     segmentation_args=segmentation_args,
+#     concatenation3D_args=concatenation3D_args,
+#     tracking_args = tracking_args, 
+#     error_correction_args=error_correction_args,    
+#     plot_args = plot_args,
+# )
 
 
 ### RUN SEGMENTATION AND TRACKING ###
@@ -88,21 +89,23 @@ CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
 
 ### LOAD PREVIOUSLY SAVED RESULTS ###
-# CT=load_CellTracking(
-#         IMGS, 
-#         path_save, 
-#         embcode, 
-#         xyresolution=xyres, 
-#         zresolution=zres,
-#         segmentation_args=segmentation_args,
-#         concatenation3D_args=concatenation3D_args,
-#         tracking_args = tracking_args, 
-#         error_correction_args=error_correction_args,    
-#         plot_args = plot_args,
-#     )
+CT=load_CellTracking(
+        IMGS, 
+        path_save, 
+        embcode, 
+        xyresolution=xyres, 
+        zresolution=zres,
+        segmentation_args=segmentation_args,
+        concatenation3D_args=concatenation3D_args,
+        tracking_args = tracking_args, 
+        error_correction_args=error_correction_args,    
+        plot_args = plot_args,
+    )
 
 
 ### SAVE RESULTS AS MASKS HYPERSTACK
+del IMGS
+del CT._outlines_stack
 save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
 
 
