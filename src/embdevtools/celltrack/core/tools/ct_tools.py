@@ -171,8 +171,8 @@ def compute_point_stack(
                 color = np.zeros(4)
             else:
                 color = get_cell_color(jitcell, labels_colors, alpha)
-            
-            color = np.rint(color*255).astype('uint8')
+
+            color = np.rint(color * 255).astype("uint8")
 
             if mode == "outlines":
                 points = jitcell.outlines

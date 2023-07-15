@@ -2,8 +2,8 @@ import os
 import random
 
 import numpy as np
-import tifffile
 import skimage
+import tifffile
 from scipy.ndimage import zoom
 from tifffile import TiffFile
 
@@ -249,20 +249,22 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
             xres = unit / npix
         except KeyError:
             xres = None
-        
-        try: 
+
+        try:
             npix, unit = tags["YResolution"].value
             yres = unit / npix
-        except KeyError: 
+        except KeyError:
             yres = None
 
         try:
             zres = imagej_metadata["spacing"]
         except KeyError:
             zres = None
-        
-        if xres == yres: xyres=xres
-        else: xyres = (xres, yres)
+
+        if xres == yres:
+            xyres = xres
+        else:
+            xyres = (xres, yres)
     return IMGS, xyres, zres
 
 
@@ -302,7 +304,9 @@ def generate_set(
         z = random.choice(range(len(IMGS[t])))
         img = IMGS[t, z]
         if blur_args is not None:
-            img = skimage.filters.gaussian(img, sigma=blur_args[0], truncate=blur_args[1])
+            img = skimage.filters.gaussian(
+                img, sigma=blur_args[0], truncate=blur_args[1]
+            )
         path_file_save = path_to_save + embcode + "_t%d" % t + "_z%d" % z + ".tif"
 
         if exclude_if_in_path is not None:
@@ -336,7 +340,7 @@ def check_and_fill_error_correction_args(error_correction_args):
     return new_error_correction_args
 
 
-def construct_RGB(R=None, G=None, B=None, order='XYC'):
+def construct_RGB(R=None, G=None, B=None, order="XYC"):
     stack = R
     if R is None:
         stack = G
@@ -358,14 +362,14 @@ def construct_RGB(R=None, G=None, B=None, order='XYC'):
     else:
         stackB = B
 
-    if order=='XYC':
+    if order == "XYC":
         stackR = stackR.reshape((*stackR.shape, 1))
         stackG = stackG.reshape((*stackG.shape, 1))
         stackB = stackB.reshape((*stackB.shape, 1))
 
         IMGS = np.append(stackR, stackG, axis=-1)
         IMGS = np.append(IMGS, stackB, axis=-1)
-    elif order=='CXY':
+    elif order == "CXY":
         stackR = stackR.reshape((1, *stackR.shape))
         stackG = stackG.reshape((1, *stackG.shape))
         stackB = stackB.reshape((1, *stackB.shape))
@@ -444,10 +448,12 @@ def isotropize_stackRGB(
 
     return isotropic_image
 
-def isotropize_hyperstack(stacks, zres, xyres, isotropic_fraction=1.0, return_new_zres=True):
-    
+
+def isotropize_hyperstack(
+    stacks, zres, xyres, isotropic_fraction=1.0, return_new_zres=True
+):
     iso_stacks = []
-    for t in range(stacks.shape[0]): 
+    for t in range(stacks.shape[0]):
         stack = stacks[t]
         if len(stack.shape) == 4:
             iso_stack = isotropize_stackRGB(
@@ -468,11 +474,11 @@ def isotropize_hyperstack(stacks, zres, xyres, isotropic_fraction=1.0, return_ne
             )
 
         iso_stacks.append(iso_stack)
-    
+
     if return_new_zres:
         slices_pre = stacks.shape[1]
         new_slices = iso_stacks[0].shape[1]
         new_zres = (slices_pre * zres) / new_slices
-            
-        return np.asarray(iso_stacks).astype('int16'), new_zres
-    return np.asarray(iso_stacks).astype('int16')
+
+        return np.asarray(iso_stacks).astype("int16"), new_zres
+    return np.asarray(iso_stacks).astype("int16")

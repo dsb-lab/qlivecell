@@ -7,6 +7,7 @@ from ..dataclasses import Cell, CellTracking_info
 from ..utils_ct import correct_path
 from .cell_tools import create_cell
 
+
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if dataclasses.is_dataclass(o):
@@ -103,7 +104,7 @@ def save_cells(cells, CT_info, path=None, filename=None):
     file_to_store = pthsave + "_info.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
-        
+
 
 def load_cells(path=None, filename=None):
     """load cell objects obtained with celltrack.py
@@ -142,7 +143,7 @@ def save_4Dstack(
 ):
     sh = stack_4D.shape
 
-    new_masks = np.zeros((sh[0], sh[1], 3, sh[2], sh[3]), dtype='uint8')
+    new_masks = np.zeros((sh[0], sh[1], 3, sh[2], sh[3]), dtype="uint8")
 
     for t in range(sh[0]):
         for z in range(sh[1]):

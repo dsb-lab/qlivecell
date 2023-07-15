@@ -1,4 +1,5 @@
 import skimage
+
 from .tools.segmentation_tools import check3Dmethod
 from .tools.tools import (get_outlines_masks_labels, increase_point_resolution,
                           mask_from_outline)
@@ -108,7 +109,9 @@ def cell_segmentation3D_from2D(
         # Current xy plane
         img = stack[z, :, :]
         if blur_args is not None:
-            img = skimage.filters.gaussian(img, sigma=blur_args[0], truncate=blur_args[1])
+            img = skimage.filters.gaussian(
+                img, sigma=blur_args[0], truncate=blur_args[1]
+            )
             # Select whether we are using a pre-trained model or a cellpose base-model
         outlines = segmentation_function(
             img, segmentation_args, segmentation_method_args
@@ -343,8 +346,9 @@ def fill_segmentation_args(segmentation_args):
                 "key %s is not a correct argument for the selected segmentation method"
                 % sarg
             )
-    
-    if '3D' not in new_segmentation_args['method']: new_segmentation_args["make_isotropic"][0]=False
+
+    if "3D" not in new_segmentation_args["method"]:
+        new_segmentation_args["make_isotropic"][0] = False
 
     return new_segmentation_args, seg_method_args
 

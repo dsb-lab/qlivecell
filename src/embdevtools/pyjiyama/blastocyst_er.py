@@ -1,16 +1,14 @@
 import sys
 
-sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools')
+sys.path.append("/home/pablo/Desktop/PhD/projects/embdevtools")
 
 import os
 
 from src.embdevtools.embdevtools import (embryoregistration, get_file_embcode,
-                         read_img_with_resolution)
+                                         read_img_with_resolution)
 
 home = os.path.expanduser("~")
-path_parent = (
-    home + '/'
-)
+path_parent = home + "/"
 path_data = path_parent + "Downloads/stack_2_channel_0_obj_bottom/volumes/"
 
 import numpy as np
@@ -149,11 +147,13 @@ for ch, IMGS_ch in enumerate(IMGS_chs):
         )
         registered_IMGS_chs[ch][t] = IMG_t
 
-registered_IMGS_chs = registered_IMGS_chs.astype('uint8')
+registered_IMGS_chs = registered_IMGS_chs.astype("uint8")
 
 # Reorder stack from CTZXY to the imagej structure TZCXY
 sh = registered_IMGS_chs.shape
-final_registered_IMGS_chs = np.zeros((sh[1], sh[2], sh[0], sh[3], sh[4])).astype('uint8')
+final_registered_IMGS_chs = np.zeros((sh[1], sh[2], sh[0], sh[3], sh[4])).astype(
+    "uint8"
+)
 for ch in range(sh[0]):
     for t in range(sh[1]):
         for z in range(sh[2]):

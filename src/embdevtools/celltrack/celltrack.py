@@ -32,9 +32,9 @@ from .core.segmentation import (cell_segmentation2D_cellpose,
                                 check_and_fill_concatenation3D_args,
                                 check_segmentation_args,
                                 fill_segmentation_args)
-from .core.segmentation_training import (check_and_fill_train_segmentation_args,
-                                         get_training_set, train_CellposeModel,
-                                         train_StardistModel)
+from .core.segmentation_training import (
+    check_and_fill_train_segmentation_args, get_training_set,
+    train_CellposeModel, train_StardistModel)
 from .core.tools.cell_tools import (create_cell, find_z_discontinuities,
                                     update_cell, update_jitcell)
 from .core.tools.ct_tools import (check_and_override_args,
@@ -58,8 +58,9 @@ from .core.tracking import (check_tracking_args, fill_tracking_args,
                             greedy_tracking, hungarian_tracking)
 from .core.utils_ct import (check_and_fill_error_correction_args,
                             construct_RGB, get_default_args, get_file_embcode,
-                            isotropize_stack, isotropize_stackRGB, isotropize_hyperstack, printclear,
-                            printfancy, progressbar, read_img_with_resolution)
+                            isotropize_hyperstack, isotropize_stack,
+                            isotropize_stackRGB, printclear, printfancy,
+                            progressbar, read_img_with_resolution)
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 warnings.simplefilter("ignore", UserWarning)
@@ -112,9 +113,9 @@ class CellTracking(object):
         self._plot_args = check_and_fill_plot_args(
             plot_args, (self._stacks.shape[2], self._stacks.shape[3])
         )
-        
+
         # check if cells should be loaded using path_to_save and embcose
-        if _loadcells==True:
+        if _loadcells == True:
             _loadcells = self.path_to_save
         if isinstance(_loadcells, str):
             self.init_from_cells(
@@ -131,7 +132,7 @@ class CellTracking(object):
                 train_segmentation_args,
                 tracking_args,
             )
-        
+
         # list of cells used by the pickers
         self.list_of_cells = []
         self.mito_cells = []
@@ -152,7 +153,7 @@ class CellTracking(object):
         self.CT_info = CT_info
         args = self.CT_info.args
         self.loaded_args = args
-        
+
         # check and fill segmentation arguments
         check_segmentation_args(
             args["seg_args"],
@@ -164,22 +165,38 @@ class CellTracking(object):
             ],
         )
         self._seg_args, self._seg_method_args = fill_segmentation_args(args["seg_args"])
-        self._seg_args = check_and_override_args(segmentation_args, self._seg_args, raise_exception=False)
-        self._seg_method_args = check_and_override_args(segmentation_args, self._seg_method_args, raise_exception=False)
+        self._seg_args = check_and_override_args(
+            segmentation_args, self._seg_args, raise_exception=False
+        )
+        self._seg_method_args = check_and_override_args(
+            segmentation_args, self._seg_method_args, raise_exception=False
+        )
 
-        if 'cellpose' in self._seg_args['method']: 
+        if "cellpose" in self._seg_args["method"]:
             if len(self.STACKS.shape) == 5:
-                if 'channels' not in self._seg_method_args.keys():
+                if "channels" not in self._seg_method_args.keys():
                     ch = 0
                 else:
-                    ch = max(self._seg_method_args['channels'][0] - 1, 0)
+                    ch = max(self._seg_method_args["channels"][0] - 1, 0)
                 self._stacks = self.STACKS[:, :, :, :, ch]
-                
+
         # In case you want to do training, check training argumnets
-        self._train_seg_args, self._train_seg_method_args = check_and_fill_train_segmentation_args(args["train_seg_args"], self._seg_args['model'], self._seg_args['method'], self.path_to_save)
-        self._train_seg_args = check_and_override_args(train_segmentation_args, self._train_seg_args, raise_exception=False)
-        self._train_seg_method_args = check_and_override_args(train_segmentation_args, self._train_seg_method_args, raise_exception=False)
-        
+        (
+            self._train_seg_args,
+            self._train_seg_method_args,
+        ) = check_and_fill_train_segmentation_args(
+            args["train_seg_args"],
+            self._seg_args["model"],
+            self._seg_args["method"],
+            self.path_to_save,
+        )
+        self._train_seg_args = check_and_override_args(
+            train_segmentation_args, self._train_seg_args, raise_exception=False
+        )
+        self._train_seg_method_args = check_and_override_args(
+            train_segmentation_args, self._train_seg_method_args, raise_exception=False
+        )
+
         # check and fill tracking arguments
         check_tracking_args(
             args["track_args"], available_tracking=["greedy", "hungarian"]
@@ -220,8 +237,8 @@ class CellTracking(object):
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
-        self._masks_stack = np.zeros((t, z, x, y, 4), dtype='uint8')
-        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype='uint8')
+        self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
+        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
 
         self.update_labels(backup=False)
 
@@ -261,13 +278,21 @@ class CellTracking(object):
             segmentation_args
         )
 
-        if 'cellpose' in self._seg_args['method']: 
+        if "cellpose" in self._seg_args["method"]:
             if len(self.STACKS.shape) == 5:
-                ch = self._seg_method_args['channels'][0] - 1
+                ch = self._seg_method_args["channels"][0] - 1
                 self._stacks = self.STACKS[:, :, :, :, ch]
 
         # In case you want to do training, check training argumnets
-        self._train_seg_args, self._train_seg_method_args = check_and_fill_train_segmentation_args(train_segmentation_args, self._seg_args['model'], self._seg_args['method'], self.path_to_save)
+        (
+            self._train_seg_args,
+            self._train_seg_method_args,
+        ) = check_and_fill_train_segmentation_args(
+            train_segmentation_args,
+            self._seg_args["model"],
+            self._seg_args["method"],
+            self.path_to_save,
+        )
 
         # check and fill tracking arguments
         check_tracking_args(tracking_args, available_tracking=["greedy", "hungarian"])
@@ -310,7 +335,7 @@ class CellTracking(object):
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
-        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype='uint8')
+        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
 
     def init_CT_info(self):
         segargs = deepcopy(self._seg_args)
@@ -378,7 +403,7 @@ class CellTracking(object):
         printfancy("cells initialised. updating labels...", clear_prev=1)
 
         self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
-        
+
         self.update_labels(backup=False)
 
         printfancy("labels updated", clear_prev=1)
@@ -467,9 +492,9 @@ class CellTracking(object):
             printfancy("######   CURRENT TIME = %d/%d   ######" % (t + 1, self.times))
             printfancy("")
 
-            if "stardist" in self._seg_args['method']:
+            if "stardist" in self._seg_args["method"]:
                 pre_stack_seg = self._stacks[t]
-            elif "cellpose" in self._seg_args['method']:
+            elif "cellpose" in self._seg_args["method"]:
                 pre_stack_seg = self.STACKS[t]
 
             # If not 3D, don't isotropize
@@ -486,7 +511,7 @@ class CellTracking(object):
                         isotropic_fraction=iso_frac,
                         return_original_idxs=True,
                     )
-                    
+
                 elif len(pre_stack_seg.shape) == 3:
                     stack_seg, ori_idxs = isotropize_stack(
                         pre_stack_seg,
@@ -529,9 +554,11 @@ class CellTracking(object):
             Masks.append(masks)
             Labels.append(labels)
 
-            if not self.segment3D: printclear(n=2)
+            if not self.segment3D:
+                printclear(n=2)
             printclear(n=7)
-        if not self.segment3D: printclear(n=1)
+        if not self.segment3D:
+            printclear(n=1)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
@@ -596,7 +623,7 @@ class CellTracking(object):
         _reinit_update_CT_cell_attributes(
             self.jitcells, self.slices, self.times, self.ctattr
         )
-        if len(self.jitcells)!=0:
+        if len(self.jitcells) != 0:
             _update_CT_cell_attributes(self.jitcells, self.ctattr)
         self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(
             self.ctattr.Labels
@@ -609,7 +636,6 @@ class CellTracking(object):
         self._get_number_of_conflicts()
 
     def update_labels(self, backup=True):
-        
         self.update_label_attributes()
 
         if self.jitcells:
@@ -620,7 +646,7 @@ class CellTracking(object):
                 cell.label = correspondance[cell.label]
 
             _order_labels_z(self.jitcells, self.times)
-        
+
         self.update_label_attributes()
 
         compute_point_stack(
@@ -1155,35 +1181,56 @@ class CellTracking(object):
 
         self.nactions += 1
 
-
-    def train_segmentation_model(self, train_segmentation_args=None, model=None, times=None, slices=None, set_model=False):
+    def train_segmentation_model(
+        self,
+        train_segmentation_args=None,
+        model=None,
+        times=None,
+        slices=None,
+        set_model=False,
+    ):
         plt.close("all")
         if hasattr(self, "PACP"):
             del self.PACP
 
-        if model is None: model=self._seg_args["model"]
-        if model is None: raise Exception("no model provided for training")
-        
+        if model is None:
+            model = self._seg_args["model"]
+        if model is None:
+            raise Exception("no model provided for training")
+
         if train_segmentation_args is not None:
-            self._train_seg_args, self._train_seg_method_args = check_and_fill_train_segmentation_args(train_segmentation_args, model, self._seg_args['method'], self.path_to_save)        
-        
+            (
+                self._train_seg_args,
+                self._train_seg_method_args,
+            ) = check_and_fill_train_segmentation_args(
+                train_segmentation_args,
+                model,
+                self._seg_args["method"],
+                self.path_to_save,
+            )
+
         labels_stack = np.zeros_like(self._stacks).astype("int16")
-        labels_stack = compute_labels_stack(        
+        labels_stack = compute_labels_stack(
             labels_stack, self.jitcells, range(self.times)
         )
-        self.labs_stack=labels_stack
-        
+        self.labs_stack = labels_stack
+
         actions = self._tz_actions
         if isinstance(times, list):
             if isinstance(slices, list):
                 actions = [[t, z] for z in slices for t in times]
-        
+
         # If there have been no actions or times+slices provided, raise error
-        if len(actions)==0: raise Exception("no training data for available")
+        if len(actions) == 0:
+            raise Exception("no training data for available")
 
         if "cellpose" in self._seg_args["method"]:
             train_imgs, train_masks = get_training_set(
-                self.STACKS, labels_stack, actions, self._train_seg_args, train3D=self.segment3D
+                self.STACKS,
+                labels_stack,
+                actions,
+                self._train_seg_args,
+                train3D=self.segment3D,
             )
             model = train_CellposeModel(
                 train_imgs,
@@ -1194,26 +1241,31 @@ class CellTracking(object):
 
         elif "stardist" in self._seg_args["method"]:
             train_imgs, train_masks = get_training_set(
-                self._stacks, labels_stack, actions, self._train_seg_args, train3D=self.segment3D
+                self._stacks,
+                labels_stack,
+                actions,
+                self._train_seg_args,
+                train3D=self.segment3D,
             )
             model = train_StardistModel(
-                train_imgs, 
-                train_masks, 
+                train_imgs,
+                train_masks,
                 model,
                 self._train_seg_method_args,
             )
 
-        if set_model: self._seg_args["model"] = model
-        
+        if set_model:
+            self._seg_args["model"] = model
+
         self._tz_actions = []
         return model
 
     def set_model(self, model):
-        self._seg_args['model'] = model
-        
+        self._seg_args["model"] = model
+
     def get_model(self):
-        return self._seg_args['model']
-               
+        return self._seg_args["model"]
+
     def _get_cell(self, label=None, cellid=None):
         if label == None:
             for cell in self.jitcells:
@@ -1278,8 +1330,8 @@ class CellTracking(object):
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
-        self._masks_stack = np.zeros((t, z, x, y, 4), dtype='uint8')
-        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype='uint8')
+        self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
+        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
 
         if self.jitcells:
             compute_point_stack(
@@ -1480,6 +1532,7 @@ class CellTracking(object):
 
         plt.subplots_adjust(bottom=0.075)
 
+
 def load_CellTracking(
     stacks,
     pthtosave,
@@ -1495,17 +1548,17 @@ def load_CellTracking(
     use_channel=0,
 ):
     CT = CellTracking(
-        stacks, 
-        pthtosave, 
-        embcode, 
-        xyresolution=xyresolution, 
+        stacks,
+        pthtosave,
+        embcode,
+        xyresolution=xyresolution,
         zresolution=zresolution,
         segmentation_args=segmentation_args,
         concatenation3D_args=concatenation3D_args,
-        train_segmentation_args = train_segmentation_args,
-        tracking_args = tracking_args, 
-        error_correction_args=error_correction_args,    
-        plot_args = plot_args,
-        _loadcells=True
+        train_segmentation_args=train_segmentation_args,
+        tracking_args=tracking_args,
+        error_correction_args=error_correction_args,
+        plot_args=plot_args,
+        _loadcells=True,
     )
     return CT

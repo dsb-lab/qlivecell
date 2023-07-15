@@ -542,7 +542,7 @@ class PlotActionCT(PlotAction):
         for i, lab_z_t in enumerate(labs_z_to_plot):
             jitcell = self._CTget_cell(label=lab_z_t[0])
             color = np.append(self._plot_args["labels_colors"][jitcell.label], 1)
-            color = np.rint(color*255).astype('uint8')
+            color = np.rint(color * 255).astype("uint8")
             set_cell_color(
                 self._masks_stack,
                 jitcell.masks,
@@ -566,7 +566,7 @@ class PlotActionCT(PlotAction):
                 continue
 
             color = np.append(self._plot_args["labels_colors"][jitcell.label], 0)
-            color = np.rint(color*255).astype('uint8')
+            color = np.rint(color * 255).astype("uint8")
             set_cell_color(
                 self._masks_stack,
                 jitcell.masks,
@@ -688,7 +688,7 @@ class PlotActionCT(PlotAction):
             else:
                 alpha = 0
             color = np.append(self._plot_args["labels_colors"][jitcell.label], alpha)
-            color = np.rint(color*255).astype('uint8')
+            color = np.rint(color * 255).astype("uint8")
             set_cell_color(
                 self._masks_stack,
                 jitcell.masks,
