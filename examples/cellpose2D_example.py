@@ -1,8 +1,5 @@
-import sys
-sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools')
-
 ### LOAD PACKAGE ###
-from src.embdevtools.embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
+from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
 
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
@@ -17,7 +14,6 @@ file, embcode, files = get_file_embcode(path_data, 'Lineage_2hr_082119_p1.tif', 
 
 ### LOAD HYPERSTACKS ###
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=1)
-IMGS = IMGS[:2, :10]
 
 
 ### LOAD CELLPOSE MODEL ###
