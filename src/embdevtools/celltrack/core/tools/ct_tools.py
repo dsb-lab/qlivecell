@@ -190,37 +190,6 @@ def compute_point_stack(
     return point_stack
 
 
-def compute_labels_stack(
-    point_stack,
-    jitcells,
-    times,
-    labels_per_t,
-    dim_change,
-    labels=None,
-):
-    for t in times:
-        if labels is None:
-            point_stack[t] = 0
-            _labels = labels_per_t[t]
-        else:
-            _labels = labels
-        for lab in _labels:
-            jitcell = get_cell(jitcells, lab)
-
-            color = jitcell.label
-            points = jitcell.masks
-            set_cell_color(
-                point_stack,
-                points,
-                jitcell.times,
-                jitcell.zs,
-                np.array(color),
-                dim_change,
-                t=t,
-            )
-    return point_stack
-
-
 def get_cell(cells, label=None, cellid=None):
     if label == None:
         for cell in cells:
@@ -233,14 +202,17 @@ def get_cell(cells, label=None, cellid=None):
     return None
 
 
-def compute_labels_stack(point_stack, jitcells, times):
-    for t in times:
-        for jitcell in jitcells:
-            color = jitcell.label + 1
-            points = jitcell.masks
-            set_cell_color(
-                point_stack, points, jitcell.times, jitcell.zs, color, 1, t=t
-            )
+def compute_labels_stack(point_stack, jitcells):
+    for jitcell in jitcells:
+        color = jitcell.label + 1
+        for tid, t in enumerate(jitcell.times):
+            zs = jitcell.zs[tid]
+            for zid, z in enumerate(zs):
+                points = jitcell.masks[tid][zid]
+                for p in points:
+                    x = np.uint16(np.floor(p[1]))
+                    y = np.uint16(np.floor(p[0]))
+                    point_stack[t, z, x, y] = color
     return point_stack
 
 

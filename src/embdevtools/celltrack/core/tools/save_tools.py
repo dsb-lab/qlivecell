@@ -139,16 +139,20 @@ import numpy as np
 from tifffile import imwrite
 
 def save_4Dstack_labels(
-    path, filename, stack_4D, xyresolution, zresolution, imagejformat="TZYX"
+    path, filename, CT, imagejformat="TZYX"
 ):
-            
+    
+    labels_stack = np.zeros((CT.times, CT.slices, CT.stack_dims[0], CT.stack_dims[1]), dtype="uint16")
+    labels_stack = compute_labels_stack(labels_stack, CT.jitcells)
+
+
     imwrite(
         path + filename + "_masks.tif",
-        stack_4D,
+        labels_stack,
         imagej=True,
-        resolution=(1 / xyresolution, 1 / xyresolution),
+        resolution=(1 / CT._xyresolution, 1 / CT._xyresolution),
         metadata={
-            "spacing": zresolution,
+            "spacing": CT._zresolution,
             "unit": "um",
             "finterval": 300,
             "axes": imagejformat,

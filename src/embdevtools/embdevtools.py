@@ -3,7 +3,7 @@ from .celltrack.celltrack import (CellTracking, construct_RGB,
                                   isotropize_hyperstack, load_cells,
                                   load_CellTracking, read_img_with_resolution,
                                   save_3Dstack, save_4Dstack, norm_stack_per_z,
-                                  save_4Dstack_labels)
+                                  save_4Dstack_labels, compute_labels_stack)
 from .cytodonut.cytodonut import ERKKTR, load_donuts, plot_donuts
 from .embseg.embseg import EmbryoSegmentation, load_ES, save_ES
 from .pyjiyama import embryoregistration

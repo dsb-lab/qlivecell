@@ -241,7 +241,7 @@ class CellTracking(object):
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
-        self._labels_stack = np.zeros((t, z, x, y), dtype='uint16')
+
         self.update_labels(backup=False)
 
         cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
@@ -338,7 +338,6 @@ class CellTracking(object):
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
-        self._labels_stack = np.zeros((t, z, x, y), dtype='uint16')
 
     def init_CT_info(self):
         segargs = deepcopy(self._seg_args)
@@ -1291,15 +1290,9 @@ class CellTracking(object):
     def _del_cell(self, label=None, cellid=None):
         idx = None
         if label == None:
-            for id, cell in enumerate(self.jitcells):
-                if cell.id == cellid:
-                    idx = id
-                    break
+            idx = self._ids.index(cellid)
         else:
-            for id, cell in enumerate(self.jitcells):
-                if cell.label == label:
-                    idx = id
-                    break
+            idx = self._labels.index(label)
 
         self.jitcells.pop(idx)
 

@@ -177,7 +177,6 @@ class PlotAction:
 
     def onscroll(self, event):
         if self.ctrl_is_held:
-            print("WE SHOULD NOT BE HERE")
             # if self.current_state == None: self.current_state="SCL"
             if event.button == "up":
                 self.t = self.t + 1
@@ -270,7 +269,6 @@ class PlotActionCT(PlotAction):
 
     def __call__(self, event):
         if self.current_state == None:
-            print("hello")
             if event.key == "d":
                 # self.CTone_step_copy(self.t)
                 self.current_state = "del"
@@ -494,11 +492,7 @@ class PlotActionCT(PlotAction):
         if self.current_state == "add":
             return
         else:
-            import time
-            start = time.time()
             super().onscroll(event)
-            end = time.time()
-            print("elapsed =", end - start)
 
     def update(self):
         if self.current_state in ["apo", "Com", "mit", "Sep"]:
