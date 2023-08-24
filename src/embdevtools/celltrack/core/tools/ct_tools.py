@@ -190,6 +190,37 @@ def compute_point_stack(
     return point_stack
 
 
+def compute_labels_stack(
+    point_stack,
+    jitcells,
+    times,
+    labels_per_t,
+    dim_change,
+    labels=None,
+):
+    for t in times:
+        if labels is None:
+            point_stack[t] = 0
+            _labels = labels_per_t[t]
+        else:
+            _labels = labels
+        for lab in _labels:
+            jitcell = get_cell(jitcells, lab)
+
+            color = jitcell.label
+            points = jitcell.masks
+            set_cell_color(
+                point_stack,
+                points,
+                jitcell.times,
+                jitcell.zs,
+                np.array(color),
+                dim_change,
+                t=t,
+            )
+    return point_stack
+
+
 def get_cell(cells, label=None, cellid=None):
     if label == None:
         for cell in cells:

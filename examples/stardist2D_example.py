@@ -1,7 +1,7 @@
 ### LOAD PACKAGE ###
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, norm_stack_per_z
+from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z
 
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
@@ -58,28 +58,36 @@ error_correction_args = {
 }
 
 
-### CREATE CELLTRACKING CLASS ###
-CT = CellTracking(
-    IMGS, 
-    path_save, 
-    embcode, 
-    xyresolution=xyres, 
-    zresolution=zres,
-    segmentation_args=segmentation_args,
-    concatenation3D_args=concatenation3D_args,
-    tracking_args = tracking_args, 
-    error_correction_args=error_correction_args,    
-    plot_args = plot_args,
-)
+# ### CREATE CELLTRACKING CLASS ###
+# CT = CellTracking(
+#     IMGS, 
+#     path_save, 
+#     embcode, 
+#     xyresolution=xyres, 
+#     zresolution=zres,
+#     segmentation_args=segmentation_args,
+#     concatenation3D_args=concatenation3D_args,
+#     tracking_args = tracking_args, 
+#     error_correction_args=error_correction_args,    
+#     plot_args = plot_args,
+# )
 
 
-### RUN SEGMENTATION AND TRACKING ###
-CT.run()
+# # ### RUN SEGMENTATION AND TRACKING ###
+# # CT.run()
 
 
-### PLOTTING ###
-IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
+# ### PLOTTING ###
+# IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
+# CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
+
+
+# ### SAVE RESULTS AS MASKS HYPERSTACK ###
+# save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
+
+
+# ### SAVE RESULTS AS LABELS HYPERSTACK ###
+# save_4Dstack_labels(path_save, embcode, CT._labels_stack, xyres, zres, imagejformat="TZYX")
 
 
 ### LOAD PREVIOUSLY SAVED RESULTS ###
@@ -97,20 +105,22 @@ CT=load_CellTracking(
     )
 
 
-### SAVE RESULTS AS MASKS HYPERSTACK
-save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
+### PLOTTING ###
+IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
 
 
-### TRAINING ARGUMENTS ###
-train_segmentation_args = {
-    'blur': None,
-    'channels': [0,0],
-    'normalize': True,
-    'min_train_masks':2,
-    'save_path':path_save,
-    }
+# ### TRAINING ARGUMENTS ###
+# train_segmentation_args = {
+#     'blur': None,
+#     'channels': [0,0],
+#     'normalize': True,
+#     'min_train_masks':2,
+#     'save_path':path_save,
+#     }
 
-### RUN TRAINING ###
-new_model = CT.train_segmentation_model(train_segmentation_args)
-CT.set_model(new_model)
-CT.run()
+
+# ### RUN TRAINING ###
+# new_model = CT.train_segmentation_model(train_segmentation_args)
+# CT.set_model(new_model)
+# CT.run()

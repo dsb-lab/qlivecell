@@ -6,6 +6,7 @@ import numpy as np
 from ..dataclasses import Cell, CellTracking_info
 from ..utils_ct import correct_path
 from .cell_tools import create_cell
+from .ct_tools import compute_labels_stack
 
 
 class EnhancedJSONEncoder(json.JSONEncoder):
@@ -137,6 +138,22 @@ def load_cells(path=None, filename=None):
 import numpy as np
 from tifffile import imwrite
 
+def save_4Dstack_labels(
+    path, filename, stack_4D, xyresolution, zresolution, imagejformat="TZYX"
+):
+            
+    imwrite(
+        path + filename + "_masks.tif",
+        stack_4D,
+        imagej=True,
+        resolution=(1 / xyresolution, 1 / xyresolution),
+        metadata={
+            "spacing": zresolution,
+            "unit": "um",
+            "finterval": 300,
+            "axes": imagejformat,
+        },
+    )
 
 def save_4Dstack(
     path, filename, stack_4D, xyresolution, zresolution, imagejformat="TZCYX"

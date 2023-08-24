@@ -38,8 +38,8 @@ from .core.segmentation_training import (
 from .core.tools.cell_tools import (create_cell, find_z_discontinuities,
                                     update_cell, update_jitcell)
 from .core.tools.ct_tools import (check_and_override_args,
-                                  compute_labels_stack, compute_point_stack)
-from .core.tools.save_tools import load_cells, save_3Dstack, save_4Dstack
+                                  compute_labels_stack, compute_point_stack, compute_labels_stack)
+from .core.tools.save_tools import load_cells, save_3Dstack, save_4Dstack, save_4Dstack_labels
 from .core.tools.segmentation_tools import (assign_labels, check3Dmethod,
                                             concatenate_to_3D, label_per_z,
                                             remove_short_cells,
@@ -114,6 +114,8 @@ class CellTracking(object):
             plot_args, (self._stacks.shape[2], self._stacks.shape[3])
         )
 
+        self._labels = []
+        self._ids = []
         # check if cells should be loaded using path_to_save and embcose
         if _loadcells == True:
             _loadcells = self.path_to_save
@@ -239,7 +241,7 @@ class CellTracking(object):
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
-
+        self._labels_stack = np.zeros((t, z, x, y), dtype='uint16')
         self.update_labels(backup=False)
 
         cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
@@ -336,6 +338,7 @@ class CellTracking(object):
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
+        self._labels_stack = np.zeros((t, z, x, y), dtype='uint16')
 
     def init_CT_info(self):
         segargs = deepcopy(self._seg_args)
@@ -634,6 +637,7 @@ class CellTracking(object):
         )
         self._get_hints()
         self._get_number_of_conflicts()
+        self._get_cellids_celllabels()
 
     def update_labels(self, backup=True):
         self.update_label_attributes()
@@ -674,6 +678,13 @@ class CellTracking(object):
 
         if backup:
             self.one_step_copy()
+
+    def _get_cellids_celllabels(self):
+        del self._labels[:]
+        del self._ids[:]
+        self._ids = list(map(getattr, self.jitcells, ['id']*len(self.jitcells)))
+        self._labels = list(map(getattr, self.jitcells, ['label']*len(self.jitcells)))
+
 
     def _get_hints(self):
         del self.hints[:]
@@ -1268,13 +1279,13 @@ class CellTracking(object):
 
     def _get_cell(self, label=None, cellid=None):
         if label == None:
-            for cell in self.jitcells:
-                if cell.id == cellid:
-                    return cell
+            if cellid not in self._ids: return None
+            cell = self.jitcells[self._ids.index(cellid)]
+            return cell
         else:
-            for cell in self.jitcells:
-                if cell.label == label:
-                    return cell
+            if label not in self._labels: return None
+            cell = self.jitcells[self._labels.index(label)]
+            return cell
         return None
 
     def _del_cell(self, label=None, cellid=None):
@@ -1503,34 +1514,34 @@ class CellTracking(object):
                 self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
                 for lab in labs:
                     cell = self._get_cell(lab)
-                    tid = cell.times.index(t)
-                    zz, ys, xs = cell.centers[tid]
-                    xs = round(xs * self._plot_args["dim_change"])
-                    ys = round(ys * self._plot_args["dim_change"])
-                    if zz == z:
-                        if [cell.id, PACP.t] in self.apoptotic_events:
-                            sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
-                            self._pos_scatters.append(sc)
-                        else:
-                            if self._plot_args["plot_centers"][0]:
-                                sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
-                                self._pos_scatters.append(sc)
-                        if self._plot_args["plot_centers"][1]:
-                            anno = PACP.ax[id].annotate(
-                                str(lab), xy=(ys, xs), c="white"
-                            )
-                            self._annotations.append(anno)
+                    # tid = cell.times.index(t)
+                    # zz, ys, xs = cell.centers[tid]
+                    # xs = round(xs * self._plot_args["dim_change"])
+                    # ys = round(ys * self._plot_args["dim_change"])
+        #             if zz == z:
+        #                 if [cell.id, PACP.t] in self.apoptotic_events:
+        #                     sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
+        #                     self._pos_scatters.append(sc)
+        #                 else:
+        #                     if self._plot_args["plot_centers"][0]:
+        #                         sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
+        #                         self._pos_scatters.append(sc)
+        #                 if self._plot_args["plot_centers"][1]:
+        #                     anno = PACP.ax[id].annotate(
+        #                         str(lab), xy=(ys, xs), c="white"
+        #                     )
+        #                     self._annotations.append(anno)
 
-                        for mitoev in self.mitotic_events:
-                            for ev in mitoev:
-                                if cell.id == ev[0]:
-                                    if PACP.t == ev[1]:
-                                        sc = PACP.ax[id].scatter(
-                                            [ys], [xs], s=5.0, c="red"
-                                        )
-                                        self._pos_scatters.append(sc)
+        #                 for mitoev in self.mitotic_events:
+        #                     for ev in mitoev:
+        #                         if cell.id == ev[0]:
+        #                             if PACP.t == ev[1]:
+        #                                 sc = PACP.ax[id].scatter(
+        #                                     [ys], [xs], s=5.0, c="red"
+        #                                 )
+        #                                 self._pos_scatters.append(sc)
 
-        plt.subplots_adjust(bottom=0.075)
+        # plt.subplots_adjust(bottom=0.075)
 
 
 def load_CellTracking(
