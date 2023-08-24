@@ -25,7 +25,7 @@ from .core.multiprocessing import (multiprocess_add_tasks, multiprocess_end,
                                    multiprocess_start, worker)
 from .core.PA import PlotActionCellPicker, PlotActionCT
 from .core.pickers import LineBuilder_lasso, LineBuilder_points
-from .core.plotting import check_and_fill_plot_args, check_stacks_for_plotting
+from .core.plotting import check_and_fill_plot_args, check_stacks_for_plotting, norm_stack_per_z
 from .core.segmentation import (cell_segmentation2D_cellpose,
                                 cell_segmentation2D_stardist,
                                 cell_segmentation3D,
