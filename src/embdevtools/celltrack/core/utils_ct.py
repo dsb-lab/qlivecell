@@ -43,6 +43,9 @@ def progressbar(step, total, width=46):
     elif percent > 99:
         print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
 
+def get_file_names(path_data):
+    files = os.listdir(path_data)
+    return files
 
 def get_file_embcode(path_data, f, returnfiles=False):
     """

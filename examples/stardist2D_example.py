@@ -3,7 +3,6 @@ import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
 from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack
 
-
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/movies/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/CellTrackObjects/'
@@ -14,7 +13,9 @@ file, embcode, files = get_file_embcode(path_data, 0, returnfiles=True)
 
 
 ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=1)
+channel = 1
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
+save_4Dstack(path_save,  embcode+"ch_%d" %(channel+1), IMGS, xyres, zres, imagejformat="TZYX", masks=False)
 
 
 ### LOAD CELLPOSE MODEL ###
@@ -49,7 +50,7 @@ plot_args = {
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
     'plot_stack_dims': (512, 512), 
-    'plot_centers':[True, True]
+    'plot_centers':[False, False]
 }
 
 error_correction_args = {
@@ -62,7 +63,7 @@ error_correction_args = {
 # CT = CellTracking(
 #     IMGS, 
 #     path_save, 
-#     embcode, 
+#     embcode+"ch_%d" %(channel+1), 
 #     xyresolution=xyres, 
 #     zresolution=zres,
 #     segmentation_args=segmentation_args,
@@ -75,6 +76,11 @@ error_correction_args = {
 
 # ### RUN SEGMENTATION AND TRACKING ###
 # CT.run()
+
+# from embdevtools.celltrack.core.tools.cell_tools import remove_small_cells, remove_small_planes_at_boders
+
+# remove_small_cells(CT.jitcells, 250, CT._del_cell, CT.update_labels)
+# remove_small_planes_at_boders(CT.jitcells, 200, CT._del_cell, CT.update_labels, CT._stacks)
 
 
 # ### PLOTTING ###
@@ -94,7 +100,7 @@ error_correction_args = {
 CT=load_CellTracking(
         IMGS, 
         path_save, 
-        embcode, 
+        embcode+"ch_%d" %(channel+1), 
         xyresolution=xyres, 
         zresolution=zres,
         segmentation_args=segmentation_args,
@@ -104,13 +110,12 @@ CT=load_CellTracking(
         plot_args = plot_args,
     )
 
-
 ### PLOTTING ###
 IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
 
-# ### SAVE RESULTS AS LABELS HYPERSTACK ###
-# save_4Dstack_labels(path_save, embcode, CT, imagejformat="TZYX")
+### SAVE RESULTS AS LABELS HYPERSTACK ###
+save_4Dstack_labels(path_save, embcode+"ch_%d" %(channel+1), CT, imagejformat="TZYX")
 
 
 # ### TRAINING ARGUMENTS ###
@@ -127,4 +132,3 @@ CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
 # new_model = CT.train_segmentation_model(train_segmentation_args)
 # CT.set_model(new_model)
 # CT.run()
-

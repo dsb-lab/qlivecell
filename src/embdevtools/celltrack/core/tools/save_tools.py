@@ -145,9 +145,8 @@ def save_4Dstack_labels(
     labels_stack = np.zeros((CT.times, CT.slices, CT.stack_dims[0], CT.stack_dims[1]), dtype="uint16")
     labels_stack = compute_labels_stack(labels_stack, CT.jitcells)
 
-
     imwrite(
-        path + filename + "_masks.tif",
+        path + filename + "_labels.tif",
         labels_stack,
         imagej=True,
         resolution=(1 / CT._xyresolution, 1 / CT._xyresolution),
@@ -160,20 +159,26 @@ def save_4Dstack_labels(
     )
 
 def save_4Dstack(
-    path, filename, stack_4D, xyresolution, zresolution, imagejformat="TZCYX"
+    path, filename, stack_4D, xyresolution, zresolution, imagejformat="TZCYX", masks=True
 ):
     sh = stack_4D.shape
 
-    new_masks = np.zeros((sh[0], sh[1], 3, sh[2], sh[3]), dtype="uint8")
+    if "C" in imagejformat:
+        new_masks = np.zeros((sh[0], sh[1], 3, sh[2], sh[3]), dtype="uint8")
 
-    for t in range(sh[0]):
-        for z in range(sh[1]):
-            new_masks[t, z, 0] = stack_4D[t, z, :, :, 0] * 255
-            new_masks[t, z, 1] = stack_4D[t, z, :, :, 1] * 255
-            new_masks[t, z, 2] = stack_4D[t, z, :, :, 2] * 255
+        for t in range(sh[0]):
+            for z in range(sh[1]):
+                new_masks[t, z, 0] = stack_4D[t, z, :, :, 0] * 255
+                new_masks[t, z, 1] = stack_4D[t, z, :, :, 1] * 255
+                new_masks[t, z, 2] = stack_4D[t, z, :, :, 2] * 255
+    else:
+        new_masks = stack_4D
+
+    if masks: fullfilename =  path + filename + "_masks.tif"
+    else: fullfilename = path + filename + ".tif"
 
     imwrite(
-        path + filename + "_masks.tif",
+        fullfilename,
         new_masks,
         imagej=True,
         resolution=(1 / xyresolution, 1 / xyresolution),

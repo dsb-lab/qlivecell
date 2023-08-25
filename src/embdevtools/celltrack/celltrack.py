@@ -57,7 +57,7 @@ from .core.tools.tracking_tools import (_extract_unique_labels_and_max_label,
 from .core.tracking import (check_tracking_args, fill_tracking_args,
                             greedy_tracking, hungarian_tracking)
 from .core.utils_ct import (check_and_fill_error_correction_args,
-                            construct_RGB, get_default_args, get_file_embcode,
+                            construct_RGB, get_default_args, get_file_embcode, get_file_names,
                             isotropize_hyperstack, isotropize_stack,
                             isotropize_stackRGB, printclear, printfancy,
                             progressbar, read_img_with_resolution)

@@ -216,17 +216,6 @@ def compute_labels_stack(point_stack, jitcells):
     return point_stack
 
 
-def compute_labels_stack(point_stack, jitcells, times):
-    for t in times:
-        for jitcell in jitcells:
-            color = jitcell.label + 1
-            points = jitcell.masks
-            set_cell_color(
-                point_stack, points, jitcell.times, jitcell.zs, color, 1, t=t
-            )
-    return point_stack
-
-
 from copy import deepcopy
 
 

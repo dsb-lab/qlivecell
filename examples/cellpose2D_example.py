@@ -1,6 +1,8 @@
 ### LOAD PACKAGE ###
+# from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
+import sys
+sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
 from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
-
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
@@ -18,7 +20,7 @@ IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel
 
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
-model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
+model  = models.CellposeModel(gpu=False, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
 
 
 ### DEFINE ARGUMENTS ###
@@ -62,7 +64,7 @@ error_correction_args = {
 
 ### CREATE CELLTRACKING CLASS ###
 CT = CellTracking(
-    IMGS, 
+    IMGS[:1], 
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -76,8 +78,11 @@ CT = CellTracking(
 
 
 ### RUN SEGMENTATION AND TRACKING ###
+import time
+s = time.time()
 CT.run()
-
+e = time.time()
+print("elapsed =", e-s)
 
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)

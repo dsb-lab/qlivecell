@@ -448,3 +448,56 @@ def update_jitcell(cell: jitCell, stacks):
     sort_over_z_jit(cell)
     sort_over_t_jit(cell)
     extract_jitcell_centers(cell, stacks)
+
+
+def remove_small_cells(cells, area_th, callback_del, callback_update):
+    labs_to_remove = []
+    areas = []
+    for cell in cells:
+        zc = int(cell.centers[0][0])
+        zcid = cell.zs[0].index(zc)
+
+        msk = cell.masks[0][zcid]
+        area = len(msk)
+        areas.append(area)
+        if area < area_th:
+            labs_to_remove.append(cell.label)
+
+    np.mean(areas)
+    for lab in labs_to_remove:
+        callback_del(lab)
+        
+    callback_update(backup=False)
+
+
+def remove_small_planes_at_boders(cells, area_th, callback_del, callback_update, stacks):
+    for cell in cells:
+        for tid, t in enumerate(cell.times):
+
+            zid_to_remove = []
+
+            for zid, z in enumerate(cell.zs[tid]):
+                msk = cell.masks[tid][zid]
+                area = len(msk)
+                if area < area_th:
+                    zid_to_remove.append(zid)
+                else: break
+
+            for zid, z in reversed(list(enumerate(cell.zs[tid]))):
+                msk = cell.masks[tid][zid]
+                area = len(msk)
+                if area < area_th:
+                    zid_to_remove.append(zid)
+                else: break
+            
+            zid_to_remove.sort(reverse=True)
+            for zid in zid_to_remove:
+                cell.zs[tid].pop(zid)
+                cell.outlines[tid].pop(zid)
+                cell.masks[tid].pop(zid)
+
+            update_jitcell(cell, stacks)
+            if cell._rem:
+                callback_del(cell.label)
+
+    callback_update(backup=False)
