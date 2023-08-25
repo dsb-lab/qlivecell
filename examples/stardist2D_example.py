@@ -73,8 +73,8 @@ error_correction_args = {
 # )
 
 
-# # ### RUN SEGMENTATION AND TRACKING ###
-# # CT.run()
+# ### RUN SEGMENTATION AND TRACKING ###
+# CT.run()
 
 
 # ### PLOTTING ###
@@ -109,8 +109,8 @@ CT=load_CellTracking(
 IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
 
-### SAVE RESULTS AS LABELS HYPERSTACK ###
-save_4Dstack_labels(path_save, embcode, CT, imagejformat="TZYX")
+# ### SAVE RESULTS AS LABELS HYPERSTACK ###
+# save_4Dstack_labels(path_save, embcode, CT, imagejformat="TZYX")
 
 
 # ### TRAINING ARGUMENTS ###
@@ -127,4 +127,3 @@ save_4Dstack_labels(path_save, embcode, CT, imagejformat="TZYX")
 # new_model = CT.train_segmentation_model(train_segmentation_args)
 # CT.set_model(new_model)
 # CT.run()
-

@@ -492,7 +492,11 @@ class PlotActionCT(PlotAction):
         if self.current_state == "add":
             return
         else:
+            import time
+            s = time.time()
             super().onscroll(event)
+            e = time.time()
+            print("elapsed =", e-s)
 
     def update(self):
         if self.current_state in ["apo", "Com", "mit", "Sep"]:
