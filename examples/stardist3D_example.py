@@ -15,32 +15,33 @@ file, embcode, files = get_file_embcode(path_data, 0, returnfiles=True)
 ### LOAD HYPERSTACKS ###
 channel = 1
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
-save_4Dstack(path_save,  embcode+"ch_%d" %(channel+1), IMGS, xyres, zres, imagejformat="TZYX", masks=False)
+# save_4Dstack(path_save,  embcode+"ch_%d" %(channel+1), IMGS, xyres, zres, imagejformat="TZYX", masks=False)
 
 
-### LOAD STARDIST MODEL ###
-from stardist.models import StarDist2D
-model = StarDist2D.from_pretrained('2D_versatile_fluo')
+# ### LOAD STARDIST MODEL ###
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
+from stardist.models import StarDist3D
+import tensorflow as tf
+
+# This is necessary to avoid too much allocation. I dont understand why it allocates so much.
+# tf.config.threading.set_inter_op_parallelism_threads(1)
+tf.config.threading.set_intra_op_parallelism_threads(1)
+
+model = StarDist3D(None, name='test', basedir=path_save+'models')
 
 ### DEFINE ARGUMENTS ###
 segmentation_args={
-    'method': 'stardist2D', 
+    'method': 'stardist3D', 
     'model': model, 
+    'sparse':True,
     # 'blur': [5,1], 
-}
-          
-concatenation3D_args = {
-    'distance_th_z': 3.0, 
-    'relative_overlap':False, 
-    'use_full_matrix_to_compute_overlap':True, 
-    'z_neighborhood':2, 
-    'overlap_gradient_th':0.3, 
-    'min_cell_planes': 2,
 }
 
 tracking_args = {
     'time_step': 5, # minutes
-    'method': 'greedy', 
+    'method': 'hungarian', 
     'z_th':5, 
     'dist_th' : 10.0,
 }
@@ -59,23 +60,23 @@ error_correction_args = {
 }
 
 
-# ### CREATE CELLTRACKING CLASS ###
-# CT = CellTracking(
-#     IMGS, 
-#     path_save, 
-#     embcode+"ch_%d" %(channel+1), 
-#     xyresolution=xyres, 
-#     zresolution=zres,
-#     segmentation_args=segmentation_args,
-#     concatenation3D_args=concatenation3D_args,
-#     tracking_args = tracking_args, 
-#     error_correction_args=error_correction_args,    
-#     plot_args = plot_args,
-# )
+### CREATE CELLTRACKING CLASS ###
+CT = CellTracking(
+    IMGS, 
+    path_save, 
+    embcode+"ch_%d" %(channel+1), 
+    xyresolution=xyres, 
+    zresolution=zres,
+    segmentation_args=segmentation_args,
+    tracking_args = tracking_args, 
+    error_correction_args=error_correction_args,    
+    plot_args = plot_args,
+)
 
+# CT._seg_args['model']._tile_overlap = [(5,128,127), (5,128,127)]
 
-# ### RUN SEGMENTATION AND TRACKING ###
-# CT.run()
+### RUN SEGMENTATION AND TRACKING ###
+CT.run()
 
 # from embdevtools.celltrack.core.tools.cell_tools import remove_small_cells, remove_small_planes_at_boders
 
@@ -83,9 +84,9 @@ error_correction_args = {
 # remove_small_planes_at_boders(CT.jitcells, 200, CT._del_cell, CT.update_labels, CT._stacks)
 
 
-# ### PLOTTING ###
-# IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
-# CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
+### PLOTTING ###
+# IMGS_norm = norm_stack_per_z( IMGS[:1,30:50], saturation=0.7)
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
@@ -96,26 +97,25 @@ error_correction_args = {
 # save_4Dstack_labels(path_save, embcode, CT._labels_stack, xyres, zres, imagejformat="TZYX")
 
 
-### LOAD PREVIOUSLY SAVED RESULTS ###
-CT=load_CellTracking(
-        IMGS, 
-        path_save, 
-        embcode+"ch_%d" %(channel+1), 
-        xyresolution=xyres, 
-        zresolution=zres,
-        segmentation_args=segmentation_args,
-        concatenation3D_args=concatenation3D_args,
-        tracking_args = tracking_args, 
-        error_correction_args=error_correction_args,    
-        plot_args = plot_args,
-    )
+# ### LOAD PREVIOUSLY SAVED RESULTS ###
+# CT=load_CellTracking(
+#         IMGS, 
+#         path_save, 
+#         embcode+"ch_%d" %(channel+1), 
+#         xyresolution=xyres, 
+#         zresolution=zres,
+#         segmentation_args=segmentation_args,
+#         tracking_args = tracking_args, 
+#         error_correction_args=error_correction_args,    
+#         plot_args = plot_args,
+#     )
 
-### PLOTTING ###
-IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
+# ### PLOTTING ###
+# IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
+# CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
 
-### SAVE RESULTS AS LABELS HYPERSTACK ###
-save_4Dstack_labels(path_save, embcode+"ch_%d" %(channel+1), CT, imagejformat="TZYX")
+# ### SAVE RESULTS AS LABELS HYPERSTACK ###
+# save_4Dstack_labels(path_save, embcode+"ch_%d" %(channel+1), CT, imagejformat="TZYX")
 
 
 # ### TRAINING ARGUMENTS ###
