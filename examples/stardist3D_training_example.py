@@ -9,6 +9,7 @@ import numpy as np
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
 from embdevtools import get_file_names, get_file_embcode, read_img_with_resolution
+from csbdeep.utils import normalize
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/CellTrackObjects/train_set/'
@@ -29,7 +30,7 @@ for file in files:
         else:
             file, embcode, files = get_file_embcode(path_data, file, returnfiles=True)
             IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
-            X.append(IMGS[0])
+            X.append(normalize(IMGS[0]))
 
 anisotropy = (zres/xyres, 1.0, 1.0)
 
@@ -53,7 +54,7 @@ conf = Config3D (
     n_channel_in     = 1,
     # adjust for your data below (make patch size as large as possible)
     train_patch_size = (48,96,96),
-    train_batch_size = 2,
+    train_batch_size = 1,
 )
 
 print(conf)

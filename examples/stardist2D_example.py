@@ -7,9 +7,8 @@ from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking
 path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/movies/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/CellTrackObjects/'
 
-
 ### GET FULL FILE NAME AND FILE CODE ###
-file, embcode, files = get_file_embcode(path_data, 0, returnfiles=True)
+file, embcode, files = get_file_embcode(path_data, 3, returnfiles=True)
 
 
 ### LOAD HYPERSTACKS ###
@@ -59,33 +58,33 @@ error_correction_args = {
 }
 
 
-# ### CREATE CELLTRACKING CLASS ###
-# CT = CellTracking(
-#     IMGS, 
-#     path_save, 
-#     embcode+"ch_%d" %(channel+1), 
-#     xyresolution=xyres, 
-#     zresolution=zres,
-#     segmentation_args=segmentation_args,
-#     concatenation3D_args=concatenation3D_args,
-#     tracking_args = tracking_args, 
-#     error_correction_args=error_correction_args,    
-#     plot_args = plot_args,
-# )
+### CREATE CELLTRACKING CLASS ###
+CT = CellTracking(
+    IMGS, 
+    path_save, 
+    embcode+"ch_%d" %(channel+1), 
+    xyresolution=xyres, 
+    zresolution=zres,
+    segmentation_args=segmentation_args,
+    concatenation3D_args=concatenation3D_args,
+    tracking_args = tracking_args, 
+    error_correction_args=error_correction_args,    
+    plot_args = plot_args,
+)
 
 
-# ### RUN SEGMENTATION AND TRACKING ###
-# CT.run()
+### RUN SEGMENTATION AND TRACKING ###
+CT.run()
 
-# from embdevtools.celltrack.core.tools.cell_tools import remove_small_cells, remove_small_planes_at_boders
+from embdevtools.celltrack.core.tools.cell_tools import remove_small_cells, remove_small_planes_at_boders
 
-# remove_small_cells(CT.jitcells, 250, CT._del_cell, CT.update_labels)
-# remove_small_planes_at_boders(CT.jitcells, 200, CT._del_cell, CT.update_labels, CT._stacks)
+remove_small_cells(CT.jitcells, 250, CT._del_cell, CT.update_labels)
+remove_small_planes_at_boders(CT.jitcells, 200, CT._del_cell, CT.update_labels, CT._stacks)
 
 
-# ### PLOTTING ###
-# IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
-# CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
+### PLOTTING ###
+IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
@@ -96,23 +95,23 @@ error_correction_args = {
 # save_4Dstack_labels(path_save, embcode, CT._labels_stack, xyres, zres, imagejformat="TZYX")
 
 
-### LOAD PREVIOUSLY SAVED RESULTS ###
-CT=load_CellTracking(
-        IMGS, 
-        path_save, 
-        embcode+"ch_%d" %(channel+1), 
-        xyresolution=xyres, 
-        zresolution=zres,
-        segmentation_args=segmentation_args,
-        concatenation3D_args=concatenation3D_args,
-        tracking_args = tracking_args, 
-        error_correction_args=error_correction_args,    
-        plot_args = plot_args,
-    )
+# ### LOAD PREVIOUSLY SAVED RESULTS ###
+# CT=load_CellTracking(
+#         IMGS, 
+#         path_save, 
+#         embcode+"ch_%d" %(channel+1), 
+#         xyresolution=xyres, 
+#         zresolution=zres,
+#         segmentation_args=segmentation_args,
+#         concatenation3D_args=concatenation3D_args,
+#         tracking_args = tracking_args, 
+#         error_correction_args=error_correction_args,    
+#         plot_args = plot_args,
+#     )
 
-### PLOTTING ###
-IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
+# ### PLOTTING ###
+# IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
+# CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
 
 ### SAVE RESULTS AS LABELS HYPERSTACK ###
 save_4Dstack_labels(path_save, embcode+"ch_%d" %(channel+1), CT, imagejformat="TZYX")

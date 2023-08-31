@@ -17,18 +17,25 @@ channel = 1
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
 # save_4Dstack(path_save,  embcode+"ch_%d" %(channel+1), IMGS, xyres, zres, imagejformat="TZYX", masks=False)
 
+gpu = False
+if gpu:
+    from csbdeep.utils.tf import limit_gpu_memory
+    # adjust as necessary: limit GPU memory to be used by TensorFlow to leave some to OpenCL-based computations
+    # limit_gpu_memory(0.8)
+    # alternatively, try this:
+    limit_gpu_memory(None, allow_growth=True)
+else:
+    import os
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-# ### LOAD STARDIST MODEL ###
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    import tensorflow as tf
+    # This is necessary to avoid too much allocation. I dont understand why it allocates so much.
+    # tf.config.threading.set_inter_op_parallelism_threads(1)
+    tf.config.threading.set_intra_op_parallelism_threads(1)
 
+
+### LOAD STARDIST MODEL ###
 from stardist.models import StarDist3D
-import tensorflow as tf
-
-# This is necessary to avoid too much allocation. I dont understand why it allocates so much.
-# tf.config.threading.set_inter_op_parallelism_threads(1)
-tf.config.threading.set_intra_op_parallelism_threads(1)
-
 model = StarDist3D(None, name='test', basedir=path_save+'models')
 
 ### DEFINE ARGUMENTS ###
