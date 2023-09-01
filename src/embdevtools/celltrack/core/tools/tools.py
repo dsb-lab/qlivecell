@@ -4,7 +4,84 @@ import numpy as np
 from scipy.spatial import ConvexHull, cKDTree
 from scipy.spatial._qhull import QhullError
 
-from ..utils_ct import printfancy
+
+LINE_UP = "\033[1A"
+LINE_CLEAR = "\x1b[2K"
+
+
+def printclear(n=1):
+    LINE_UP = "\033[1A"
+    LINE_CLEAR = "\x1b[2K"
+    for i in range(n):
+        print(LINE_UP, end=LINE_CLEAR)
+
+
+def printfancy(string="", finallength=70, clear_prev=0):
+    new_str = "#   " + string
+    while len(new_str) < finallength - 1:
+        new_str += " "
+    new_str += "#"
+    printclear(clear_prev)
+    print(new_str)
+
+
+def progressbar(step, total, width=46):
+    percent = np.rint(step * 100 / total).astype("uint16")
+    left = width * percent // 100
+    right = width - left
+
+    tags = "#" * left
+    spaces = " " * right
+    percents = f"{percent:.0f}%"
+    printclear()
+    if percent < 10:
+        print("#   Progress: [", tags, spaces, "] ", percents, "    #", sep="")
+    elif 9 < percent < 100:
+        print("#   Progress: [", tags, spaces, "] ", percents, "   #", sep="")
+    elif percent > 99:
+        print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
+
+
+import inspect
+
+"""
+    copied from https://stackoverflow.com/questions/12627118/get-a-function-arguments-default-value
+"""
+def get_default_args(func):
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
+    
+
+def correct_path(path):
+    if path[-1] != "/":
+        path = path + "/"
+    return path
+
+
+def check_and_fill_error_correction_args(error_correction_args):
+    new_error_correction_args = {
+        "backup_steps": 10,
+        "line_builder_mode": "lasso",
+    }
+
+    for ecarg in error_correction_args.keys():
+        try:
+            new_error_correction_args[ecarg] = error_correction_args[ecarg]
+        except KeyError:
+            raise Exception(
+                "key %s is not a correct argument for error correction" % ecarg
+            )
+
+    if new_error_correction_args["line_builder_mode"] not in ["points", "lasso"]:
+        raise Exception("not supported line builder mode chose from: (points, lasso)")
+
+    return new_error_correction_args
+
+
 
 
 def increase_point_resolution(outline, min_outline_length):

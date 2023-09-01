@@ -3,7 +3,7 @@ from matplotlib import cm
 from skimage.transform import resize
 
 from .plot_iters import CyclicList
-from ..utils_ct import printfancy
+from ..tools.tools import printfancy
 
 
 def check_and_fill_plot_args(plot_args, stack_dims):

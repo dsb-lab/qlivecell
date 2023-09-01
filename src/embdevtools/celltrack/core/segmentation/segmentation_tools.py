@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit, typeof
 from numba.typed import List
 
-from ..utils_ct import printclear, printfancy
+from ..tools.tools import printclear, printfancy
 
 
 @njit

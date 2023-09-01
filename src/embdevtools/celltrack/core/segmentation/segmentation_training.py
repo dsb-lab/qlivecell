@@ -3,7 +3,7 @@ import shutil
 import numpy as np
 import skimage
 
-from ..utils_ct import get_default_args
+from ..tools.tools  import get_default_args
 
 
 def train_CellposeModel(train_imgs, train_masks, model, train_seg_args):
