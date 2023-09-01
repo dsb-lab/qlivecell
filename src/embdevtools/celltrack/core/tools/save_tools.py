@@ -4,7 +4,7 @@ import json
 import numpy as np
 
 from ..dataclasses import Cell, CellTracking_info
-from ..utils_ct import correct_path
+from ..tools.tools  import correct_path
 from .cell_tools import create_cell
 from .ct_tools import compute_labels_stack
 
