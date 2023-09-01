@@ -189,6 +189,7 @@ def cell_segmentation3D_stardist(stack, segmentation_args, segmentation_method_a
 
     model = segmentation_args["model"]
     labels, _ = model.predict_instances(normalize(stack), **segmentation_method_args)
+    # labels, _ = model.predict_instances(stack, **segmentation_method_args)
 
     printclear()
 

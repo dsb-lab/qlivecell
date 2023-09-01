@@ -20,25 +20,16 @@ IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel
 
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
-model  = models.CellposeModel(gpu=False, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
+model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
 
 
 ### DEFINE ARGUMENTS ###
 segmentation_args={
-    'method': 'cellpose2D', 
+    'method': 'cellpose3D', 
     'model': model, 
     'blur': [5,1], 
     'channels': [0,0],
     'flow_threshold': 0.4,
-}
-          
-concatenation3D_args = {
-    'distance_th_z': 3.0, 
-    'relative_overlap':False, 
-    'use_full_matrix_to_compute_overlap':True, 
-    'z_neighborhood':2, 
-    'overlap_gradient_th':0.3, 
-    'min_cell_planes': 2,
 }
 
 tracking_args = {
@@ -70,7 +61,6 @@ CT = CellTracking(
     xyresolution=xyres, 
     zresolution=zres,
     segmentation_args=segmentation_args,
-    concatenation3D_args=concatenation3D_args,
     tracking_args = tracking_args, 
     error_correction_args=error_correction_args,    
     plot_args = plot_args,
@@ -96,7 +86,6 @@ CT=load_CellTracking(
         xyresolution=xyres, 
         zresolution=zres,
         segmentation_args=segmentation_args,
-        concatenation3D_args=concatenation3D_args,
         tracking_args = tracking_args, 
         error_correction_args=error_correction_args,    
         plot_args = plot_args,
@@ -105,3 +94,4 @@ CT=load_CellTracking(
 
 ### SAVE RESULTS AS MASKS HYPERSTACK
 save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
+

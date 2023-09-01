@@ -9,6 +9,7 @@ import numpy as np
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
 from embdevtools import get_file_names, get_file_embcode, read_img_with_resolution
+from csbdeep.utils import normalize
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/CellTrackObjects/train_set/'
@@ -29,7 +30,7 @@ for file in files:
         else:
             file, embcode, files = get_file_embcode(path_data, file, returnfiles=True)
             IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
-            X.append(IMGS[0])
+            X.append(normalize(IMGS[0]))
 
 anisotropy = (zres/xyres, 1.0, 1.0)
 
@@ -53,7 +54,7 @@ conf = Config3D (
     n_channel_in     = 1,
     # adjust for your data below (make patch size as large as possible)
     train_patch_size = (48,96,96),
-    train_batch_size = 2,
+    train_batch_size = 1,
 )
 
 print(conf)
@@ -62,9 +63,9 @@ vars(conf)
 if use_gpu:
     from csbdeep.utils.tf import limit_gpu_memory
     # adjust as necessary: limit GPU memory to be used by TensorFlow to leave some to OpenCL-based computations
-    limit_gpu_memory(0.8)
+    # limit_gpu_memory(0.8)
     # alternatively, try this:
-    # limit_gpu_memory(None, allow_growth=True)
+    limit_gpu_memory(None, allow_growth=True)
 
 model = StarDist3D(conf, name='test', basedir=path_save+'models')
 
