@@ -5,7 +5,7 @@ from numba.types import ListType
 
 from ..dataclasses import CTattributes, contruct_jitCell_from_Cell, jitCell
 from ..tools.cell_tools import create_cell, update_cell
-from ..tools.segmentation_tools import (extract_cell_centers, label_per_z,
+from ..segmentation.segmentation_tools import (extract_cell_centers, label_per_z,
                                         label_per_z_jit)
 
 

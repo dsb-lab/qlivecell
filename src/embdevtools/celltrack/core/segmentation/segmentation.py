@@ -1,9 +1,9 @@
 import skimage
 
-from .tools.segmentation_tools import check3Dmethod
-from .tools.tools import (get_outlines_masks_labels, increase_point_resolution,
+from .segmentation_tools import check3Dmethod
+from ..tools.tools import (get_outlines_masks_labels, increase_point_resolution,
                           mask_from_outline)
-from .utils_ct import get_default_args, printclear, printfancy, progressbar
+from ..utils_ct import get_default_args, printclear, printfancy, progressbar
 
 
 def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_args):

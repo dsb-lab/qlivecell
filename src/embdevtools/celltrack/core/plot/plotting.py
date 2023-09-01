@@ -2,8 +2,8 @@ import numpy as np
 from matplotlib import cm
 from skimage.transform import resize
 
-from .iters import CyclicList
-from .utils_ct import printfancy
+from .plot_iters import CyclicList
+from ..utils_ct import printfancy
 
 
 def check_and_fill_plot_args(plot_args, stack_dims):
