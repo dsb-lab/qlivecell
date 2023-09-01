@@ -1,8 +1,5 @@
 import numpy as np
 
-from .tools.tools import mask_from_outline
-
-
 class SubplotPicker_add:
     def __init__(self, ax, canvas, zs, callback):
         self.ax = ax
@@ -53,7 +50,7 @@ class LineBuilder_points:
         self.line.remove()
 
 
-from .extraclasses import CustomLassoSelector
+from .plot_extraclasses import CustomLassoSelector
 
 
 class LineBuilder_lasso:

@@ -2,7 +2,7 @@ import numpy as np
 from munkres import Munkres
 from scipy.spatial.distance import directed_hausdorff
 
-from .utils_ct import printfancy
+from ..utils_ct import printfancy
 
 
 def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args):

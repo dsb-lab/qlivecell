@@ -1,3 +1,5 @@
+### EXAMPLE ADAPTED FROM https://github.com/stardist/stardist/blob/master/examples/3D/2_training.ipynb
+
 from stardist.models import Config3D, StarDist3D
 
 from stardist import fill_label_holes, random_label_cmap, calculate_extents, gputools_available
@@ -15,12 +17,14 @@ from csbdeep.utils import normalize
 path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/CellTrackObjects/train_set/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/CellTrackObjects/train_set/'
 
-
 X = []
 Y = []
-### GET FULL FILE NAME AND FILE CODE ###
-files = get_file_names(path_data)   
-file, embcode, files = get_file_embcode(path_data, 0, returnfiles=True)
+
+# Get file names 
+files = get_file_names(path_data) 
+
+# get file name and file code
+file, embcode = get_file_embcode(path_data, 0)
 for file in files:
     if ".tif" in file:
         if "labels" in file:
@@ -31,6 +35,10 @@ for file in files:
             file, embcode, files = get_file_embcode(path_data, file, returnfiles=True)
             IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
             X.append(normalize(IMGS[0]))
+
+# extents = calculate_extents(Y)
+# anisotropy = tuple(np.max(extents) / extents)
+# print('empirical anisotropy of labeled objects = %s' % str(anisotropy))
 
 anisotropy = (zres/xyres, 1.0, 1.0)
 

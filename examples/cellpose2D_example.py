@@ -53,7 +53,7 @@ plot_args = {
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
     'plot_stack_dims': (512, 512), 
-    'plot_centers':[True, True]
+    'plot_centers':[True, True] # [Plot center as a dot, plot label on 3D center]
 }
 
 error_correction_args = {
@@ -64,7 +64,7 @@ error_correction_args = {
 
 ### CREATE CELLTRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:1], 
+    IMGS[:2], 
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -78,30 +78,8 @@ CT = CellTracking(
 
 
 ### RUN SEGMENTATION AND TRACKING ###
-import time
-s = time.time()
 CT.run()
-e = time.time()
-print("elapsed =", e-s)
 
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
-
-### LOAD PREVIOUSLY SAVED RESULTS ###
-CT=load_CellTracking(
-        IMGS, 
-        path_save, 
-        embcode, 
-        xyresolution=xyres, 
-        zresolution=zres,
-        segmentation_args=segmentation_args,
-        concatenation3D_args=concatenation3D_args,
-        tracking_args = tracking_args, 
-        error_correction_args=error_correction_args,    
-        plot_args = plot_args,
-    )
-
-
-### SAVE RESULTS AS MASKS HYPERSTACK
-save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)

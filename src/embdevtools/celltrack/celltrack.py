@@ -18,21 +18,21 @@ from tifffile import imwrite
 from .core.dataclasses import (CellTracking_info, backup_CellTrack,
                                contruct_Cell_from_jitCell,
                                contruct_jitCell_from_Cell)
-from .core.extraclasses import Slider_t, Slider_z
-from .core.iters import plotRound
+from .core.plot.plot_extraclasses import Slider_t, Slider_z
+from .core.plot.plot_iters import plotRound
 from .core.multiprocessing import (multiprocess_add_tasks, multiprocess_end,
                                    multiprocess_get_results,
                                    multiprocess_start, worker)
-from .core.PA import PlotActionCellPicker, PlotActionCT
-from .core.pickers import LineBuilder_lasso, LineBuilder_points
-from .core.plotting import check_and_fill_plot_args, check_stacks_for_plotting, norm_stack_per_z
-from .core.segmentation import (cell_segmentation2D_cellpose,
+from .core.plot.PA import PlotActionCellPicker, PlotActionCT
+from .core.plot.pickers import LineBuilder_lasso, LineBuilder_points
+from .core.plot.plotting import check_and_fill_plot_args, check_stacks_for_plotting, norm_stack_per_z
+from .core.segmentation.segmentation import (cell_segmentation2D_cellpose,
                                 cell_segmentation2D_stardist,
                                 cell_segmentation3D,
                                 check_and_fill_concatenation3D_args,
                                 check_segmentation_args,
                                 fill_segmentation_args)
-from .core.segmentation_training import (
+from .core.segmentation.segmentation_training import (
     check_and_fill_train_segmentation_args, get_training_set,
     train_CellposeModel, train_StardistModel)
 from .core.tools.cell_tools import (create_cell, find_z_discontinuities,
@@ -40,21 +40,21 @@ from .core.tools.cell_tools import (create_cell, find_z_discontinuities,
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack, compute_labels_stack)
 from .core.tools.save_tools import load_cells, save_3Dstack, save_4Dstack, save_4Dstack_labels
-from .core.tools.segmentation_tools import (assign_labels, check3Dmethod,
+from .core.segmentation.segmentation_tools import (assign_labels, check3Dmethod,
                                             concatenate_to_3D, label_per_z,
                                             remove_short_cells,
                                             separate_concatenated_cells)
 from .core.tools.tools import (increase_outline_width,
                                increase_point_resolution, mask_from_outline,
                                sort_point_sequence)
-from .core.tools.tracking_tools import (_extract_unique_labels_and_max_label,
+from .core.tracking.tracking_tools import (_extract_unique_labels_and_max_label,
                                         _extract_unique_labels_per_time,
                                         _init_cell, _init_CT_cell_attributes,
                                         _order_labels_t, _order_labels_z,
                                         _reinit_update_CT_cell_attributes,
                                         _update_CT_cell_attributes,
                                         get_labels_centers)
-from .core.tracking import (check_tracking_args, fill_tracking_args,
+from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                             greedy_tracking, hungarian_tracking)
 from .core.utils_ct import (check_and_fill_error_correction_args,
                             construct_RGB, get_default_args, get_file_embcode, get_file_names,
