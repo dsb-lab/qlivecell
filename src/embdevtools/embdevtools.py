@@ -6,4 +6,3 @@ from .celltrack.celltrack import (CellTracking, construct_RGB,
                                   save_4Dstack_labels, compute_labels_stack)
 from .cytodonut.cytodonut import ERKKTR, load_donuts, plot_donuts
 from .embseg.embseg import EmbryoSegmentation, load_ES, save_ES
-from .pyjiyama import embryoregistration
