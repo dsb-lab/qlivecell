@@ -34,13 +34,14 @@ for file in files:
         else:
             file, embcode, files = get_file_embcode(path_data, file, returnfiles=True)
             IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
-            X.append(normalize(IMGS[0]))
+            # X.append(normalize(IMGS[0]))
+            X.append(IMGS[0])
 
-# extents = calculate_extents(Y)
-# anisotropy = tuple(np.max(extents) / extents)
-# print('empirical anisotropy of labeled objects = %s' % str(anisotropy))
+extents = calculate_extents(Y)
+anisotropy = tuple(np.max(extents) / extents)
+print('empirical anisotropy of labeled objects = %s' % str(anisotropy))
 
-anisotropy = (zres/xyres, 1.0, 1.0)
+# anisotropy = (zres/xyres, 1.0, 1.0)
 
 # 96 is a good default choice (see 1_data.ipynb)
 n_rays = 96

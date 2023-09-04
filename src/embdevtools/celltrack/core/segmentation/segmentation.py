@@ -53,7 +53,9 @@ def cell_segmentation2D_stardist(img, segmentation_args, segmentation_method_arg
     from csbdeep.utils import normalize
 
     model = segmentation_args["model"]
-    labels, _ = model.predict_instances(normalize(img), **segmentation_method_args)
+    # labels, _ = model.predict_instances(normalize(img), **segmentation_method_args)
+    labels, _ = model.predict_instances(img, **segmentation_method_args)
+
     printclear()
     outlines, masks, labs = get_outlines_masks_labels(labels)
 
@@ -188,8 +190,8 @@ def cell_segmentation3D_stardist(stack, segmentation_args, segmentation_method_a
     from csbdeep.utils import normalize
 
     model = segmentation_args["model"]
-    labels, _ = model.predict_instances(normalize(stack), **segmentation_method_args)
-    # labels, _ = model.predict_instances(stack, **segmentation_method_args)
+    # labels, _ = model.predict_instances(normalize(stack), **segmentation_method_args)
+    labels, _ = model.predict_instances(stack, **segmentation_method_args)
 
     printclear()
 

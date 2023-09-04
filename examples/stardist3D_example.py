@@ -13,7 +13,7 @@ file, embcode, files = get_file_embcode(path_data, 0, returnfiles=True)
 
 
 ### LOAD HYPERSTACKS ###
-channel = 1
+channel = 0
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
 # save_4Dstack(path_save,  embcode+"ch_%d" %(channel+1), IMGS, xyres, zres, imagejformat="TZYX", masks=False)
 
@@ -36,13 +36,13 @@ else:
 
 ### LOAD STARDIST MODEL ###
 from stardist.models import StarDist3D
-model = StarDist3D(None, name='test', basedir=path_save+'models')
+model = StarDist3D(None, name='test1', basedir=path_save+'models')
 
 ### DEFINE ARGUMENTS ###
 segmentation_args={
     'method': 'stardist3D', 
     'model': model, 
-    'sparse':True,
+    # 'sparse':True,
     # 'blur': [5,1], 
 }
 
@@ -92,7 +92,7 @@ CT.run()
 
 
 ### PLOTTING ###
-# IMGS_norm = norm_stack_per_z( IMGS[:1,30:50], saturation=0.7)
+IMGS_norm = norm_stack_per_z( IMGS, saturation=0.7)
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
 
