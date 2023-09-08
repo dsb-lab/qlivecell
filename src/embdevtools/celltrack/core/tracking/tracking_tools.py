@@ -156,6 +156,7 @@ def _reinit_update_CT_cell_attributes(
             Maskst.append(List.empty_list(typeof(jitcell.masks[0][0])))
             Centersit.append(List.empty_list(typeof(jitcell.centersi[0][0])))
             Centersjt.append(List.empty_list(typeof(jitcell.centersj[0][0])))
+            
         ctattr.Labels.append(Labelst)
         ctattr.Outlines.append(Outlinest)
         ctattr.Masks.append(Maskst)

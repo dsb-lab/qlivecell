@@ -64,7 +64,7 @@ error_correction_args = {
 
 ### CREATE CELLTRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:2], 
+    IMGS[:1], 
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -83,3 +83,5 @@ CT.run()
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
+CT.jitcells_selected = CT.jitcells[1:10]
+CT.update_label_attributes()

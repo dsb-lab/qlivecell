@@ -74,6 +74,8 @@ class PlotAction:
         self.path_to_save = CT.path_to_save
         self.filename = CT.embcode
         self.jitcells = CT.jitcells
+        self.jitcells_selected = CT.jitcells_selected
+
         self.CT_info = CT.CT_info
 
         self._plot_args = CT._plot_args
@@ -135,7 +137,7 @@ class PlotAction:
         # Point to CT variables
 
         self.jitcells = CT.jitcells
-
+        self.jitcells_selected = CT.jitcells_selected
         self._masks_stack = CT._masks_stack
 
         self.CTlist_of_cells = CT.list_of_cells
@@ -679,7 +681,7 @@ class PlotActionCT(PlotAction):
                 self.CTplot_masks = not self.CTplot_masks
         else:
             self.CTplot_masks = masks
-        for jitcell in self.jitcells:
+        for jitcell in self.jitcells_selected:
             if self.CTplot_masks:
                 alpha = 1
             else:
@@ -762,11 +764,11 @@ class PlotActionCT(PlotAction):
         if event.dblclick == True:
             self.update()
             self.reploting()
-            for id_cell, CT_cell in enumerate(self.jitcells):
+            for id_cell, CT_cell in enumerate(self.jitcells_selected):
                 if lab == CT_cell.label:
                     idx_lab = id_cell
-            tcell = self.jitcells[idx_lab].times.index(self.t)
-            zs = self.jitcells[idx_lab].zs[tcell]
+            tcell = self.jitcells_selected[idx_lab].times.index(self.t)
+            zs = self.jitcells_selected[idx_lab].zs[tcell]
             add_all = True
             idxtopop = []
             for jj, _cell in enumerate(self.list_of_cells):
@@ -959,7 +961,7 @@ class PlotActionCT(PlotAction):
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
-        CT_cell = _get_cell(self.jitcells, label=lab)
+        CT_cell = _get_cell(self.jitcells_selected, label=lab)
         cellid = CT_cell.id
         cont = True
         cell = [lab, cellid, self.t]
@@ -1002,7 +1004,7 @@ class PlotActionCT(PlotAction):
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
-        CT_cell = _get_cell(self.jitcells, label=lab)
+        CT_cell = _get_cell(self.jitcells_selected, label=lab)
         cellid = CT_cell.id
         cell = [lab, cellid, self.t]
         idxtopop = []
