@@ -41,7 +41,7 @@ concatenation3D_args = {
 }
 
 tracking_args = {
-    'time_step': 10, # minutes
+    'time_step': 10*3, # minutes
     'method': 'greedy', 
     'z_th':5, 
     'dist_th' : 10.0,
@@ -63,7 +63,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:2], 
+    IMGS[::3], 
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -80,4 +80,4 @@ CT = CellTracking(
 CT.run()
 
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS[:2])
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS[::3])
