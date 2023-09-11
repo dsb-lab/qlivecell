@@ -48,4 +48,4 @@ CT=load_CellTracking(
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
 ### SAVE RESULTS AS MASKS HYPERSTACK
-save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
+# save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)

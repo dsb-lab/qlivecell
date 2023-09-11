@@ -62,7 +62,7 @@ error_correction_args = {
 }
 
 
-### CREATE CELLTRACKING CLASS ###
+### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
     IMGS[:1], 
     path_save, 
