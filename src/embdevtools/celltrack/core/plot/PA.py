@@ -177,33 +177,42 @@ class PlotAction:
         self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
 
+    def time_scroll(self, event):
+        # if self.current_state == None: self.current_state="SCL"
+        if event.button == "up":
+            self.t = self.t + 1
+        elif event.button == "down":
+            self.t = self.t - 1
+
+        self.t = max(self.t, 0)
+        self.t = min(self.t, self.times - 1)
+        self.set_val_t_slider(self.t + 1)
+
+        if self.current_state == "SCL":
+            self.current_state = None
+
+    def cr_scroll(self, event):
+        if event.button == "up":
+            self.cr = self.cr - 1
+        elif event.button == "down":
+            self.cr = self.cr + 1
+
+        self.cr = max(self.cr, 0)
+        self.cr = min(self.cr, self.max_round)
+        self.set_val_z_slider(self.cr)
+
+        if self.current_state == "SCL":
+            self.current_state = None
+
+        
     def onscroll(self, event):
         if self.ctrl_is_held:
-            # if self.current_state == None: self.current_state="SCL"
-            if event.button == "up":
-                self.t = self.t + 1
-            elif event.button == "down":
-                self.t = self.t - 1
-
-            self.t = max(self.t, 0)
-            self.t = min(self.t, self.times - 1)
-            self.set_val_t_slider(self.t + 1)
-
-            if self.current_state == "SCL":
-                self.current_state = None
-
+            self.time_scroll(event)
         else:
-            if event.button == "up":
-                self.cr = self.cr - 1
-            elif event.button == "down":
-                self.cr = self.cr + 1
-
-            self.cr = max(self.cr, 0)
-            self.cr = min(self.cr, self.max_round)
-            self.set_val_z_slider(self.cr)
-
-            if self.current_state == "SCL":
-                self.current_state = None
+            if self.max_round == 0:
+                self.time_scroll(event)
+            else:
+                self.cr_scroll(event)
 
     def get_size(self):
         bboxfig = self.fig.get_window_extent().transformed(
