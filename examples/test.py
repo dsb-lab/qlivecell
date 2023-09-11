@@ -5,18 +5,17 @@ sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
 from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects/'
+path_data='/home/pablo/Desktop/PhD/projects/Data/belas/2D/movies/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/belas/2D/CellTrackObjects/'
 
 
 ### GET FULL FILE NAME AND FILE CODE ###
-file, embcode, files = get_file_embcode(path_data, 10, returnfiles=True)
-file, embcode, files = get_file_embcode(path_data, 'Lineage_2hr_082119_p1.tif', returnfiles=True)
+file, embcode, files = get_file_embcode(path_data, 1, returnfiles=True)
+# file, embcode, files = get_file_embcode(path_data, 'Lineage_2hr_082119_p1.tif', returnfiles=True)
 
 
 ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=1)
-
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=False, channel=0)
 
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
@@ -38,11 +37,11 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 2,
+    'min_cell_planes': 1,
 }
 
 tracking_args = {
-    'time_step': 5, # minutes
+    'time_step': 10, # minutes
     'method': 'greedy', 
     'z_th':5, 
     'dist_th' : 10.0,
@@ -64,7 +63,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:1], 
+    IMGS[:2], 
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -81,7 +80,4 @@ CT = CellTracking(
 CT.run()
 
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
-
-CT.jitcells_selected = CT.jitcells[1:10]
-CT.update_label_attributes()
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS[:2])

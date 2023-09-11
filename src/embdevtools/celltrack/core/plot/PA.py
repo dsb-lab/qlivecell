@@ -3,7 +3,7 @@ from copy import copy
 import matplotlib as mtp
 import numpy as np
 
-from ..dataclasses import contruct_Cell_from_jitCell
+from ..dataclasses import construct_Cell_from_jitCell
 from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
 from ..tools.ct_tools import set_cell_color
@@ -74,6 +74,8 @@ class PlotAction:
         self.path_to_save = CT.path_to_save
         self.filename = CT.embcode
         self.jitcells = CT.jitcells
+        self.jitcells_selected = CT.jitcells_selected
+
         self.CT_info = CT.CT_info
 
         self._plot_args = CT._plot_args
@@ -127,6 +129,7 @@ class PlotAction:
         self.CTseparate_cells_t = CT.separate_cells_t
         self.CTmitosis = CT.mitosis
         self.CTapoptosis = CT.apoptosis
+        self.CTselect_jitcells = CT.select_jitcells
         self.CTupdate_labels = CT.update_labels
 
         self._CTget_cell = CT._get_cell
@@ -135,7 +138,7 @@ class PlotAction:
         # Point to CT variables
 
         self.jitcells = CT.jitcells
-
+        self.jitcells_selected = CT.jitcells_selected
         self._masks_stack = CT._masks_stack
 
         self.CTlist_of_cells = CT.list_of_cells
@@ -308,6 +311,11 @@ class PlotActionCT(PlotAction):
                 self.current_state = "add"
                 self.switch_masks(masks=False)
                 self.add_cells()
+            if event.key == "p":
+                self.CTupdate_labels()
+                self.current_state = "pic"
+                self.switch_masks(masks=False)
+                self.pick_cells()
             elif event.key == "A":
                 # self.CTone_step_copy(self.t)
                 self.current_state = "apo"
@@ -341,7 +349,7 @@ class PlotActionCT(PlotAction):
                 self.CT_info.apo_cells = self.CTapoptotic_events
                 self.CT_info.mito_cells = self.CTmitotic_events
                 cells = [
-                    contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells
+                    construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells
                 ]
                 self.CTsave_cells(cells, self.CT_info, self.path_to_save, self.filename)
             self.update()
@@ -372,7 +380,6 @@ class PlotActionCT(PlotAction):
                 self.z = None
                 self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                 self.visualization()
-                self.update()
 
             elif event.key == "enter":
                 if self.current_state == "add":
@@ -396,7 +403,6 @@ class PlotActionCT(PlotAction):
                     self.z = None
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 if self.current_state == "del":
                     self.CP.stopit()
@@ -426,7 +432,6 @@ class PlotActionCT(PlotAction):
                     del self.CTlist_of_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "com":
                     self.CP.stopit()
@@ -439,7 +444,6 @@ class PlotActionCT(PlotAction):
                     self.z = None
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "joi":
                     self.CP.stopit()
@@ -452,7 +456,6 @@ class PlotActionCT(PlotAction):
                     self.z = None
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "Sep":
                     self.CP.stopit()
@@ -465,7 +468,6 @@ class PlotActionCT(PlotAction):
                     del self.CTlist_of_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "apo":
                     self.CP.stopit()
@@ -474,7 +476,6 @@ class PlotActionCT(PlotAction):
                     del self.list_of_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "mit":
                     self.CP.stopit()
@@ -487,11 +488,23 @@ class PlotActionCT(PlotAction):
                     del self.CTmito_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
+                elif self.current_state == "pic":
+                    self.CP.stopit()
+                    delattr(self, "CP")
+                    self.CTselect_jitcells(self.list_of_cells)
+                    self.current_subplot = None
+                    self.current_state = None
+                    self.ax_sel = None
+                    self.z = None
+                    del self.list_of_cells[:]
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.switch_masks(True)
+                    
                 else:
                     self.visualization()
-                    self.update()
+
                 self.current_subplot = None
                 self.current_state = None
                 self.ax_sel = None
@@ -681,6 +694,7 @@ class PlotActionCT(PlotAction):
             return final_cells
 
     def switch_masks(self, masks=None):
+
         if masks is None:
             if self.CTplot_masks is None:
                 self.CTplot_masks = True
@@ -688,7 +702,7 @@ class PlotActionCT(PlotAction):
                 self.CTplot_masks = not self.CTplot_masks
         else:
             self.CTplot_masks = masks
-        for jitcell in self.jitcells:
+        for jitcell in self.jitcells_selected:
             if self.CTplot_masks:
                 alpha = 1
             else:
@@ -771,11 +785,11 @@ class PlotActionCT(PlotAction):
         if event.dblclick == True:
             self.update()
             self.reploting()
-            for id_cell, CT_cell in enumerate(self.jitcells):
+            for id_cell, CT_cell in enumerate(self.jitcells_selected):
                 if lab == CT_cell.label:
                     idx_lab = id_cell
-            tcell = self.jitcells[idx_lab].times.index(self.t)
-            zs = self.jitcells[idx_lab].zs[tcell]
+            tcell = self.jitcells_selected[idx_lab].times.index(self.t)
+            zs = self.jitcells_selected[idx_lab].zs[tcell]
             add_all = True
             idxtopop = []
             for jj, _cell in enumerate(self.list_of_cells):
@@ -968,7 +982,7 @@ class PlotActionCT(PlotAction):
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
-        CT_cell = _get_cell(self.jitcells, label=lab)
+        CT_cell = _get_cell(self.jitcells_selected, label=lab)
         cellid = CT_cell.id
         cont = True
         cell = [lab, cellid, self.t]
@@ -1011,7 +1025,7 @@ class PlotActionCT(PlotAction):
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
-        CT_cell = _get_cell(self.jitcells, label=lab)
+        CT_cell = _get_cell(self.jitcells_selected, label=lab)
         cellid = CT_cell.id
         cell = [lab, cellid, self.t]
         idxtopop = []
@@ -1028,6 +1042,29 @@ class PlotActionCT(PlotAction):
                 self.list_of_cells.pop(jj)
         else:
             self.list_of_cells.append(cell)
+
+        self.update()
+        self.reploting()
+    
+    def pick_cells(self):
+        self.title.set(text="PICK CELL", ha="left", x=0.01)
+        self.instructions.set(
+            text="Right-click to select cell"
+        )
+        self.instructions.set_backgroundcolor((1.0, 1.0, 1.0, 0.4))
+        self.fig.patch.set_facecolor((0.3, 0.3, 0.3, 0.1))
+        self.CP = CellPicker(self.fig.canvas, self.pick_cells_callback)
+        
+    def pick_cells_callback(self, event):
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
+        if lab is None:
+            return
+        cell = [lab, z]
+        if cell not in self.list_of_cells:
+            self.list_of_cells.append(cell)
+        else:
+            self.list_of_cells.remove(cell)
 
         self.update()
         self.reploting()
