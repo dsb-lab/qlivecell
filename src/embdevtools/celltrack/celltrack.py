@@ -1319,16 +1319,17 @@ class CellTracking(object):
         else:
             idx = self._labels.index(label)
 
-        self.jitcells.pop(idx)
-        
+        poped = self.jitcells.pop(idx)
+        print("POPED LABEL =", poped.label)
         idx = None
         if label == None:
             idx = self._ids_selected.index(cellid)
         else:
             idx = self._labels_selected.index(label)
 
-        self.jitcells_selected.pop(idx)
-        
+        poped = self.jitcells_selected.pop(idx)
+        print("POPED LABEL =", poped.label)
+
         self._get_cellids_celllabels()
 
     def plot_axis(self, _ax, img, z, t):
