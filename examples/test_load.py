@@ -8,14 +8,14 @@ from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking
 path_data='/home/pablo/Desktop/PhD/projects/Data/belas/2D/movies/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/belas/2D/CellTrackObjects/'
 
+
 ### GET FULL FILE NAME AND FILE CODE ###
 file, embcode, files = get_file_embcode(path_data, 1, returnfiles=True)
 
 
 ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=1)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=False, channel=0)
 
-IMGS_iso = isotropize_hyperstack(IMGS[:2], zres, xyres)
 
 ### DEFINE ARGUMENTS ###
 plot_args = {
@@ -34,7 +34,7 @@ error_correction_args = {
 
 ### LOAD PREVIOUSLY SAVED RESULTS ###
 CT=load_CellTracking(
-        IMGS, 
+        IMGS[::3], 
         path_save, 
         embcode, 
         xyresolution=xyres, 
@@ -44,19 +44,7 @@ CT=load_CellTracking(
     )
 
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS[::3])
 
 ### SAVE RESULTS AS MASKS HYPERSTACK
 # save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
-
-labs_sel = []
-labs_sel2 = []
-labs = []
-
-for i, cell in enumerate(CT.jitcells_selected):
-    labs_sel.append(cell.label)
-    labs_sel2.append(CT._labels_selected[i])
-    
-for cell in CT.jitcells:
-    labs.append(cell.label)
-    
