@@ -1225,6 +1225,10 @@ class CellTracking(object):
 
         self.nactions += 1
 
+    def select_jitcells(self, list_of_cells):
+        print(list_of_cells)
+        return
+    
     def train_segmentation_model(
         self,
         train_segmentation_args=None,

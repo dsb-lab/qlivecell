@@ -129,6 +129,7 @@ class PlotAction:
         self.CTseparate_cells_t = CT.separate_cells_t
         self.CTmitosis = CT.mitosis
         self.CTapoptosis = CT.apoptosis
+        self.CTselect_jitcells = CT.select_jitcells
         self.CTupdate_labels = CT.update_labels
 
         self._CTget_cell = CT._get_cell
@@ -310,6 +311,11 @@ class PlotActionCT(PlotAction):
                 self.current_state = "add"
                 self.switch_masks(masks=False)
                 self.add_cells()
+            if event.key == "p":
+                # self.CTone_step_copy()
+                self.current_state = "pic"
+                self.switch_masks(masks=False)
+                self.pick_cells()
             elif event.key == "A":
                 # self.CTone_step_copy(self.t)
                 self.current_state = "apo"
@@ -491,6 +497,19 @@ class PlotActionCT(PlotAction):
                     self.visualization()
                     self.update()
 
+                elif self.current_state == "pic":
+                    self.CP.stopit()
+                    delattr(self, "CP")
+                    self.CTselect_jitcells(self.list_of_cells)
+                    self.current_subplot = None
+                    self.current_state = None
+                    self.ax_sel = None
+                    self.z = None
+                    del self.list_of_cells[:]
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.update()
+                    
                 else:
                     self.visualization()
                     self.update()
@@ -1031,6 +1050,29 @@ class PlotActionCT(PlotAction):
                 self.list_of_cells.pop(jj)
         else:
             self.list_of_cells.append(cell)
+
+        self.update()
+        self.reploting()
+    
+    def pick_cells(self):
+        self.title.set(text="PICK CELL", ha="left", x=0.01)
+        self.instructions.set(
+            text="Right-click to select cell"
+        )
+        self.instructions.set_backgroundcolor((1.0, 1.0, 1.0, 0.4))
+        self.fig.patch.set_facecolor((0.3, 0.3, 0.3, 0.1))
+        self.CP = CellPicker(self.fig.canvas, self.pick_cells_callback)
+        
+    def pick_cells_callback(self, event):
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
+        if lab is None:
+            return
+        cell = [lab, z]
+        if cell not in self.list_of_cells:
+            self.list_of_cells.append(cell)
+        else:
+            self.list_of_cells.remove(cell)
 
         self.update()
         self.reploting()
