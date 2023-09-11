@@ -58,6 +58,7 @@ def _extract_unique_labels_per_time(Labels, times):
     if isListEmpty(Labels):
         return unique_labels_T
 
+    
     unique_labels_T = List(
         [List([int(x) for x in sublist]) for sublist in unique_labels_T]
     )

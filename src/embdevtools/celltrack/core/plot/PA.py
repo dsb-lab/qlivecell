@@ -674,7 +674,7 @@ class PlotActionCT(PlotAction):
             return final_cells
 
     def switch_masks(self, masks=None):
-        print()
+
         if masks is None:
             if self.CTplot_masks is None:
                 self.CTplot_masks = True
@@ -683,7 +683,6 @@ class PlotActionCT(PlotAction):
         else:
             self.CTplot_masks = masks
         for jitcell in self.jitcells_selected:
-            print(jitcell.label)
             if self.CTplot_masks:
                 alpha = 1
             else:

@@ -103,8 +103,15 @@ class CellTracking(object):
             self._stacks = stacks
             self.STACKS = stacks
 
-        self._xyresolution = xyresolution
-        self._zresolution = zresolution
+        if xyresolution is None:
+            self._xyresolution = 1
+        else:
+            self._xyresolution = xyresolution
+            
+        if zresolution is None:
+            self._zresolution = 1
+        else:
+            self._zresolution = zresolution
 
         # check and fill error correction arguments
         self._err_corr_args = check_and_fill_error_correction_args(
@@ -1313,23 +1320,28 @@ class CellTracking(object):
             return cell
 
     def _del_cell(self, label=None, cellid=None):
-        idx = None
+        
+        len_selected_jitcells = len(self.jitcells_selected)
+        idx1 = None
         if label == None:
-            idx = self._ids.index(cellid)
+            idx1 = self._ids.index(cellid)
         else:
-            idx = self._labels.index(label)
+            idx1 = self._labels.index(label)
 
-        poped = self.jitcells.pop(idx)
-        print("POPED LABEL =", poped.label)
-        idx = None
+        idx2 = None
         if label == None:
-            idx = self._ids_selected.index(cellid)
+            idx2 = self._ids_selected.index(cellid)
         else:
-            idx = self._labels_selected.index(label)
+            idx2 = self._labels_selected.index(label)
 
-        poped = self.jitcells_selected.pop(idx)
+        poped = self.jitcells.pop(idx1)
         print("POPED LABEL =", poped.label)
-
+        
+        if len_selected_jitcells == len(self.jitcells_selected):
+            poped = self.jitcells_selected.pop(idx2)
+            print("POPED LABEL =", poped.label)
+        else:
+            pass #selected jitcells is a copy of jitcells so it was deleted already
         self._get_cellids_celllabels()
 
     def plot_axis(self, _ax, img, z, t):

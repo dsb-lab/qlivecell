@@ -49,3 +49,15 @@ CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
 ### SAVE RESULTS AS MASKS HYPERSTACK
 # save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
+
+labs_sel = []
+labs_sel2 = []
+labs = []
+
+for i, cell in enumerate(CT.jitcells_selected):
+    labs_sel.append(cell.label)
+    labs_sel2.append(CT._labels_selected[i])
+    
+for cell in CT.jitcells:
+    labs.append(cell.label)
+    

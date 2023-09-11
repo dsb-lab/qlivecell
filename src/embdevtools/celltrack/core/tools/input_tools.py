@@ -74,6 +74,9 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
                     IMGS = np.array([tif.asarray()[:, channel, :, :]])
                 else:
                     IMGS = np.array(tif.asarray()[:, :, channel, :, :])
+            
+            if len(IMGS.shape) == 3:
+                IMGS = np.array([IMGS])
         else:
             if channel == None:
                 if len(shapeimg) == 2:
@@ -86,8 +89,10 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
                 else:
                     IMGS = np.array(tif.asarray()[:, channel, :, :])
 
-        if len(IMGS.shape) == 3:
-            IMGS = np.array([IMGS])
+            if len(IMGS.shape) == 3:
+                sh = IMGS.shape
+                IMGS = IMGS.reshape(sh[0], 1, sh[1], sh[2])
+                
         imagej_metadata = tif.imagej_metadata
         tags = tif.pages[0].tags
         # parse X, Y resolution
