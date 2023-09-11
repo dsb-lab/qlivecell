@@ -16,8 +16,8 @@ from scipy.spatial import ConvexHull
 from tifffile import imwrite
 
 from .core.dataclasses import (CellTracking_info, backup_CellTrack,
-                               contruct_Cell_from_jitCell,
-                               contruct_jitCell_from_Cell)
+                               construct_Cell_from_jitCell,
+                               construct_jitCell_from_Cell)
 from .core.plot.plot_extraclasses import Slider_t, Slider_z
 from .core.plot.plot_iters import plotRound
 from .core.multiprocessing import (multiprocess_add_tasks, multiprocess_end,
@@ -238,7 +238,7 @@ class CellTracking(object):
         self.mitotic_events = self.CT_info.mito_cells
         self.nactions = self.CT_info.nactions
 
-        self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in cells])
+        self.jitcells = typed.List([construct_jitCell_from_Cell(cell) for cell in cells])
         for jitcell in self.jitcells:
             update_jitcell(jitcell, self._stacks)
         
@@ -259,7 +259,7 @@ class CellTracking(object):
 
         self.update_labels(backup=False)
 
-        cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
+        cells = [construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
         self.backupCT = backup_CellTrack(
             0,
             deepcopy(cells),
@@ -425,7 +425,7 @@ class CellTracking(object):
 
         printfancy("labels updated", clear_prev=1)
 
-        cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
+        cells = [construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
 
         self.backupCT = backup_CellTrack(
             0,
@@ -452,7 +452,7 @@ class CellTracking(object):
             gc.collect()
 
         cells = deepcopy(backup.cells)
-        self.jitcells = typed.List([contruct_jitCell_from_Cell(cell) for cell in cells])
+        self.jitcells = typed.List([construct_jitCell_from_Cell(cell) for cell in cells])
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
@@ -487,7 +487,7 @@ class CellTracking(object):
             self.one_step_copy()
 
     def one_step_copy(self, t=0):
-        cells = [contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
+        cells = [construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
         new_copy = backup_CellTrack(
             t,
             deepcopy(cells),
@@ -632,7 +632,7 @@ class CellTracking(object):
                 Masks_tz,
             )
 
-            jitcell = contruct_jitCell_from_Cell(cell)
+            jitcell = construct_jitCell_from_Cell(cell)
             update_jitcell(jitcell, self._stacks)
             self.jitcells.append(jitcell)
         self.jitcells_selected = self.jitcells
@@ -763,10 +763,13 @@ class CellTracking(object):
         )
         self.max_label += 1
         self.currentcellid += 1
-        new_jitcell = contruct_jitCell_from_Cell(new_cell)
+        new_jitcell = construct_jitCell_from_Cell(new_cell)
         update_jitcell(new_jitcell, self._stacks)
+        
+        jitcellslen = len(self.jitcells_selected)
         self.jitcells.append(new_jitcell)
-        self.jitcells_selected.append[self.jitcells[-1]]
+        if jitcellslen < len(self.jitcells_selected):
+            self.jitcells_selected.append(self.jitcells[-1])
 
     def add_cell(self, PACP):
         if self._err_corr_args["line_builder_mode"] == "points":
@@ -902,13 +905,15 @@ class CellTracking(object):
                 )
                 update_jitcell(cell, self._stacks)
                 if new_maxlabel is not None:
-                    new_jitcell = contruct_jitCell_from_Cell(new_cell)
+                    new_jitcell = construct_jitCell_from_Cell(new_cell)
                     new_labs.append(new_jitcell.label)
                     self.max_label = new_maxlabel
                     self.currentcellid = new_currentcellid
                     update_jitcell(new_jitcell, self._stacks)
+                    jitcellslen = len(self.jitcells_selected)
                     self.jitcells.append(new_jitcell)
-                    self.jitcells_selected.append(self.jitcells[-1])
+                    if jitcellslen < len(self.jitcells_selected):
+                        self.jitcells_selected.append(self.jitcells[-1])
 
             except ValueError:
                 pass
@@ -1168,7 +1173,10 @@ class CellTracking(object):
         self.currentcellid += 1
         update_jitcell(new_cell, self._stacks)
         self.jitcells.append(new_cell)
-        self.jitcells_selected.append(new_cell)
+        jitcellslen = len(self.jitcells_selected)
+        if jitcellslen < len(self.jitcells_selected):
+            self.jitcells_selected.append(self.jitcells[-1])
+
 
         self.update_label_attributes()
 
@@ -1226,9 +1234,46 @@ class CellTracking(object):
         self.nactions += 1
 
     def select_jitcells(self, list_of_cells):
-        print(list_of_cells)
-        return
-    
+
+        cells = [x[0] for x in list_of_cells]
+        cellids = []
+        Zs = [x[1] for x in list_of_cells]
+
+        if len(cells) == 0:
+            return
+
+        self.jitcells = typed.List([jitcell.copy() for jitcell in self.jitcells])
+
+        del self.jitcells_selected[:]
+        
+        for lab in cells:
+            cell = self._get_cell(lab)
+            self.jitcells_selected.append(cell)
+        
+        self.update_label_attributes()
+        
+        compute_point_stack(
+                self._masks_stack,
+                self.jitcells_selected,
+                range(self.times),
+                self.unique_labels_T,
+                self._plot_args["dim_change"],
+                self._plot_args["labels_colors"],
+                1,
+                mode="masks",
+            )
+        compute_point_stack(
+            self._outlines_stack,
+            self.jitcells_selected,
+            range(self.times),
+            self.unique_labels_T,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            1,
+            mode="outlines",
+        )
+        
+        
     def train_segmentation_model(
         self,
         train_segmentation_args=None,

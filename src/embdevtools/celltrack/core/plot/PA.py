@@ -3,7 +3,7 @@ from copy import copy
 import matplotlib as mtp
 import numpy as np
 
-from ..dataclasses import contruct_Cell_from_jitCell
+from ..dataclasses import construct_Cell_from_jitCell
 from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
 from ..tools.ct_tools import set_cell_color
@@ -312,7 +312,7 @@ class PlotActionCT(PlotAction):
                 self.switch_masks(masks=False)
                 self.add_cells()
             if event.key == "p":
-                # self.CTone_step_copy()
+                self.CTupdate_labels()
                 self.current_state = "pic"
                 self.switch_masks(masks=False)
                 self.pick_cells()
@@ -349,7 +349,7 @@ class PlotActionCT(PlotAction):
                 self.CT_info.apo_cells = self.CTapoptotic_events
                 self.CT_info.mito_cells = self.CTmitotic_events
                 cells = [
-                    contruct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells
+                    construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells
                 ]
                 self.CTsave_cells(cells, self.CT_info, self.path_to_save, self.filename)
             self.update()
@@ -380,7 +380,6 @@ class PlotActionCT(PlotAction):
                 self.z = None
                 self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                 self.visualization()
-                self.update()
 
             elif event.key == "enter":
                 if self.current_state == "add":
@@ -404,7 +403,6 @@ class PlotActionCT(PlotAction):
                     self.z = None
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 if self.current_state == "del":
                     self.CP.stopit()
@@ -434,7 +432,6 @@ class PlotActionCT(PlotAction):
                     del self.CTlist_of_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "com":
                     self.CP.stopit()
@@ -447,7 +444,6 @@ class PlotActionCT(PlotAction):
                     self.z = None
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "joi":
                     self.CP.stopit()
@@ -460,7 +456,6 @@ class PlotActionCT(PlotAction):
                     self.z = None
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "Sep":
                     self.CP.stopit()
@@ -473,7 +468,6 @@ class PlotActionCT(PlotAction):
                     del self.CTlist_of_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "apo":
                     self.CP.stopit()
@@ -482,7 +476,6 @@ class PlotActionCT(PlotAction):
                     del self.list_of_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "mit":
                     self.CP.stopit()
@@ -495,7 +488,6 @@ class PlotActionCT(PlotAction):
                     del self.CTmito_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
 
                 elif self.current_state == "pic":
                     self.CP.stopit()
@@ -508,11 +500,11 @@ class PlotActionCT(PlotAction):
                     del self.list_of_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                    self.update()
+                    self.switch_masks(True)
                     
                 else:
                     self.visualization()
-                    self.update()
+
                 self.current_subplot = None
                 self.current_state = None
                 self.ax_sel = None

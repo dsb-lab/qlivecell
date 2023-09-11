@@ -2,7 +2,7 @@
 # from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
+from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, isotropize_hyperstack
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
@@ -17,6 +17,7 @@ file, embcode, files = get_file_embcode(path_data, 'Lineage_2hr_082119_p1.tif', 
 ### LOAD HYPERSTACKS ###
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=1)
 
+IMGS_iso = isotropize_hyperstack(IMGS[:2], zres, xyres)
 
 ### DEFINE ARGUMENTS ###
 plot_args = {

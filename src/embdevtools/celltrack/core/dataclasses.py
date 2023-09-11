@@ -284,14 +284,14 @@ def _jitcell_attr_to_cell_attr(cell: jitCell):
     return attr_list
 
 
-def contruct_jitCell_from_Cell(cell: Cell):
+def construct_jitCell_from_Cell(cell: Cell):
     cell_attr = _cell_attr_to_jitcell_attr(cell)
     jitcell = jitCell(*cell_attr)
 
     return jitcell
 
 
-def contruct_Cell_from_jitCell(cell: jitCell):
+def construct_Cell_from_jitCell(cell: jitCell):
     cell_attr = _jitcell_attr_to_cell_attr(cell)
     jitcell = Cell(*cell_attr)
     return jitcell

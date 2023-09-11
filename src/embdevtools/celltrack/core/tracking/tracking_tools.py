@@ -3,7 +3,7 @@ from numba import jit, njit, typeof
 from numba.typed import List
 from numba.types import ListType
 
-from ..dataclasses import CTattributes, contruct_jitCell_from_Cell, jitCell
+from ..dataclasses import CTattributes, construct_jitCell_from_Cell, jitCell
 from ..tools.cell_tools import create_cell, update_cell
 from ..segmentation.segmentation_tools import (extract_cell_centers, label_per_z,
                                         label_per_z_jit)
@@ -135,7 +135,7 @@ def _init_CT_cell_attributes(jitcells: ListType(jitCell)):
     hints = []
     if len(jitcells) == 0:
         cell = create_toy_cell()
-        jitcell = contruct_jitCell_from_Cell(cell)
+        jitcell = construct_jitCell_from_Cell(cell)
     else:
         jitcell = jitcells[0]
 
@@ -153,7 +153,7 @@ def _reinit_update_CT_cell_attributes(
 ):
     if len(jitcells) == 0:
         cell = create_toy_cell()
-        jitcell = contruct_jitCell_from_Cell(cell)
+        jitcell = construct_jitCell_from_Cell(cell)
     else:
         jitcell = jitcells[0]
 

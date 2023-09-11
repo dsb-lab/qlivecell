@@ -63,7 +63,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[::100], 
+    IMGS[:2], 
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -80,4 +80,4 @@ CT = CellTracking(
 CT.run()
 
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS[::100])
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS[:2])
