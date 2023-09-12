@@ -665,7 +665,6 @@ class PlotActionCT(PlotAction):
             mitocells=marked_mito_str,
             conflicts=self.CTconflicts,
         )
-        hints = ""
         self.hints.set(text=hints, fontsize=width_or_height / scale1)
         self.title.set(fontsize=width_or_height / scale2)
         self.fig.subplots_adjust(top=0.9, left=0.2)

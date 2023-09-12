@@ -1609,6 +1609,7 @@ class CellTracking(object):
                     xs = round(xs * self._plot_args["dim_change"])
                     ys = round(ys * self._plot_args["dim_change"])
 
+                    lab_to_display = lab
                     if self._plot_args["plot_centers"][0]:
                         if zz == z:
                             if [cell.id, PACP.t] in self.apoptotic_events:
@@ -1619,8 +1620,16 @@ class CellTracking(object):
                                 self._pos_scatters.append(sc)
                                 
                             if self._plot_args["plot_centers"][1]:
+                                
+                                # Check if cell is an immeadiate dauther and plot the corresponding label
+                                for mitoev in self.mitotic_events:
+                                    for icell, mitocell in enumerate(mitoev[1:]):
+                                        if cell.id == mitocell[0]:
+                                            if PACP.t == ev[1]:
+                                                mother = self._get_cell(cellid=mitoev[0][0])
+                                                lab_to_display = mother.label + 0.1 + icell/10
                                 anno = PACP.ax[id].annotate(
-                                    str(lab), xy=(ys, xs), c="white"
+                                    str(lab_to_display), xy=(ys, xs), c="white"
                                 )
                                 self._annotations.append(anno)
 
@@ -1635,7 +1644,7 @@ class CellTracking(object):
 
         plt.subplots_adjust(bottom=0.075)
 
-
+    
 def load_CellTracking(
     stacks,
     pthtosave,

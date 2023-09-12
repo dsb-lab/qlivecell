@@ -2,7 +2,7 @@
 # from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, isotropize_hyperstack
+from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, construct_RGB, save_4Dstack, isotropize_hyperstack
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/belas/2D/movies/'
@@ -15,14 +15,15 @@ file, embcode, files = get_file_embcode(path_data, 1, returnfiles=True)
 
 ### LOAD HYPERSTACKS ###
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=False, channel=0)
+IMGSCer1, xyres, zres = read_img_with_resolution(path_data+file, stack=False, channel=1)
 
-
+IMGSRGB = construct_RGB(R=IMGS, G=IMGSCer1, B=None, order="XYC")
 ### DEFINE ARGUMENTS ###
 plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), 
+    'plot_stack_dims': (256, 256), 
     'plot_centers':[True, True]
 }
 
@@ -44,7 +45,7 @@ CT=load_CellTracking(
     )
 
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS[::3])
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGSRGB[::3])
 
 ### SAVE RESULTS AS MASKS HYPERSTACK
 # save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)

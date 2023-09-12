@@ -56,14 +56,15 @@ def check_stacks_for_plotting(
             for z in range(slices):
                 if len(plot_args["plot_stack_dims"]) == 3:
                     for ch in range(3):
-                        plot_stack = resize(
+                        plot_stack_ch = resize(
                             stacks_for_plotting[t, z, :, :, ch],
                             plot_args["plot_stack_dims"][0:2],
                         )
+
                         norm_factor = np.max(plot_stacks[t, z, :, :, ch])
                         if norm_factor < 0.01:
                             norm_factor = 1.0
-                        plot_stack[:, :, ch] = plot_stack / norm_factor
+                        plot_stack[:, :, ch] = plot_stack_ch / norm_factor
 
                 else:
                     plot_stack = resize(
