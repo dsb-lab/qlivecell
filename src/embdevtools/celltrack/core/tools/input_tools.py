@@ -100,18 +100,18 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
             npix, unit = tags["XResolution"].value
             xres = unit / npix
         except KeyError:
-            xres = None
+            xres = 1
 
         try:
             npix, unit = tags["YResolution"].value
             yres = unit / npix
         except KeyError:
-            yres = None
+            yres = 1
 
         try:
             zres = imagej_metadata["spacing"]
         except KeyError:
-            zres = None
+            zres = 1
 
         if xres == yres:
             xyres = xres
