@@ -18,49 +18,50 @@ from tifffile import imwrite
 from .core.dataclasses import (CellTracking_info, backup_CellTrack,
                                construct_Cell_from_jitCell,
                                construct_jitCell_from_Cell)
-from .core.plot.plot_extraclasses import Slider_t, Slider_z
-from .core.plot.plot_iters import plotRound
 from .core.multiprocessing import (multiprocess_add_tasks, multiprocess_end,
                                    multiprocess_get_results,
                                    multiprocess_start, worker)
 from .core.plot.PA import PlotActionCellPicker, PlotActionCT
 from .core.plot.pickers import LineBuilder_lasso, LineBuilder_points
-from .core.plot.plotting import check_and_fill_plot_args, check_stacks_for_plotting, norm_stack_per_z
-from .core.segmentation.segmentation import (cell_segmentation2D_cellpose,
-                                cell_segmentation2D_stardist,
-                                cell_segmentation3D,
-                                check_and_fill_concatenation3D_args,
-                                check_segmentation_args,
-                                fill_segmentation_args)
+from .core.plot.plot_extraclasses import Slider_t, Slider_z
+from .core.plot.plot_iters import plotRound
+from .core.plot.plotting import (check_and_fill_plot_args,
+                                 check_stacks_for_plotting, norm_stack_per_z)
+from .core.segmentation.segmentation import (
+    cell_segmentation2D_cellpose, cell_segmentation2D_stardist,
+    cell_segmentation3D, check_and_fill_concatenation3D_args,
+    check_segmentation_args, fill_segmentation_args)
+from .core.segmentation.segmentation_tools import (assign_labels,
+                                                   check3Dmethod,
+                                                   concatenate_to_3D,
+                                                   label_per_z,
+                                                   remove_short_cells,
+                                                   separate_concatenated_cells)
 from .core.segmentation.segmentation_training import (
     check_and_fill_train_segmentation_args, get_training_set,
     train_CellposeModel, train_StardistModel)
 from .core.tools.cell_tools import (create_cell, find_z_discontinuities,
                                     update_cell, update_jitcell)
 from .core.tools.ct_tools import (check_and_override_args,
-                                  compute_labels_stack, compute_point_stack, compute_labels_stack)
-from .core.tools.save_tools import load_cells, save_3Dstack, save_4Dstack, save_4Dstack_labels
-from .core.segmentation.segmentation_tools import (assign_labels, check3Dmethod,
-                                            concatenate_to_3D, label_per_z,
-                                            remove_short_cells,
-                                            separate_concatenated_cells)
-from .core.tools.tools import (increase_outline_width,
+                                  compute_labels_stack, compute_point_stack)
+from .core.tools.input_tools import (get_file_embcode, get_file_names,
+                                     read_img_with_resolution)
+from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
+                                    save_4Dstack_labels)
+from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
+                                     isotropize_stack, isotropize_stackRGB)
+from .core.tools.tools import (check_and_fill_error_correction_args,
+                               get_default_args, increase_outline_width,
                                increase_point_resolution, mask_from_outline,
+                               printclear, printfancy, progressbar,
                                sort_point_sequence)
-from .core.tracking.tracking_tools import (_extract_unique_labels_and_max_label,
-                                        _extract_unique_labels_per_time,
-                                        _init_cell, _init_CT_cell_attributes,
-                                        _order_labels_t, _order_labels_z,
-                                        _reinit_update_CT_cell_attributes,
-                                        _update_CT_cell_attributes,
-                                        get_labels_centers)
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
-                            greedy_tracking, hungarian_tracking)
-from .core.tools.tools  import (check_and_fill_error_correction_args, get_default_args
-                            , printclear, printfancy, progressbar)
-
-from .core.tools.input_tools import get_file_embcode, get_file_names, read_img_with_resolution
-from .core.tools.stack_tools import construct_RGB, isotropize_hyperstack, isotropize_stackRGB, isotropize_stack
+                                     greedy_tracking, hungarian_tracking)
+from .core.tracking.tracking_tools import (
+    _extract_unique_labels_and_max_label, _extract_unique_labels_per_time,
+    _init_cell, _init_CT_cell_attributes, _order_labels_t, _order_labels_z,
+    _reinit_update_CT_cell_attributes, _update_CT_cell_attributes,
+    get_labels_centers)
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 warnings.simplefilter("ignore", UserWarning)
@@ -107,7 +108,7 @@ class CellTracking(object):
             self._xyresolution = 1
         else:
             self._xyresolution = xyresolution
-            
+
         if zresolution is None:
             self._zresolution = 1
         else:
@@ -125,10 +126,10 @@ class CellTracking(object):
 
         self._labels = []
         self._ids = []
-        
+
         self._labels_selected = []
         self._ids_selected = []
-        
+
         # check if cells should be loaded using path_to_save and embcose
         if _loadcells == True:
             _loadcells = self.path_to_save
@@ -238,10 +239,12 @@ class CellTracking(object):
         self.mitotic_events = self.CT_info.mito_cells
         self.nactions = self.CT_info.nactions
 
-        self.jitcells = typed.List([construct_jitCell_from_Cell(cell) for cell in cells])
+        self.jitcells = typed.List(
+            [construct_jitCell_from_Cell(cell) for cell in cells]
+        )
         for jitcell in self.jitcells:
             update_jitcell(jitcell, self._stacks)
-        
+
         self.jitcells_selected = self.jitcells
         self.extract_currentcellid()
 
@@ -452,7 +455,9 @@ class CellTracking(object):
             gc.collect()
 
         cells = deepcopy(backup.cells)
-        self.jitcells = typed.List([construct_jitCell_from_Cell(cell) for cell in cells])
+        self.jitcells = typed.List(
+            [construct_jitCell_from_Cell(cell) for cell in cells]
+        )
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
@@ -696,21 +701,27 @@ class CellTracking(object):
 
         if backup:
             self.one_step_copy()
-        
+
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)
 
     def _get_cellids_celllabels(self):
         del self._labels[:]
         del self._ids[:]
-        self._ids = list(map(getattr, self.jitcells, ['id']*len(self.jitcells)))
-        self._labels = list(map(getattr, self.jitcells, ['label']*len(self.jitcells)))
+        self._ids = list(map(getattr, self.jitcells, ["id"] * len(self.jitcells)))
+        self._labels = list(map(getattr, self.jitcells, ["label"] * len(self.jitcells)))
 
         del self._labels_selected[:]
         del self._ids_selected[:]
-        self._ids_selected = list(map(getattr, self.jitcells_selected, ['id']*len(self.jitcells_selected)))
-        self._labels_selected = list(map(getattr, self.jitcells_selected, ['label']*len(self.jitcells_selected)))
-        
+        self._ids_selected = list(
+            map(getattr, self.jitcells_selected, ["id"] * len(self.jitcells_selected))
+        )
+        self._labels_selected = list(
+            map(
+                getattr, self.jitcells_selected, ["label"] * len(self.jitcells_selected)
+            )
+        )
+
     def _get_hints(self):
         del self.hints[:]
         for t in range(self.times - 1):
@@ -765,7 +776,7 @@ class CellTracking(object):
         self.currentcellid += 1
         new_jitcell = construct_jitCell_from_Cell(new_cell)
         update_jitcell(new_jitcell, self._stacks)
-        
+
         jitcellslen = len(self.jitcells_selected)
         self.jitcells.append(new_jitcell)
         if jitcellslen < len(self.jitcells_selected):
@@ -892,7 +903,6 @@ class CellTracking(object):
             else:
                 if lab not in labs_to_replot:
                     labs_to_replot.append(lab)
-
 
         new_labs = []
         for i, cellid in enumerate(np.unique(cellids)):
@@ -1177,7 +1187,6 @@ class CellTracking(object):
         if jitcellslen < len(self.jitcells_selected):
             self.jitcells_selected.append(self.jitcells[-1])
 
-
         self.update_label_attributes()
 
         compute_point_stack(
@@ -1234,7 +1243,6 @@ class CellTracking(object):
         self.nactions += 1
 
     def select_jitcells(self, list_of_cells):
-
         cells = [x[0] for x in list_of_cells]
         cellids = []
         Zs = [x[1] for x in list_of_cells]
@@ -1245,23 +1253,23 @@ class CellTracking(object):
         self.jitcells = typed.List([jitcell.copy() for jitcell in self.jitcells])
 
         del self.jitcells_selected[:]
-        
+
         for lab in cells:
             cell = self._get_cell(lab)
             self.jitcells_selected.append(cell)
-        
+
         self.update_label_attributes()
-        
+
         compute_point_stack(
-                self._masks_stack,
-                self.jitcells_selected,
-                range(self.times),
-                self.unique_labels_T,
-                self._plot_args["dim_change"],
-                self._plot_args["labels_colors"],
-                1,
-                mode="masks",
-            )
+            self._masks_stack,
+            self.jitcells_selected,
+            range(self.times),
+            self.unique_labels_T,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            1,
+            mode="masks",
+        )
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
@@ -1272,8 +1280,7 @@ class CellTracking(object):
             1,
             mode="outlines",
         )
-        
-        
+
     def train_segmentation_model(
         self,
         train_segmentation_args=None,
@@ -1360,16 +1367,17 @@ class CellTracking(object):
 
     def _get_cell(self, label=None, cellid=None):
         if label == None:
-            if cellid not in self._ids: return None
+            if cellid not in self._ids:
+                return None
             cell = self.jitcells[self._ids.index(cellid)]
             return cell
         else:
-            if label not in self._labels: return None
+            if label not in self._labels:
+                return None
             cell = self.jitcells[self._labels.index(label)]
             return cell
 
     def _del_cell(self, label=None, cellid=None):
-        
         len_selected_jitcells = len(self.jitcells_selected)
         idx1 = None
         if label == None:
@@ -1385,12 +1393,12 @@ class CellTracking(object):
 
         poped = self.jitcells.pop(idx1)
         print("POPED LABEL =", poped.label)
-        
+
         if len_selected_jitcells == len(self.jitcells_selected):
             poped = self.jitcells_selected.pop(idx2)
             print("POPED LABEL =", poped.label)
         else:
-            pass #selected jitcells is a copy of jitcells so it was deleted already
+            pass  # selected jitcells is a copy of jitcells so it was deleted already
         self._get_cellids_celllabels()
 
     def plot_axis(self, _ax, img, z, t):
@@ -1433,7 +1441,7 @@ class CellTracking(object):
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
-        
+
         if self.jitcells_selected:
             compute_point_stack(
                 self._masks_stack,
@@ -1618,16 +1626,19 @@ class CellTracking(object):
                             else:
                                 sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
                                 self._pos_scatters.append(sc)
-                                
+
                             if self._plot_args["plot_centers"][1]:
-                                
                                 # Check if cell is an immeadiate dauther and plot the corresponding label
                                 for mitoev in self.mitotic_events:
                                     for icell, mitocell in enumerate(mitoev[1:]):
                                         if cell.id == mitocell[0]:
                                             if PACP.t == ev[1]:
-                                                mother = self._get_cell(cellid=mitoev[0][0])
-                                                lab_to_display = mother.label + 0.1 + icell/10
+                                                mother = self._get_cell(
+                                                    cellid=mitoev[0][0]
+                                                )
+                                                lab_to_display = (
+                                                    mother.label + 0.1 + icell / 10
+                                                )
                                 anno = PACP.ax[id].annotate(
                                     str(lab_to_display), xy=(ys, xs), c="white"
                                 )
@@ -1644,7 +1655,7 @@ class CellTracking(object):
 
         plt.subplots_adjust(bottom=0.075)
 
-    
+
 def load_CellTracking(
     stacks,
     pthtosave,

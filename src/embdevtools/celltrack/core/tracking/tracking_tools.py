@@ -4,9 +4,9 @@ from numba.typed import List
 from numba.types import ListType
 
 from ..dataclasses import CTattributes, construct_jitCell_from_Cell, jitCell
+from ..segmentation.segmentation_tools import (extract_cell_centers,
+                                               label_per_z, label_per_z_jit)
 from ..tools.cell_tools import create_cell, update_cell
-from ..segmentation.segmentation_tools import (extract_cell_centers, label_per_z,
-                                        label_per_z_jit)
 
 
 @njit
@@ -66,9 +66,9 @@ def _extract_unique_labels_per_time(Labels, times):
                 sublist_pre.append(int(x))
         else:
             sublist_pre.append(-1)
-        
+
         unique_labels_T_pre.append(List(sublist_pre))
-    
+
     unique_labels_T = List(unique_labels_T_pre)
     # unique_labels_T = List(
     #     [List([int(x) for x in sublist]) for sublist in unique_labels_T]
@@ -76,11 +76,13 @@ def _extract_unique_labels_per_time(Labels, times):
     _remove_nonlabels(unique_labels_T)
     return unique_labels_T
 
-@njit 
+
+@njit
 def _remove_nonlabels(unique_labels_T):
     for sublist in unique_labels_T:
         if -1 in sublist:
             sublist.remove(-1)
+
 
 @njit
 def _order_labels_t(unique_labels_T, max_label):
@@ -174,7 +176,7 @@ def _reinit_update_CT_cell_attributes(
             Maskst.append(List.empty_list(typeof(jitcell.masks[0][0])))
             Centersit.append(List.empty_list(typeof(jitcell.centersi[0][0])))
             Centersjt.append(List.empty_list(typeof(jitcell.centersj[0][0])))
-            
+
         ctattr.Labels.append(Labelst)
         ctattr.Outlines.append(Outlinest)
         ctattr.Masks.append(Maskst)

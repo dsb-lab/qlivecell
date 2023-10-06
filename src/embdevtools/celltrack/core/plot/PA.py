@@ -4,11 +4,11 @@ import matplotlib as mtp
 import numpy as np
 
 from ..dataclasses import construct_Cell_from_jitCell
-from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
-                      SubplotPicker_add)
 from ..tools.ct_tools import set_cell_color
 from ..tools.save_tools import save_cells
 from ..tools.tools import printfancy
+from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
+                      SubplotPicker_add)
 
 
 def get_axis_PACP(PACP, event):
@@ -205,7 +205,6 @@ class PlotAction:
         if self.current_state == "SCL":
             self.current_state = None
 
-        
     def onscroll(self, event):
         if self.ctrl_is_held:
             self.time_scroll(event)
@@ -501,7 +500,7 @@ class PlotActionCT(PlotAction):
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.switch_masks(True)
-                    
+
                 else:
                     self.visualization()
 
@@ -515,7 +514,6 @@ class PlotActionCT(PlotAction):
             return
         else:
             super().onscroll(event)
-
 
     def update(self):
         if self.current_state in ["apo", "Com", "mit", "Sep"]:
@@ -693,7 +691,6 @@ class PlotActionCT(PlotAction):
             return final_cells
 
     def switch_masks(self, masks=None):
-
         if masks is None:
             if self.CTplot_masks is None:
                 self.CTplot_masks = True
@@ -1044,16 +1041,14 @@ class PlotActionCT(PlotAction):
 
         self.update()
         self.reploting()
-    
+
     def pick_cells(self):
         self.title.set(text="PICK CELL", ha="left", x=0.01)
-        self.instructions.set(
-            text="Right-click to select cell"
-        )
+        self.instructions.set(text="Right-click to select cell")
         self.instructions.set_backgroundcolor((1.0, 1.0, 1.0, 0.4))
         self.fig.patch.set_facecolor((0.3, 0.3, 0.3, 0.1))
         self.CP = CellPicker(self.fig.canvas, self.pick_cells_callback)
-        
+
     def pick_cells_callback(self, event):
         get_axis_PACP(self, event)
         lab, z = get_cell_PACP(self, event)

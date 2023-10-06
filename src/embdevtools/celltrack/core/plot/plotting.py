@@ -2,8 +2,8 @@ import numpy as np
 from matplotlib import cm
 from skimage.transform import resize
 
-from .plot_iters import CyclicList
 from ..tools.tools import printfancy
+from .plot_iters import CyclicList
 
 
 def check_and_fill_plot_args(plot_args, stack_dims):
@@ -79,8 +79,8 @@ def check_stacks_for_plotting(
 
 def norm_stack_per_z(IMGS, saturation=0.7):
     IMGS_norm = np.zeros_like(IMGS)
-    saturation = 0.7*255
+    saturation = 0.7 * 255
     for t in range(IMGS.shape[0]):
         for z in range(IMGS.shape[1]):
-            IMGS_norm[t,z] = (IMGS[t,z]/np.max(IMGS[t,z]))*saturation
+            IMGS_norm[t, z] = (IMGS[t, z] / np.max(IMGS[t, z])) * saturation
     return IMGS_norm

@@ -1,4 +1,5 @@
 import os
+
 import numpy as np
 from tifffile import TiffFile
 
@@ -6,6 +7,7 @@ from tifffile import TiffFile
 def get_file_names(path_data):
     files = os.listdir(path_data)
     return files
+
 
 def get_file_embcode(path_data, f, returnfiles=False):
     """
@@ -74,7 +76,7 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
                     IMGS = np.array([tif.asarray()[:, channel, :, :]])
                 else:
                     IMGS = np.array(tif.asarray()[:, :, channel, :, :])
-            
+
             if len(IMGS.shape) == 3:
                 IMGS = np.array([IMGS])
         else:
@@ -92,7 +94,7 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
             if len(IMGS.shape) == 3:
                 sh = IMGS.shape
                 IMGS = IMGS.reshape(sh[0], 1, sh[1], sh[2])
-                
+
         imagej_metadata = tif.imagej_metadata
         tags = tif.pages[0].tags
         # parse X, Y resolution

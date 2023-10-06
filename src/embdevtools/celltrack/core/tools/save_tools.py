@@ -4,7 +4,7 @@ import json
 import numpy as np
 
 from ..dataclasses import Cell, CellTracking_info
-from ..tools.tools  import correct_path
+from ..tools.tools import correct_path
 from .cell_tools import create_cell
 from .ct_tools import compute_labels_stack
 
@@ -138,11 +138,11 @@ def load_cells(path=None, filename=None):
 import numpy as np
 from tifffile import imwrite
 
-def save_4Dstack_labels(
-    path, filename, CT, imagejformat="TZYX"
-):
-    
-    labels_stack = np.zeros((CT.times, CT.slices, CT.stack_dims[0], CT.stack_dims[1]), dtype="uint16")
+
+def save_4Dstack_labels(path, filename, CT, imagejformat="TZYX"):
+    labels_stack = np.zeros(
+        (CT.times, CT.slices, CT.stack_dims[0], CT.stack_dims[1]), dtype="uint16"
+    )
     labels_stack = compute_labels_stack(labels_stack, CT.jitcells)
 
     imwrite(
@@ -158,8 +158,15 @@ def save_4Dstack_labels(
         },
     )
 
+
 def save_4Dstack(
-    path, filename, stack_4D, xyresolution, zresolution, imagejformat="TZCYX", masks=True
+    path,
+    filename,
+    stack_4D,
+    xyresolution,
+    zresolution,
+    imagejformat="TZCYX",
+    masks=True,
 ):
     sh = stack_4D.shape
 
@@ -174,8 +181,10 @@ def save_4Dstack(
     else:
         new_masks = stack_4D
 
-    if masks: fullfilename =  path + filename + "_masks.tif"
-    else: fullfilename = path + filename + ".tif"
+    if masks:
+        fullfilename = path + filename + "_masks.tif"
+    else:
+        fullfilename = path + filename + ".tif"
 
     imwrite(
         fullfilename,

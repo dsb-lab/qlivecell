@@ -4,7 +4,6 @@ import numpy as np
 from scipy.spatial import ConvexHull, cKDTree
 from scipy.spatial._qhull import QhullError
 
-
 LINE_UP = "\033[1A"
 LINE_CLEAR = "\x1b[2K"
 
@@ -47,6 +46,8 @@ import inspect
 """
     copied from https://stackoverflow.com/questions/12627118/get-a-function-arguments-default-value
 """
+
+
 def get_default_args(func):
     signature = inspect.signature(func)
     return {
@@ -54,7 +55,7 @@ def get_default_args(func):
         for k, v in signature.parameters.items()
         if v.default is not inspect.Parameter.empty
     }
-    
+
 
 def correct_path(path):
     if path[-1] != "/":
@@ -80,8 +81,6 @@ def check_and_fill_error_correction_args(error_correction_args):
         raise Exception("not supported line builder mode chose from: (points, lasso)")
 
     return new_error_correction_args
-
-
 
 
 def increase_point_resolution(outline, min_outline_length):
