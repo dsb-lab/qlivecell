@@ -466,14 +466,15 @@ def remove_small_cells(cells, area_th, callback_del, callback_update):
     np.mean(areas)
     for lab in labs_to_remove:
         callback_del(lab)
-        
+
     callback_update(backup=False)
 
 
-def remove_small_planes_at_boders(cells, area_th, callback_del, callback_update, stacks):
+def remove_small_planes_at_boders(
+    cells, area_th, callback_del, callback_update, stacks
+):
     for cell in cells:
         for tid, t in enumerate(cell.times):
-
             zid_to_remove = []
 
             for zid, z in enumerate(cell.zs[tid]):
@@ -481,15 +482,17 @@ def remove_small_planes_at_boders(cells, area_th, callback_del, callback_update,
                 area = len(msk)
                 if area < area_th:
                     zid_to_remove.append(zid)
-                else: break
+                else:
+                    break
 
             for zid, z in reversed(list(enumerate(cell.zs[tid]))):
                 msk = cell.masks[tid][zid]
                 area = len(msk)
                 if area < area_th:
                     zid_to_remove.append(zid)
-                else: break
-            
+                else:
+                    break
+
             zid_to_remove.sort(reverse=True)
             for zid in zid_to_remove:
                 cell.zs[tid].pop(zid)

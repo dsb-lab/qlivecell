@@ -4,11 +4,11 @@ import matplotlib as mtp
 import numpy as np
 
 from ..dataclasses import construct_Cell_from_jitCell
-from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
-                      SubplotPicker_add)
 from ..tools.ct_tools import set_cell_color
 from ..tools.save_tools import save_cells
 from ..tools.tools import printfancy
+from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
+                      SubplotPicker_add)
 
 
 def get_axis_PACP(PACP, event):
@@ -205,7 +205,6 @@ class PlotAction:
         if self.current_state == "SCL":
             self.current_state = None
 
-        
     def onscroll(self, event):
         if self.ctrl_is_held:
             self.time_scroll(event)
@@ -501,6 +500,19 @@ class PlotActionCT(PlotAction):
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.switch_masks(True)
+
+                elif self.current_state == "pic":
+                    self.CP.stopit()
+                    delattr(self, "CP")
+                    self.CTselect_jitcells(self.list_of_cells)
+                    self.current_subplot = None
+                    self.current_state = None
+                    self.ax_sel = None
+                    self.z = None
+                    del self.list_of_cells[:]
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
+                    self.switch_masks(True)
                     
                 else:
                     self.visualization()
@@ -515,7 +527,6 @@ class PlotActionCT(PlotAction):
             return
         else:
             super().onscroll(event)
-
 
     def update(self):
         if self.current_state in ["apo", "Com", "mit", "Sep"]:
@@ -665,7 +676,6 @@ class PlotActionCT(PlotAction):
             mitocells=marked_mito_str,
             conflicts=self.CTconflicts,
         )
-        hints = ""
         self.hints.set(text=hints, fontsize=width_or_height / scale1)
         self.title.set(fontsize=width_or_height / scale2)
         self.fig.subplots_adjust(top=0.9, left=0.2)
@@ -1055,6 +1065,27 @@ class PlotActionCT(PlotAction):
         self.fig.patch.set_facecolor((0.3, 0.3, 0.3, 0.1))
         self.CP = CellPicker(self.fig.canvas, self.pick_cells_callback)
         
+    def pick_cells_callback(self, event):
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
+        if lab is None:
+            return
+        cell = [lab, z]
+        if cell not in self.list_of_cells:
+            self.list_of_cells.append(cell)
+        else:
+            self.list_of_cells.remove(cell)
+
+        self.update()
+        self.reploting()
+
+    def pick_cells(self):
+        self.title.set(text="PICK CELL", ha="left", x=0.01)
+        self.instructions.set(text="Right-click to select cell")
+        self.instructions.set_backgroundcolor((1.0, 1.0, 1.0, 0.4))
+        self.fig.patch.set_facecolor((0.3, 0.3, 0.3, 0.1))
+        self.CP = CellPicker(self.fig.canvas, self.pick_cells_callback)
+
     def pick_cells_callback(self, event):
         get_axis_PACP(self, event)
         lab, z = get_cell_PACP(self, event)

@@ -1,9 +1,11 @@
 import os
 import random
+
 import skimage
 import tifffile
 
 from ..tools.input_tools import read_img_with_resolution
+
 
 def generate_set(
     paths_data,

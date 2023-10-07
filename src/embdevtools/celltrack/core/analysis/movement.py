@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def compute_distance_xy(x1, x2, y1, y2):
     """
     Parameters
