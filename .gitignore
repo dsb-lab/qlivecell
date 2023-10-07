@@ -1,5 +1,6 @@
 literatureembdevtools
 literature
+os
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
