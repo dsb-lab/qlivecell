@@ -782,7 +782,9 @@ class CellTracking(object):
         update_jitcell(new_jitcell, self._stacks)
         jitcellslen = len(self.jitcells_selected)
         self.jitcells.append(new_jitcell)
-        if jitcellslen < len(self.jitcells_selected):
+        
+        # If len is still the same, add the cell because jitcells is not a copy of the selection
+        if jitcellslen == len(self.jitcells_selected):
             self.jitcells_selected.append(self.jitcells[-1])
 
     def add_cell(self, PACP):
