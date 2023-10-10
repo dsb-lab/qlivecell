@@ -1687,3 +1687,7 @@ def load_CellTracking(
         _loadcells=True,
     )
     return CT
+
+
+def batch_run_CT():
+    pass

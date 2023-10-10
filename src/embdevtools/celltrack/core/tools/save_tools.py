@@ -4,10 +4,10 @@ import json
 import numpy as np
 
 from ..dataclasses import Cell, CellTracking_info
-from ..tools.tools import correct_path
+from .tools import correct_path
+from .input_tools import read_img_with_resolution
 from .cell_tools import create_cell
 from .ct_tools import compute_labels_stack
-
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -78,7 +78,7 @@ class CTinfoJSONDecoder(json.JSONDecoder):
             return d
 
 
-def save_cells(cells, CT_info, path=None, filename=None):
+def save_cells_to_json(cells, CT_info, path=None, filename=None):
     """save cell objects obtained with celltrack.py
 
     Saves cells as `path`/`filename`_cells.json
@@ -107,7 +107,44 @@ def save_cells(cells, CT_info, path=None, filename=None):
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
-def load_cells(path=None, filename=None):
+def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None):
+    """save cell objects obtained with celltrack.py
+
+    Saves cells as `path`/`filename`_cells.json
+    Saves cell tracking info as `path`/`filename`_info.json
+
+    Parameters
+    ----------
+    cells : list of Cell objects
+    CT_info : CT_info object
+
+    path : str
+        path to save directory
+    filename : str
+        name of file or embcode
+
+    """
+
+    pthsave = correct_path(path) + filename
+    
+    labels_stack = np.zeros(
+        (CT_info.times, CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
+    )
+    labels_stack = compute_labels_stack(labels_stack, cells)
+
+    np.save(pthsave+"_labels", labels_stack, allow_pickle=False)
+
+    # save_4Dstack_labels(correct_path(path), filename, cells, CT_info, imagejformat="TZYX")
+
+    file_to_store = pthsave + "_info.json"
+    with open(file_to_store, "w", encoding="utf-8") as f:
+        json.dump(CT_info, f, cls=EnhancedJSONEncoder)
+
+
+save_cells = save_cells_to_labels_stack
+
+
+def load_cells_from_json(path=None, filename=None):
     """load cell objects obtained with celltrack.py
 
     load cells from `path`/`filename`_cells.json
@@ -135,23 +172,91 @@ def load_cells(path=None, filename=None):
     return cell_dict, cellinfo_dict
 
 
+def load_cells_from_labels_stack(path=None, filename=None):
+    """load cell objects obtained with celltrack.py
+
+    load cells from `path`/`filename`_labels.tif
+    load cell tracking info from `path`/`filename`_info.json
+
+    Parameters
+    ----------
+    path : str
+        path to save directory
+    filename : str
+        name of file or embcode
+    """
+
+    pthload = correct_path(path) + filename 
+    # labels_stack, xyres_labs, zres_labs = read_img_with_resolution(pthload+"_labels.tif", stack=True, channel=None)
+    labels_stack = np.load(pthload+"_labels.npy")
+
+    cells = []
+    for lab in range(labels_stack.max()):
+        idxs = np.where(labels_stack == lab)
+        _ts = idxs[0]
+        _zs = idxs[1]
+        _masks = np.transpose(idxs[2:])
+
+        ts = np.unique(_ts)
+        cell_ts = ts
+        cell_zs = []
+        cell_masks = []
+        cell_outlines = []
+
+        for tid, t in enumerate(ts):
+
+            tids = np.where(_ts==0)[0]
+            t1 = tids[0]
+            t2 = tids[-1]
+            zs = _zs[t1:t2+1]
+
+            cell_zs.append(list(np.unique(zs)))
+            cell_masks.append([])
+            cell_outlines.append([])
+
+            from scipy.spatial import ConvexHull
+
+            masks = _masks[t1:t2+1]
+            for zid, z in enumerate(cell_zs[tid]):
+                zids = np.where(zs==z)[0]
+                z1 = zids[0]
+                z2 = zids[-1]
+                mask = masks[z1:z2+1] 
+                hull = ConvexHull(mask)
+                outline = mask[hull.vertices]
+
+                cell_masks[tid].append(mask)
+                cell_outlines[tid].append(outline)
+
+        test_cell = create_cell(lab-1, lab-1, cell_zs, cell_ts, cell_outlines, cell_masks, stacks=None)
+        cells.append(test_cell)
+
+    file_to_store = pthload + "_info.json"
+    with open(file_to_store, "r", encoding="utf-8") as f:
+        cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
+
+    return cells, cellinfo_dict
+
+load_cells = load_cells_from_labels_stack
+
+
 import numpy as np
 from tifffile import imwrite
 
 
-def save_4Dstack_labels(path, filename, CT, imagejformat="TZYX"):
+def save_4Dstack_labels(path, filename, cells, CT_info, imagejformat="TZYX"):
     labels_stack = np.zeros(
-        (CT.times, CT.slices, CT.stack_dims[0], CT.stack_dims[1]), dtype="uint16"
+        (CT_info.times, CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
-    labels_stack = compute_labels_stack(labels_stack, CT.jitcells)
+    labels_stack = compute_labels_stack(labels_stack, cells)
 
     imwrite(
         path + filename + "_labels.tif",
         labels_stack,
         imagej=True,
-        resolution=(1 / CT._xyresolution, 1 / CT._xyresolution),
+        resolution=(1 / CT_info.xyresolution, 1 / CT_info.xyresolution),
         metadata={
-            "spacing": CT._zresolution,
+            "spacing": CT_info.zresolution,
             "unit": "um",
             "finterval": 300,
             "axes": imagejformat,
