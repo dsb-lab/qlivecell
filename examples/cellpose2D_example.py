@@ -87,5 +87,7 @@ CT.run()
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
-from embdevtools.celltrack.core.tools.save_tools import load_cells
+from embdevtools.celltrack.core.tools.save_tools import load_cells, save_cells_to_labels_stack
 cells, ctinfo = load_cells(path=path_save, filename=embcode)
+
+save_cells_to_labels_stack(cells, ctinfo, path=path_save, filename=embcode, split_times=True)

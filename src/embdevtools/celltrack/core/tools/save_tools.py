@@ -2,6 +2,7 @@ import dataclasses
 import json
 
 import numpy as np
+import os
 
 from ..dataclasses import Cell, CellTracking_info
 from .tools import correct_path
@@ -107,7 +108,7 @@ def save_cells_to_json(cells, CT_info, path=None, filename=None):
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
-def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None):
+def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_times=False):
     """save cell objects obtained with celltrack.py
 
     Saves cells as `path`/`filename`_cells.json
@@ -126,13 +127,23 @@ def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None):
     """
 
     pthsave = correct_path(path) + filename
-    
+        
     labels_stack = np.zeros(
         (CT_info.times, CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
+    
+
     labels_stack = compute_labels_stack(labels_stack, cells)
 
-    np.save(pthsave+"_labels", labels_stack, allow_pickle=False)
+    if split_times: 
+        if not os.path.isdir(pthsave+"_labels"): 
+            os.mkdir(pthsave+"_labels")
+        
+        print(pthsave+"_labels")
+        for t in range(CT_info.times):    
+            np.save(pthsave+"_labels/t{}.npy".format(str(t)), labels_stack[t], allow_pickle=False)
+    else: 
+        np.save(pthsave+"_labels", labels_stack, allow_pickle=False)
 
     # save_4Dstack_labels(correct_path(path), filename, cells, CT_info, imagejformat="TZYX")
 
