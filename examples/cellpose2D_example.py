@@ -63,12 +63,13 @@ plot_args = {
 error_correction_args = {
     'backup_steps': 10,
     'line_builder_mode': 'lasso',
+    # 'save_split_times': True
 }
 
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:3, :20], 
+    IMGS[:2, :20], 
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -86,8 +87,3 @@ CT.run()
 
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
-
-from embdevtools.celltrack.core.tools.save_tools import load_cells, save_cells_to_labels_stack
-cells, ctinfo = load_cells(path=path_save, filename=embcode)
-
-save_cells_to_labels_stack(cells, ctinfo, path=path_save, filename=embcode, split_times=True)

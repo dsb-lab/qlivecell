@@ -184,7 +184,7 @@ def load_cells_from_json(path=None, filename=None):
 
 
 def load_cells_from_labels_stack(path=None, filename=None):
-    """load cell objects obtained with celltrack.py
+    """load cell objects obtained with celltrack.py from npy file
 
     load cells from `path`/`filename`_labels.tif
     load cell tracking info from `path`/`filename`_info.json
