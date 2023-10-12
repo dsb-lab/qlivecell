@@ -411,6 +411,7 @@ class CellTracking(object):
         TLabels, TOutlines, TMasks, TCenters = get_labels_centers(
             self._stacks, Labels, Outlines, Masks
         )
+        
         FinalLabels, label_correspondance = self.cell_tracking(
             TLabels, TCenters, TOutlines, TMasks
         )

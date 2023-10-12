@@ -315,3 +315,98 @@ def get_labels_centers(stacks, Labels, Outlines, Masks):
         TCenters.append(centers)
 
     return TLabels, TOutlines, TMasks, TCenters
+
+
+from numba.np.extensions import cross2d
+
+# functions got from https://stackoverflow.com/a/74817179/7546279
+@njit('(int64[:,:], int64[:], int64, int64)')
+def process(S, P, a, b):
+    signed_dist = cross2d(S[P] - S[a], S[b] - S[a])
+    K = np.array([i for s, i in zip(signed_dist, P) if s > 0 and i != a and i != b], dtype=np.int64)
+
+    if len(K) == 0:
+        return [a, b]
+
+    c = P[np.argmax(signed_dist)]
+    return process(S, K, a, c)[:-1] + process(S, K, c, b)
+
+@njit('(int64[:,:],)')
+def quickhull_2d(S: np.ndarray) -> np.ndarray:
+    a, b = np.argmin(S[:,0]), np.argmax(S[:,0])
+    return process(S, np.arange(S.shape[0]), a, b)[:-1] + process(S, np.arange(S.shape[0]), b, a)[:-1]
+
+@njit
+def prepare_labels_stack_for_tracking(labels_stack):
+    times = labels_stack.shape[0]
+    zs = labels_stack.shape[1]
+
+    labelsz = List([0])
+    labelsz.pop(0)
+    labelst = List([labelsz])
+    labelst.pop(0)
+    Labels = List([labelst])
+    Labels.pop(0)
+
+    outlinesz = List([np.array([[0,0], [0,0]])])
+    outlinesz.pop(0)
+    outlinest = List([outlinesz])
+    outlinest.pop(0)
+    Outlines = List([outlinest])
+    Outlines.pop(0)
+
+    masksz = List([np.array([[0,0], [0,0]])])
+    masksz.pop(0)
+    maskst = List([masksz])
+    maskst.pop(0)
+    Masks = List([maskst])
+    Masks.pop(0)
+
+    for t in range(times):
+        labelsz = List([0])
+        labelsz.pop(0)
+        labelst = List([labelsz])
+        labelst.pop(0)
+        
+        outlinesz = List([np.array([[0,0], [0,0]])])
+        outlinesz.pop(0)
+        outlinest = List([outlinesz])
+        outlinest.pop(0)
+
+        masksz = List([np.array([[0,0], [0,0]])])
+        masksz.pop(0)
+        maskst = List([masksz])
+        maskst.pop(0)
+
+        Labels.append(labelst)
+        Outlines.append(outlinest)
+        Masks.append(maskst)
+        
+        for z in range(zs):
+            
+            labelsz = List([0])
+            labelsz.pop(0)
+            
+            outlinesz = List([np.array([[0,0], [0,0]])])
+            outlinesz.pop(0)
+
+            masksz = List([np.array([[0,0], [0,0]])])
+            masksz.pop(0)
+        
+            Labels[t].append(labelsz)
+            Outlines[t].append(outlinesz)
+            Masks[t].append(masksz)
+
+            labels = np.unique(labels_stack[t, z])[1:]
+            for lab in labels:
+                idxs = np.where(lab == labels_stack[t,z])
+                idxs = np.vstack(idxs)
+                mask = idxs.transpose()
+                hull = np.asarray(quickhull_2d(mask))
+                outline = mask[hull]
+                Labels[t][z].append(lab-1)
+                Outlines[t][z].append(outline)
+                Masks[t][z].append(np.ascontiguousarray(mask))
+
+    return Labels, Outlines, Masks
+    
