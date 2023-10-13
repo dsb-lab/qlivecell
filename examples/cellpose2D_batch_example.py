@@ -4,7 +4,7 @@ from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/volumes_registered/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/volumes_segmented'
+path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/volumes_segmented/'
 try: 
     files = get_file_names(path_save)
 except: 
@@ -65,7 +65,7 @@ def batch_segmentation(path_data, segmentation_args={}, concatenation3D_args={},
 
     ### GET FULL FILE NAME AND FILE CODE ###
     files = get_file_names(path_data)
-    files = files[:2]
+    files = files
     for f in range(len(files)):
         file, embcode = get_file_embcode(path_data, f)
         
@@ -89,30 +89,34 @@ def batch_segmentation(path_data, segmentation_args={}, concatenation3D_args={},
         CT.run()
         save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=False)
 
-def batch_tracking():
-    from embdevtools.celltrack.core.tools.ct_tools import compute_labels_stack
+batch_segmentation(path_data, segmentation_args=segmentation_args, concatenation3D_args=concatenation3D_args, tracking_args=tracking_args, error_correction_args=error_correction_args)
 
-    from embdevtools.celltrack.core.tracking.tracking_tools import prepare_labels_stack_for_tracking, get_labels_centers
 
-    Labels1, Outlines1, Masks1, idxs = prepare_labels_stack_for_tracking(labels_stack1)
-    TLabels1, TOutlines1, TMasks1, TCenters1 = get_labels_centers(IMGS1, Labels1, Outlines1, Masks1)
+# def batch_tracking():
+#     from embdevtools.celltrack.core.tools.ct_tools import compute_labels_stack
 
-    Labels2, Outlines2, Masks2, idxs = prepare_labels_stack_for_tracking(labels_stack2)
-    TLabels2, TOutlines2, TMasks2, TCenters2 = get_labels_centers(IMGS2, Labels2, Outlines2, Masks2)
+#     from embdevtools.celltrack.core.tracking.tracking_tools import prepare_labels_stack_for_tracking, get_labels_centers
 
-    TLabels1 = [[n+2 for n in sub] for sub in TLabels1]
-    TLabels = [TLabels1[-1], *TLabels2]
-    TOutlines = [TOutlines1[-1], *TOutlines2]
-    TMasks = [TMasks1[-1], *TMasks2]
-    TCenters = [TCenters1[-1], *TCenters2]
+#     Labels1, Outlines1, Masks1, idxs = prepare_labels_stack_for_tracking(labels_stack1)
+#     TLabels1, TOutlines1, TMasks1, TCenters1 = get_labels_centers(IMGS1, Labels1, Outlines1, Masks1)
 
-    from embdevtools.celltrack.core.tracking.tracking import greedy_tracking
-    FinalLabels, label_correspondance = greedy_tracking(
-            TLabels,
-            TCenters,
-            xyres,
-            zres,
-            tracking_args,
-        )
+#     Labels2, Outlines2, Masks2, idxs = prepare_labels_stack_for_tracking(labels_stack2)
+#     TLabels2, TOutlines2, TMasks2, TCenters2 = get_labels_centers(IMGS2, Labels2, Outlines2, Masks2)
+
+#     TLabels1 = [[n+2 for n in sub] for sub in TLabels1]
+#     TLabels = [TLabels1[-1], *TLabels2]
+#     TOutlines = [TOutlines1[-1], *TOutlines2]
+#     TMasks = [TMasks1[-1], *TMasks2]
+#     TCenters = [TCenters1[-1], *TCenters2]
+
+#     from embdevtools.celltrack.core.tracking.tracking import greedy_tracking
+#     FinalLabels, label_correspondance = greedy_tracking(
+#             TLabels,
+#             TCenters,
+#             xyres,
+#             zres,
+#             tracking_args,
+#         )
+
 
 

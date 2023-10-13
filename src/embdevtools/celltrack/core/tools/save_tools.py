@@ -350,3 +350,12 @@ def save_3Dstack(
             "axes": imagejformat,
         },
     )
+
+def read_split_times_npy(path_data, times, extra_name=""):
+    
+    IMGS = []
+    for t in times:
+        IMG = np.load(correct_path(path_data)+"{}{}.npy".format(t, extra_name))
+        IMGS.append(IMG.astype('uint16'))
+    
+    return IMGS
