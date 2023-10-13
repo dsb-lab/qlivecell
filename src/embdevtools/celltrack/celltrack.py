@@ -1690,5 +1690,3 @@ def load_CellTracking(
     return CT
 
 
-def batch_run_CT():
-    pass

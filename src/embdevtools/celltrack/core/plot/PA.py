@@ -1197,3 +1197,4 @@ class PlotActionCellPicker(PlotAction):
         self.fig.canvas.draw_idle()
         # if self.mode == "CM": self.CT.fig_cellmovement.canvas.draw()
         self.fig.canvas.draw()
+

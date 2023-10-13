@@ -143,7 +143,11 @@ def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_t
         for t in range(CT_info.times):    
             np.save(pthsave+"_labels/t{}.npy".format(str(t)), labels_stack[t], allow_pickle=False)
     else: 
-        np.save(pthsave+"_labels", labels_stack, allow_pickle=False)
+        if labels_stack.shape[0] == 1:
+            np.save(pthsave+"_labels", labels_stack[0], allow_pickle=False)
+        
+        else:
+            np.save(pthsave+"_labels", labels_stack, allow_pickle=False)
 
     # save_4Dstack_labels(correct_path(path), filename, cells, CT_info, imagejformat="TZYX")
 
@@ -317,21 +321,26 @@ def save_4Dstack(
 
 
 def save_3Dstack(
-    path, filename, stack_3D, xyresolution, zresolution, imagejformat="ZCYX"
+    path, filename, stack_3D, xyresolution, zresolution, channels=True,imagejformat="ZCYX"
 ):
-    sh = stack_3D.shape
+    
+    if channels:
+        sh = stack_3D.shape
 
-    new_masks = np.zeros((sh[0], 3, sh[1], sh[2]))
+        new_masks = np.zeros((sh[0], 3, sh[1], sh[2]))
 
-    for t in range(sh[0]):
-        for z in range(sh[1]):
-            new_masks[z, 0] = stack_3D[z, :, :, 0] * 255
-            new_masks[z, 1] = stack_3D[z, :, :, 1] * 255
-            new_masks[z, 2] = stack_3D[z, :, :, 2] * 255
+        for t in range(sh[0]):
+            for z in range(sh[1]):
+                new_masks[z, 0] = stack_3D[z, :, :, 0] * 255
+                new_masks[z, 1] = stack_3D[z, :, :, 1] * 255
+                new_masks[z, 2] = stack_3D[z, :, :, 2] * 255
 
-    new_masks = new_masks.astype("uint8")
+        new_masks = new_masks.astype("uint8")
+    
+    else:
+        new_masks = stack_3D
     imwrite(
-        path + filename + "_masks.tif",
+        path + filename,
         new_masks,
         imagej=True,
         resolution=(1 / xyresolution, 1 / xyresolution),
