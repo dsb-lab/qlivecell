@@ -65,7 +65,6 @@ def batch_segmentation(path_data, segmentation_args={}, concatenation3D_args={},
 
     ### GET FULL FILE NAME AND FILE CODE ###
     files = get_file_names(path_data)
-    files = files
     total_files = len(files)
     for f in range(len(files)):
         
@@ -94,34 +93,52 @@ def batch_segmentation(path_data, segmentation_args={}, concatenation3D_args={},
 
 # batch_segmentation(path_data, segmentation_args=segmentation_args, concatenation3D_args=concatenation3D_args, tracking_args=tracking_args, error_correction_args=error_correction_args)
 
-from embdevtools.celltrack.core.tools.save_tools import read_split_times_npy
-read_split_times_npy(path_data, range(10), extra_name="_labels")
+from embdevtools.celltrack.core.tools.ct_tools import compute_labels_stack
+from embdevtools.celltrack.core.tracking.tracking_tools import prepare_labels_stack_for_tracking, get_labels_centers
+from embdevtools.celltrack.core.tracking.tracking import greedy_tracking
 
-# def batch_tracking():
-#     from embdevtools.celltrack.core.tools.ct_tools import compute_labels_stack
+from embdevtools.celltrack.core.tools.save_tools import read_split_times
+files = get_file_names(path_data)
 
-#     from embdevtools.celltrack.core.tracking.tracking_tools import prepare_labels_stack_for_tracking, get_labels_centers
+totalsize = len(files)
+bsize = 2
+boverlap = 1
+import math
+rounds = math.ceil((totalsize) / (bsize - boverlap))
 
-#     Labels1, Outlines1, Masks1, idxs = prepare_labels_stack_for_tracking(labels_stack1)
-#     TLabels1, TOutlines1, TMasks1, TCenters1 = get_labels_centers(IMGS1, Labels1, Outlines1, Masks1)
+bnumber = 3
+# while True:
+first = (bsize * bnumber) - (boverlap * bnumber)
+last = first + bsize
+last = min(last, totalsize)
 
-#     Labels2, Outlines2, Masks2, idxs = prepare_labels_stack_for_tracking(labels_stack2)
-#     TLabels2, TOutlines2, TMasks2, TCenters2 = get_labels_centers(IMGS2, Labels2, Outlines2, Masks2)
+print([i for i in range(first, last)])
+bnumber+=1
 
-#     TLabels1 = [[n+2 for n in sub] for sub in TLabels1]
-#     TLabels = [TLabels1[-1], *TLabels2]
-#     TOutlines = [TOutlines1[-1], *TOutlines2]
-#     TMasks = [TMasks1[-1], *TMasks2]
-#     TCenters = [TCenters1[-1], *TCenters2]
+labels = read_split_times(path_save, range(bnumber, bnumber+bsize), extra_name="_labels", extension=".npy")
+IMGS, xyres, zres = read_split_times(path_data, range(bnumber, bnumber+bsize), extra_name="", extension=".tif")
 
-#     from embdevtools.celltrack.core.tracking.tracking import greedy_tracking
-#     FinalLabels, label_correspondance = greedy_tracking(
-#             TLabels,
-#             TCenters,
-#             xyres,
-#             zres,
-#             tracking_args,
-#         )
+import matplotlib.pyplot as plt
 
+
+Labels, Outlines, Masks = prepare_labels_stack_for_tracking(labels)
+TLabels, TOutlines, TMasks, TCenters = get_labels_centers(IMGS, Labels, Outlines, Masks)
+FinalLabels, label_correspondance1 = greedy_tracking(
+        TLabels,
+        TCenters,
+        xyres,
+        zres,
+        tracking_args,
+        )
+
+
+fig, ax = plt.subplots(1,2)
+ax[0].imshow(IMGS[1][82])
+ax[1].imshow(labels[1][82])
+plt.show()
+# for t in range(len(FinalLabels)):
+    
+# if last == totalsize:
+#     break    
 
 

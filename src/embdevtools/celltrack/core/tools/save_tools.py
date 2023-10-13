@@ -351,11 +351,19 @@ def save_3Dstack(
         },
     )
 
-def read_split_times_npy(path_data, times, extra_name=""):
+def read_split_times(path_data, times, extra_name="", extension=".tif"):
     
     IMGS = []
     for t in times:
-        IMG = np.load(correct_path(path_data)+"{}{}.npy".format(t, extra_name))
-        IMGS.append(IMG.astype('uint16'))
-    
-    return IMGS
+        path_to_file = correct_path(path_data)+"{}{}{}".format(t, extra_name, extension)
+        if extension == ".tif":
+            IMG, xyres, zres = read_img_with_resolution(path_to_file, channel=None, stack=True)
+            IMG = IMG[0]
+            IMGS.append(IMG.astype('uint8'))
+        elif extension == ".npy":
+            IMG = np.load(path_to_file)
+            IMGS.append(IMG.astype('uint16'))
+    if extension == ".tif":
+        return np.array(IMGS), xyres, zres
+    elif extension == ".npy":
+        return np.array(IMGS)
