@@ -92,8 +92,10 @@ def batch_segmentation(path_data, segmentation_args={}, concatenation3D_args={},
         CT.run()
         save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=False)
 
-batch_segmentation(path_data, segmentation_args=segmentation_args, concatenation3D_args=concatenation3D_args, tracking_args=tracking_args, error_correction_args=error_correction_args)
+# batch_segmentation(path_data, segmentation_args=segmentation_args, concatenation3D_args=concatenation3D_args, tracking_args=tracking_args, error_correction_args=error_correction_args)
 
+from embdevtools.celltrack.core.tools.save_tools import read_split_times_npy
+read_split_times_npy(path_data, range(10), extra_name="_labels")
 
 # def batch_tracking():
 #     from embdevtools.celltrack.core.tools.ct_tools import compute_labels_stack
