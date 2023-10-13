@@ -66,7 +66,10 @@ def batch_segmentation(path_data, segmentation_args={}, concatenation3D_args={},
     ### GET FULL FILE NAME AND FILE CODE ###
     files = get_file_names(path_data)
     files = files
+    total_files = len(files)
     for f in range(len(files)):
+        
+        print("file",f+1,"of", total_files)
         file, embcode = get_file_embcode(path_data, f)
         
         ### LOAD STACK ###
