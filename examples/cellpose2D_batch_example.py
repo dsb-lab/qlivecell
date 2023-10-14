@@ -1,5 +1,7 @@
 ### LOAD PACKAGE ###
 import numpy as np
+import matplotlib.pyplot as plt
+
 from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
@@ -101,12 +103,12 @@ from embdevtools.celltrack.core.tools.save_tools import read_split_times
 files = get_file_names(path_data)
 
 totalsize = len(files)
-bsize = 2
+bsize = 5
 boverlap = 1
 import math
 rounds = math.ceil((totalsize) / (bsize - boverlap))
 
-bnumber = 3
+bnumber = 0
 # while True:
 first = (bsize * bnumber) - (boverlap * bnumber)
 last = first + bsize
@@ -118,12 +120,9 @@ bnumber+=1
 labels = read_split_times(path_save, range(bnumber, bnumber+bsize), extra_name="_labels", extension=".npy")
 IMGS, xyres, zres = read_split_times(path_data, range(bnumber, bnumber+bsize), extra_name="", extension=".tif")
 
-import matplotlib.pyplot as plt
-
-
 Labels, Outlines, Masks = prepare_labels_stack_for_tracking(labels)
 TLabels, TOutlines, TMasks, TCenters = get_labels_centers(IMGS, Labels, Outlines, Masks)
-FinalLabels, label_correspondance1 = greedy_tracking(
+FinalLabels, label_correspondance = greedy_tracking(
         TLabels,
         TCenters,
         xyres,
@@ -131,32 +130,27 @@ FinalLabels, label_correspondance1 = greedy_tracking(
         tracking_args,
         )
 
+from numba import njit, prange
+from numba.typed import List
 
-from cellpose.utils import outlines_list
+@njit(parallel=True)
+def replace_labels_t(labels, lab_corr):
+    labels_t_copy = labels.copy()
+    for lab_init, lab_final in lab_corr:
+        idxs = np.where(lab_init == labels)
+        idxi = idxs[0]
+        idxj = idxs[1]
+        for q in prange(len(idxi)):
+            labels_t_copy[idxi[q], idxj[q]] = lab_final
+    return labels_t_copy
 
-model = segmentation_args["model"]
+@njit(parallel = True)
+def replace_labels_in_place(labels, label_correspondance):
+    for t in prange(len(label_correspondance)):
+        labels[t] = replace_labels_t(labels[t], label_correspondance[t])
 
-masks, flows, styles = model.eval(IMGS[1][83])
+label_correspondance = List([np.array(sublist).astype('uint16') for sublist in label_correspondance])
 
-outlines = outlines_list(masks)
+labels_copy = labels.copy()
+replace_labels_in_place(labels, label_correspondance)
 
-from embdevtools.celltrack.core.tools.tools import mask_from_outline
-
-mask_new = mask_from_outline(outlines[0])
-
-
-idxs = np.where(16 == labels[1,83])
-mask = idxs.transpose()
-
-a = np.zeros_like(IMGS[1][83])
-a[mask[:, 1], mask[:, 0]] = 16 
-
-b = np.zeros_like(IMGS[1][83])
-b[mask_new[:, 1], mask_new[:, 0]] = 16 
-
-fig, ax = plt.subplots(1,4)
-ax[0].imshow(IMGS[1][83])
-ax[1].imshow(labels[1][83])
-ax[2].imshow(a)
-ax[3].imshow(b)
-plt.show()
