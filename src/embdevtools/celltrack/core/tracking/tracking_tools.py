@@ -400,7 +400,7 @@ def prepare_labels_stack_for_tracking(labels_stack):
             labels = np.unique(labels_stack[t, z])[1:]
             for lab in labels:
                 idxs = np.where(lab == labels_stack[t,z])
-                idxs = np.vstack(idxs)
+                idxs = np.vstack((idxs[1], idxs[0]))
                 mask = idxs.transpose()
                 hull = np.asarray(quickhull_2d(mask))
                 outline = mask[hull]

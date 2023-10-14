@@ -132,13 +132,31 @@ FinalLabels, label_correspondance1 = greedy_tracking(
         )
 
 
-fig, ax = plt.subplots(1,2)
-ax[0].imshow(IMGS[1][82])
-ax[1].imshow(labels[1][82])
+from cellpose.utils import outlines_list
+
+model = segmentation_args["model"]
+
+masks, flows, styles = model.eval(IMGS[1][83])
+
+outlines = outlines_list(masks)
+
+from embdevtools.celltrack.core.tools.tools import mask_from_outline
+
+mask_new = mask_from_outline(outlines[0])
+
+
+idxs = np.where(16 == labels[1,83])
+mask = idxs.transpose()
+
+a = np.zeros_like(IMGS[1][83])
+a[mask[:, 1], mask[:, 0]] = 16 
+
+b = np.zeros_like(IMGS[1][83])
+b[mask_new[:, 1], mask_new[:, 0]] = 16 
+
+fig, ax = plt.subplots(1,4)
+ax[0].imshow(IMGS[1][83])
+ax[1].imshow(labels[1][83])
+ax[2].imshow(a)
+ax[3].imshow(b)
 plt.show()
-# for t in range(len(FinalLabels)):
-    
-# if last == totalsize:
-#     break    
-
-
