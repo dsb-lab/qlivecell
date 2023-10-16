@@ -108,10 +108,26 @@ def save_cells_to_json(cells, CT_info, path=None, filename=None):
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
-def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_times=False):
+def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_format="t{}"):
+
+    if split_times: 
+        if not os.path.isdir(pthsave): 
+            os.mkdir(pthsave)
+        
+        for t in times:    
+            np.save(correct_path(pthsave)+string_format.format(str(t))+".npy", labels_stack[t], allow_pickle=False)
+    else: 
+        if labels_stack.shape[0] == 1:
+            np.save(pthsave, labels_stack[0], allow_pickle=False)
+        
+        else:
+            np.save(pthsave, labels_stack, allow_pickle=False)
+
+
+def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_times=False, string_format="{}_labels"):
     """save cell objects obtained with celltrack.py
 
-    Saves cells as `path`/`filename`_cells.json
+    Saves cells as `path`/`filename`_cells.npy
     Saves cell tracking info as `path`/`filename`_info.json
 
     Parameters
@@ -126,30 +142,14 @@ def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_t
 
     """
 
-    pthsave = correct_path(path) + filename
+    pthsave = correct_path(path) + filename + "_labels"
         
     labels_stack = np.zeros(
         (CT_info.times, CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
     
-
     labels_stack = compute_labels_stack(labels_stack, cells)
-
-    if split_times: 
-        if not os.path.isdir(pthsave+"_labels"): 
-            os.mkdir(pthsave+"_labels")
-        
-        print(pthsave+"_labels")
-        for t in range(CT_info.times):    
-            np.save(pthsave+"_labels/t{}.npy".format(str(t)), labels_stack[t], allow_pickle=False)
-    else: 
-        if labels_stack.shape[0] == 1:
-            np.save(pthsave+"_labels", labels_stack[0], allow_pickle=False)
-        
-        else:
-            np.save(pthsave+"_labels", labels_stack, allow_pickle=False)
-
-    # save_4Dstack_labels(correct_path(path), filename, cells, CT_info, imagejformat="TZYX")
+    save_labels_stack(labels_stack, pthsave, range(CT_info.times), split_times=split_times, string_format=string_format)
 
     file_to_store = pthsave + "_info.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
@@ -183,7 +183,7 @@ def load_cells_from_json(path=None, filename=None):
     file_to_store = pthsave + "_info.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
         cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
-
+    
     return cell_dict, cellinfo_dict
 
 
