@@ -105,88 +105,88 @@ def batch_segmentation(path_data, embcode, segmentation_args={}, concatenation3D
 
 batch_segmentation(path_data, embcode, segmentation_args=segmentation_args, concatenation3D_args=concatenation3D_args)
 
-from embdevtools.celltrack.core.tools.ct_tools import compute_labels_stack
-from embdevtools.celltrack.core.tracking.tracking_tools import prepare_labels_stack_for_tracking, get_labels_centers
-from embdevtools.celltrack.core.tracking.tracking import greedy_tracking
+# from embdevtools.celltrack.core.tools.ct_tools import compute_labels_stack
+# from embdevtools.celltrack.core.tracking.tracking_tools import prepare_labels_stack_for_tracking, get_labels_centers
+# from embdevtools.celltrack.core.tracking.tracking import greedy_tracking
 
-from embdevtools.celltrack.core.tools.save_tools import read_split_times, save_labels_stack, load_cells_from_labels_stack
+# from embdevtools.celltrack.core.tools.save_tools import read_split_times, save_labels_stack, load_cells_from_labels_stack
 
-from numba import njit, prange
-from numba.typed import List
+# from numba import njit, prange
+# from numba.typed import List
 
-@njit(parallel=False)
-def replace_labels_t(labels, lab_corr):
-    labels_t_copy = labels.copy()
-    for lab_init, lab_final in lab_corr:
-        idxs = np.where(lab_init+1 == labels)
+# @njit(parallel=False)
+# def replace_labels_t(labels, lab_corr):
+#     labels_t_copy = labels.copy()
+#     for lab_init, lab_final in lab_corr:
+#         idxs = np.where(lab_init+1 == labels)
 
-        idxz = idxs[0]
-        idxx = idxs[1]
-        idxy = idxs[2]
+#         idxz = idxs[0]
+#         idxx = idxs[1]
+#         idxy = idxs[2]
 
-        for q in prange(len(idxz)):
-            labels_t_copy[idxz[q], idxx[q], idxy[q]] = lab_final+1
+#         for q in prange(len(idxz)):
+#             labels_t_copy[idxz[q], idxx[q], idxy[q]] = lab_final+1
         
-    return labels_t_copy
+#     return labels_t_copy
 
-@njit(parallel = False)
-def replace_labels_in_place(labels, label_correspondance):
-    labels_copy = np.zeros_like(labels)
-    for t in prange(len(label_correspondance)): 
-        labels_copy[t] = replace_labels_t(labels[t], label_correspondance[t])
-    return labels_copy
+# @njit(parallel = False)
+# def replace_labels_in_place(labels, label_correspondance):
+#     labels_copy = np.zeros_like(labels)
+#     for t in prange(len(label_correspondance)): 
+#         labels_copy[t] = replace_labels_t(labels[t], label_correspondance[t])
+#     return labels_copy
 
-# TODO make it so that one can use any tracking method
+# # TODO make it so that one can use any tracking method
 
-files = get_file_names(path_data+embcode+"/")
-file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
-files = [files[i] for i in file_sort_idxs]
+# files = get_file_names(path_data+embcode+"/")
+# file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
+# files = [files[i] for i in file_sort_idxs]
 
-totalsize = len(files)
-bsize = 10
-boverlap = 1
-import math
-rounds = math.ceil((totalsize) / (bsize - boverlap))
-rounds = 1
-# for bnumber in range(rounds):
-bnumber = 0
-first = (bsize * bnumber) - (boverlap * bnumber)
-last = first + bsize
-last = min(last, totalsize)
+# totalsize = len(files)
+# bsize = 10
+# boverlap = 1
+# import math
+# rounds = math.ceil((totalsize) / (bsize - boverlap))
+# rounds = 1
+# # for bnumber in range(rounds):
+# bnumber = 0
+# first = (bsize * bnumber) - (boverlap * bnumber)
+# last = first + bsize
+# last = min(last, totalsize)
 
-print([i for i in range(first, last)])
+# print([i for i in range(first, last)])
 
-times = range(bnumber, bnumber+bsize)
-labels = read_split_times(path_save+embcode+"/", times, extra_name="_labels", extension=".npy")
-IMGS, xyres, zres = read_split_times(path_data+embcode+"/", range(bnumber, bnumber+bsize), extra_name="", extension=".tif")
+# times = range(bnumber, bnumber+bsize)
+# labels = read_split_times(path_save+embcode+"/", times, extra_name="_labels", extension=".npy")
+# IMGS, xyres, zres = read_split_times(path_data+embcode+"/", range(bnumber, bnumber+bsize), extra_name="", extension=".tif")
 
-lbs = labels[0].copy()
-for z in range(lbs.shape[0]):
-    lbsz = lbs[z].copy()
-    lbsz += 100
-    idxs = np.where(lbsz == 100)
-    idxx = idxs[0]
-    idxy = idxs[1]
-    lbsz[idxx, idxy] = 0
-    lbs[z] = lbsz
+# lbs = labels[0].copy()
+# for z in range(lbs.shape[0]):
+#     lbsz = lbs[z].copy()
+#     lbsz += 100
+#     idxs = np.where(lbsz == 100)
+#     idxx = idxs[0]
+#     idxy = idxs[1]
+#     lbsz[idxx, idxy] = 0
+#     lbs[z] = lbsz
 
-labels[0] = lbs
-labels = labels.astype("uint16")
-Labels, Outlines, Masks = prepare_labels_stack_for_tracking(labels)
-TLabels, TOutlines, TMasks, TCenters = get_labels_centers(IMGS, Labels, Outlines, Masks)
-FinalLabels, label_correspondance = greedy_tracking(
-        TLabels,
-        TCenters,
-        xyres,
-        zres,
-        tracking_args,
-        )
+# labels[0] = lbs
+# labels = labels.astype("uint16")
+# Labels, Outlines, Masks = prepare_labels_stack_for_tracking(labels)
+# TLabels, TOutlines, TMasks, TCenters = get_labels_centers(IMGS, Labels, Outlines, Masks)
+# FinalLabels, label_correspondance = greedy_tracking(
+#         TLabels,
+#         TCenters,
+#         xyres,
+#         zres,
+#         tracking_args,
+#         )
 
-label_correspondance = List([np.array(sublist).astype('uint16') for sublist in label_correspondance])
+# label_correspondance = List([np.array(sublist).astype('uint16') for sublist in label_correspondance])
 
-labels_new = replace_labels_in_place(labels, label_correspondance)
+# labels_new = replace_labels_in_place(labels, label_correspondance)
 
-save_labels_stack(labels_new, path_save+embcode+"/", times, split_times=True, string_format="{}_labels")
+# save_labels_stack(labels_new, path_save+embcode+"/", times, split_times=True, string_format="{}_labels")
 
 
 # from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, isotropize_hyperstack
