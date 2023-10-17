@@ -74,7 +74,7 @@ def batch_segmentation(path_data, embcode, segmentation_args={}, concatenation3D
     file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
     files = [files[i] for i in file_sort_idxs]
     
-    files = files[:5]
+    files = files
     
     print(files)
     total_files = len(files)
@@ -103,7 +103,7 @@ def batch_segmentation(path_data, embcode, segmentation_args={}, concatenation3D
         pth_save = path_save+embcode+"/"
         save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=pth_save, filename=t, split_times=False)
 
-# batch_segmentation(path_data, embcode, segmentation_args=segmentation_args, concatenation3D_args=concatenation3D_args)
+batch_segmentation(path_data, embcode, segmentation_args=segmentation_args, concatenation3D_args=concatenation3D_args)
 
 from embdevtools.celltrack.core.tools.ct_tools import compute_labels_stack
 from embdevtools.celltrack.core.tracking.tracking_tools import prepare_labels_stack_for_tracking, get_labels_centers
@@ -137,13 +137,13 @@ def replace_labels_in_place(labels, label_correspondance):
     return labels_copy
 
 # TODO make it so that one can use any tracking method
+
 files = get_file_names(path_data+embcode+"/")
 file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
 files = [files[i] for i in file_sort_idxs]
 
-labels = read_split_times(path_save+embcode+"/", range(5), extra_name="_labels", extension=".npy")
 totalsize = len(files)
-bsize = 5
+bsize = 10
 boverlap = 1
 import math
 rounds = math.ceil((totalsize) / (bsize - boverlap))
@@ -160,6 +160,18 @@ times = range(bnumber, bnumber+bsize)
 labels = read_split_times(path_save+embcode+"/", times, extra_name="_labels", extension=".npy")
 IMGS, xyres, zres = read_split_times(path_data+embcode+"/", range(bnumber, bnumber+bsize), extra_name="", extension=".tif")
 
+lbs = labels[0].copy()
+for z in range(lbs.shape[0]):
+    lbsz = lbs[z].copy()
+    lbsz += 100
+    idxs = np.where(lbsz == 100)
+    idxx = idxs[0]
+    idxy = idxs[1]
+    lbsz[idxx, idxy] = 0
+    lbs[z] = lbsz
+
+labels[0] = lbs
+labels = labels.astype("uint16")
 Labels, Outlines, Masks = prepare_labels_stack_for_tracking(labels)
 TLabels, TOutlines, TMasks, TCenters = get_labels_centers(IMGS, Labels, Outlines, Masks)
 FinalLabels, label_correspondance = greedy_tracking(
@@ -177,44 +189,47 @@ labels_new = replace_labels_in_place(labels, label_correspondance)
 save_labels_stack(labels_new, path_save+embcode+"/", times, split_times=True, string_format="{}_labels")
 
 
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, isotropize_hyperstack
+# from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, isotropize_hyperstack
 
-# ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_split_times(path_data+embcode+"/", range(0, 3), extra_name="", extension=".tif")
+# # ### LOAD HYPERSTACKS ###
+# IMGS, xyres, zres = read_split_times(path_data+embcode+"/", range(0, 3), extra_name="", extension=".tif")
 
-### DEFINE ARGUMENTS ###
-plot_args = {
-    'plot_layout': (1,1),
-    'plot_overlap': 1,
-    'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), 
-    'plot_centers':[True, True]
-}
+# ### DEFINE ARGUMENTS ###
+# plot_args = {
+#     'plot_layout': (1,1),
+#     'plot_overlap': 1,
+#     'masks_cmap': 'tab10',
+#     'plot_stack_dims': (512, 512), 
+#     'plot_centers':[True, True]
+# }
 
-error_correction_args = {
-    'backup_steps': 10,
-    'line_builder_mode': 'lasso',
-}
+# error_correction_args = {
+#     'backup_steps': 10,
+#     'line_builder_mode': 'lasso',
+# }
 
 
-### LOAD PREVIOUSLY SAVED RESULTS ###
-CT=load_CellTracking(
-        IMGS, 
-        path_save, 
-        embcode, 
-        xyresolution=xyres, 
-        zresolution=zres,
-        error_correction_args=error_correction_args,    
-        plot_args = plot_args,
-        split_times=True
-    )
+# ### LOAD PREVIOUSLY SAVED RESULTS ###
+# CT=load_CellTracking(
+#         IMGS, 
+#         path_save, 
+#         embcode, 
+#         xyresolution=xyres, 
+#         zresolution=zres,
+#         error_correction_args=error_correction_args,    
+#         plot_args = plot_args,
+#         split_times=True
+#     )
 
-### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
+# ### PLOTTING ###
+# CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
+
 
 # from embdevtools.celltrack.core.tools.cell_tools import update_cell
 # from embdevtools.celltrack.core.dataclasses import construct_jitCell_from_Cell
-# cells, ctinfo = load_cells_from_labels_stack(path=path_save, filename=embcode, times=3, split_times=True)
+# cells, ctinfo = load_cells_from_labels_stack(path=path_save, filename=embcode, times=1, split_times=True)
+# for cell in cells:
+#     print(cell.label)
 # for cell in cells:
 #     update_cell(cell, IMGS)
 
@@ -224,9 +239,8 @@ CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 #     )
 # labels= read_split_times(path_save+embcode+"/", range(3), extra_name="_labels", extension=".npy")
 
-# fig, ax = plt.subplots(1,2)
-# ax[0].imshow(labels[0,30])
-# ax[1].imshow(labels_new[1,30])
-# plt.show()
 
-# idxs = np.where(labels[0] == 0)
+# fig, ax = plt.subplots(1,2)
+# ax[0].imshow(lbs[30])
+# ax[1].imshow(lbs[31])
+# plt.show()

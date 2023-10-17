@@ -215,7 +215,9 @@ def load_cells_from_labels_stack(path=None, filename=None, times=None, split_tim
 
     cells = []
     unique_labels_T = [np.unique(labs) for labs in labels_stack]
-    for lab in range(1,labels_stack.max()):
+    unique_labels = np.unique(np.concatenate(unique_labels_T))
+    for lab in unique_labels:
+        if lab == 0: continue
         cell_ts = []
         cell_zs = []
         cell_masks = []
