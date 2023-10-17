@@ -1,6 +1,6 @@
 import dataclasses
 import json
-
+from scipy.spatial import ConvexHull
 import numpy as np
 import os
 
@@ -114,8 +114,8 @@ def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_fo
         if not os.path.isdir(pthsave): 
             os.mkdir(pthsave)
         
-        for t in times:    
-            np.save(correct_path(pthsave)+string_format.format(str(t))+".npy", labels_stack[t], allow_pickle=False)
+        for tid, t in enumerate(times):    
+            np.save(correct_path(pthsave)+string_format.format(str(t))+".npy", labels_stack[tid], allow_pickle=False)
     else: 
         if labels_stack.shape[0] == 1:
             np.save(pthsave, labels_stack[0], allow_pickle=False)
@@ -183,11 +183,11 @@ def load_cells_from_json(path=None, filename=None):
     file_to_store = pthsave + "_info.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
         cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
-    
+
     return cell_dict, cellinfo_dict
 
 
-def load_cells_from_labels_stack(path=None, filename=None):
+def load_cells_from_labels_stack(path=None, filename=None, times=None, split_times=False):
     """load cell objects obtained with celltrack.py from npy file
 
     load cells from `path`/`filename`_labels.tif
@@ -202,53 +202,50 @@ def load_cells_from_labels_stack(path=None, filename=None):
     """
 
     pthload = correct_path(path) + filename 
-    # labels_stack, xyres_labs, zres_labs = read_img_with_resolution(pthload+"_labels.tif", stack=True, channel=None)
-    labels_stack = np.load(pthload+"_labels.npy")
-
-    cells = []
-    for lab in range(labels_stack.max()):
-        idxs = np.where(labels_stack == lab)
-        _ts = idxs[0]
-        _zs = idxs[1]
-        _masks = np.transpose(idxs[2:])
-
-        ts = np.unique(_ts)
-        cell_ts = ts
-        cell_zs = []
-        cell_masks = []
-        cell_outlines = []
-
-        for tid, t in enumerate(ts):
-
-            tids = np.where(_ts==0)[0]
-            t1 = tids[0]
-            t2 = tids[-1]
-            zs = _zs[t1:t2+1]
-
-            cell_zs.append(list(np.unique(zs)))
-            cell_masks.append([])
-            cell_outlines.append([])
-
-            from scipy.spatial import ConvexHull
-
-            masks = _masks[t1:t2+1]
-            for zid, z in enumerate(cell_zs[tid]):
-                zids = np.where(zs==z)[0]
-                z1 = zids[0]
-                z2 = zids[-1]
-                mask = masks[z1:z2+1] 
-                hull = ConvexHull(mask)
-                outline = mask[hull.vertices]
-
-                cell_masks[tid].append(mask)
-                cell_outlines[tid].append(outline)
-
-        test_cell = create_cell(lab-1, lab-1, cell_zs, cell_ts, cell_outlines, cell_masks, stacks=None)
-        cells.append(test_cell)
-
+    
     file_to_store = pthload + "_info.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
         cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
+
+    # labels_stack, xyres_labs, zres_labs = read_img_with_resolution(pthload+"_labels.tif", stack=True, channel=None)
+    if split_times:
+        labels_stack= read_split_times(correct_path(pthload), range(times), extra_name="_labels", extension=".npy")
+    else:
+        labels_stack = np.load(pthload+"_labels.npy")
+
+    cells = []
+    unique_labels_T = [np.unique(labs) for labs in labels_stack]
+    for lab in range(1,labels_stack.max()):
+        cell_ts = []
+        cell_zs = []
+        cell_masks = []
+        cell_outlines = []
+        
+        for t in range(labels_stack.shape[0]):
+            if lab in unique_labels_T[t]:
+                cell_ts.append(t)
+                idxs = np.where(labels_stack[t] == lab)
+                zs = idxs[0]
+                idxxy = np.vstack((idxs[2], idxs[1]))
+                masks = np.transpose(idxxy)
+                
+                cell_zs.append(list(np.unique(zs)))
+                cell_masks.append([])
+                cell_outlines.append([])
+
+                for zid, z in enumerate(cell_zs[-1]):
+                    zids = np.where(zs==z)[0]
+                    z1 = zids[0]
+                    z2 = zids[-1]
+                    mask = masks[z1:z2+1] 
+                    hull = ConvexHull(mask)
+                    outline = mask[hull.vertices]
+
+                    cell_masks[-1].append(np.ascontiguousarray(mask.astype('uint16')))
+                    cell_outlines[-1].append(np.ascontiguousarray(outline.astype('uint16')))
+
+        cell = create_cell(lab-1, lab-1, cell_zs, cell_ts, cell_outlines, cell_masks, stacks=None)
+        cells.append(cell)
 
     return cells, cellinfo_dict
 
