@@ -1,6 +1,6 @@
 import dataclasses
 import json
-
+from scipy.spatial import ConvexHull
 import numpy as np
 import os
 
@@ -108,10 +108,26 @@ def save_cells_to_json(cells, CT_info, path=None, filename=None):
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
-def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_times=False):
+def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_format="t{}"):
+
+    if split_times: 
+        if not os.path.isdir(pthsave): 
+            os.mkdir(pthsave)
+        
+        for tid, t in enumerate(times):    
+            np.save(correct_path(pthsave)+string_format.format(str(t))+".npy", labels_stack[tid], allow_pickle=False)
+    else: 
+        if labels_stack.shape[0] == 1:
+            np.save(pthsave, labels_stack[0], allow_pickle=False)
+        
+        else:
+            np.save(pthsave, labels_stack, allow_pickle=False)
+
+
+def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_times=False, string_format="{}_labels"):
     """save cell objects obtained with celltrack.py
 
-    Saves cells as `path`/`filename`_cells.json
+    Saves cells as `path`/`filename`_cells.npy
     Saves cell tracking info as `path`/`filename`_info.json
 
     Parameters
@@ -126,30 +142,14 @@ def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_t
 
     """
 
-    pthsave = correct_path(path) + filename
+    pthsave = correct_path(path) + filename + "_labels"
         
     labels_stack = np.zeros(
         (CT_info.times, CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
     
-
     labels_stack = compute_labels_stack(labels_stack, cells)
-
-    if split_times: 
-        if not os.path.isdir(pthsave+"_labels"): 
-            os.mkdir(pthsave+"_labels")
-        
-        print(pthsave+"_labels")
-        for t in range(CT_info.times):    
-            np.save(pthsave+"_labels/t{}.npy".format(str(t)), labels_stack[t], allow_pickle=False)
-    else: 
-        if labels_stack.shape[0] == 1:
-            np.save(pthsave+"_labels", labels_stack[0], allow_pickle=False)
-        
-        else:
-            np.save(pthsave+"_labels", labels_stack, allow_pickle=False)
-
-    # save_4Dstack_labels(correct_path(path), filename, cells, CT_info, imagejformat="TZYX")
+    save_labels_stack(labels_stack, pthsave, range(CT_info.times), split_times=split_times, string_format=string_format)
 
     file_to_store = pthsave + "_info.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
@@ -187,7 +187,7 @@ def load_cells_from_json(path=None, filename=None):
     return cell_dict, cellinfo_dict
 
 
-def load_cells_from_labels_stack(path=None, filename=None):
+def load_cells_from_labels_stack(path=None, filename=None, times=None, split_times=False):
     """load cell objects obtained with celltrack.py from npy file
 
     load cells from `path`/`filename`_labels.tif
@@ -202,58 +202,159 @@ def load_cells_from_labels_stack(path=None, filename=None):
     """
 
     pthload = correct_path(path) + filename 
-    # labels_stack, xyres_labs, zres_labs = read_img_with_resolution(pthload+"_labels.tif", stack=True, channel=None)
-    labels_stack = np.load(pthload+"_labels.npy")
-
-    cells = []
-    for lab in range(labels_stack.max()):
-        idxs = np.where(labels_stack == lab)
-        _ts = idxs[0]
-        _zs = idxs[1]
-        _masks = np.transpose(idxs[2:])
-
-        ts = np.unique(_ts)
-        cell_ts = ts
-        cell_zs = []
-        cell_masks = []
-        cell_outlines = []
-
-        for tid, t in enumerate(ts):
-
-            tids = np.where(_ts==0)[0]
-            t1 = tids[0]
-            t2 = tids[-1]
-            zs = _zs[t1:t2+1]
-
-            cell_zs.append(list(np.unique(zs)))
-            cell_masks.append([])
-            cell_outlines.append([])
-
-            from scipy.spatial import ConvexHull
-
-            masks = _masks[t1:t2+1]
-            for zid, z in enumerate(cell_zs[tid]):
-                zids = np.where(zs==z)[0]
-                z1 = zids[0]
-                z2 = zids[-1]
-                mask = masks[z1:z2+1] 
-                hull = ConvexHull(mask)
-                outline = mask[hull.vertices]
-
-                cell_masks[tid].append(mask)
-                cell_outlines[tid].append(outline)
-
-        test_cell = create_cell(lab-1, lab-1, cell_zs, cell_ts, cell_outlines, cell_masks, stacks=None)
-        cells.append(test_cell)
-
+    
     file_to_store = pthload + "_info.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
         cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
+
+    # labels_stack, xyres_labs, zres_labs = read_img_with_resolution(pthload+"_labels.tif", stack=True, channel=None)
+    if split_times:
+        labels_stack= read_split_times(correct_path(pthload), range(times), extra_name="_labels", extension=".npy")
+    else:
+        labels_stack = np.load(pthload+"_labels.npy")
+
+    cells = []
+    unique_labels_T = [np.unique(labs) for labs in labels_stack]
+    unique_labels = np.unique(np.concatenate(unique_labels_T))
+    for lab in unique_labels:
+        if lab == 0: continue
+        cell_ts = []
+        cell_zs = []
+        cell_masks = []
+        cell_outlines = []
+        
+        for t in range(labels_stack.shape[0]):
+            if lab in unique_labels_T[t]:
+                cell_ts.append(t)
+                idxs = np.where(labels_stack[t] == lab)
+                zs = idxs[0]
+                idxxy = np.vstack((idxs[2], idxs[1]))
+                masks = np.transpose(idxxy)
+                
+                cell_zs.append(list(np.unique(zs)))
+                cell_masks.append([])
+                cell_outlines.append([])
+
+                for zid, z in enumerate(cell_zs[-1]):
+                    zids = np.where(zs==z)[0]
+                    z1 = zids[0]
+                    z2 = zids[-1]
+                    mask = masks[z1:z2+1] 
+                    hull = ConvexHull(mask)
+                    outline = mask[hull.vertices]
+
+                    cell_masks[-1].append(np.ascontiguousarray(mask.astype('uint16')))
+                    cell_outlines[-1].append(np.ascontiguousarray(outline.astype('uint16')))
+
+        cell = create_cell(lab-1, lab-1, cell_zs, cell_ts, cell_outlines, cell_masks, stacks=None)
+        cells.append(cell)
 
     return cells, cellinfo_dict
 
 load_cells = load_cells_from_labels_stack
 
+from numba.typed import List
+from numba import njit
+
+@njit
+def _predefine_jitcell_inputs():
+    zs = List([List([1])])
+    zs.pop(0)
+
+    times = List([1])
+    times.pop(0)
+
+    outlines = List([List([np.zeros((2,2), dtype='uint16')])])
+    outlines.pop(0)
+
+    masks = List([List([np.zeros((2,2), dtype='uint16')])])
+    masks.pop(0)
+    
+    centers = List([np.zeros(1, dtype='float32')])
+    centers.pop(0)
+    
+    centers_all = List([List([np.zeros(1, dtype='float32')])])
+    centers_all.pop(0)
+    
+    centers_weight = np.zeros(1, dtype='float32')
+    np.delete(centers_weight, 0)
+    return 0,0, zs, times, outlines, masks, False, centers, centers, centers, centers_all, centers_weight, centers
+
+from numba.np.extensions import cross2d
+
+# functions got from https://stackoverflow.com/a/74817179/7546279
+@njit('(int64[:,:], int64[:], int64, int64)')
+def process(S, P, a, b):
+    signed_dist = cross2d(S[P] - S[a], S[b] - S[a])
+    K = np.array([i for s, i in zip(signed_dist, P) if s > 0 and i != a and i != b], dtype=np.int64)
+
+    if len(K) == 0:
+        return [a, b]
+
+    c = P[np.argmax(signed_dist)]
+    return process(S, K, a, c)[:-1] + process(S, K, c, b)
+
+@njit('(int64[:,:],)')
+def quickhull_2d(S: np.ndarray) -> np.ndarray:
+    a, b = np.argmin(S[:,0]), np.argmax(S[:,0])
+    return process(S, np.arange(S.shape[0]), a, b)[:-1] + process(S, np.arange(S.shape[0]), b, a)[:-1]
+
+from embdevtools.celltrack.core.dataclasses import jitCell
+from numba import prange
+
+jitcellinputs = _predefine_jitcell_inputs()
+jitcell_test = jitCell(*jitcellinputs)
+
+@njit()
+def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
+    jitcellinputs = _predefine_jitcell_inputs()
+    jitcell = jitCell(*jitcellinputs)
+    jitcell.label = lab-1
+    jitcell.id = lab-1
+    for t in prange(labels_stack.shape[0]):
+        if lab in unique_labels_T[t]:
+            jitcell.times.append(t)
+            idxs = np.where(labels_stack[t] == lab)
+            zs = idxs[0]
+            idxxy = np.vstack((idxs[2], idxs[1]))
+            masks = np.transpose(idxxy)
+            
+            jitcell.zs.append(List(np.unique(zs)))
+            
+            cell_maskst = List([np.zeros((2,2), dtype='uint16')])
+            cell_maskst.pop(0)
+            
+            cell_outlinest = List([np.zeros((2,2), dtype='uint16')])
+            cell_outlinest.pop(0)
+            
+            for zid in prange(len(jitcell.zs[-1])):
+                z = jitcell.zs[-1][zid]
+                zids = np.where(zs==z)[0]
+                z1 = zids[0]
+                z2 = zids[-1]
+                mask = masks[z1:z2+1] 
+                
+                hull = np.asarray(quickhull_2d(mask))
+                outline = mask[hull]
+                
+                cell_maskst.append(np.ascontiguousarray(mask.astype('uint16')))
+                cell_outlinest.append(np.ascontiguousarray(outline.astype('uint16')))
+            
+            jitcell.masks.append(cell_maskst)
+            jitcell.outlines.append(cell_outlinest)
+
+    return jitcell
+        
+def extract_jitcells_from_label_stack(labels_stack):
+    cells = []
+    unique_labels_T = [np.unique(labs) for labs in labels_stack]
+    unique_labels = np.unique(np.concatenate(unique_labels_T))
+    for lab in unique_labels:
+        if lab==0: continue
+        jitcell = _extract_jitcell_from_label_stack(lab, labels_stack, List(unique_labels_T))
+        cells.append(jitcell)
+
+    return cells
 
 import numpy as np
 from tifffile import imwrite
@@ -350,3 +451,20 @@ def save_3Dstack(
             "axes": imagejformat,
         },
     )
+
+def read_split_times(path_data, times, extra_name="", extension=".tif"):
+    
+    IMGS = []
+    for t in times:
+        path_to_file = correct_path(path_data)+"{}{}{}".format(t, extra_name, extension)
+        if extension == ".tif":
+            IMG, xyres, zres = read_img_with_resolution(path_to_file, channel=None, stack=True)
+            IMG = IMG[0]
+            IMGS.append(IMG.astype('uint8'))
+        elif extension == ".npy":
+            IMG = np.load(path_to_file)
+            IMGS.append(IMG.astype('uint16'))
+    if extension == ".tif":
+        return np.array(IMGS), xyres, zres
+    elif extension == ".npy":
+        return np.array(IMGS)

@@ -95,10 +95,14 @@ class CellTracking(object):
         plot_args={},
         use_channel=0,
         _loadcells=False,
+        split_times=False
     ):
         # Basic arguments
         self.path_to_save = pthtosave
         self.embcode = embcode
+        
+        self.split_times = split_times
+        
         if len(stacks.shape) == 5:
             self._stacks = stacks[:, :, :, :, use_channel]
             self.STACKS = stacks
@@ -131,6 +135,8 @@ class CellTracking(object):
         self._labels_selected = []
         self._ids_selected = []
 
+        self.times = np.shape(self._stacks)[0]
+        self.slices = np.shape(self._stacks)[1]
         # check if cells should be loaded using path_to_save and embcose
         if _loadcells == True:
             _loadcells = self.path_to_save
@@ -166,7 +172,10 @@ class CellTracking(object):
         train_segmentation_args,
         tracking_args,
     ):
-        cells, CT_info = load_cells(path_to_cells, self.embcode)
+        cells, CT_info = load_cells(path_to_cells, self.embcode, split_times=self.split_times, times=self.times)
+        for cell in cells:
+            update_cell(cell, stacks=self._stacks)
+        
         self.CT_info = CT_info
         args = self.CT_info.args
         self.loaded_args = args
@@ -232,8 +241,8 @@ class CellTracking(object):
 
         self._xyresolution = self.CT_info.xyresolution
         self._zresolution = self.CT_info.zresolution
-        self.times = self.CT_info.times
-        self.slices = self.CT_info.slices
+        # self.times = self.CT_info.times
+        # self.slices = self.CT_info.slices
         self.stack_dims = self.CT_info.stack_dims
         self._track_args["time_step"] = self.CT_info.time_step
         self.apoptotic_events = self.CT_info.apo_cells
@@ -1672,6 +1681,7 @@ def load_CellTracking(
     error_correction_args={},
     plot_args={},
     use_channel=0,
+    split_times=False
 ):
     CT = CellTracking(
         stacks,
@@ -1686,6 +1696,7 @@ def load_CellTracking(
         error_correction_args=error_correction_args,
         plot_args=plot_args,
         _loadcells=True,
+        split_times=split_times
     )
     return CT
 
