@@ -52,17 +52,14 @@ plot_args = {
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
     'plot_stack_dims': (512, 512), 
-    'plot_centers':[True, True] # [Plot center as a dot, plot label on 3D center]
+    'plot_centers':[True, True], # [Plot center as a dot, plot label on 3D center]
+    'batch_size':5,
+    'batch_overlap':1,
 }
 
 error_correction_args = {
     'backup_steps': 10,
     'line_builder_mode': 'lasso',
-    # 'save_split_times': True
-}
-
-batch_args = {
-    
 }
 
 def batch_segmentation(path_data, embcode, segmentation_args={}, concatenation3D_args={}):
