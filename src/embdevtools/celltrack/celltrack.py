@@ -1675,7 +1675,7 @@ class CellTrackingBatch(CellTracking):
         self,
         pthtodata,
         pthtosave,
-        embcode,
+        embcode=None,
         segmentation_args={},
         concatenation3D_args={},
         train_segmentation_args={},
@@ -1694,7 +1694,10 @@ class CellTrackingBatch(CellTracking):
         self.path_to_data = pthtodata
                 
         # Directory in which to save results. If folder does not exist, it will be created on pthtosave
-        self.path_to_save = correct_path(pthtosave)+embcode
+        if embcode in None:
+            self.path_to_save = pthtosave
+        else:
+            self.path_to_save = correct_path(pthtosave)+embcode
         check_or_create_dir(self.path_to_data)
         
         # in batch mode times has to be always split
@@ -1770,6 +1773,7 @@ class CellTrackingBatch(CellTracking):
                 "stardist3D",
             ],
         )
+        
         self._seg_args, self._seg_method_args = fill_segmentation_args(args["seg_args"])
         self._seg_args = check_and_override_args(
             segmentation_args, self._seg_args, raise_exception=False
@@ -1891,6 +1895,7 @@ class CellTrackingBatch(CellTracking):
 
         first_t, last_t = compute_batch_times(round, self._seg_args['batch_size'], self._seg_args['batch_overlap'], self.total_times)
         stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(first_t, last_t), extra_name="", extension=".tif")
+        
         if len(stacks.shape) == 5:
             self._stacks = stacks[:, :, :, :, use_channel]
             self.STACKS = stacks
