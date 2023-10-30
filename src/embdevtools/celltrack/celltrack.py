@@ -1678,7 +1678,6 @@ class CellTrackingBatch(CellTracking):
         embcode=None,
         segmentation_args={},
         concatenation3D_args={},
-        train_segmentation_args={},
         tracking_args={},
         error_correction_args={},
         plot_args={},
@@ -1720,14 +1719,11 @@ class CellTrackingBatch(CellTracking):
         self._ids_selected = []
 
         # check if cells should be loaded using path_to_save and embcode
-        if _loadcells == True:
-            _loadcells = self.path_to_save
-        if isinstance(_loadcells, str):
+        if _loadcells:
             self.init_from_cells(
-                _loadcells,
+                self.path_to_save,
                 segmentation_args,
                 concatenation3D_args,
-                train_segmentation_args,
                 tracking_args,
             )
         else:
@@ -1735,7 +1731,6 @@ class CellTrackingBatch(CellTracking):
                 use_channel,
                 segmentation_args,
                 concatenation3D_args,
-                train_segmentation_args,
                 tracking_args,
             )
 
@@ -1876,7 +1871,6 @@ class CellTrackingBatch(CellTracking):
         use_channel,
         segmentation_args,
         concatenation3D_args,
-        train_segmentation_args,
         tracking_args,
     ):
         # check and fill segmentation arguments
