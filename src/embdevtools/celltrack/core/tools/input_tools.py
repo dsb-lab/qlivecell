@@ -25,11 +25,10 @@ def get_file_embcode(path_data, f, returnfiles=False):
         full file path and file name.
     """
     files = os.listdir(path_data)
-
     fid = -1
     if isinstance(f, str):
         for i, file in enumerate(files):
-            if f in file:
+            if f==file:
                 fid = i
 
         if fid == -1:

@@ -76,7 +76,11 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
+<<<<<<< HEAD
     IMGS[:1], 
+=======
+    IMGS[:3, :20], 
+>>>>>>> batch-tracking
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -94,3 +98,8 @@ CT.run()
 
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
+
+
+import numpy as np
+labels_stack = np.load(path_save+embcode+"_labels.npy")
+
