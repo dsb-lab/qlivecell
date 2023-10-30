@@ -70,7 +70,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:1], 
+    IMGS, 
     path_save, 
     embcode, 
     xyresolution=xyres, 
