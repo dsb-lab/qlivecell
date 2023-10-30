@@ -1,6 +1,6 @@
 ### LOAD PACKAGE ###
 # from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, isotropize_hyperstack, get_file_names
+from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, get_file_names
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'

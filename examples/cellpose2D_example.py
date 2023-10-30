@@ -86,10 +86,8 @@ CT = CellTracking(
 ### RUN SEGMENTATION AND TRACKING ###
 CT.run()
 
+from embdevtools.celltrack.core.tools.save_tools import save_cells_to_labels_stack
+save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=True, string_format="{}_labels")
+
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
-
-
-import numpy as np
-labels_stack = np.load(path_save+embcode+"_labels.npy")
-
+# CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
