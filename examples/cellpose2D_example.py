@@ -16,7 +16,7 @@ except:
 files = get_file_names(path_data)
 
 # file, embcode = get_file_embcode(path_data, 10)
-file, embcode = get_file_embcode(path_data, 0)
+file, embcode = get_file_embcode(path_data, '20230607_CAG_H2B_GFP_16_cells_stack2_sb.tif')
 
 
 ### LOAD HYPERSTACKS ###
