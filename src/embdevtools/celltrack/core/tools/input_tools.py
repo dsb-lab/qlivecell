@@ -110,7 +110,7 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
 
         try:
             zres = imagej_metadata["spacing"]
-        except KeyError:
+        except:
             zres = 1
 
         if xres == yres:

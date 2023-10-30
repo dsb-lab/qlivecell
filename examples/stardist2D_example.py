@@ -1,20 +1,27 @@
 ### LOAD PACKAGE ###
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack
+from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack, get_file_names
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/movies/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/CellTrackObjects/'
+path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
 
+
+try: 
+    files = get_file_names(path_save)
+except: 
+    import os
+    os.mkdir(path_save)
 ### GET FULL FILE NAME AND FILE CODE ###
-file, embcode, files = get_file_embcode(path_data, 3, returnfiles=True)
+files = get_file_names(path_data)
+
+file, embcode = get_file_embcode(path_data, 2, returnfiles=False)
 
 
 ### LOAD HYPERSTACKS ###
-channel = 1
+channel = 0
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
-save_4Dstack(path_save,  embcode+"ch_%d" %(channel+1), IMGS, xyres, zres, imagejformat="TZYX", masks=False)
 
 
 ### LOAD STARDIST MODEL ###
@@ -26,6 +33,7 @@ segmentation_args={
     'method': 'stardist2D', 
     'model': model, 
     # 'blur': [5,1], 
+    # 'scale': 3
 }
           
 concatenation3D_args = {
@@ -34,7 +42,7 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 2,
+    'min_cell_planes': 1,
 }
 
 tracking_args = {
@@ -60,7 +68,7 @@ error_correction_args = {
 
 ### CREATE CELLTRACKING CLASS ###
 CT = CellTracking(
-    IMGS, 
+    IMGS[:1,:1], 
     path_save, 
     embcode+"ch_%d" %(channel+1), 
     xyresolution=xyres, 
@@ -76,15 +84,15 @@ CT = CellTracking(
 ### RUN SEGMENTATION AND TRACKING ###
 CT.run()
 
-from embdevtools.celltrack.core.tools.cell_tools import remove_small_cells, remove_small_planes_at_boders
+# from embdevtools.celltrack.core.tools.cell_tools import remove_small_cells, remove_small_planes_at_boders
 
-remove_small_cells(CT.jitcells, 250, CT._del_cell, CT.update_labels)
-remove_small_planes_at_boders(CT.jitcells, 200, CT._del_cell, CT.update_labels, CT._stacks)
+# remove_small_cells(CT.jitcells, 250, CT._del_cell, CT.update_labels)
+# remove_small_planes_at_boders(CT.jitcells, 200, CT._del_cell, CT.update_labels, CT._stacks)
 
 
-### PLOTTING ###
-IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
+# ### PLOTTING ###
+# IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
@@ -114,7 +122,6 @@ CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
 # CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
 
 ### SAVE RESULTS AS LABELS HYPERSTACK ###
-save_4Dstack_labels(path_save, embcode+"ch_%d" %(channel+1), CT, imagejformat="TZYX")
 
 
 # ### TRAINING ARGUMENTS ###

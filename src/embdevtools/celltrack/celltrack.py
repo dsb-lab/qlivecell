@@ -403,7 +403,6 @@ class CellTracking(object):
     def run(self):
         # Result of segmentation has shape (t,z,l)
         Labels, Outlines, Masks = self.cell_segmentation()
-
         # printfancy("")
         printfancy("computing tracking...")
 
