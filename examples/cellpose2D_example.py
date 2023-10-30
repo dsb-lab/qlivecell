@@ -6,10 +6,6 @@ from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects'
 
-### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
-
 try: 
     files = get_file_names(path_save)
 except: 
@@ -20,11 +16,11 @@ except:
 files = get_file_names(path_data)
 
 # file, embcode = get_file_embcode(path_data, 10)
-file, embcode = get_file_embcode(path_data, 2)
+file, embcode = get_file_embcode(path_data, 0)
 
 
 ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=0)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
 
 
 ### LOAD CELLPOSE MODEL ###
@@ -36,11 +32,9 @@ model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/Ph
 segmentation_args={
     'method': 'cellpose2D', 
     'model': model, 
-    # 'blur': [5,1], 
+    'blur': [5,1], 
     'channels': [0,0],
     'flow_threshold': 0.4,
-    'min_size': -1,
-    'diameter': 8,
 }
           
 concatenation3D_args = {
@@ -64,7 +58,7 @@ plot_args = {
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
     'plot_stack_dims': (512, 512), 
-    'plot_centers':[False, False] # [Plot center as a dot, plot label on 3D center]
+    'plot_centers':[True, True] # [Plot center as a dot, plot label on 3D center]
 }
 
 error_correction_args = {
@@ -76,11 +70,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-<<<<<<< HEAD
     IMGS[:1], 
-=======
-    IMGS[:3, :20], 
->>>>>>> batch-tracking
     path_save, 
     embcode, 
     xyresolution=xyres, 
