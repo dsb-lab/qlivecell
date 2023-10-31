@@ -5,6 +5,7 @@ from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
+
 try: 
     files = get_file_names(path_save)
 except: 
@@ -15,7 +16,7 @@ except:
 files = get_file_names(path_data)
 
 # file, embcode = get_file_embcode(path_data, 10)
-file, embcode = get_file_embcode(path_data, 'sb')
+file, embcode = get_file_embcode(path_data, '20230607_CAG_H2B_GFP_16_cells_stack2_sb.tif')
 
 
 ### LOAD HYPERSTACKS ###
@@ -24,7 +25,7 @@ IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel
 
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
-model  = models.CellposeModel(gpu=False, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
+model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
 
 
 ### DEFINE ARGUMENTS ###
@@ -69,7 +70,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:3, :20], 
+    IMGS, 
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -85,10 +86,8 @@ CT = CellTracking(
 ### RUN SEGMENTATION AND TRACKING ###
 CT.run()
 
+from embdevtools.celltrack.core.tools.save_tools import save_cells_to_labels_stack
+save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=True, string_format="{}_labels")
+
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
-
-
-import numpy as np
-labels_stack = np.load(path_save+embcode+"_labels.npy")
-
+# CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)

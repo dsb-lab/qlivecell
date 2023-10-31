@@ -1,23 +1,21 @@
 ### LOAD PACKAGE ###
 # from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
-import sys
-sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, isotropize_hyperstack
+from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, get_file_names
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects/'
+path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
+
+files = get_file_names(path_data)
 
 
 ### GET FULL FILE NAME AND FILE CODE ###
-file, embcode, files = get_file_embcode(path_data, 10, returnfiles=True)
-file, embcode, files = get_file_embcode(path_data, 'Lineage_2hr_082119_p1.tif', returnfiles=True)
+file, embcode = get_file_embcode(path_data, 0)
 
 
 ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=1)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
 
-IMGS_iso = isotropize_hyperstack(IMGS[:2], zres, xyres)
 
 ### DEFINE ARGUMENTS ###
 plot_args = {
@@ -36,29 +34,18 @@ error_correction_args = {
 
 ### LOAD PREVIOUSLY SAVED RESULTS ###
 CT=load_CellTracking(
-        IMGS, 
+        IMGS[:5], 
         path_save, 
         embcode, 
         xyresolution=xyres, 
         zresolution=zres,
         error_correction_args=error_correction_args,    
         plot_args = plot_args,
+        split_times=True
     )
 
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
-### SAVE RESULTS AS MASKS HYPERSTACK
-# save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
-
-labs_sel = []
-labs_sel2 = []
-labs = []
-
-for i, cell in enumerate(CT.jitcells_selected):
-    labs_sel.append(cell.label)
-    labs_sel2.append(CT._labels_selected[i])
-    
-for cell in CT.jitcells:
-    labs.append(cell.label)
-    
+# from embdevtools.celltrack.core.tools.save_tools import save_cells_to_labels_stack
+# save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=True, string_format="{}_labels")

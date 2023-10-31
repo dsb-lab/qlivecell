@@ -347,10 +347,10 @@ class PlotActionCT(PlotAction):
             elif event.key == "s":
                 self.CT_info.apo_cells = self.CTapoptotic_events
                 self.CT_info.mito_cells = self.CTmitotic_events
-                cells = [
-                    construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells
-                ]
-                self.CTsave_cells(cells, self.CT_info, self.path_to_save, self.filename)
+                # cells = [
+                #     construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells
+                # ]
+                self.CTsave_cells(self.jitcells, self.CT_info, self.path_to_save, self.filename)
             self.update()
 
         else:

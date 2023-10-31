@@ -179,6 +179,8 @@ class CellTracking(object):
             update_cell(cell, stacks=self._stacks)
         
         self.CT_info = CT_info
+        self.CT_info.times = self.times
+        self.CT_info.slices = self.slices
         args = self.CT_info.args
         self.loaded_args = args
 
@@ -414,7 +416,6 @@ class CellTracking(object):
     def run(self):
         # Result of segmentation has shape (t,z,l)
         Labels, Outlines, Masks = self.cell_segmentation()
-
         # printfancy("")
         printfancy("computing tracking...")
 
@@ -739,6 +740,7 @@ class CellTracking(object):
         )
 
     def _get_hints(self):
+        print("getting hints")
         del self.hints[:]
         for t in range(self.times - 1):
             self.hints.append([])
@@ -1625,15 +1627,15 @@ class CellTracking(object):
                 labs = self.ctattr.Labels[t][z]
                 self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
                 for lab in labs:
-                    cell = self._get_cell(lab)
-                    tid = cell.times.index(t)
-                    zz, ys, xs = cell.centers[tid]
-                    xs = round(xs * self._plot_args["dim_change"])
-                    ys = round(ys * self._plot_args["dim_change"])
-
-                    lab_to_display = lab
                     if self._plot_args["plot_centers"][0]:
                         if zz == z:
+                            cell = self._get_cell(lab)
+                            tid = cell.times.index(t)
+                            zz, ys, xs = cell.centers[tid]
+                            xs = round(xs * self._plot_args["dim_change"])
+                            ys = round(ys * self._plot_args["dim_change"])
+
+                            lab_to_display = lab
                             if [cell.id, PACP.t] in self.apoptotic_events:
                                 sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                                 self._pos_scatters.append(sc)
