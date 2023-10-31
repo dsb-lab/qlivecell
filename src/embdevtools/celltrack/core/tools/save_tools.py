@@ -148,6 +148,7 @@ def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_t
         (CT_info.times, CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
     
+    print(labels_stack.shape)
     labels_stack = compute_labels_stack(labels_stack, cells)
     save_labels_stack(labels_stack, pthsave, range(CT_info.times), split_times=split_times, string_format=string_format)
 

@@ -34,15 +34,18 @@ error_correction_args = {
 
 ### LOAD PREVIOUSLY SAVED RESULTS ###
 CT=load_CellTracking(
-        IMGS, 
+        IMGS[:5], 
         path_save, 
         embcode, 
         xyresolution=xyres, 
         zresolution=zres,
         error_correction_args=error_correction_args,    
         plot_args = plot_args,
+        split_times=True
     )
 
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
+# from embdevtools.celltrack.core.tools.save_tools import save_cells_to_labels_stack
+# save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=True, string_format="{}_labels")
