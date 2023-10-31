@@ -58,7 +58,7 @@ from .core.tools.tools import (check_and_fill_error_correction_args,
                                printclear, printfancy, progressbar,
                                sort_point_sequence, correct_path,
                                check_or_create_dir)
-from .core.tools.batch_tools import compute_batch_times
+from .core.tools.batch_tools import compute_batch_times, extract_total_times_from_files
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                                      greedy_tracking, hungarian_tracking)
 from .core.tracking.tracking_tools import (
@@ -1695,7 +1695,7 @@ class CellTrackingBatch(CellTracking):
         self.path_to_data = pthtodata
                 
         # Directory in which to save results. If folder does not exist, it will be created on pthtosave
-        if embcode in None:
+        if embcode is None:
             self.path_to_save = pthtosave
         else:
             self.path_to_save = correct_path(pthtosave)+embcode
@@ -1703,16 +1703,6 @@ class CellTrackingBatch(CellTracking):
         
         # in batch mode times has to be always split
         self.split_times = True
-
-        # check and fill error correction arguments
-        self._err_corr_args = check_and_fill_error_correction_args(
-            error_correction_args
-        )
-
-        # check and fill plot arguments
-        self._plot_args = check_and_fill_plot_args(
-            plot_args, (self._stacks.shape[2], self._stacks.shape[3])
-        )
 
         self._labels = []
         self._ids = []
@@ -1727,6 +1717,8 @@ class CellTrackingBatch(CellTracking):
                 segmentation_args,
                 concatenation3D_args,
                 tracking_args,
+                error_correction_args,
+                plot_args,
             )
         else:
             self.init_from_args(
@@ -1734,15 +1726,17 @@ class CellTrackingBatch(CellTracking):
                 segmentation_args,
                 concatenation3D_args,
                 tracking_args,
+                error_correction_args,
+                plot_args,
             )
 
-        # list of cells used by the pickers
-        self.list_of_cells = []
-        self.mito_cells = []
+        # # list of cells used by the pickers
+        # self.list_of_cells = []
+        # self.mito_cells = []
 
-        # extra attributes
-        self._min_outline_length = 50
-        self._nearest_neighs = self._min_outline_length
+        # # extra attributes
+        # self._min_outline_length = 50
+        # self._nearest_neighs = self._min_outline_length
 
     def init_from_cells(
         self,
@@ -1750,7 +1744,8 @@ class CellTrackingBatch(CellTracking):
         segmentation_args,
         concatenation3D_args,
         train_segmentation_args,
-        tracking_args,
+        error_correction_args,
+        plot_args
     ):
         cells, CT_info = load_cells(path_to_cells, self.embcode, split_times=self.split_times, times=self.times)
         for cell in cells:
@@ -1874,6 +1869,8 @@ class CellTrackingBatch(CellTracking):
         segmentation_args,
         concatenation3D_args,
         tracking_args,
+        error_correction_args,
+        plot_args,
     ):
         # check and fill segmentation arguments
         check_segmentation_args(
@@ -1889,31 +1886,51 @@ class CellTrackingBatch(CellTracking):
             segmentation_args
         )
 
-        first_t, last_t = compute_batch_times(round, self._seg_args['batch_size'], self._seg_args['batch_overlap'], self.total_times)
+        # check and fill tracking arguments
+        check_tracking_args(tracking_args, available_tracking=["greedy", "hungarian"])
+        self._track_args = fill_tracking_args(tracking_args)
+        
+        # In batch mode, stacks are read during initialization
+        # First and last time of the first batch
+        self.total_times = extract_total_times_from_files(self.path_to_data)
+        first_t, last_t = compute_batch_times(0, self._seg_args['batch_size'], 0, self.total_times)
+        
+        # Read the stacks
         stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(first_t, last_t), extra_name="", extension=".tif")
         
+        # If the stack is RGB, pick the channel to segment
         if len(stacks.shape) == 5:
             self._stacks = stacks[:, :, :, :, use_channel]
             self.STACKS = stacks
         elif len(stacks.shape) == 4:
             self._stacks = stacks
             self.STACKS = stacks
-            
+        
+        # check and fill error correction arguments
+        self._err_corr_args = check_and_fill_error_correction_args(
+            error_correction_args
+        )
+
+        # check and fill plot arguments
+        self._plot_args = check_and_fill_plot_args(
+            plot_args, (self._stacks.shape[2], self._stacks.shape[3])
+        )
+        
+        # Define number of times and of slices
         self.times = np.shape(self._stacks)[0]
         self.slices = np.shape(self._stacks)[1]
     
+        # Define xy and z resolutions
         self._xyresolution = xyresolution
         self._zresolution = zresolution
-            
+        
+        # If segmentation method is cellpose and stack is RGB, use that for segmentation
+        # since you can specify channels for segmentation in cellpose
         if "cellpose" in self._seg_args["method"]:
             if len(self.STACKS.shape) == 5:
                 ch = self._seg_method_args["channels"][0] - 1
                 self._stacks = self.STACKS[:, :, :, :, ch]
 
-
-        # check and fill tracking arguments
-        check_tracking_args(tracking_args, available_tracking=["greedy", "hungarian"])
-        self._track_args = fill_tracking_args(tracking_args)
 
         # check if the segmentation is directly in 3D or it needs concatenation
         self.segment3D = check3Dmethod(self._seg_args["method"])
@@ -1956,7 +1973,6 @@ class CellTrackingBatch(CellTracking):
         segargs["model"] = None
         args = {
             "seg_args": segargs,
-            "train_seg_args": self._train_seg_args,
             "track_args": self._track_args,
             "conc3D_args": self._conc3D_args,
             "segment3D": self.segment3D,
@@ -2879,83 +2895,6 @@ class CellTrackingBatch(CellTracking):
             1,
             mode="outlines",
         )
-    def train_segmentation_model(
-        self,
-        train_segmentation_args=None,
-        model=None,
-        times=None,
-        slices=None,
-        set_model=False,
-    ):
-        plt.close("all")
-        if hasattr(self, "PACP"):
-            del self.PACP
-
-        if model is None:
-            model = self._seg_args["model"]
-        if model is None:
-            raise Exception("no model provided for training")
-
-        if train_segmentation_args is not None:
-            (
-                self._train_seg_args,
-                self._train_seg_method_args,
-            ) = check_and_fill_train_segmentation_args(
-                train_segmentation_args,
-                model,
-                self._seg_args["method"],
-                self.path_to_save,
-            )
-
-        labels_stack = np.zeros_like(self._stacks).astype("int16")
-        labels_stack = compute_labels_stack(
-            labels_stack, self.jitcells, range(self.times)
-        )
-
-        actions = self._tz_actions
-        if isinstance(times, list):
-            if isinstance(slices, list):
-                actions = [[t, z] for z in slices for t in times]
-
-        # If there have been no actions or times+slices provided, raise error
-        if len(actions) == 0:
-            raise Exception("no training data for available")
-
-        if "cellpose" in self._seg_args["method"]:
-            train_imgs, train_masks = get_training_set(
-                self.STACKS,
-                labels_stack,
-                actions,
-                self._train_seg_args,
-                train3D=self.segment3D,
-            )
-            model = train_CellposeModel(
-                train_imgs,
-                train_masks,
-                model,
-                self._train_seg_method_args,
-            )
-
-        elif "stardist" in self._seg_args["method"]:
-            train_imgs, train_masks = get_training_set(
-                self._stacks,
-                labels_stack,
-                actions,
-                self._train_seg_args,
-                train3D=self.segment3D,
-            )
-            model = train_StardistModel(
-                train_imgs,
-                train_masks,
-                model,
-                self._train_seg_method_args,
-            )
-
-        if set_model:
-            self._seg_args["model"] = model
-
-        self._tz_actions = []
-        return model
 
     def set_model(self, model):
         self._seg_args["model"] = model

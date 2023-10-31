@@ -319,6 +319,7 @@ def fill_segmentation_args(segmentation_args):
             "model": None,
             "blur": None,
             "make_isotropic": [False, 1.0],
+            "batch_size": 5,
         }
         model = segmentation_args["model"]
         if model is None:
@@ -332,6 +333,7 @@ def fill_segmentation_args(segmentation_args):
             "model": None,
             "blur": None,
             "make_isotropic": [False, 1.0],
+            "batch_size": 5,
         }
         model = segmentation_args["model"]
         if model is None:
