@@ -1,6 +1,9 @@
 import gc
 import os
+
 import warnings
+warnings.filterwarnings("ignore")
+
 from collections import deque
 from copy import copy, deepcopy
 from datetime import datetime
@@ -49,7 +52,8 @@ from .core.tools.ct_tools import (check_and_override_args,
 from .core.tools.input_tools import (get_file_embcode, get_file_names,
                                      read_img_with_resolution)
 from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
-                                    save_4Dstack_labels, read_split_times)
+                                    save_4Dstack_labels, read_split_times,
+                                    save_cells_to_labels_stack)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
                                      isotropize_stack, isotropize_stackRGB)
 from .core.tools.tools import (check_and_fill_error_correction_args,
@@ -740,7 +744,6 @@ class CellTracking(object):
         )
 
     def _get_hints(self):
-        print("getting hints")
         del self.hints[:]
         for t in range(self.times - 1):
             self.hints.append([])
@@ -1410,10 +1413,8 @@ class CellTracking(object):
             idx2 = self._labels_selected.index(label)
 
         poped = self.jitcells.pop(idx1)
-        print("POPED LABEL =", poped.label)
         if len_selected_jitcells == len(self.jitcells_selected):
             poped = self.jitcells_selected.pop(idx2)
-            print("POPED LABEL =", poped.label)
         else:
             pass  # selected jitcells is a copy of jitcells so it was deleted already
         self._get_cellids_celllabels()
@@ -1688,6 +1689,8 @@ class CellTrackingBatch(CellTracking):
     ):
         # Basic arguments
         
+        self.use_channel = use_channel
+        
         # Name of the embryo to analyse (ussually date of imaging + info about the channels)
         self.embcode = embcode
         
@@ -1698,9 +1701,11 @@ class CellTrackingBatch(CellTracking):
         if embcode is None:
             self.path_to_save = pthtosave
         else:
-            self.path_to_save = correct_path(pthtosave)+embcode
+            self.path_to_save = correct_path(pthtosave)+correct_path(embcode)
+            
         check_or_create_dir(self.path_to_data)
-        
+        check_or_create_dir(self.path_to_save)
+
         # in batch mode times has to be always split
         self.split_times = True
 
@@ -1722,7 +1727,6 @@ class CellTrackingBatch(CellTracking):
             )
         else:
             self.init_from_args(
-                use_channel,
                 segmentation_args,
                 concatenation3D_args,
                 tracking_args,
@@ -1730,13 +1734,13 @@ class CellTrackingBatch(CellTracking):
                 plot_args,
             )
 
-        # # list of cells used by the pickers
-        # self.list_of_cells = []
-        # self.mito_cells = []
+        # list of cells used by the pickers
+        self.list_of_cells = []
+        self.mito_cells = []
 
-        # # extra attributes
-        # self._min_outline_length = 50
-        # self._nearest_neighs = self._min_outline_length
+        # extra attributes
+        self._min_outline_length = 50
+        self._nearest_neighs = self._min_outline_length
 
     def init_from_cells(
         self,
@@ -1865,7 +1869,6 @@ class CellTrackingBatch(CellTracking):
 
     def init_from_args(
         self,
-        use_channel,
         segmentation_args,
         concatenation3D_args,
         tracking_args,
@@ -1893,45 +1896,24 @@ class CellTrackingBatch(CellTracking):
         # In batch mode, stacks are read during initialization
         # First and last time of the first batch
         self.total_times = extract_total_times_from_files(self.path_to_data)
-        first_t, last_t = compute_batch_times(0, self._seg_args['batch_size'], 0, self.total_times)
-        
-        # Read the stacks
-        stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(first_t, last_t), extra_name="", extension=".tif")
-        
-        # If the stack is RGB, pick the channel to segment
-        if len(stacks.shape) == 5:
-            self._stacks = stacks[:, :, :, :, use_channel]
-            self.STACKS = stacks
-        elif len(stacks.shape) == 4:
-            self._stacks = stacks
-            self.STACKS = stacks
         
         # check and fill error correction arguments
         self._err_corr_args = check_and_fill_error_correction_args(
             error_correction_args
         )
-
-        # check and fill plot arguments
-        self._plot_args = check_and_fill_plot_args(
-            plot_args, (self._stacks.shape[2], self._stacks.shape[3])
-        )
-        
-        # Define number of times and of slices
-        self.times = np.shape(self._stacks)[0]
-        self.slices = np.shape(self._stacks)[1]
     
+        # Read the stacks
+        stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(0, 1), extra_name="", extension=".tif")
+        stacks = stacks[:, 3:15:3]
+
+        self.slices = stacks.shape[1]
+        self.stack_dims = np.shape(stacks)[2:4]
+
         # Define xy and z resolutions
         self._xyresolution = xyresolution
         self._zresolution = zresolution
-        
-        # If segmentation method is cellpose and stack is RGB, use that for segmentation
-        # since you can specify channels for segmentation in cellpose
-        if "cellpose" in self._seg_args["method"]:
-            if len(self.STACKS.shape) == 5:
-                ch = self._seg_method_args["channels"][0] - 1
-                self._stacks = self.STACKS[:, :, :, :, ch]
-
-
+    
+    
         # check if the segmentation is directly in 3D or it needs concatenation
         self.segment3D = check3Dmethod(self._seg_args["method"])
         if not self.segment3D:
@@ -1942,11 +1924,15 @@ class CellTrackingBatch(CellTracking):
         else:
             self._conc3D_args = {}
 
+
+        # check and fill plot arguments
+        self._plot_args = check_and_fill_plot_args(
+            plot_args, (self.stack_dims[0], self.stack_dims[1])
+        )
+
+
         # pre-define max label
         self.max_label = 0
-
-        # array could have an extra dimension if RGB
-        self.stack_dims = np.shape(self._stacks)[2:4]
 
         ##  Mito and Apo events
         self.apoptotic_events = []
@@ -1961,12 +1947,6 @@ class CellTrackingBatch(CellTracking):
         # create list to store lists of [t,z] actions performed
         # This list is reseted after training
         self._tz_actions = []
-        t = self.times
-        z = self.slices
-        x, y = self._plot_args["plot_stack_dims"][0:2]
-
-        self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
-        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
 
     def init_CT_info(self):
         segargs = deepcopy(self._seg_args)
@@ -1981,7 +1961,7 @@ class CellTrackingBatch(CellTracking):
         CT_info = CellTracking_info(
             self._xyresolution,
             self._zresolution,
-            self.times,
+            self.total_times,
             self.slices,
             self.stack_dims,
             self._track_args["time_step"],
@@ -2010,53 +1990,44 @@ class CellTrackingBatch(CellTracking):
         self.currentcellid += 1
 
     def run(self):
-        # Result of segmentation has shape (t,z,l)
-        Labels, Outlines, Masks = self.cell_segmentation()
+
+        self.cell_segmentation()
 
         # printfancy("")
-        printfancy("computing tracking...")
-
-        # For tracking only the planes of the cell centers are used so shapes are (t,l)
-        TLabels, TOutlines, TMasks, TCenters = get_labels_centers(
-            self._stacks, Labels, Outlines, Masks
-        )
+        # printfancy("computing tracking...")
         
-        FinalLabels, label_correspondance = self.cell_tracking(
-            TLabels, TCenters, TOutlines, TMasks
-        )
+        # self.cell_tracking()
 
-        self.lc = label_correspondance
+        # printfancy("tracking completed.", clear_prev=1)
 
-        printfancy("tracking completed. initialising cells...", clear_prev=1)
+        # self.init_cells(FinalLabels, Labels, Outlines, Masks, label_correspondance)
 
-        self.init_cells(FinalLabels, Labels, Outlines, Masks, label_correspondance)
+        # printfancy("cells initialised. updating labels...", clear_prev=1)
 
-        printfancy("cells initialised. updating labels...", clear_prev=1)
+        # self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
 
-        self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
+        # self.update_labels(backup=False)
 
-        self.update_labels(backup=False)
+        # printfancy("labels updated", clear_prev=1)
 
-        printfancy("labels updated", clear_prev=1)
+        # cells = [construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
 
-        cells = [construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
-
-        self.backupCT = backup_CellTrack(
-            0,
-            deepcopy(cells),
-            deepcopy(self.apoptotic_events),
-            deepcopy(self.mitotic_events),
-        )
-        self._backupCT = backup_CellTrack(
-            0,
-            deepcopy(cells),
-            deepcopy(self.apoptotic_events),
-            deepcopy(self.mitotic_events),
-        )
-        self.backups = deque([self._backupCT], self._err_corr_args["backup_steps"])
-        plt.close("all")
-        printclear(2)
-        print("##############    SEGMENTATION AND TRACKING FINISHED   ###############")
+        # self.backupCT = backup_CellTrack(
+        #     0,
+        #     deepcopy(cells),
+        #     deepcopy(self.apoptotic_events),
+        #     deepcopy(self.mitotic_events),
+        # )
+        # self._backupCT = backup_CellTrack(
+        #     0,
+        #     deepcopy(cells),
+        #     deepcopy(self.apoptotic_events),
+        #     deepcopy(self.mitotic_events),
+        # )
+        # self.backups = deque([self._backupCT], self._err_corr_args["backup_steps"])
+        # plt.close("all")
+        # printclear(2)
+        # print("##############    SEGMENTATION AND TRACKING FINISHED   ###############")
 
     def undo_corrections(self, all=False):
         if all:
@@ -2114,22 +2085,43 @@ class CellTrackingBatch(CellTracking):
         self.backups.append(new_copy)
 
     def cell_segmentation(self):
-        Outlines = []
-        Masks = []
-        Labels = []
-
         print()
         print("######################   BEGIN SEGMENTATIONS   #######################")
         printfancy("")
         printfancy("")
-        for t in range(self.times):
-            printfancy("######   CURRENT TIME = %d/%d   ######" % (t + 1, self.times))
+        for t in range(self.total_times):
+            printfancy("######   CURRENT TIME = %d/%d   ######" % (t + 1, self.total_times))
             printfancy("")
 
+            Outlines = []
+            Masks = []
+            Labels = []
+            label_correspondance = []
+
+            # Read the stacks
+            stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(t, t+1), extra_name="", extension=".tif")
+            stacks = stacks[:, 3:15:3]
+            
+            # If the stack is RGB, pick the channel to segment
+            if len(stacks.shape) == 5:
+                self._stacks = stacks[:, :, :, :, self.use_channel]
+                self.STACKS = stacks
+            elif len(stacks.shape) == 4:
+                self._stacks = stacks
+                self.STACKS = stacks
+            
+            # If segmentation method is cellpose and stack is RGB, use that for segmentation
+            # since you can specify channels for segmentation in cellpose
+            # array could have an extra dimension if RGB
+            if "cellpose" in self._seg_args["method"]:
+                if len(self.STACKS.shape) == 5:
+                    ch = self._seg_method_args["channels"][0] - 1
+                    self._stacks = self.STACKS[:, :, :, :, ch]
+
             if "stardist" in self._seg_args["method"]:
-                pre_stack_seg = self._stacks[t]
+                pre_stack_seg = self._stacks[0]
             elif "cellpose" in self._seg_args["method"]:
-                pre_stack_seg = self.STACKS[t]
+                pre_stack_seg = self.STACKS[0]
 
             # If not 3D, don't isotropize
 
@@ -2166,37 +2158,43 @@ class CellTrackingBatch(CellTracking):
                 labels = [labels[i] for i in ori_idxs]
 
             if not self.segment3D:
-                stack = self._stacks[t]
+                stack = self._stacks[0]
                 # outlines and masks are modified in place
                 labels = concatenate_to_3D(
                     stack, outlines, masks, self._conc3D_args, self._xyresolution
                 )
 
-            printfancy("")
-            printfancy("Segmentation and corrections completed")
-
-            printfancy("")
-            printfancy("######   CURRENT TIME = %d/%d   ######" % (t + 1, self.times))
-            printfancy("")
-
-            printfancy(
-                "Segmentation and corrections completed. Proceeding to next time",
-                clear_prev=1,
-            )
 
             Outlines.append(outlines)
             Masks.append(masks)
             Labels.append(labels)
 
-            if not self.segment3D:
-                printclear(n=2)
-            printclear(n=7)
-        if not self.segment3D:
-            printclear(n=1)
+            
+            TLabels, TOutlines, TMasks, TCenters = get_labels_centers(
+                self._stacks, Labels, Outlines, Masks
+            )
+
+            lc = [[lab,lab] for lab in TLabels[0]]
+            label_correspondance.append(lc)
+
+            printfancy(
+                "Segmentation and corrections completed.", clear_prev=2
+            )
+            printfancy("Creating Cells and saving results...")
+            printfancy("")
+            
+            self.init_cells(TLabels, Labels, Outlines, Masks, label_correspondance)
+            save_cells_to_labels_stack(self.jitcells, self.CT_info, path=self.path_to_save, filename=t, split_times=False)
+
+
+            # Initialize cells with this
+            # if not self.segment3D:
+            #     printclear(n=7)
+            printclear(n=6)
+        # if not self.segment3D:
+        #     printclear(n=1)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
-
-        return Labels, Outlines, Masks
 
     def cell_tracking(self, TLabels, TCenters, TOutlines, TMasks):
         if self._track_args["method"] == "greedy":
@@ -2239,7 +2237,7 @@ class CellTrackingBatch(CellTracking):
             cell = _init_cell(
                 l,
                 lab,
-                self.times,
+                1,
                 self.slices,
                 FinalLabels,
                 label_correspondance,

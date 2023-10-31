@@ -6,9 +6,9 @@ from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
-embcode = '20230607_CAG_H2B_GFP_16_cells_stack2'
+embcode = 'test'
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'+embcode
-path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/test_save/'
 
 try: 
     files = get_file_names(path_save)
@@ -29,15 +29,16 @@ segmentation_args={
     'blur': [5,1], 
     'channels': [0,0],
     'flow_threshold': 0.4,
+    'batch_size':2,
 }
-          
+
 concatenation3D_args = {
     'distance_th_z': 3.0, 
     'relative_overlap':False, 
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 4,
+    'min_cell_planes': 1,
 }
 
 tracking_args = {
@@ -75,46 +76,7 @@ CTB = CellTrackingBatch(
     plot_args=plot_args,
 )
 
-# def batch_segmentation(path_data, embcode, segmentation_args={}, concatenation3D_args={}):
-#     from embdevtools.celltrack.core.tools.save_tools import save_cells_to_labels_stack
-
-#     ### GET FULL FILE NAME AND FILE CODE ###
-#     pthdata = path_data+embcode+"/"
-#     files = get_file_names(pthdata)
-#     file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
-#     files = [files[i] for i in file_sort_idxs]
-    
-#     files = files[25:]
-    
-#     print(files)
-#     total_files = len(files)
-#     for f, file in enumerate(files):
-        
-#         print("file",f+1,"of", total_files)
-#         file, t = get_file_embcode(pthdata, file)
-
-#         ### LOAD STACK ###
-#         IMG, xyres, zres = read_img_with_resolution(pthdata+file, stack=True, channel=None)
-
-#         ### CREATE CELL TRACKING CLASS ###
-#         CT = CellTracking(
-#             IMG, 
-#             path_save, 
-#             embcode, 
-#             xyresolution=xyres, 
-#             zresolution=zres,
-#             segmentation_args=segmentation_args,
-#             concatenation3D_args=concatenation3D_args,
-#         )
-        
-#         ### RUN SEGMENTATION AND TRACKING ###
-#         CT.run()
-
-#         pth_save = path_save+embcode+"/"
-#         save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=pth_save, filename=t, split_times=False)
-
-# batch_segmentation(path_data, embcode, segmentation_args=segmentation_args, concatenation3D_args=concatenation3D_args)
-
+CTB.run()
 # from embdevtools.celltrack.core.tools.ct_tools import compute_labels_stack
 # from embdevtools.celltrack.core.tracking.tracking_tools import prepare_labels_stack_for_tracking, get_labels_centers
 # from embdevtools.celltrack.core.tracking.tracking import greedy_tracking

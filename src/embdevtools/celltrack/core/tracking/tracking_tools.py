@@ -244,7 +244,8 @@ def _init_cell(
 
             Zlabel_l, Zlabel_z = label_per_z_jit(slices, labst)
             TIMES.append(t)
-            idd = np.where(np.array(label_correspondance[t])[:, 1] == lab)[0][0]
+
+            idd = np.where(np.asarray(label_correspondance[t])[:, 1] == lab)[0][0]
             _lab = label_correspondance[t][idd][0]
             _labid = Zlabel_l.index(_lab)
             ZS.append(Zlabel_z[_labid])
