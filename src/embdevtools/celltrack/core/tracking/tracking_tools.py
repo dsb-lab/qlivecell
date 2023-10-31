@@ -1,5 +1,5 @@
 import numpy as np
-from numba import jit, njit, typeof
+from numba import jit, njit, typeof, prange
 from numba.typed import List
 from numba.types import ListType
 
@@ -410,4 +410,25 @@ def prepare_labels_stack_for_tracking(labels_stack):
                 Masks[t][z].append(np.ascontiguousarray(mask))
 
     return Labels, Outlines, Masks
-    
+
+@njit(parallel=True)
+def replace_labels_t(labels, lab_corr):
+    labels_t_copy = labels.copy()
+    for lab_init, lab_final in lab_corr:
+        idxs = np.where(lab_init+1 == labels)
+
+        idxz = idxs[0]
+        idxx = idxs[1]
+        idxy = idxs[2]
+
+        for q in prange(len(idxz)):
+            labels_t_copy[idxz[q], idxx[q], idxy[q]] = lab_final+1
+        
+    return labels_t_copy
+
+@njit(parallel=True)
+def replace_labels_in_place(labels, label_correspondance):
+    labels_copy = np.zeros_like(labels)
+    for t in prange(len(label_correspondance)): 
+        labels_copy[t] = replace_labels_t(labels[t], label_correspondance[t])
+    return labels_copy

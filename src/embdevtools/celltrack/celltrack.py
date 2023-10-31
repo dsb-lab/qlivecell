@@ -46,7 +46,8 @@ from .core.segmentation.segmentation_training import (
     check_and_fill_train_segmentation_args, get_training_set,
     train_CellposeModel, train_StardistModel)
 from .core.tools.cell_tools import (create_cell, find_z_discontinuities,
-                                    update_cell, update_jitcell)
+                                    update_cell, update_jitcell, 
+                                    extract_jitcells_from_label_stack)
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack)
 from .core.tools.input_tools import (get_file_embcode, get_file_names,
@@ -69,7 +70,7 @@ from .core.tracking.tracking_tools import (
     _extract_unique_labels_and_max_label, _extract_unique_labels_per_time,
     _init_cell, _init_CT_cell_attributes, _order_labels_t, _order_labels_z,
     _reinit_update_CT_cell_attributes, _update_CT_cell_attributes,
-    get_labels_centers)
+    get_labels_centers, replace_labels_t, replace_labels_in_place)
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 warnings.simplefilter("ignore", UserWarning)
@@ -1991,12 +1992,12 @@ class CellTrackingBatch(CellTracking):
 
     def run(self):
 
-        self.cell_segmentation()
+        # self.cell_segmentation()
 
-        # printfancy("")
-        # printfancy("computing tracking...")
+        printfancy("")
+        printfancy("computing tracking...")
         
-        # self.cell_tracking()
+        self.cell_tracking()
 
         # printfancy("tracking completed.", clear_prev=1)
 
@@ -2184,7 +2185,7 @@ class CellTrackingBatch(CellTracking):
             printfancy("")
             
             self.init_cells(TLabels, Labels, Outlines, Masks, label_correspondance)
-            save_cells_to_labels_stack(self.jitcells, self.CT_info, path=self.path_to_save, filename=t, split_times=False)
+            save_cells_to_labels_stack(self.jitcells, self.CT_info, path=self.path_to_save, filename=t, split_times=False, save_info=False)
 
 
             # Initialize cells with this
@@ -2196,27 +2197,62 @@ class CellTrackingBatch(CellTracking):
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
-    def cell_tracking(self, TLabels, TCenters, TOutlines, TMasks):
-        if self._track_args["method"] == "greedy":
-            FinalLabels, label_correspondance = greedy_tracking(
-                TLabels,
-                TCenters,
-                self._xyresolution,
-                self._zresolution,
-                self._track_args,
-            )
-        elif self._track_args["method"] == "hungarian":
-            FinalLabels, label_correspondance = hungarian_tracking(
-                TLabels,
-                TCenters,
-                TOutlines,
-                TMasks,
-                self._xyresolution,
-                self._zresolution,
-                self._track_args,
-            )
-        return FinalLabels, label_correspondance
+    def cell_tracking(self):
+            
+        files = get_file_names(self.path_to_save)
+        file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
+        files = [files[i] for i in file_sort_idxs]
+        print(files)
+        totalsize = len(files)
+        bsize = 2 
+        boverlap = 1
+        rounds = np.int32(np.ceil((totalsize) / (bsize - boverlap)))
 
+        for bnumber in range(rounds):
+            first = (bsize * bnumber) - (boverlap * bnumber)
+            last = first + bsize
+            last = min(last, totalsize)
+
+            times = range(first, last)
+
+            if len(times) <= boverlap: 
+                continue
+            
+            labels = read_split_times(self.path_to_save, times, extra_name="", extension=".npy")
+            jitcells = extract_jitcells_from_label_stack(labels)
+
+            IMGS, xyres, zres = read_split_times(self.path_to_data, times, extra_name="", extension=".tif")
+
+            lbs = labels[0].copy()
+            for z in range(lbs.shape[0]):
+                lbsz = lbs[z].copy()
+                lbsz += 100
+                idxs = np.where(lbsz == 100)
+                idxx = idxs[0]
+                idxy = idxs[1]
+                lbsz[idxx, idxy] = 0
+                lbs[z] = lbsz
+
+            labels[0] = lbs
+            labels = labels.astype("uint16")
+            Labels, Outlines, Masks = prepare_labels_stack_for_tracking(labels)
+            TLabels, TOutlines, TMasks, TCenters = get_labels_centers(IMGS, Labels, Outlines, Masks)
+            FinalLabels, label_correspondance = greedy_tracking(
+                    TLabels,
+                    TCenters,
+                    xyres,
+                    zres,
+                    tracking_args,
+                    )
+
+            label_correspondance = List([np.array(sublist).astype('uint16') for sublist in label_correspondance])
+
+            labels_new = replace_labels_in_place(labels, label_correspondance)
+
+            save_labels_stack(labels_new, path_save+embcode+"/", times, split_times=True, string_format="{}_labels")
+
+
+       
     def init_cells(
         self, FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance
     ):
