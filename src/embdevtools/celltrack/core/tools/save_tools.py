@@ -124,7 +124,35 @@ def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_fo
             np.save(pthsave, labels_stack, allow_pickle=False)
 
 
-def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_times=False, string_format="{}", save_info=False):
+def save_cells_to_labels_stack(cells, times, slices, xy_dims, path=None, filename=None, split_times=False, string_format="{}"):
+    """save cell objects obtained with celltrack.py
+
+    Saves cells as `path`/`filename`_cells.npy
+    Saves cell tracking info as `path`/`filename`_info.json
+
+    Parameters
+    ----------
+    cells : list of Cell objects
+    CT_info : CT_info object
+
+    path : str
+        path to save directory
+    filename : str
+        name of file or embcode
+
+    """
+
+    pthsave = correct_path(path) + str(filename)
+        
+    labels_stack = np.zeros(
+        (times, slices, xy_dims[0], xy_dims[1]), dtype="uint16"
+    )
+    
+    labels_stack = compute_labels_stack(labels_stack, cells)
+    save_labels_stack(labels_stack, pthsave, range(times), split_times=split_times, string_format=string_format)
+
+
+def save_cells_to_labels_stack_info(cells, CT_info, path=None, filename=None, split_times=False, string_format="{}", save_info=False):
     """save cell objects obtained with celltrack.py
 
     Saves cells as `path`/`filename`_cells.npy

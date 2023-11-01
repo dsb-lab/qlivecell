@@ -77,3 +77,13 @@ CTB = CellTrackingBatch(
 )
 
 CTB.run()
+
+from embdevtools.celltrack.core.tools.save_tools import read_split_times
+labels = read_split_times(CTB.path_to_save, range(3), extra_name="", extension=".npy")
+
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(1,2)
+ax[0].imshow(labels[0,40])
+ax[1].imshow(labels[-1,40])
+plt.show()
+

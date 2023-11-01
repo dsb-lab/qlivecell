@@ -2,7 +2,6 @@ import gc
 import os
 
 import warnings
-warnings.filterwarnings("ignore")
 
 from collections import deque
 from copy import copy, deepcopy
@@ -17,6 +16,7 @@ from numba import njit, typed
 from scipy.ndimage import zoom
 from scipy.spatial import ConvexHull
 from tifffile import imwrite
+from numba.typed import List
 
 from .core.dataclasses import (CellTracking_info, backup_CellTrack,
                                construct_Cell_from_jitCell,
@@ -54,7 +54,7 @@ from .core.tools.input_tools import (get_file_embcode, get_file_names,
                                      read_img_with_resolution)
 from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels, read_split_times,
-                                    save_cells_to_labels_stack)
+                                    save_cells_to_labels_stack, save_labels_stack)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
                                      isotropize_stack, isotropize_stackRGB)
 from .core.tools.tools import (check_and_fill_error_correction_args,
@@ -70,9 +70,11 @@ from .core.tracking.tracking_tools import (
     _extract_unique_labels_and_max_label, _extract_unique_labels_per_time,
     _init_cell, _init_CT_cell_attributes, _order_labels_t, _order_labels_z,
     _reinit_update_CT_cell_attributes, _update_CT_cell_attributes,
-    get_labels_centers, replace_labels_t, replace_labels_in_place)
+    get_labels_centers, replace_labels_t, replace_labels_in_place,
+    prepare_labels_stack_for_tracking)
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.simplefilter("ignore", UserWarning)
 
 plt.rcParams["keymap.save"].remove("s")
@@ -1905,7 +1907,6 @@ class CellTrackingBatch(CellTracking):
     
         # Read the stacks
         stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(0, 1), extra_name="", extension=".tif")
-        stacks = stacks[:, 3:15:3]
 
         self.slices = stacks.shape[1]
         self.stack_dims = np.shape(stacks)[2:4]
@@ -2101,7 +2102,6 @@ class CellTrackingBatch(CellTracking):
 
             # Read the stacks
             stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(t, t+1), extra_name="", extension=".tif")
-            stacks = stacks[:, 3:15:3]
             
             # If the stack is RGB, pick the channel to segment
             if len(stacks.shape) == 5:
@@ -2185,13 +2185,13 @@ class CellTrackingBatch(CellTracking):
             printfancy("")
             
             self.init_cells(TLabels, Labels, Outlines, Masks, label_correspondance)
-            save_cells_to_labels_stack(self.jitcells, self.CT_info, path=self.path_to_save, filename=t, split_times=False, save_info=False)
+            save_cells_to_labels_stack(self.jitcells, 1, self.CT_info.slices, self.CT_info.stack_dims, path=self.path_to_save, filename=t, split_times=False)
 
 
             # Initialize cells with this
-            # if not self.segment3D:
-            #     printclear(n=7)
-            printclear(n=6)
+            if not self.segment3D:
+                printclear(n=6)
+            # printclear(n=6)
         # if not self.segment3D:
         #     printclear(n=1)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
@@ -2202,7 +2202,7 @@ class CellTrackingBatch(CellTracking):
         files = get_file_names(self.path_to_save)
         file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
         files = [files[i] for i in file_sort_idxs]
-        print(files)
+
         totalsize = len(files)
         bsize = 2 
         boverlap = 1
@@ -2219,21 +2219,11 @@ class CellTrackingBatch(CellTracking):
                 continue
             
             labels = read_split_times(self.path_to_save, times, extra_name="", extension=".npy")
+            
             jitcells = extract_jitcells_from_label_stack(labels)
 
             IMGS, xyres, zres = read_split_times(self.path_to_data, times, extra_name="", extension=".tif")
 
-            lbs = labels[0].copy()
-            for z in range(lbs.shape[0]):
-                lbsz = lbs[z].copy()
-                lbsz += 100
-                idxs = np.where(lbsz == 100)
-                idxx = idxs[0]
-                idxy = idxs[1]
-                lbsz[idxx, idxy] = 0
-                lbs[z] = lbsz
-
-            labels[0] = lbs
             labels = labels.astype("uint16")
             Labels, Outlines, Masks = prepare_labels_stack_for_tracking(labels)
             TLabels, TOutlines, TMasks, TCenters = get_labels_centers(IMGS, Labels, Outlines, Masks)
@@ -2242,14 +2232,14 @@ class CellTrackingBatch(CellTracking):
                     TCenters,
                     xyres,
                     zres,
-                    tracking_args,
+                    self._track_args,
                     )
 
             label_correspondance = List([np.array(sublist).astype('uint16') for sublist in label_correspondance])
 
             labels_new = replace_labels_in_place(labels, label_correspondance)
 
-            save_labels_stack(labels_new, path_save+embcode+"/", times, split_times=True, string_format="{}_labels")
+            save_labels_stack(labels_new, self.path_to_save, times, split_times=True, string_format="{}")
 
 
        
