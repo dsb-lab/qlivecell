@@ -25,7 +25,8 @@ def check_and_fill_batch_args(batch_args):
         "batch_size": 5,
         "batch_overlap": 1,
     }
-
+    if batch_args["batch_size"] <= batch_args["batch_overlap"]:
+        raise Exception("batch size has to be bigger than batch overlap")
     for sarg in batch_args.keys():
         try:
             new_batch_args[sarg] = batch_args[sarg]

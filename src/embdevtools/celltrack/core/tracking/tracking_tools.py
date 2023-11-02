@@ -23,8 +23,12 @@ def _get_jitcell(jitcells, label=None, cellid=None):
 
 
 @njit
-def _order_labels_z(jitcells, times):
-    current_max_label = -1
+def _order_labels_z(jitcells, times, skip_labels_list):
+    if len(skip_labels_list) > 0:
+        current_max_label = jmax(skip_labels_list)
+    else:
+        current_max_label = -1
+
     for t in range(times):
         ids = List()
         zs = List()
@@ -40,8 +44,11 @@ def _order_labels_z(jitcells, times):
 
         for i, id in enumerate(ids):
             cell = _get_jitcell(jitcells, cellid=id)
-            current_max_label += 1
-            cell.label = current_max_label
+            if cell.label in skip_labels_list:
+                pass
+            else:  
+                cell.label = current_max_label + 1
+                current_max_label += 1
 
 
 def isListEmpty(inList):
@@ -90,7 +97,15 @@ def _remove_nonlabels(unique_labels_T):
 
 
 @njit
-def _order_labels_t(unique_labels_T, max_label):
+def jmin(x):
+    return min(x)
+
+@njit
+def jmax(x):
+    return max(x)
+
+@njit
+def _order_labels_t(unique_labels_T, max_label, skip_labels_list):
     P = unique_labels_T
     Q = List()
     Ci = List()
@@ -112,16 +127,27 @@ def _order_labels_t(unique_labels_T, max_label):
             Ci[n].append(i)
             Cj[n].append(j)
 
-    nmax = 0
+    if len(skip_labels_list) > 0:
+        nmax = jmax(skip_labels_list)
+    else:
+        nmax = -1
+
     for i in range(len(P)):
         p = P[i]
         for j in range(len(p)):
             n = p[j]
             if Q[i][j] == -1:
                 for ij in range(len(Ci[n])):
-                    Q[Ci[n][ij]][Cj[n][ij]] = nmax
-                PQ[n] = nmax
-                nmax += 1
+                    if n in skip_labels_list:
+                        Q[Ci[n][ij]][Cj[n][ij]] = n
+                    else:
+                        Q[Ci[n][ij]][Cj[n][ij]] = nmax + 1
+                if n in skip_labels_list:
+                    PQ[n] = n
+                else:
+                    PQ[n] = nmax + 1
+                    nmax += 1
+                
     return P, Q, PQ
 
 

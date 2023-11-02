@@ -63,7 +63,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size': 10,
+    'batch_size': 2,
     'batch_overlap':1,
 }
 from embdevtools.celltrack.celltrack import CellTrackingBatch

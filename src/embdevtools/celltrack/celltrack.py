@@ -2009,9 +2009,10 @@ class CellTrackingBatch(CellTracking):
         self.batch_overlap = self._batch_args["batch_overlap"]
         self.batch_rounds = np.int32(np.ceil((self.batch_totalsize ) / (self.batch_size - self.batch_overlap)))
 
-        self.set_batch(0)
+        self.set_batch(0, [])
 
-    def set_batch(self, batch_number):
+    def set_batch(self, batch_number, labels_previous_time):
+        self._labels_previous_time = labels_previous_time
         self.batch_number = batch_number
         first = (self.batch_size * self.batch_number) - (self.batch_overlap * self.batch_number)
         last = first + self.batch_size
@@ -2060,6 +2061,13 @@ class CellTrackingBatch(CellTracking):
 
         self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
 
+        for cell in self.jitcells:
+            cell.label += 100
+
+        self.jitcells_selected = self.jitcells
+        self.update_label_attributes()
+
+        self.set_batch(1, self.unique_labels_T[-self.batch_overlap-1])
         self.update_labels(backup=False)
 
         # printfancy("labels updated", clear_prev=1)
@@ -2290,7 +2298,6 @@ class CellTrackingBatch(CellTracking):
 
             save_labels_stack(labels_new, self.path_to_save, times, split_times=True, string_format="{}")
 
-
     def init_cells(
         self, FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance
     ):
@@ -2347,17 +2354,18 @@ class CellTrackingBatch(CellTracking):
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
-        # if self.jitcells:
-        #     old_labels, new_labels, correspondance = _order_labels_t(
-        #         self.unique_labels_T, self.max_label
-        #     )
-        #     for cell in self.jitcells:
-        #         cell.label = correspondance[cell.label]
+        if self.jitcells:
+            old_labels, new_labels, correspondance = _order_labels_t(
+                self.unique_labels_T, self.max_label, skip_labels_list=List(self._labels_previous_time)
+            )
 
-        #     _order_labels_z(self.jitcells, self.times)
+            for cell in self.jitcells:
+                cell.label = correspondance[cell.label]
 
-        # self.jitcells_selected = self.jitcells
-        # self.update_label_attributes()
+            _order_labels_z(self.jitcells, self.batch_times, List(self._labels_previous_time))
+
+        self.jitcells_selected = self.jitcells
+        self.update_label_attributes()
 
         # compute_point_stack(
         #     self._masks_stack,
