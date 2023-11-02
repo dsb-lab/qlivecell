@@ -63,10 +63,11 @@ class PlotAction:
             "key_release_event", self.on_key_release
         )
         self.ctrl_is_held = False
-        self.shift_is_held = False
+        self.ctrl_shift_is_held = False
 
         self.current_state = None
         self.current_subplot = None
+        self.bn = 0
         self.cr = 0
         self.t = 0
         self.zs = []
@@ -170,14 +171,14 @@ class PlotAction:
     def on_key_press(self, event):
         if event.key == "control":
             self.ctrl_is_held = True
-        elif event.key == "shift":
-            self.shift_is_held = True
+        elif event.key == "shift+ctrl" or event.key == "ctrl+shift":
+            self.ctrl_shift_is_held = True
 
     def on_key_release(self, event):
         if event.key == "control":
             self.ctrl_is_held = False
-        elif event.key == "shift":
-            self.shift_is_held = False
+        elif event.key == "shift+ctrl" or event.key == "ctrl+shift":
+            self.ctrl_shift_is_held = False
 
     # The function to be called anytime a t-slider's value changes
     def update_slider_t(self, t):
@@ -197,11 +198,14 @@ class PlotAction:
             self.set_batch(+1)
         elif event.button == "down":
             self.bn = self.bn - 1
-            self.set_batch(-1)
+            self.set_batch(-1, update_labels=True)
 
         self.t = 0
-        self.set_val_t_slider(0)
+        self.set_val_t_slider(self.t + 1)
 
+        self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+        self.update()
+        
         if self.current_state == "SCL":
             self.current_state = None
 
@@ -232,12 +236,13 @@ class PlotAction:
             self.current_state = None
 
     def onscroll(self, event):
-        if self.ctrl_is_held:
-            if self.shift_is_held:
-                self.batch_scroll(event)
-            else:
+        if self.ctrl_shift_is_held:
+            print("BATCH GOOOO")
+            self.batch_scroll(event)
+        elif self.ctrl_is_held:
                 self.time_scroll(event)
         else:
+            # if data is 2D, scroll moves always on time
             if self.max_round == 0:
                 self.time_scroll(event)
             else:
@@ -308,7 +313,6 @@ class PlotActionCT(PlotAction):
         self.update()
 
     def __call__(self, event):
-        print(event.key)
         if self.current_state == None:
             if event.key == "d":
                 # self.CTone_step_copy(self.t)
@@ -377,9 +381,6 @@ class PlotActionCT(PlotAction):
             elif event.key == "s":
                 self.CT_info.apo_cells = self.CTapoptotic_events
                 self.CT_info.mito_cells = self.CTmitotic_events
-                # cells = [
-                #     construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells
-                # ]
                 self.CTsave_cells(self.jitcells, self.CT_info, self.path_to_save, self.filename)
             self.update()
 

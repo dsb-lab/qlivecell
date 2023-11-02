@@ -2032,7 +2032,7 @@ class CellTrackingBatch(CellTracking):
         self._labels_previous_time = []
         self.set_batch(batch_number=0)
 
-    def set_batch(self, batch_change=0, batch_number=None):
+    def set_batch(self, batch_change=0, batch_number=None, update_labels=False):
         
         if batch_number is not None:
             self.batch_number = batch_number
@@ -2074,6 +2074,10 @@ class CellTrackingBatch(CellTracking):
         else:
             self._labels_previous_time = self.unique_labels_T[self.batch_times_list_global[0]-1]
 
+        self.init_batch_cells()
+
+        if update_labels:
+            self.update_labels()
 
     def init_batch_cells(self):
         labels = read_split_times(self.path_to_save, self.batch_times_list_global, extra_name="", extension=".npy")
@@ -2381,15 +2385,15 @@ class CellTrackingBatch(CellTracking):
         )
         if len(self.jitcells_selected) != 0:
             _update_CT_cell_attributes(self.jitcells_selected, self.ctattr)
-        self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(
+        self.unique_labels_batch, self.max_label = _extract_unique_labels_and_max_label(
             self.ctattr.Labels
         )
 
-        unique_labels_T_batch = _extract_unique_labels_per_time(
+        self.unique_labels_T_batch = _extract_unique_labels_per_time(
             self.ctattr.Labels, self.batch_times
         )
         for tid, t in enumerate(self.batch_times_list_global):
-            self.unique_labels_T[t] = unique_labels_T_batch[tid]
+            self.unique_labels_T[t] = self.unique_labels_T_batch[tid]
         self._get_hints()
         self._get_number_of_conflicts()
         self._get_cellids_celllabels()
@@ -2400,7 +2404,7 @@ class CellTrackingBatch(CellTracking):
 
         if self.jitcells:
             old_labels, new_labels, correspondance = _order_labels_t(
-                self.unique_labels_T, self.max_label, skip_labels_list=List(self._labels_previous_time)
+                self.unique_labels_T_batch, self.total_max_label, skip_labels_list=List(self._labels_previous_time)
             )
 
             for cell in self.jitcells:
