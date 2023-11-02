@@ -18,3 +18,21 @@ def extract_total_times_from_files(path):
             continue
 
     return total_times
+
+
+def check_and_fill_batch_args(batch_args):
+    new_batch_args = {
+        "batch_size": 5,
+        "batch_overlap": 1,
+    }
+
+    for sarg in batch_args.keys():
+        try:
+            new_batch_args[sarg] = batch_args[sarg]
+        except KeyError:
+            raise Exception(
+                "key %s is not a correct batch argument"
+                % sarg
+            )
+
+    return new_batch_args

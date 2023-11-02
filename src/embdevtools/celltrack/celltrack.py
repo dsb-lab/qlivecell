@@ -63,7 +63,8 @@ from .core.tools.tools import (check_and_fill_error_correction_args,
                                printclear, printfancy, progressbar,
                                sort_point_sequence, correct_path,
                                check_or_create_dir)
-from .core.tools.batch_tools import compute_batch_times, extract_total_times_from_files
+from .core.tools.batch_tools import (compute_batch_times, extract_total_times_from_files,
+                                     check_and_fill_batch_args)
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                                      greedy_tracking, hungarian_tracking)
 from .core.tracking.tracking_tools import (
@@ -1687,6 +1688,7 @@ class CellTrackingBatch(CellTracking):
         tracking_args={},
         error_correction_args={},
         plot_args={},
+        batch_args={},
         use_channel=0,
         _loadcells=False,
     ):
@@ -1735,6 +1737,7 @@ class CellTrackingBatch(CellTracking):
                 tracking_args,
                 error_correction_args,
                 plot_args,
+                batch_args,
             )
 
         # list of cells used by the pickers
@@ -1877,6 +1880,7 @@ class CellTrackingBatch(CellTracking):
         tracking_args,
         error_correction_args,
         plot_args,
+        batch_args,
     ):
         # check and fill segmentation arguments
         check_segmentation_args(
@@ -1932,6 +1936,8 @@ class CellTrackingBatch(CellTracking):
             plot_args, (self.stack_dims[0], self.stack_dims[1])
         )
 
+        # check and fill batch arguments
+        self._batch_args = check_and_fill_batch_args(batch_args)
 
         # pre-define max label
         self.max_label = 0
@@ -1991,24 +1997,70 @@ class CellTrackingBatch(CellTracking):
             self.currentcellid = max(self.currentcellid, cell.id)
         self.currentcellid += 1
 
+    def init_batch(self):
+
+        files = get_file_names(self.path_to_save)
+        file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
+        files = [files[i] for i in file_sort_idxs]
+
+        self.batch_files = files
+        self.batch_totalsize = len(files)
+        self.batch_size = self._batch_args["batch_size"]
+        self.batch_overlap = self._batch_args["batch_overlap"]
+        self.batch_rounds = np.int32(np.ceil((self.batch_totalsize ) / (self.batch_size - self.batch_overlap)))
+
+        self.set_batch(0)
+
+    def set_batch(self, batch_number):
+        self.batch_number = batch_number
+        first = (self.batch_size * self.batch_number) - (self.batch_overlap * self.batch_number)
+        last = first + self.batch_size
+        last = min(last, self.batch_totalsize)
+
+        times = [t for t in range(first, last)]
+
+        self.batch_times_list = times
+        self.batch_times = len(times)
+
+        stacks, xyresolution, zresolution = read_split_times(self.path_to_data, self.batch_times_list, extra_name="", extension=".tif")
+        
+        # If the stack is RGB, pick the channel to segment
+        if len(stacks.shape) == 5:
+            self._stacks = stacks[:, :, :, :, self.use_channel]
+            self.STACKS = stacks
+        elif len(stacks.shape) == 4:
+            self._stacks = stacks
+            self.STACKS = stacks
+
+    def init_batch_cells(self):
+        labels = read_split_times(self.path_to_save, self.batch_times_list, extra_name="", extension=".npy")
+        self.jitcells = extract_jitcells_from_label_stack(labels)
+        for jitcell in self.jitcells:
+            update_jitcell(jitcell, self._stacks)
+
     def run(self):
 
         # self.cell_segmentation()
 
-        printfancy("")
-        printfancy("computing tracking...")
+        # printfancy("")
+        # printfancy("computing tracking...")
         
-        self.cell_tracking()
+        # self.cell_tracking()
 
-        # printfancy("tracking completed.", clear_prev=1)
+        # printclear(2)
+        # print("##############    SEGMENTATION AND TRACKING FINISHED   ###############")
+        # printfancy("")
 
-        # self.init_cells(FinalLabels, Labels, Outlines, Masks, label_correspondance)
+        printfancy("Initializing first batch and cells...")
+        self.init_batch()
 
-        # printfancy("cells initialised. updating labels...", clear_prev=1)
+        self.init_batch_cells()
 
-        # self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
+        printfancy("cells initialised. updating labels...", clear_prev=1)
 
-        # self.update_labels(backup=False)
+        self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
+
+        self.update_labels(backup=False)
 
         # printfancy("labels updated", clear_prev=1)
 
@@ -2028,8 +2080,7 @@ class CellTrackingBatch(CellTracking):
         # )
         # self.backups = deque([self._backupCT], self._err_corr_args["backup_steps"])
         # plt.close("all")
-        # printclear(2)
-        # print("##############    SEGMENTATION AND TRACKING FINISHED   ###############")
+
 
     def undo_corrections(self, all=False):
         if all:
@@ -2192,8 +2243,8 @@ class CellTrackingBatch(CellTracking):
             if not self.segment3D:
                 printclear(n=6)
             # printclear(n=6)
-        # if not self.segment3D:
-        #     printclear(n=1)
+        if not self.segment3D:
+            printclear(n=1)
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
@@ -2220,8 +2271,6 @@ class CellTrackingBatch(CellTracking):
             
             labels = read_split_times(self.path_to_save, times, extra_name="", extension=".npy")
             
-            jitcells = extract_jitcells_from_label_stack(labels)
-
             IMGS, xyres, zres = read_split_times(self.path_to_data, times, extra_name="", extension=".tif")
 
             labels = labels.astype("uint16")
@@ -2242,7 +2291,6 @@ class CellTrackingBatch(CellTracking):
             save_labels_stack(labels_new, self.path_to_save, times, split_times=True, string_format="{}")
 
 
-       
     def init_cells(
         self, FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance
     ):
@@ -2280,7 +2328,7 @@ class CellTrackingBatch(CellTracking):
 
     def update_label_attributes(self):
         _reinit_update_CT_cell_attributes(
-            self.jitcells_selected, self.slices, self.times, self.ctattr
+            self.jitcells_selected, self.slices, self.batch_times, self.ctattr
         )
         if len(self.jitcells_selected) != 0:
             _update_CT_cell_attributes(self.jitcells_selected, self.ctattr)
@@ -2289,7 +2337,7 @@ class CellTrackingBatch(CellTracking):
         )
 
         self.unique_labels_T = _extract_unique_labels_per_time(
-            self.ctattr.Labels, self.times
+            self.ctattr.Labels, self.batch_times
         )
         self._get_hints()
         self._get_number_of_conflicts()
@@ -2299,49 +2347,49 @@ class CellTrackingBatch(CellTracking):
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
-        if self.jitcells:
-            old_labels, new_labels, correspondance = _order_labels_t(
-                self.unique_labels_T, self.max_label
-            )
-            for cell in self.jitcells:
-                cell.label = correspondance[cell.label]
+        # if self.jitcells:
+        #     old_labels, new_labels, correspondance = _order_labels_t(
+        #         self.unique_labels_T, self.max_label
+        #     )
+        #     for cell in self.jitcells:
+        #         cell.label = correspondance[cell.label]
 
-            _order_labels_z(self.jitcells, self.times)
+        #     _order_labels_z(self.jitcells, self.times)
 
-        self.jitcells_selected = self.jitcells
-        self.update_label_attributes()
+        # self.jitcells_selected = self.jitcells
+        # self.update_label_attributes()
 
-        compute_point_stack(
-            self._masks_stack,
-            self.jitcells_selected,
-            range(self.times),
-            self.unique_labels_T,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
-            1,
-            mode="masks",
-        )
-        self._plot_args["plot_masks"] = True
+        # compute_point_stack(
+        #     self._masks_stack,
+        #     self.jitcells_selected,
+        #     range(self.times),
+        #     self.unique_labels_T,
+        #     self._plot_args["dim_change"],
+        #     self._plot_args["labels_colors"],
+        #     1,
+        #     mode="masks",
+        # )
+        # self._plot_args["plot_masks"] = True
 
-        compute_point_stack(
-            self._outlines_stack,
-            self.jitcells_selected,
-            range(self.times),
-            self.unique_labels_T,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
-            1,
-            mode="outlines",
-        )
+        # compute_point_stack(
+        #     self._outlines_stack,
+        #     self.jitcells_selected,
+        #     range(self.times),
+        #     self.unique_labels_T,
+        #     self._plot_args["dim_change"],
+        #     self._plot_args["labels_colors"],
+        #     1,
+        #     mode="outlines",
+        # )
 
-        if backup:
-            self.one_step_copy()
+        # if backup:
+        #     self.one_step_copy()
         
-        if hasattr(self, "PACP"):
-            self.PACP.reinit(self)
+        # if hasattr(self, "PACP"):
+        #     self.PACP.reinit(self)
 
-        if hasattr(self, "PACP"):
-            self.PACP.reinit(self)
+        # if hasattr(self, "PACP"):
+        #     self.PACP.reinit(self)
 
     def _get_cellids_celllabels(self):
         del self._labels[:]
@@ -2362,7 +2410,7 @@ class CellTrackingBatch(CellTracking):
 
     def _get_hints(self):
         del self.hints[:]
-        for t in range(self.times - 1):
+        for t in range(self.batch_times - 1):
             self.hints.append([])
             self.hints[t].append(
                 np.setdiff1d(self.unique_labels_T[t], self.unique_labels_T[t + 1])

@@ -185,6 +185,13 @@ def save_cells_to_labels_stack_info(cells, CT_info, path=None, filename=None, sp
             json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
+def save_CT_info(CT_info, path, filename):
+    pthsave = correct_path(path) + str(filename)
+    file_to_store = pthsave + "_info.json"
+    with open(file_to_store, "w", encoding="utf-8") as f:
+        json.dump(CT_info, f, cls=EnhancedJSONEncoder)
+
+
 save_cells = save_cells_to_labels_stack
 
 

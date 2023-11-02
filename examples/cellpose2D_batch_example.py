@@ -29,7 +29,6 @@ segmentation_args={
     'blur': [5,1], 
     'channels': [0,0],
     'flow_threshold': 0.4,
-    'batch_size':2,
 }
 
 concatenation3D_args = {
@@ -63,6 +62,10 @@ error_correction_args = {
     'line_builder_mode': 'lasso',
 }
 
+batch_args = {
+    'batch_size': 10,
+    'batch_overlap':1,
+}
 from embdevtools.celltrack.celltrack import CellTrackingBatch
 
 CTB = CellTrackingBatch(
@@ -74,16 +77,8 @@ CTB = CellTrackingBatch(
     tracking_args=tracking_args,
     error_correction_args=error_correction_args,
     plot_args=plot_args,
+    batch_args=batch_args,
 )
 
 CTB.run()
-
-from embdevtools.celltrack.core.tools.save_tools import read_split_times
-labels = read_split_times(CTB.path_to_save, range(3), extra_name="", extension=".npy")
-
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots(1,2)
-ax[0].imshow(labels[0,40])
-ax[1].imshow(labels[-1,40])
-plt.show()
 

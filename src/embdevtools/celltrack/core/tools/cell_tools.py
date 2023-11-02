@@ -604,4 +604,4 @@ def extract_jitcells_from_label_stack(labels_stack):
         jitcell = _extract_jitcell_from_label_stack(lab, labels_stack, List(unique_labels_T))
         cells.append(jitcell)
 
-    return cells
+    return List(cells)
