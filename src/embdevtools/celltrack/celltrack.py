@@ -2009,7 +2009,19 @@ class CellTrackingBatch(CellTracking):
         self.batch_overlap = self._batch_args["batch_overlap"]
         self.batch_rounds = np.int32(np.ceil((self.batch_totalsize ) / (self.batch_size - self.batch_overlap)))
 
-        self.set_batch(0, [])
+        # loop over all rounds to confirm all can be loaded and compute the absolute max_label and cellid
+        self._labels_previous_time = []
+        self.total_max_label = -1
+        self.current_cellid = -1
+        for r in range(self.batch_rounds):
+            self.set_batch(r, self._labels_previous_time)
+            labels = read_split_times(self.path_to_save, self.batch_times_list, extra_name="", extension=".npy")
+            max_label = labels.max()
+            self.total_max_label = np.maximum(max_label, self.total_max_label)
+            self.current_cellid = self.total_max_label
+        
+        self._labels_previous_time = []
+        self.set_batch(0, self._labels_previous_time)
 
     def set_batch(self, batch_number, labels_previous_time):
         self._labels_previous_time = labels_previous_time
@@ -2032,6 +2044,13 @@ class CellTrackingBatch(CellTracking):
         elif len(stacks.shape) == 4:
             self._stacks = stacks
             self.STACKS = stacks
+
+        t = self.batch_times
+        z = self.slices
+        x, y = self._plot_args["plot_stack_dims"][0:2]
+
+        self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
+        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
 
     def init_batch_cells(self):
         labels = read_split_times(self.path_to_save, self.batch_times_list, extra_name="", extension=".npy")
@@ -2070,24 +2089,24 @@ class CellTrackingBatch(CellTracking):
         self.set_batch(1, self.unique_labels_T[-self.batch_overlap-1])
         self.update_labels(backup=False)
 
-        # printfancy("labels updated", clear_prev=1)
+        printfancy("labels updated", clear_prev=1)
 
-        # cells = [construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
+        cells = [construct_Cell_from_jitCell(jitcell) for jitcell in self.jitcells]
 
-        # self.backupCT = backup_CellTrack(
-        #     0,
-        #     deepcopy(cells),
-        #     deepcopy(self.apoptotic_events),
-        #     deepcopy(self.mitotic_events),
-        # )
-        # self._backupCT = backup_CellTrack(
-        #     0,
-        #     deepcopy(cells),
-        #     deepcopy(self.apoptotic_events),
-        #     deepcopy(self.mitotic_events),
-        # )
-        # self.backups = deque([self._backupCT], self._err_corr_args["backup_steps"])
-        # plt.close("all")
+        self.backupCT = backup_CellTrack(
+            0,
+            deepcopy(cells),
+            deepcopy(self.apoptotic_events),
+            deepcopy(self.mitotic_events),
+        )
+        self._backupCT = backup_CellTrack(
+            0,
+            deepcopy(cells),
+            deepcopy(self.apoptotic_events),
+            deepcopy(self.mitotic_events),
+        )
+        self.backups = deque([self._backupCT], self._err_corr_args["backup_steps"])
+        plt.close("all")
 
 
     def undo_corrections(self, all=False):
@@ -2367,37 +2386,37 @@ class CellTrackingBatch(CellTracking):
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
-        # compute_point_stack(
-        #     self._masks_stack,
-        #     self.jitcells_selected,
-        #     range(self.times),
-        #     self.unique_labels_T,
-        #     self._plot_args["dim_change"],
-        #     self._plot_args["labels_colors"],
-        #     1,
-        #     mode="masks",
-        # )
-        # self._plot_args["plot_masks"] = True
+        compute_point_stack(
+            self._masks_stack,
+            self.jitcells_selected,
+            range(self.batch_times),
+            self.unique_labels_T,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            1,
+            mode="masks",
+        )
+        self._plot_args["plot_masks"] = True
 
-        # compute_point_stack(
-        #     self._outlines_stack,
-        #     self.jitcells_selected,
-        #     range(self.times),
-        #     self.unique_labels_T,
-        #     self._plot_args["dim_change"],
-        #     self._plot_args["labels_colors"],
-        #     1,
-        #     mode="outlines",
-        # )
+        compute_point_stack(
+            self._outlines_stack,
+            self.jitcells_selected,
+            range(self.batch_times),
+            self.unique_labels_T,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            1,
+            mode="outlines",
+        )
 
-        # if backup:
-        #     self.one_step_copy()
+        if backup:
+            self.one_step_copy()
         
-        # if hasattr(self, "PACP"):
-        #     self.PACP.reinit(self)
+        if hasattr(self, "PACP"):
+            self.PACP.reinit(self)
 
-        # if hasattr(self, "PACP"):
-        #     self.PACP.reinit(self)
+        if hasattr(self, "PACP"):
+            self.PACP.reinit(self)
 
     def _get_cellids_celllabels(self):
         del self._labels[:]
