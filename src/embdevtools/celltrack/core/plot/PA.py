@@ -63,6 +63,8 @@ class PlotAction:
             "key_release_event", self.on_key_release
         )
         self.ctrl_is_held = False
+        self.shift_is_held = False
+
         self.current_state = None
         self.current_subplot = None
         self.cr = 0
@@ -82,7 +84,14 @@ class PlotAction:
 
         self._masks_stack = CT._masks_stack
         self.scl = fig.canvas.mpl_connect("scroll_event", self.onscroll)
-        self.times = CT.times
+
+        if hasattr(CT, "batch_times"):
+            self.times = CT.batch_times
+            self.set_batch = CT.set_batch
+            self.batch_rounds = CT.batch_rounds
+        else:
+            self.times = CT.times
+        
         self._tstep = CT._track_args["time_step"]
 
         self.CTlist_of_cells = CT.list_of_cells
@@ -161,10 +170,14 @@ class PlotAction:
     def on_key_press(self, event):
         if event.key == "control":
             self.ctrl_is_held = True
+        elif event.key == "shift":
+            self.shift_is_held = True
 
     def on_key_release(self, event):
         if event.key == "control":
             self.ctrl_is_held = False
+        elif event.key == "shift":
+            self.shift_is_held = False
 
     # The function to be called anytime a t-slider's value changes
     def update_slider_t(self, t):
@@ -178,8 +191,21 @@ class PlotAction:
         self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
 
+    def batch_scroll(self, event):
+        if event.button == "up":
+            self.bn = self.bn + 1
+            self.set_batch(+1)
+        elif event.button == "down":
+            self.bn = self.bn - 1
+            self.set_batch(-1)
+
+        self.t = 0
+        self.set_val_t_slider(0)
+
+        if self.current_state == "SCL":
+            self.current_state = None
+
     def time_scroll(self, event):
-        # if self.current_state == None: self.current_state="SCL"
         if event.button == "up":
             self.t = self.t + 1
         elif event.button == "down":
@@ -191,7 +217,7 @@ class PlotAction:
 
         if self.current_state == "SCL":
             self.current_state = None
-
+    
     def cr_scroll(self, event):
         if event.button == "up":
             self.cr = self.cr - 1
@@ -207,7 +233,10 @@ class PlotAction:
 
     def onscroll(self, event):
         if self.ctrl_is_held:
-            self.time_scroll(event)
+            if self.shift_is_held:
+                self.batch_scroll(event)
+            else:
+                self.time_scroll(event)
         else:
             if self.max_round == 0:
                 self.time_scroll(event)
@@ -279,6 +308,7 @@ class PlotActionCT(PlotAction):
         self.update()
 
     def __call__(self, event):
+        print(event.key)
         if self.current_state == None:
             if event.key == "d":
                 # self.CTone_step_copy(self.t)

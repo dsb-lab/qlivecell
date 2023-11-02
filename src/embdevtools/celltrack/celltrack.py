@@ -1849,7 +1849,7 @@ class CellTrackingBatch(CellTracking):
         # create list to store lists of [t,z] actions performed
         # This list is reseted after training
         self._tz_actions = []
-        t = self.times
+        t = self.batch_times
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
@@ -1983,19 +1983,13 @@ class CellTrackingBatch(CellTracking):
     def store_CT_info(self):
         self.CT_info.xyresolution = self._xyresolution
         self.CT_info.zresolution = self._zresolution
-        self.CT_info.times = self.times
+        self.CT_info.times = self.total_times
         self.CT_info.slices = self.slices
         self.CT_info.stack_dims = self.stack_dims
         self.CT_info.time_step = self._track_args["time_step"]
         self.CT_info.apo_cells = self.apoptotic_events
         self.CT_info.mito_cells = self.mitotic_events
         self.CT_info.nactions = self.nactions
-
-    def extract_currentcellid(self):
-        self.currentcellid = 0
-        for cell in self.jitcells:
-            self.currentcellid = max(self.currentcellid, cell.id)
-        self.currentcellid += 1
 
     def init_batch(self):
 
@@ -2013,29 +2007,52 @@ class CellTrackingBatch(CellTracking):
         self._labels_previous_time = []
         self.total_max_label = -1
         self.current_cellid = -1
-        for r in range(self.batch_rounds):
-            self.set_batch(r, self._labels_previous_time)
-            labels = read_split_times(self.path_to_save, self.batch_times_list, extra_name="", extension=".npy")
-            max_label = labels.max()
-            self.total_max_label = np.maximum(max_label, self.total_max_label)
-            self.current_cellid = self.total_max_label
-        
-        self._labels_previous_time = []
-        self.set_batch(0, self._labels_previous_time)
 
-    def set_batch(self, batch_number, labels_previous_time):
-        self._labels_previous_time = labels_previous_time
-        self.batch_number = batch_number
+        times_used = []
+        self.unique_labels_T = []
+        self.batch_number = 0
+        self.set_batch(batch_number = 0)
+        for r in range(self.batch_rounds):
+            self.set_batch(batch_number = r)
+            labels = read_split_times(self.path_to_save, self.batch_times_list, extra_name="", extension=".npy")
+            first = (self.batch_size * r) - (self.batch_overlap * r)
+
+            for t in range(labels.shape[0]):
+                real_t = t + first
+                if real_t in times_used: continue
+                times_used.append(real_t)
+                ulabs = np.unique(labels[t])
+                ulabs = np.delete(ulabs, 0)
+                self.unique_labels_T.append(List(ulabs))
+
+        self.unique_labels_T = List(self.unique_labels_T)
+        self.total_max_label = np.max([np.max(sublist) for sublist in self.unique_labels_T])
+        self.current_cellid = self.total_max_label
+    
+        self._labels_previous_time = []
+        self.set_batch(batch_number=0)
+
+    def set_batch(self, batch_change=0, batch_number=None):
+        
+        if batch_number is not None:
+            self.batch_number = batch_number
+        
+        self.batch_number = max(self.batch_number+batch_change, 0)
+        if self.batch_number > self.batch_rounds:
+            self.batch_number = self.batch_number
+            return 
+
         first = (self.batch_size * self.batch_number) - (self.batch_overlap * self.batch_number)
         last = first + self.batch_size
         last = min(last, self.batch_totalsize)
 
         times = [t for t in range(first, last)]
 
-        self.batch_times_list = times
+        self.batch_times_list = range(len(times))
+        self.batch_times_list_global = times
         self.batch_times = len(times)
 
-        stacks, xyresolution, zresolution = read_split_times(self.path_to_data, self.batch_times_list, extra_name="", extension=".tif")
+        stacks, xyresolution, zresolution = read_split_times(self.path_to_data, self.batch_times_list_global, extra_name="", extension=".tif")
         
         # If the stack is RGB, pick the channel to segment
         if len(stacks.shape) == 5:
@@ -2052,8 +2069,14 @@ class CellTrackingBatch(CellTracking):
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
 
+        if self.batch_number==0:
+            self._labels_previous_time = []
+        else:
+            self._labels_previous_time = self.unique_labels_T[self.batch_times_list_global[0]-1]
+
+
     def init_batch_cells(self):
-        labels = read_split_times(self.path_to_save, self.batch_times_list, extra_name="", extension=".npy")
+        labels = read_split_times(self.path_to_save, self.batch_times_list_global, extra_name="", extension=".npy")
         self.jitcells = extract_jitcells_from_label_stack(labels)
         for jitcell in self.jitcells:
             update_jitcell(jitcell, self._stacks)
@@ -2086,7 +2109,7 @@ class CellTrackingBatch(CellTracking):
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
-        self.set_batch(1, self.unique_labels_T[-self.batch_overlap-1])
+        self.set_batch(batch_number=1)
         self.update_labels(backup=False)
 
         printfancy("labels updated", clear_prev=1)
@@ -2126,7 +2149,7 @@ class CellTrackingBatch(CellTracking):
         compute_point_stack(
             self._masks_stack,
             self.jitcells,
-            range(self.times),
+            range(self.batch_times),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -2136,7 +2159,7 @@ class CellTrackingBatch(CellTracking):
         compute_point_stack(
             self._outlines_stack,
             self.jitcells,
-            range(self.times),
+            range(self.batch_times),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -2362,9 +2385,11 @@ class CellTrackingBatch(CellTracking):
             self.ctattr.Labels
         )
 
-        self.unique_labels_T = _extract_unique_labels_per_time(
+        unique_labels_T_batch = _extract_unique_labels_per_time(
             self.ctattr.Labels, self.batch_times
         )
+        for tid, t in enumerate(self.batch_times_list_global):
+            self.unique_labels_T[t] = unique_labels_T_batch[tid]
         self._get_hints()
         self._get_number_of_conflicts()
         self._get_cellids_celllabels()
@@ -3061,14 +3086,14 @@ class CellTrackingBatch(CellTracking):
             stacks_for_plotting,
             self.STACKS,
             plot_args,
-            self.times,
+            self.batch_times,
             self.slices,
             self._xyresolution,
         )
 
         self._plot_args["plot_masks"] = True
 
-        t = self.times
+        t = self.batch_times
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
@@ -3078,7 +3103,7 @@ class CellTrackingBatch(CellTracking):
             compute_point_stack(
                 self._masks_stack,
                 self.jitcells_selected,
-                range(self.times),
+                range(self.batch_times),
                 self.unique_labels_T,
                 self._plot_args["dim_change"],
                 self._plot_args["labels_colors"],
@@ -3088,7 +3113,7 @@ class CellTrackingBatch(CellTracking):
             compute_point_stack(
                 self._outlines_stack,
                 self.jitcells_selected,
-                range(self.times),
+                range(self.batch_times),
                 self.unique_labels_T,
                 self._plot_args["dim_change"],
                 self._plot_args["labels_colors"],
@@ -3117,13 +3142,13 @@ class CellTrackingBatch(CellTracking):
 
         # Make a horizontal slider to control the time.
         axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
-        sliderstr = "/%d" % (self.times)
+        sliderstr = "/%d" % (self.batch_times)
         time_slider = Slider_t(
             ax=axslide,
             label="time",
             initcolor="r",
             valmin=1,
-            valmax=self.times,
+            valmax=self.batch_times,
             valinit=1,
             valstep=1,
             valfmt="%d" + sliderstr,

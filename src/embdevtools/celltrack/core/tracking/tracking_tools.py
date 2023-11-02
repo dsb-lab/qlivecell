@@ -59,7 +59,7 @@ def isListEmpty(inList):
 
 def _extract_unique_labels_per_time(Labels, times):
     unique_labels_T = list(
-        [list(np.unique(np.hstack(Labels[i]))) for i in range(times)]
+        [list(np.unique(np.hstack(Labels[i])).astype('uint16')) for i in range(times)]
     )
 
     if isListEmpty(Labels):
@@ -70,24 +70,22 @@ def _extract_unique_labels_per_time(Labels, times):
         sublist_pre = []
         if sublist:
             for x in sublist:
-                sublist_pre.append(int(x))
+                sublist_pre.append(np.uint16(x))
+            
+            unique_labels_T_pre.append(List(sublist_pre))
         else:
-            sublist_pre.append(-1)
-
-        unique_labels_T_pre.append(List(sublist_pre))
+            sublist_pre.append(np.uint16(0))
+            unique_labels_T_pre.append(List(sublist_pre))
+            unique_labels_T_pre[-1].pop(0)
 
     unique_labels_T = List(unique_labels_T_pre)
     # unique_labels_T = List(
     #     [List([int(x) for x in sublist]) for sublist in unique_labels_T]
     # )
-    _remove_nonlabels(unique_labels_T)
+    # _remove_nonlabels(unique_labels_T)
     return unique_labels_T
 
-@njit 
-def _remove_nonlabels(unique_labels_T):
-    for sublist in unique_labels_T:
-        if -1 in sublist:
-            sublist.remove(-1)
+
 
 @njit
 def _remove_nonlabels(unique_labels_T):

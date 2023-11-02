@@ -26,7 +26,7 @@ def check_and_fill_plot_args(plot_args, stack_dims):
     if "batch_size" not in plot_args.keys():
         plot_args["batch_size"] = 5
     if "batch_overlap" not in plot_args.keys():
-        plot_args["batch_overlap"] = 5
+        plot_args["batch_overlap"] = 1
         
     plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stack_dims[-1]
 
