@@ -401,6 +401,13 @@ class CellTrackingBatch(CellTracking):
 
         self.jitcells_selected = self.jitcells
 
+        for cell in self.jitcells:
+            cell.label += 100
+
+        self.jitcells_selected = self.jitcells
+        self.update_label_attributes()
+
+        self.set_batch(batch_number=1)
         self.update_labels(backup=False)
 
         # printfancy("labels updated", clear_prev=1)
@@ -642,18 +649,18 @@ class CellTrackingBatch(CellTracking):
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
-        # if self.jitcells:
-        #     old_labels, new_labels, correspondance = _order_labels_t(
-        #         self.unique_labels_T_batch, self.total_max_label, skip_labels_list=List(self._labels_previous_time)
-        #     )
+        if self.jitcells:
+            old_labels, new_labels, correspondance = _order_labels_t(
+                self.unique_labels_T_batch, self.max_label, skip_labels_list=List(self._labels_previous_time)
+            )
 
-        #     for cell in self.jitcells:
-        #         cell.label = correspondance[cell.label]
+            for cell in self.jitcells:
+                cell.label = correspondance[cell.label]
 
-        #     _order_labels_z(self.jitcells, self.batch_times, List(self._labels_previous_time))
+            _order_labels_z(self.jitcells, self.batch_times, List(self._labels_previous_time))
 
-        # self.jitcells_selected = self.jitcells
-        # self.update_label_attributes()
+        self.jitcells_selected = self.jitcells
+        self.update_label_attributes()
 
         # compute_point_stack(
         #     self._masks_stack,
