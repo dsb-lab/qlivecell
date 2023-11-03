@@ -66,7 +66,7 @@ batch_args = {
     'batch_size': 2,
     'batch_overlap':1,
 }
-from embdevtools.celltrack.celltrack import CellTrackingBatch
+from embdevtools.celltrack.celltrack_batch import CellTrackingBatch
 
 CTB = CellTrackingBatch(
     path_data,
@@ -82,5 +82,4 @@ CTB = CellTrackingBatch(
 
 CTB.run()
 
-CTB.plot_tracking()
-
+# CTB.plot_tracking()
