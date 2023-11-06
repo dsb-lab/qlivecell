@@ -363,7 +363,7 @@ class CellTracking(object):
         self.apoptotic_events = []
         self.mitotic_events = []
 
-        # count number of actions done during manual curation
+         # count number of actions done during manual curation
         # this is not reset after training
         self.nactions = 0
 

@@ -9,7 +9,7 @@ def get_file_names(path_data):
     return files
 
 
-def get_file_embcode(path_data, f, returnfiles=False):
+def get_file_embcode(path_data, f, allow_file_fragment=False, returnfiles=False):
     """
     Parameters
     ----------
