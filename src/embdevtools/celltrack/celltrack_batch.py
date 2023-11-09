@@ -408,7 +408,7 @@ class CellTrackingBatch(CellTracking):
         self.update_label_attributes()
 
         self.set_batch(batch_number=1)
-        # self.update_labels(backup=False)
+        self.update_labels(backup=False)
 
         # printfancy("labels updated", clear_prev=1)
 
@@ -651,11 +651,13 @@ class CellTrackingBatch(CellTracking):
 
         if self.jitcells:
             old_labels, new_labels, correspondance = _order_labels_t(
-                self.unique_labels_T_batch, self.max_label, skip_labels_list=List(self._labels_previous_time)
+                self.unique_labels_T, self.max_label, skip_labels_list=List(self._labels_previous_time)
             )
             
-            self.old_labels = old_labels
-            self.new_labels = new_labels
+            self.unique_labels_T = new_labels
+            
+            self.unique_labels_T_batch = self.unique_labels_T
+            
             for cell in self.jitcells:
                 cell.label = correspondance[cell.label]
 
