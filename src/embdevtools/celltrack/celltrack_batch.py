@@ -324,6 +324,7 @@ class CellTrackingBatch(CellTracking):
         self.current_cellid = self.max_label
     
         self._labels_previous_time = []
+        
         self.set_batch(batch_number=0)
 
     def set_batch(self, batch_change=0, batch_number=None, update_labels=False):
@@ -344,7 +345,7 @@ class CellTrackingBatch(CellTracking):
 
         self.batch_times_list = range(len(times))
         self.batch_times_list_global = times
-        self.batch_times = len(times)
+        self.times = len(times)
 
         stacks, xyresolution, zresolution = read_split_times(self.path_to_data, self.batch_times_list_global, extra_name="", extension=".tif")
         
@@ -356,7 +357,7 @@ class CellTrackingBatch(CellTracking):
             self._stacks = stacks
             self.STACKS = stacks
 
-        t = self.batch_times
+        t = self.times
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
@@ -625,7 +626,7 @@ class CellTrackingBatch(CellTracking):
 
     def update_label_attributes(self):
         _reinit_update_CT_cell_attributes(
-            self.jitcells_selected, self.slices, self.batch_times, self.ctattr
+            self.jitcells_selected, self.slices, self.times, self.ctattr
         )
         if len(self.jitcells_selected) != 0:
             _update_CT_cell_attributes(self.jitcells_selected, self.ctattr)
@@ -634,11 +635,12 @@ class CellTrackingBatch(CellTracking):
         )
 
         self.unique_labels_T_batch = _extract_unique_labels_per_time(
-            self.ctattr.Labels, self.batch_times
+            self.ctattr.Labels, self.times
         )
         for tid, t in enumerate(self.batch_times_list_global):
             self.unique_labels_T[t] = self.unique_labels_T_batch[tid]
         
+        self.unique_labels = self.unique_labels_batch
         self.max_label_T = [np.max(sublist) for sublist in self.unique_labels_T]
         self.max_label = np.max(self.max_label_T)
         self._get_hints()
@@ -651,52 +653,52 @@ class CellTrackingBatch(CellTracking):
 
         if self.jitcells:
             old_labels, new_labels, correspondance = _order_labels_t(
-                self.unique_labels_T, self.max_label, skip_labels_list=List(self._labels_previous_time)
+                self.unique_labels_T, self.max_label
             )
-            
+
             self.unique_labels_T = new_labels
             
-            self.unique_labels_T_batch = self.unique_labels_T
+            self.unique_labels_T_batch = [self.unique_labels_T[t] for t in self.batch_times_list_global]
             
             for cell in self.jitcells:
                 cell.label = correspondance[cell.label]
 
-            _order_labels_z(self.jitcells, self.batch_times, List(self._labels_previous_time))
+            # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))
 
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
-        # compute_point_stack(
-        #     self._masks_stack,
-        #     self.jitcells_selected,
-        #     range(self.batch_times),
-        #     self.unique_labels_T,
-        #     self._plot_args["dim_change"],
-        #     self._plot_args["labels_colors"],
-        #     1,
-        #     mode="masks",
-        # )
-        # self._plot_args["plot_masks"] = True
+        compute_point_stack(
+            self._masks_stack,
+            self.jitcells_selected,
+            range(self.times),
+            self.unique_labels_T_batch,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            1,
+            mode="masks",
+        )
+        self._plot_args["plot_masks"] = True
 
-        # compute_point_stack(
-        #     self._outlines_stack,
-        #     self.jitcells_selected,
-        #     range(self.batch_times),
-        #     self.unique_labels_T,
-        #     self._plot_args["dim_change"],
-        #     self._plot_args["labels_colors"],
-        #     1,
-        #     mode="outlines",
-        # )
+        compute_point_stack(
+            self._outlines_stack,
+            self.jitcells_selected,
+            range(self.times),
+            self.unique_labels_T_batch,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            1,
+            mode="outlines",
+        )
 
-        # if backup:
-        #     self.one_step_copy()
+        if backup:
+            self.one_step_copy()
         
-        # if hasattr(self, "PACP"):
-        #     self.PACP.reinit(self)
+        if hasattr(self, "PACP"):
+            self.PACP.reinit(self)
 
-        # if hasattr(self, "PACP"):
-        #     self.PACP.reinit(self)
+        if hasattr(self, "PACP"):
+            self.PACP.reinit(self)
 
     def _get_cellids_celllabels(self):
         del self._labels[:]
@@ -717,7 +719,7 @@ class CellTrackingBatch(CellTracking):
 
     def _get_hints(self):
         del self.hints[:]
-        for t in range(self.batch_times - 1):
+        for t in range(self.times - 1):
             self.hints.append([])
             self.hints[t].append(
                 np.setdiff1d(self.unique_labels_T[t], self.unique_labels_T[t + 1])
@@ -1335,25 +1337,26 @@ class CellTrackingBatch(CellTracking):
             stacks_for_plotting,
             self.STACKS,
             plot_args,
-            self.batch_times,
+            self.times,
             self.slices,
             self._xyresolution,
         )
 
         self._plot_args["plot_masks"] = True
 
-        t = self.batch_times
+        t = self.times
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
+            
         if self.jitcells_selected:
             compute_point_stack(
                 self._masks_stack,
                 self.jitcells_selected,
-                range(self.batch_times),
-                self.unique_labels_T,
+                range(self.times),
+                self.unique_labels_T_batch,
                 self._plot_args["dim_change"],
                 self._plot_args["labels_colors"],
                 1,
@@ -1362,8 +1365,8 @@ class CellTrackingBatch(CellTracking):
             compute_point_stack(
                 self._outlines_stack,
                 self.jitcells_selected,
-                range(self.batch_times),
-                self.unique_labels_T,
+                range(self.times),
+                self.unique_labels_T_batch,
                 self._plot_args["dim_change"],
                 self._plot_args["labels_colors"],
                 1,
@@ -1391,13 +1394,13 @@ class CellTrackingBatch(CellTracking):
 
         # Make a horizontal slider to control the time.
         axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
-        sliderstr = "/%d" % (self.batch_times)
+        sliderstr = "/%d" % (self.times)
         time_slider = Slider_t(
             ax=axslide,
             label="time",
             initcolor="r",
             valmin=1,
-            valmax=self.batch_times,
+            valmax=self.times,
             valinit=1,
             valstep=1,
             valfmt="%d" + sliderstr,

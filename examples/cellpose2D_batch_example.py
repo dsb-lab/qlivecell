@@ -82,5 +82,49 @@ CTB = CellTrackingBatch(
 
 CTB.run()
 
-# CTB.plot_tracking()
+CTB.plot_tracking()
 
+def init_label_correspondance(unique_labels_T, times, overlap):
+    label_correspondance = []
+    t = times[-1] + overlap
+    total_t = len(unique_labels_T)
+    
+    print(t)
+    print(total_t)
+    if t > total_t: 
+        return label_correspondance
+    
+    for _t in range(t, total_t):
+        label_pair = [[lab, lab] for lab in unique_labels_T[_t]]
+        label_correspondance.append(label_pair)
+    
+    return label_correspondance
+
+CTB.set_batch(batch_number=0)
+CTB.update_labels(backup=False)
+
+lc = init_label_correspondance(CTB.unique_labels_T, CTB.batch_times_list_global, CTB.batch_overlap)
+
+def set_label_correspondance(unique_labels_T, corr_times, corr_labels_T, times, overlap):
+    label_correspondance = []
+    t = times[-1] + overlap
+    total_t = len(unique_labels_T)
+    
+    new_corr_times = [j for j in range(t, total_t)]
+
+    
+    print(new_corr_times)
+    
+    
+    # if t > total_t: 
+    #     return label_correspondance, new_corr_times
+    
+    # for i, _t in enumerate(new_corr_times):
+    #     label_pair = []
+    #     for l in range(len(unique_labels_T[_t])):
+    #         label_pair.append([corr_labels_T[l], unique_labels_T])
+    #     label_correspondance.append(label_pair)
+    
+    # return label_correspondance
+
+set_label_correspondance(CTB.unique_labels_T, [], [],CTB.batch_times_list_global, CTB.batch_overlap)
