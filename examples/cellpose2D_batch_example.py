@@ -89,8 +89,6 @@ def init_label_correspondance(unique_labels_T, times, overlap):
     t = times[-1] + overlap
     total_t = len(unique_labels_T)
     
-    print(t)
-    print(total_t)
     if t > total_t: 
         return label_correspondance
     
@@ -112,7 +110,6 @@ def set_label_correspondance(unique_labels_T, corr_times, corr_labels_T, times, 
     
     new_corr_times = [j for j in range(t, total_t)]
 
-    
     print(new_corr_times)
     
     
@@ -128,3 +125,23 @@ def set_label_correspondance(unique_labels_T, corr_times, corr_labels_T, times, 
     # return label_correspondance
 
 set_label_correspondance(CTB.unique_labels_T, [], [],CTB.batch_times_list_global, CTB.batch_overlap)
+
+
+labelst1 = [0,1,2,3,4]
+labelst2 = [0,2,3,4,5,6]
+labelst3 = [2,3,4,5,6]
+labelst4 = [2,3,4,6,7]
+unique_labels_T = [labelst1, labelst2, labelst3, labelst4]
+
+bo = 1
+bsize = 2
+btimes_global = [0,1]
+
+lc = init_label_correspondance(unique_labels_T, btimes_global, bo)
+
+btimes_global = [1,2]
+labelst1 = [0,1,2,3,4]
+labelst2 = [0,2,3,4,5,6]
+labelst3 = [2,3,4,5,6]
+labelst4 = [2,3,4,6,7]
+unique_labels_T = [labelst1, labelst2, labelst3, labelst4]
