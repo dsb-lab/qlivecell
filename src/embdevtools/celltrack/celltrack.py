@@ -108,6 +108,8 @@ class CellTracking(object):
         split_times=False
     ):
         # Basic arguments
+        self.batch = False
+
         self.path_to_save = pthtosave
         self.embcode = embcode
         

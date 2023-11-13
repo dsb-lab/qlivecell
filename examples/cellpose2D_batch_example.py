@@ -82,5 +82,4 @@ CTB = CellTrackingBatch(
 
 CTB.run()
 
-# CTB.plot_tracking()
-
+CTB.plot_tracking()

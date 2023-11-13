@@ -85,13 +85,16 @@ class PlotAction:
 
         self._masks_stack = CT._masks_stack
         self.scl = fig.canvas.mpl_connect("scroll_event", self.onscroll)
-
-        if hasattr(CT, "batch_times"):
-            self.times = CT.batch_times
+        self.batch = CT.batch
+        if self.batch:
+            self.times = CT.times
             self.set_batch = CT.set_batch
             self.batch_rounds = CT.batch_rounds
+            self.global_times_list = CT.batch_times_list_global
+            self.total_times = CT.batch_totalsize
         else:
             self.times = CT.times
+            self.global_times_list = self.times
         
         self._tstep = CT._track_args["time_step"]
 
@@ -163,26 +166,45 @@ class PlotAction:
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
+        self.times = CT.times
+        self.global_times_list = CT.batch_times_list_global
+            
+            
 
     def __call__(self, event):
         # To be defined
         pass
 
     def on_key_press(self, event):
+
+        possible_combs = ["shift+ctrl", "ctrl+shift", "control+shift", "shift+control"]
+                
         if event.key == "control":
             self.ctrl_is_held = True
-        elif event.key == "shift+ctrl" or event.key == "ctrl+shift":
+        
+        elif event.key in possible_combs:
             self.ctrl_shift_is_held = True
 
     def on_key_release(self, event):
+
+        possible_combs = ["shift+ctrl", "ctrl+shift", "control+shift", "shift+control"]
+
         if event.key == "control":
             self.ctrl_is_held = False
-        elif event.key == "shift+ctrl" or event.key == "ctrl+shift":
+            self.ctrl_shift_is_held = False
+            
+        elif event.key == "shift":
+            self.ctrl_is_held = False
+            self.ctrl_shift_is_held = False
+        
+        elif event.key in possible_combs:
+            self.ctrl_is_held = False
             self.ctrl_shift_is_held = False
 
     # The function to be called anytime a t-slider's value changes
     def update_slider_t(self, t):
-        self.t = t - 1
+        # Not sure about this
+        self.t = t - self.global_times_list[0] - 1
         self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
 
@@ -193,21 +215,30 @@ class PlotAction:
         self.update()
 
     def batch_scroll(self, event):
+
+        if self.current_state == "SCL":return
+        
+        self.current_state="SCL"
         if event.button == "up":
             self.bn = self.bn + 1
-            self.set_batch(+1)
         elif event.button == "down":
             self.bn = self.bn - 1
-            self.set_batch(-1, update_labels=True)
+        
+        self.bn = max(self.bn, 0)
+        self.bn = min(self.bn, self.batch_rounds - 1)
+        
+        self.set_batch(batch_number=self.bn, update_labels=True)
 
         self.t = 0
-        self.set_val_t_slider(self.t + 1)
+        self.set_val_t_slider(self.global_times_list[self.t] + 1)
 
         self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
         
         if self.current_state == "SCL":
             self.current_state = None
+            self.ctrl_shift_is_held = False
+            self.ctrl_is_held = False
 
     def time_scroll(self, event):
         if event.button == "up":
@@ -217,7 +248,8 @@ class PlotAction:
 
         self.t = max(self.t, 0)
         self.t = min(self.t, self.times - 1)
-        self.set_val_t_slider(self.t + 1)
+                
+        self.set_val_t_slider(self.global_times_list[self.t] + 1)
 
         if self.current_state == "SCL":
             self.current_state = None
@@ -236,9 +268,11 @@ class PlotAction:
             self.current_state = None
 
     def onscroll(self, event):
+
         if self.ctrl_shift_is_held:
-            print("BATCH GOOOO")
+            if self.current_state == "SCL": return
             self.batch_scroll(event)
+            return
         elif self.ctrl_is_held:
                 self.time_scroll(event)
         else:
@@ -282,16 +316,29 @@ class PlotActionCT(PlotAction):
             0.01, 0.8, actionsbox, fontsize=1, ha="left", va="top"
         )
         self.title = self.fig.text(0.02, 0.96, "", ha="left", va="top", fontsize=1)
-        self.timetxt = self.fig.text(
-            0.02,
-            0.92,
-            "TIME = {timem} min  ({t}/{tt})".format(
-                timem=self._tstep * self.t, t=self.t + 1, tt=self.times
-            ),
-            fontsize=1,
-            ha="left",
-            va="top",
-        )
+        if self.batch:
+            globalt = self.global_times_list[self.t]
+            self.timetxt = self.fig.text(
+                0.02,
+                0.92,
+                "TIME = {timem} min  ({t}/{tt})  ;BATCH = {b}/{bb}".format(
+                    timem=self._tstep * globalt, t=globalt + 1, tt=self.total_times, b=self.bn+1, bb=self.batch_rounds
+                ),
+                fontsize=1,
+                ha="left",
+                va="top",
+            )
+        else:
+            self.timetxt = self.fig.text(
+                0.02,
+                0.92,
+                "TIME = {timem} min  ({t}/{tt})".format(
+                    timem=self._tstep * self.t, t=self.t + 1, tt=self.times
+                ),
+                fontsize=1,
+                ha="left",
+                va="top",
+            )
         self.instructions = self.fig.suptitle(
             "PRESS ENTER TO START",
             y=0.98,
@@ -645,12 +692,21 @@ class PlotActionCT(PlotAction):
         self.selected_cells.set(fontsize=width_or_height / scale1)
         self.selected_cells.set(text="Selection\n\n" + s)
         self.instructions.set(fontsize=width_or_height / scale2)
-        self.timetxt.set(
-            text="TIME = {timem} min  ({t}/{tt})".format(
-                timem=self._tstep * self.t, t=self.t + 1, tt=self.times
-            ),
-            fontsize=width_or_height / scale2,
-        )
+        if self.batch:
+            globalt = self.global_times_list[self.t]
+            self.timetxt.set(
+                text="TIME = {timem} min  ({t}/{tt})  ;BATCH = {b}/{bb}".format(
+                    timem=self._tstep * globalt, t=globalt + 1, tt=self.total_times, b=self.bn+1, bb=self.batch_rounds
+                ),
+                fontsize=width_or_height / scale2,
+            )
+        else:
+            self.timetxt.set(
+                text="TIME = {timem} min  ({t}/{tt})".format(
+                    timem=self._tstep * self.t, t=self.t + 1, tt=self.times
+                ),
+                fontsize=width_or_height / scale2,
+            )
 
         marked_apo = [
             self._CTget_cell(cellid=event[0]).label
@@ -682,6 +738,7 @@ class PlotActionCT(PlotAction):
             marked_mito_str = "None"
 
         disappeared_cells = ""
+
         if self.t != self.times - 1:
             for item_id, item in enumerate(self.CThints[self.t][0]):
                 if item_id % 7 == 6:

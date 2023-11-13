@@ -199,6 +199,9 @@ def get_cell(cells, label=None, cellid=None):
         for cell in cells:
             if cell.label == label:
                 return cell
+    
+    print("LABEL NOT FOUND")
+    print(label)
     return None
 
 
