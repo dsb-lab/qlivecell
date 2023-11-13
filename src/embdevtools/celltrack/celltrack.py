@@ -1537,6 +1537,10 @@ class CellTracking(object):
             )
         )
 
+        if len(ax) > 1:
+            zslide_val_fmt = "(%d-%d)" + sliderstr
+        else:
+            zslide_val_fmt ="%d" + sliderstr
         z_slider = Slider_z(
             ax=axslide,
             label="z slice",
@@ -1545,7 +1549,7 @@ class CellTracking(object):
             valmax=max_round,
             valinit=0,
             valstep=1,
-            valfmt="(%d-%d)" + sliderstr,
+            valfmt=zslide_val_fmt,
             counter=counter,
             track_color=[0, 0.7, 0, 0.5],
             facecolor=[0, 0.7, 0, 1.0],

@@ -23,11 +23,11 @@ def _get_jitcell(jitcells, label=None, cellid=None):
 
 
 @njit
-def _order_labels_z(jitcells, times, skip_labels_list):
-    if len(skip_labels_list) > 0:
-        current_max_label = jmax(skip_labels_list)
-    else:
-        current_max_label = -1
+def _order_labels_z(jitcells, times):
+    # if len(skip_labels_list) > 0:
+    #     current_max_label = jmax(skip_labels_list)
+    # else:
+    current_max_label = -1
 
     for t in range(times):
         ids = List()
@@ -44,11 +44,11 @@ def _order_labels_z(jitcells, times, skip_labels_list):
 
         for i, id in enumerate(ids):
             cell = _get_jitcell(jitcells, cellid=id)
-            if cell.label in skip_labels_list:
-                pass
-            else:  
-                cell.label = current_max_label + 1
-                current_max_label += 1
+            # if cell.label in skip_labels_list:
+            #     pass
+            # else:  
+            cell.label = current_max_label + 1
+            current_max_label += 1
 
 
 def isListEmpty(inList):
@@ -102,7 +102,7 @@ def jmin(x):
 def jmax(x):
     return max(x)
 
-@njit
+# @njit
 def _order_labels_t(unique_labels_T, max_label):
     P = unique_labels_T
     Q = List()

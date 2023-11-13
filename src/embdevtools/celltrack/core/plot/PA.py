@@ -94,7 +94,7 @@ class PlotAction:
             self.total_times = CT.batch_totalsize
         else:
             self.times = CT.times
-            self.global_times_list = self.times
+            self.global_times_list = range(self.times)
         
         self._tstep = CT._track_args["time_step"]
 
