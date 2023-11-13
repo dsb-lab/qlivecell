@@ -393,8 +393,10 @@ def save_3Dstack(
 def read_split_times(path_data, times, extra_name="", extension=".tif"):
     
     IMGS = []
+
     for t in times:
         path_to_file = correct_path(path_data)+"{}{}{}".format(t, extra_name, extension)
+
         if extension == ".tif":
             IMG, xyres, zres = read_img_with_resolution(path_to_file, channel=None, stack=True)
             IMG = IMG[0]

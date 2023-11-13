@@ -37,3 +37,17 @@ def check_and_fill_batch_args(batch_args):
             )
 
     return new_batch_args
+
+def init_label_correspondance(unique_labels_T, times, overlap):
+    label_correspondance = []
+    t = times[-1] + overlap
+    total_t = len(unique_labels_T)
+    
+    if t > total_t: 
+        return label_correspondance
+    
+    for _t in range(t, total_t):
+        label_pair = [[lab, lab] for lab in unique_labels_T[_t]]
+        label_correspondance.append(label_pair)
+    
+    return label_correspondance

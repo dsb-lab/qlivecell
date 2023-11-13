@@ -108,6 +108,8 @@ class CellTracking(object):
         split_times=False
     ):
         # Basic arguments
+        self.batch = False
+
         self.path_to_save = pthtosave
         self.embcode = embcode
         
@@ -363,7 +365,7 @@ class CellTracking(object):
         self.apoptotic_events = []
         self.mitotic_events = []
 
-        # count number of actions done during manual curation
+         # count number of actions done during manual curation
         # this is not reset after training
         self.nactions = 0
 
