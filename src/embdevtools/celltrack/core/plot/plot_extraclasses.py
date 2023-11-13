@@ -37,8 +37,12 @@ class Slider_z(Slider):
 
     def _format(self, val):
         first, last = self._counter.get_first_and_last_in_round(val)
-        if self.valfmt is not None:
-            return self.valfmt % (first, last)
+        if first == last:
+            if self.valfmt is not None:
+                return self.valfmt % (first)
+        else:
+            if self.valfmt is not None:
+                    return self.valfmt % (first, last)
 
 
 class CustomLassoSelector(LassoSelector):

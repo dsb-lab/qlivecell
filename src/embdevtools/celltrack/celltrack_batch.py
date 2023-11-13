@@ -101,6 +101,7 @@ class CellTrackingBatch(CellTracking):
         _loadcells=False,
     ):
         # Basic arguments
+        self.batch = True
         
         self.use_channel = use_channel
         
@@ -304,7 +305,7 @@ class CellTrackingBatch(CellTracking):
 
         times_used = []
         self.unique_labels_T = []
-        self.batch_number = 0
+        self.batch_number = -1
         self.set_batch(batch_number = 0)
         for r in range(self.batch_rounds):
             self.set_batch(batch_number = r)
@@ -330,12 +331,13 @@ class CellTrackingBatch(CellTracking):
     def set_batch(self, batch_change=0, batch_number=None, update_labels=False):
         
         if batch_number is not None:
+            if self.batch_number == batch_number:
+                return
             self.batch_number = batch_number
         
-        self.batch_number = max(self.batch_number+batch_change, 0)
-        if self.batch_number > self.batch_rounds:
-            self.batch_number = self.batch_number
-            return 
+        else:
+            self.batch_number = max(self.batch_number+batch_change, 0)
+            self.batch_number = min(self.batch_number, self.batch_rounds - 1)
 
         first = (self.batch_size * self.batch_number) - (self.batch_overlap * self.batch_number)
         last = first + self.batch_size
@@ -373,6 +375,7 @@ class CellTrackingBatch(CellTracking):
 
         if update_labels:
             self.update_labels()
+            
 
     def init_batch_cells(self):
         labels = read_split_times(self.path_to_save, self.batch_times_list_global, extra_name="", extension=".npy")
@@ -722,10 +725,10 @@ class CellTrackingBatch(CellTracking):
         for t in range(self.times - 1):
             self.hints.append([])
             self.hints[t].append(
-                np.setdiff1d(self.unique_labels_T[t], self.unique_labels_T[t + 1])
+                np.setdiff1d(self.unique_labels_T_batch[t], self.unique_labels_T_batch[t + 1])
             )
             self.hints[t].append(
-                np.setdiff1d(self.unique_labels_T[t + 1], self.unique_labels_T[t])
+                np.setdiff1d(self.unique_labels_T_batch[t + 1], self.unique_labels_T_batch[t])
             )
 
     def _get_number_of_conflicts(self):
@@ -1394,13 +1397,13 @@ class CellTrackingBatch(CellTracking):
 
         # Make a horizontal slider to control the time.
         axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
-        sliderstr = "/%d" % (self.times)
+        sliderstr = "/%d" % (self.batch_totalsize)
         time_slider = Slider_t(
             ax=axslide,
             label="time",
             initcolor="r",
             valmin=1,
-            valmax=self.times,
+            valmax=self.batch_totalsize,
             valinit=1,
             valstep=1,
             valfmt="%d" + sliderstr,
@@ -1422,7 +1425,10 @@ class CellTrackingBatch(CellTracking):
                 / (groupsize - self._plot_args["plot_overlap"])
             )
         )
-
+        if len(ax) > 1:
+            zslide_val_fmt = "(%d-%d)" + sliderstr
+        else:
+            zslide_val_fmt ="%d" + sliderstr
         z_slider = Slider_z(
             ax=axslide,
             label="z slice",
@@ -1431,7 +1437,7 @@ class CellTrackingBatch(CellTracking):
             valmax=max_round,
             valinit=0,
             valstep=1,
-            valfmt="(%d-%d)" + sliderstr,
+            valfmt=zslide_val_fmt,
             counter=counter,
             track_color=[0, 0.7, 0, 0.5],
             facecolor=[0, 0.7, 0, 1.0],
