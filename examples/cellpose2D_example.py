@@ -10,6 +10,10 @@ path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H
 path_data='/home/pablo/Desktop/PhD/projects/Data/belas/2D/Christian/movies/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/belas/2D/Christian/ctobjects/'
 
+### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
+path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/stacks/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/ctobjects/'
+
 try: 
     files = get_file_names(path_save)
 except: 
@@ -20,12 +24,15 @@ except:
 files = get_file_names(path_data)
 
 # file, embcode = get_file_embcode(path_data, 10)
-file, embcode = get_file_embcode(path_data, '221202_Cer1-H2BV_B5_1_MMStack_2-Pos002_004.tif')
+file, embcode = get_file_embcode(path_data, '8bit.tif', allow_file_fragment=True)
 
 
 ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=False, channel=0)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=0)
+import numpy as np
+from csbdeep.utils import normalize
 
+# IMGS = np.asarray([[normalize(IMG) for IMG in IMGS[0]]]).astype('uint8')
 
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
@@ -36,7 +43,7 @@ model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/Ph
 segmentation_args={
     'method': 'cellpose2D', 
     'model': model, 
-    'blur': [5,1], 
+    # 'blur': [5,1], 
     'channels': [0,0],
     'flow_threshold': 0.4,
 }
@@ -62,7 +69,7 @@ plot_args = {
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
     'plot_stack_dims': (512, 512), 
-    'plot_centers':[True, True] # [Plot center as a dot, plot label on 3D center]
+    'plot_centers':[False, False] # [Plot center as a dot, plot label on 3D center]
 }
 
 error_correction_args = {
@@ -74,7 +81,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:2], 
+    IMGS[:,-20:], 
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -94,4 +101,12 @@ CT.run()
 # save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=True, string_format="{}_labels")
 
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS[:,-20:])
+# save_4Dstack(path_save, "masks", CT._masks_stack, xyres, zres)
+
+import numpy as np
+mean_intensity = [np.mean(img) for img in IMGS[0]]
+max_inensity = [np.max(img) for img in IMGS[0]]
+import matplotlib.pyplot as plt
+plt.plot(mean_intensity)
+plt.show()

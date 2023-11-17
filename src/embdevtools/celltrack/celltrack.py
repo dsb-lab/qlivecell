@@ -1639,14 +1639,15 @@ class CellTracking(object):
                 self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
                 for lab in labs:
                     if self._plot_args["plot_centers"][0]:
-                        if zz == z:
-                            cell = self._get_cell(lab)
-                            tid = cell.times.index(t)
-                            zz, ys, xs = cell.centers[tid]
-                            xs = round(xs * self._plot_args["dim_change"])
-                            ys = round(ys * self._plot_args["dim_change"])
+                        cell = self._get_cell(lab)
+                        tid = cell.times.index(t)
+                        zz, ys, xs = cell.centers[tid]
+                        xs = round(xs * self._plot_args["dim_change"])
+                        ys = round(ys * self._plot_args["dim_change"])
 
-                            lab_to_display = lab
+                        lab_to_display = lab
+                        if zz == z:
+                            
                             if [cell.id, PACP.t] in self.apoptotic_events:
                                 sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                                 self._pos_scatters.append(sc)
