@@ -4,9 +4,8 @@ sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
 from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack, get_file_names
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
-
+path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/stacks/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/ctobjects/'
 
 try: 
     files = get_file_names(path_save)
@@ -16,7 +15,7 @@ except:
 ### GET FULL FILE NAME AND FILE CODE ###
 files = get_file_names(path_data)
 
-file, embcode = get_file_embcode(path_data, 2, returnfiles=False)
+file, embcode = get_file_embcode(path_data, 1, returnfiles=False)
 
 
 ### LOAD HYPERSTACKS ###
@@ -42,7 +41,7 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 1,
+    'min_cell_planes': 2,
 }
 
 tracking_args = {
@@ -68,7 +67,7 @@ error_correction_args = {
 
 ### CREATE CELLTRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:1,:1], 
+    IMGS, 
     path_save, 
     embcode+"ch_%d" %(channel+1), 
     xyresolution=xyres, 
@@ -92,8 +91,28 @@ CT.run()
 
 # ### PLOTTING ###
 # IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
+import numpy as np
+IMGS_plot = np.asarray([[255*(IMG/IMG.max()) for IMG in IMGS[0]]]).astype('uint8')
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_plot)
 
+import numpy as np
+areas = []
+vols = []
+for cell in CT.jitcells:
+    z = np.int32(cell.centers[0][0])
+    zid = cell.zs[0].index(z)
+    areas.append(len(cell.masks[0][zid]))
+    vol = 0
+    for zid in range(len(cell.zs[0])):
+        vol+= len(cell.masks[0][zid])
+    vols.append(vol)
+
+import matplotlib.pyplot as plt
+
+plt.hist(vols, bins=200, density=True)
+plt.xlabel("volume in pixels")
+plt.xlim(0,3000)
+plt.show()
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
 # save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
