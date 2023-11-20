@@ -15,11 +15,11 @@ except:
 ### GET FULL FILE NAME AND FILE CODE ###
 files = get_file_names(path_data)
 
-file, embcode = get_file_embcode(path_data, 1, returnfiles=False)
+file, embcode = get_file_embcode(path_data, 2, returnfiles=False)
 
 
 ### LOAD HYPERSTACKS ###
-channel = 0
+channel = 2
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
 
 
@@ -31,7 +31,7 @@ model = StarDist2D.from_pretrained('2D_versatile_fluo')
 segmentation_args={
     'method': 'stardist2D', 
     'model': model, 
-    # 'blur': [5,1], 
+    'blur': [10,1], 
     # 'scale': 3
 }
           
@@ -41,7 +41,7 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 2,
+    'min_cell_planes': 3,
 }
 
 tracking_args = {
@@ -95,24 +95,7 @@ import numpy as np
 IMGS_plot = np.asarray([[255*(IMG/IMG.max()) for IMG in IMGS[0]]]).astype('uint8')
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_plot)
 
-import numpy as np
-areas = []
-vols = []
-for cell in CT.jitcells:
-    z = np.int32(cell.centers[0][0])
-    zid = cell.zs[0].index(z)
-    areas.append(len(cell.masks[0][zid]))
-    vol = 0
-    for zid in range(len(cell.zs[0])):
-        vol+= len(cell.masks[0][zid])
-    vols.append(vol)
 
-import matplotlib.pyplot as plt
-
-plt.hist(vols, bins=200, density=True)
-plt.xlabel("volume in pixels")
-plt.xlim(0,3000)
-plt.show()
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
 # save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
