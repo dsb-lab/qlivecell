@@ -37,7 +37,7 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 1,
+    'min_cell_planes': 3,
 }
 
 tracking_args = {
@@ -66,6 +66,7 @@ batch_args = {
     'batch_size': 2,
     'batch_overlap':1,
 }
+
 from embdevtools.celltrack.celltrack_batch import CellTrackingBatch
 
 CTB = CellTrackingBatch(
@@ -82,4 +83,8 @@ CTB = CellTrackingBatch(
 
 CTB.run()
 
-CTB.plot_tracking()
+# CTB.plot_tracking()
+
+# labs_stack = np.load(CTB.path_to_save+"{:d}.npy".format(2))
+
+# np.unique(labs_stack)

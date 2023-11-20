@@ -92,10 +92,12 @@ class PlotAction:
             self.batch_rounds = CT.batch_rounds
             self.global_times_list = CT.batch_times_list_global
             self.total_times = CT.batch_totalsize
+            self._split_times=True
         else:
             self.times = CT.times
             self.global_times_list = range(self.times)
-        
+            self._split_times=True
+
         self._tstep = CT._track_args["time_step"]
 
         self.CTlist_of_cells = CT.list_of_cells
@@ -167,8 +169,8 @@ class PlotAction:
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
         self.times = CT.times
-        self.global_times_list = CT.batch_times_list_global
-            
+        if self.batch:
+            self.global_times_list = CT.batch_times_list_global
             
 
     def __call__(self, event):
@@ -428,7 +430,11 @@ class PlotActionCT(PlotAction):
             elif event.key == "s":
                 self.CT_info.apo_cells = self.CTapoptotic_events
                 self.CT_info.mito_cells = self.CTmitotic_events
-                self.CTsave_cells(self.jitcells, self.CT_info, self.path_to_save, self.filename)
+                if self._split_times:
+                    filename = None
+                else:
+                    filename=self.filename
+                self.CTsave_cells(self.jitcells, self.CT_info, self.global_times_list, self.path_to_save, filename, split_times=self._split_times)
             self.update()
 
         else:

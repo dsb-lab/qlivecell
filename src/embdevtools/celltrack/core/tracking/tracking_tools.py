@@ -446,12 +446,12 @@ def replace_labels_t(labels, lab_corr):
 
         for q in prange(len(idxz)):
             labels_t_copy[idxz[q], idxx[q], idxy[q]] = lab_final+1
-        
     return labels_t_copy
 
 @njit(parallel=True)
 def replace_labels_in_place(labels, label_correspondance):
-    labels_copy = np.zeros_like(labels)
+    labels_copy = np.zeros_like(labels, dtype="uint16")
     for t in prange(len(label_correspondance)): 
+        t = np.uint16(t)
         labels_copy[t] = replace_labels_t(labels[t], label_correspondance[t])
     return labels_copy

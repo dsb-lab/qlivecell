@@ -9,6 +9,7 @@ from .tools import correct_path
 from .input_tools import read_img_with_resolution
 from .cell_tools import create_cell
 from .ct_tools import compute_labels_stack
+from numba import prange, njit
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -124,7 +125,7 @@ def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_fo
             np.save(pthsave, labels_stack, allow_pickle=False)
 
 
-def save_cells_to_labels_stack(cells, times, slices, xy_dims, path=None, filename=None, split_times=False, string_format="{}"):
+def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, split_times=False, string_format="{}", save_info=False):
     """save cell objects obtained with celltrack.py
 
     Saves cells as `path`/`filename`_cells.npy
@@ -139,45 +140,18 @@ def save_cells_to_labels_stack(cells, times, slices, xy_dims, path=None, filenam
         path to save directory
     filename : str
         name of file or embcode
-
     """
-
-    pthsave = correct_path(path) + str(filename)
+    if filename is not None:
+        pthsave = correct_path(path) + str(filename)
+    else:
+        pthsave = correct_path(path)
         
     labels_stack = np.zeros(
-        (times, slices, xy_dims[0], xy_dims[1]), dtype="uint16"
+        (len(times), CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
     
     labels_stack = compute_labels_stack(labels_stack, cells)
-    save_labels_stack(labels_stack, pthsave, range(times), split_times=split_times, string_format=string_format)
-
-
-def save_cells_to_labels_stack_info(cells, CT_info, path=None, filename=None, split_times=False, string_format="{}", save_info=False):
-    """save cell objects obtained with celltrack.py
-
-    Saves cells as `path`/`filename`_cells.npy
-    Saves cell tracking info as `path`/`filename`_info.json
-
-    Parameters
-    ----------
-    cells : list of Cell objects
-    CT_info : CT_info object
-
-    path : str
-        path to save directory
-    filename : str
-        name of file or embcode
-
-    """
-
-    pthsave = correct_path(path) + str(filename)
-        
-    labels_stack = np.zeros(
-        (CT_info.times, CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
-    )
-    
-    labels_stack = compute_labels_stack(labels_stack, cells)
-    save_labels_stack(labels_stack, pthsave, range(CT_info.times), split_times=split_times, string_format=string_format)
+    save_labels_stack(labels_stack, pthsave, times, split_times=split_times, string_format=string_format)
 
     if save_info:
         file_to_store = pthsave + "_info.json"
@@ -247,7 +221,7 @@ def load_cells_from_labels_stack(path=None, filename=None, times=None, split_tim
     if split_times:
         labels_stack= read_split_times(correct_path(pthload), range(times), extra_name="_labels", extension=".npy")
     else:
-        labels_stack = np.load(pthload+"_labels.npy")
+        labels_stack = np.load(pthload+".npy")
 
     cells = []
     unique_labels_T = [np.unique(labs) for labs in labels_stack]
@@ -408,3 +382,31 @@ def read_split_times(path_data, times, extra_name="", extension=".tif"):
         return np.array(IMGS), xyres, zres
     elif extension == ".npy":
         return np.array(IMGS)
+    
+
+def substitute_labels(times, path_to_save, lcT):
+    for postt in times:
+        labs_stack = np.load(path_to_save+"{:d}.npy".format(postt))
+        new_labs_stack = labs_stack.copy()
+        new_ls, lct = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
+        new_labs_stack = new_ls
+        save_labels_stack(new_labs_stack, path_to_save+"{:d}.npy".format(postt), [postt], split_times=False, string_format="{}")
+
+@njit(parallel=False)
+def _sub_labs(labs_pre, labs_post, lct):
+    for lab_change in lct:
+        pre_label = lab_change[0]
+        post_label = lab_change[1]
+
+        new_lct = np.where(lct[:,1]==post_label, lct[:,1],pre_label)
+        idxs = np.where(labs_pre == pre_label+1)
+        zs = idxs[0]
+        xs = idxs[1]
+        ys = idxs[2]
+        for p in prange(len(zs)):
+            z = zs[p]
+            x = xs[p]
+            y = ys[p]
+            labs_post[z,x,y] = post_label + 1
+    
+    return labs_post, new_lct

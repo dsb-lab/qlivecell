@@ -54,7 +54,8 @@ from .core.tools.input_tools import (get_file_embcode, get_file_names,
                                      read_img_with_resolution)
 from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels, read_split_times,
-                                    save_cells_to_labels_stack, save_labels_stack)
+                                    save_cells_to_labels_stack, save_labels_stack,
+                                    save_cells, substitute_labels)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
                                      isotropize_stack, isotropize_stackRGB)
 from .core.tools.tools import (check_and_fill_error_correction_args,
@@ -389,11 +390,11 @@ class CellTrackingBatch(CellTracking):
         # printfancy("")
         # printfancy("computing tracking...")
         
-        # self.cell_tracking()
+        self.cell_tracking()
 
-        # printclear(2)
-        # print("##############    SEGMENTATION AND TRACKING FINISHED   ###############")
-        # printfancy("")
+        printclear(2)
+        print("##############    SEGMENTATION AND TRACKING FINISHED   ###############")
+        printfancy("")
 
         printfancy("Initializing first batch and cells...")
         self.init_batch()
@@ -445,7 +446,7 @@ class CellTrackingBatch(CellTracking):
 
             # Read the stacks
             stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(t, t+1), extra_name="", extension=".tif")
-            
+
             # If the stack is RGB, pick the channel to segment
             if len(stacks.shape) == 5:
                 self._stacks = stacks[:, :, :, :, self.use_channel]
@@ -528,7 +529,7 @@ class CellTrackingBatch(CellTracking):
             printfancy("")
             
             self.init_cells(TLabels, Labels, Outlines, Masks, label_correspondance)
-            save_cells_to_labels_stack(self.jitcells, 1, self.CT_info.slices, self.CT_info.stack_dims, path=self.path_to_save, filename=t, split_times=False)
+            save_cells_to_labels_stack(self.jitcells, self.CT_info, [t], path=self.path_to_save, filename=t, split_times=False, save_info=False)
 
 
             # Initialize cells with this
@@ -562,7 +563,7 @@ class CellTrackingBatch(CellTracking):
                 continue
             
             labels = read_split_times(self.path_to_save, times, extra_name="", extension=".npy")
-            
+
             IMGS, xyres, zres = read_split_times(self.path_to_data, times, extra_name="", extension=".tif")
 
             labels = labels.astype("uint16")
@@ -673,14 +674,29 @@ class CellTrackingBatch(CellTracking):
             self.new_label_correspondance_T = List([np.empty((0,2), dtype='uint16') for t in range(len(self.unique_labels_T))])
             fill_label_correspondance_T(self.new_label_correspondance_T, self.unique_labels_T, correspondance)
             
-            for postt in range(self.batch_times_list_global[-1]+1,self.batch_totalsize):
-                for lab_change in self.label_correspondance_T[postt]:
-                    pre_label = lab_change[0]
-                    post_label = lab_change[1]
-                    _ = np.where(self.new_label_correspondance_T[postt][:,1]==post_label,self.new_label_correspondance_T[postt][:,1],pre_label)
-            
-            # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))
+            save_cells_to_labels_stack(self.jitcells, self.CT_info, self.batch_times_list_global, path=self.path_to_save, filename=None, split_times=True, string_format="{}", save_info=False)
+            # for postt in range(self.batch_times_list_global[-1]+1,self.batch_totalsize):
+            #     labs_stack = np.load(self.path_to_save+"{:d}.npy".format(postt))
+            #     print(self.new_label_correspondance_T[postt])
+            #     new_labs_stack = np.zeros_like(labs_stack, dtype='uint16')
+            #     for lab_change in self.new_label_correspondance_T[postt]:
+            #         print(lab_change)
+            #         pre_label = lab_change[0]
+            #         post_label = lab_change[1]
+            #         _ = np.where(self.new_label_correspondance_T[postt][:,1]==post_label,self.new_label_correspondance_T[postt][:,1],pre_label)
+            #         idxs = np.where(labs_stack == pre_label+1)
+            #         for p in range(len(idxs[0])):
+            #             z = idxs[0][p]
+            #             x = idxs[1][p]
+            #             y = idxs[2][p]
+            #             new_labs_stack[z][x,y] = post_label + 1
+            #     save_labels_stack(new_labs_stack, self.path_to_save+"{:d}.npy".format(postt), [postt], split_times=False, string_format="{}")
 
+            substitute_labels(range(self.batch_times_list_global[-1]+1,self.batch_totalsize), self.path_to_save, self.new_label_correspondance_T)
+            self.label_correspondance_T = List([np.empty((0,2), dtype='uint16') for t in range(len(self.unique_labels_T))])
+            # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))
+        
+        
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
@@ -1338,20 +1354,14 @@ class CellTrackingBatch(CellTracking):
         poped = self.jitcells.pop(idx1)
         
         if self.batch_number!=self.batch_max:
-            print("in the batch part")
             # cell with label maxlab, now has label minlab
             self.max_label = self.max_label + 1
-            print(self.max_label)
             lab_change = np.array([[poped.label, self.max_label]]).astype('uint16')
-            print(lab_change)
             # check which times maxlab appears in future batches
             first_future_time = self.batch_times_list_global[-1]+self.batch_overlap
-            print(first_future_time)
             ids = nb_list_where(self.unique_labels_T[first_future_time:], poped.label)
-            print(ids)
             for _t in ids[0]:
                 t = _t + first_future_time
-                print(t)
                 self.label_correspondance_T[t] = nb_add_row(self.label_correspondance_T[t], lab_change)
         
         if len_selected_jitcells == len(self.jitcells_selected):
