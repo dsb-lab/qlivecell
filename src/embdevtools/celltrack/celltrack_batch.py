@@ -675,23 +675,6 @@ class CellTrackingBatch(CellTracking):
             fill_label_correspondance_T(self.new_label_correspondance_T, self.unique_labels_T, correspondance)
             
             save_cells_to_labels_stack(self.jitcells, self.CT_info, self.batch_times_list_global, path=self.path_to_save, filename=None, split_times=True, string_format="{}", save_info=False)
-            # for postt in range(self.batch_times_list_global[-1]+1,self.batch_totalsize):
-            #     labs_stack = np.load(self.path_to_save+"{:d}.npy".format(postt))
-            #     print(self.new_label_correspondance_T[postt])
-            #     new_labs_stack = np.zeros_like(labs_stack, dtype='uint16')
-            #     for lab_change in self.new_label_correspondance_T[postt]:
-            #         print(lab_change)
-            #         pre_label = lab_change[0]
-            #         post_label = lab_change[1]
-            #         _ = np.where(self.new_label_correspondance_T[postt][:,1]==post_label,self.new_label_correspondance_T[postt][:,1],pre_label)
-            #         idxs = np.where(labs_stack == pre_label+1)
-            #         for p in range(len(idxs[0])):
-            #             z = idxs[0][p]
-            #             x = idxs[1][p]
-            #             y = idxs[2][p]
-            #             new_labs_stack[z][x,y] = post_label + 1
-            #     save_labels_stack(new_labs_stack, self.path_to_save+"{:d}.npy".format(postt), [postt], split_times=False, string_format="{}")
-
             substitute_labels(range(self.batch_times_list_global[-1]+1,self.batch_totalsize), self.path_to_save, self.new_label_correspondance_T)
             self.label_correspondance_T = List([np.empty((0,2), dtype='uint16') for t in range(len(self.unique_labels_T))])
             # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))

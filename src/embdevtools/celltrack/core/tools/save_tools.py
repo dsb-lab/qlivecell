@@ -392,7 +392,7 @@ def substitute_labels(times, path_to_save, lcT):
         new_labs_stack = new_ls
         save_labels_stack(new_labs_stack, path_to_save+"{:d}.npy".format(postt), [postt], split_times=False, string_format="{}")
 
-@njit(parallel=False)
+@njit(parallel=True)
 def _sub_labs(labs_pre, labs_post, lct):
     for lab_change in lct:
         pre_label = lab_change[0]
