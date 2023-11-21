@@ -55,7 +55,8 @@ from .core.tools.input_tools import (get_file_embcode, get_file_names,
 from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels, read_split_times,
                                     save_cells_to_labels_stack, save_labels_stack,
-                                    save_cells, substitute_labels)
+                                    save_cells, substitute_labels, save_CT_info,
+                                    load_CT_info)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
                                      isotropize_stack, isotropize_stackRGB)
 from .core.tools.tools import (check_and_fill_error_correction_args,
@@ -274,6 +275,9 @@ class CellTrackingBatch(CellTracking):
     def init_batch(self):
 
         files = get_file_names(self.path_to_save)
+        for file in files:
+            if ".npy" not in file:
+                files.remove(file)
         file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
         files = [files[i] for i in file_sort_idxs]
 
@@ -376,13 +380,21 @@ class CellTrackingBatch(CellTracking):
         printclear(2)
         print("###############           TRACKING FINISHED           ################")
 
-        self.load()
+        self.CT_info = self.init_CT_info()
 
-    def load(self):
+        self.load(load_ct_info=False)
+
+    def load(self, load_ct_info=True):
+
+        if load_ct_info:
+            self.CT_info = load_CT_info(self.path_to_save, self.embcode)
+            self.apoptotic_events = self.CT_info.apo_cells
+            self.mitotic_events = self.CT_info.mito_cells
+    
         printfancy("")
         printfancy("Initializing first batch and cells...")
         self.init_batch()
-
+        
         printfancy("cells initialised. updating labels...", clear_prev=1)
 
         self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
@@ -489,7 +501,7 @@ class CellTrackingBatch(CellTracking):
             printfancy(
                 "Segmentation and corrections completed.", clear_prev=2
             )
-            printfancy("Creating Cells and saving results...")
+            printfancy("Creating cells and saving results...")
             printfancy("")
             
             self.init_cells(TLabels, Labels, Outlines, Masks, label_correspondance)
@@ -508,6 +520,9 @@ class CellTrackingBatch(CellTracking):
     def cell_tracking(self):
             
         files = get_file_names(self.path_to_save)
+        for file in files:
+            if ".npy" not in file:
+                files.remove(file)
         file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
         files = [files[i] for i in file_sort_idxs]
 
@@ -615,8 +630,8 @@ class CellTrackingBatch(CellTracking):
         #iterate over future times and update manually unique_labels_T
         # I think we should assume that there is no going to be conflict
         # on label substitution, but we have to be careful in the future
-
-        for postt in range(self.batch_times_list_global[-1]+1,self.batch_totalsize):
+        post_range = range(self.batch_times_list_global[-1]+1,self.batch_totalsize)
+        for postt in post_range:
             for lab_change in self.label_correspondance_T[postt]:
                 pre_label = lab_change[0]
                 post_label = lab_change[1]
@@ -639,13 +654,24 @@ class CellTrackingBatch(CellTracking):
             self.new_label_correspondance_T = List([np.empty((0,2), dtype='uint16') for t in range(len(self.unique_labels_T))])
             fill_label_correspondance_T(self.new_label_correspondance_T, self.unique_labels_T, correspondance)
 
-            for postt in range(self.batch_times_list_global[-1]+1,self.batch_totalsize):
+            for postt in post_range:
                 for lab_change in self.label_correspondance_T[postt]:
                     pre_label = lab_change[0]
                     post_label = lab_change[1]
                     idx = np.where(self.new_label_correspondance_T[postt][:,0]==post_label)
                     self.new_label_correspondance_T[postt][idx[0][0],0] = pre_label
-                
+            
+            for apo_ev in self.apoptotic_events:
+                idx = np.where(self.new_label_correspondance_T[apo_ev[1]][:,0]==apo_ev[0])
+                new_lab = self.new_label_correspondance_T[apo_ev[1]][idx[0][0],1]
+                apo_ev[0] = new_lab
+            
+            for mito_ev in self.mitotic_events:
+                for mito_cell in mito_ev:
+                    idx = np.where(self.new_label_correspondance_T[mito_cell[1]][:,0]==mito_cell[0])
+                    new_lab = self.new_label_correspondance_T[mito_cell[1]][idx[0][0],1]
+                    mito_cell[0] = new_lab
+
             save_cells_to_labels_stack(self.jitcells, self.CT_info, self.batch_times_list_global, path=self.path_to_save, filename=None, split_times=True, string_format="{}", save_info=False)
             substitute_labels(range(self.batch_times_list_global[-1]+1,self.batch_totalsize), self.path_to_save, self.new_label_correspondance_T)
             self.label_correspondance_T = List([np.empty((0,2), dtype='uint16') for t in range(len(self.unique_labels_T))])
@@ -677,11 +703,15 @@ class CellTrackingBatch(CellTracking):
             mode="outlines",
         )
         
+        self.store_CT_info()
+        save_CT_info(self.CT_info, self.path_to_save, self.embcode)
+
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)
 
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)
+
 
     def delete_cell(self, PACP, count_action=True):
         cells = [x[0] for x in PACP.list_of_cells]
@@ -954,36 +984,6 @@ class CellTrackingBatch(CellTracking):
             1,
             mode="outlines",
         )
-
-        self.nactions += 1
-
-    def apoptosis(self, list_of_cells):
-        for cell_att in list_of_cells:
-            lab, cellid, t = cell_att
-            attributes = [cellid, t]
-            if attributes not in self.apoptotic_events:
-                self.apoptotic_events.append(attributes)
-            else:
-                self.apoptotic_events.remove(attributes)
-
-        self.nactions += 1
-
-    def mitosis(self):
-        if len(self.mito_cells) != 3:
-            return
-        cell = self._get_cell(cellid=self.mito_cells[0][1])
-        mito0 = [cell.id, self.mito_cells[0][2]]
-        cell = self._get_cell(cellid=self.mito_cells[1][1])
-        mito1 = [cell.id, self.mito_cells[1][2]]
-        cell = self._get_cell(cellid=self.mito_cells[2][1])
-        mito2 = [cell.id, self.mito_cells[2][2]]
-
-        mito_ev = [mito0, mito1, mito2]
-
-        if mito_ev in self.mitotic_events:
-            self.mitotic_events.remove(mito_ev)
-        else:
-            self.mitotic_events.append(mito_ev)
 
         self.nactions += 1
 

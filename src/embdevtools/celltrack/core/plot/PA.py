@@ -70,6 +70,7 @@ class PlotAction:
         self.bn = 0
         self.cr = 0
         self.t = 0
+        self.tg = 0 # t global
         self.zs = []
         self.z = None
 
@@ -232,7 +233,8 @@ class PlotAction:
         self.set_batch(batch_number=self.bn, update_labels=True)
 
         self.t = 0
-        self.set_val_t_slider(self.global_times_list[self.t] + 1)
+        self.tg = self.global_times_list[self.t]
+        self.set_val_t_slider(self.tg + 1)
 
         self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
@@ -245,13 +247,16 @@ class PlotAction:
     def time_scroll(self, event):
         if event.button == "up":
             self.t = self.t + 1
+            self.tg = self.tg + 1
         elif event.button == "down":
             self.t = self.t - 1
-
+            self.tg = self.tg - 1
         self.t = max(self.t, 0)
         self.t = min(self.t, self.times - 1)
-                
-        self.set_val_t_slider(self.global_times_list[self.t] + 1)
+
+        self.tg = max(self.tg, 0)
+        self.tg = min(self.tg, self.total_times - 1)      
+        self.set_val_t_slider(self.tg + 1)
 
         if self.current_state == "SCL":
             self.current_state = None
@@ -319,12 +324,11 @@ class PlotActionCT(PlotAction):
         )
         self.title = self.fig.text(0.02, 0.96, "", ha="left", va="top", fontsize=1)
         if self.batch:
-            globalt = self.global_times_list[self.t]
             self.timetxt = self.fig.text(
                 0.02,
                 0.92,
                 "TIME = {timem} min  ({t}/{tt})  ;BATCH = {b}/{bb}".format(
-                    timem=self._tstep * globalt, t=globalt + 1, tt=self.total_times, b=self.bn+1, bb=self.batch_rounds
+                    timem=self._tstep * self.tg, t=self.tg + 1, tt=self.total_times, b=self.bn+1, bb=self.batch_rounds
                 ),
                 fontsize=1,
                 ha="left",
@@ -699,10 +703,9 @@ class PlotActionCT(PlotAction):
         self.selected_cells.set(text="Selection\n\n" + s)
         self.instructions.set(fontsize=width_or_height / scale2)
         if self.batch:
-            globalt = self.global_times_list[self.t]
             self.timetxt.set(
                 text="TIME = {timem} min  ({t}/{tt})  ;BATCH = {b}/{bb}".format(
-                    timem=self._tstep * globalt, t=globalt + 1, tt=self.total_times, b=self.bn+1, bb=self.batch_rounds
+                    timem=self._tstep * self.tg, t=self.tg + 1, tt=self.total_times, b=self.bn+1, bb=self.batch_rounds
                 ),
                 fontsize=width_or_height / scale2,
             )
@@ -714,11 +717,16 @@ class PlotActionCT(PlotAction):
                 fontsize=width_or_height / scale2,
             )
 
-        marked_apo = [
-            self._CTget_cell(cellid=event[0]).label
-            for event in self.CTapoptotic_events
-            if event[1] == self.t
-        ]
+        
+        marked_apo = []
+        for event in self.CTapoptotic_events:
+            if event[1] == self.tg:
+                cell = self._CTget_cell(label=event[0])
+                if cell is None: 
+                    self.CTapoptotic_events.remove(event)
+                else:
+                    marked_apo.append(cell.label)
+        
         marked_apo_str = ""
         for item_id, item in enumerate(marked_apo):
             if item_id % 7 == 6:
@@ -728,12 +736,16 @@ class PlotActionCT(PlotAction):
         if marked_apo_str == "":
             marked_apo_str = "None"
 
-        marked_mito = [
-            self._CTget_cell(cellid=mitocell[0]).label
-            for event in self.CTmitotic_events
-            for mitocell in event
-            if mitocell[1] == self.t
-        ]
+        marked_mito = []
+        for event in self.CTmitotic_events:
+            for mitocell in event:
+                if mitocell[1] == self.tg:
+                    cell = self._CTget_cell(label=mitocell[0])
+                    if cell is None: 
+                        self.CTmitotic_events.remove(event)
+                    else:
+                        marked_mito.append(cell.label)
+    
         marked_mito_str = ""
         for item_id, item in enumerate(marked_mito):
             if item_id % 7 == 6:
@@ -1089,7 +1101,7 @@ class PlotActionCT(PlotAction):
         CT_cell = _get_cell(self.jitcells_selected, label=lab)
         cellid = CT_cell.id
         cont = True
-        cell = [lab, cellid, self.t]
+        cell = [lab, cellid, self.tg]
         if cell not in self.CTmito_cells:
             if len(self.CTmito_cells) == 3:
                 printfancy("ERROR: cannot select more than 3 cells")
@@ -1102,9 +1114,9 @@ class PlotActionCT(PlotAction):
         pop_cell = False
         if cont:
             for jj, _cell in enumerate(self.CTmito_cells):
-                _cellid = _cell[0]
+                _cell_lab = _cell[0]
                 _t = _cell[2]
-                if _cellid == cellid:
+                if _cell_lab == lab:
                     pop_cell = True
                     idxtopop.append(jj)
             if pop_cell:
@@ -1131,7 +1143,7 @@ class PlotActionCT(PlotAction):
             return
         CT_cell = _get_cell(self.jitcells_selected, label=lab)
         cellid = CT_cell.id
-        cell = [lab, cellid, self.t]
+        cell = [lab, cellid, self.tg]
         idxtopop = []
         pop_cell = False
         for jj, _cell in enumerate(self.list_of_cells):
