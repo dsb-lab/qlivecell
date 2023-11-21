@@ -722,6 +722,7 @@ class CellTracking(object):
             1,
             mode="outlines",
         )
+        self.store_CT_info()
 
         if backup:
             self.one_step_copy()
@@ -791,7 +792,7 @@ class CellTracking(object):
             self.ctattr.Labels
         )
         new_cell = create_cell(
-            self.currentcellid,
+            self.currentcellid + 1,
             self.max_label + 1,
             [[z]],
             [t],
@@ -1242,8 +1243,8 @@ class CellTracking(object):
 
     def apoptosis(self, list_of_cells):
         for cell_att in list_of_cells:
-            lab, cellid, t = cell_att
-            attributes = [cellid, t]
+            lab, cell_id, t = cell_att
+            attributes = [lab, t]
             if attributes not in self.apoptotic_events:
                 self.apoptotic_events.append(attributes)
             else:
@@ -1254,12 +1255,12 @@ class CellTracking(object):
     def mitosis(self):
         if len(self.mito_cells) != 3:
             return
-        cell = self._get_cell(cellid=self.mito_cells[0][1])
-        mito0 = [cell.id, self.mito_cells[0][2]]
-        cell = self._get_cell(cellid=self.mito_cells[1][1])
-        mito1 = [cell.id, self.mito_cells[1][2]]
-        cell = self._get_cell(cellid=self.mito_cells[2][1])
-        mito2 = [cell.id, self.mito_cells[2][2]]
+        cell = self._get_cell(label=self.mito_cells[0][0])
+        mito0 = [cell.label, self.mito_cells[0][2]]
+        cell = self._get_cell(label=self.mito_cells[1][0])
+        mito1 = [cell.label, self.mito_cells[1][2]]
+        cell = self._get_cell(label=self.mito_cells[2][0])
+        mito2 = [cell.label, self.mito_cells[2][2]]
 
         mito_ev = [mito0, mito1, mito2]
 
@@ -1308,6 +1309,7 @@ class CellTracking(object):
             1,
             mode="outlines",
         )
+        
     def train_segmentation_model(
         self,
         train_segmentation_args=None,
@@ -1608,6 +1610,7 @@ class CellTracking(object):
         self._titles[imid].set_text("z = %d" % (z + 1))
 
     def replot_tracking(self, PACP, plot_outlines=True):
+
         t = PACP.t
         counter = plotRound(
             layout=self._plot_args["plot_layout"],
@@ -1648,7 +1651,7 @@ class CellTracking(object):
                         lab_to_display = lab
                         if zz == z:
                             
-                            if [cell.id, PACP.t] in self.apoptotic_events:
+                            if [cell.label, PACP.t] in self.apoptotic_events:
                                 sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                                 self._pos_scatters.append(sc)
                             else:
@@ -1659,10 +1662,10 @@ class CellTracking(object):
                                 # Check if cell is an immeadiate dauther and plot the corresponding label
                                 for mitoev in self.mitotic_events:
                                     for icell, mitocell in enumerate(mitoev[1:]):
-                                        if cell.id == mitocell[0]:
-                                            if PACP.t == ev[1]:
+                                        if cell.label == mitocell[0]:
+                                            if PACP.t == mitoev[1]:
                                                 mother = self._get_cell(
-                                                    cellid=mitoev[0][0]
+                                                    label=mitoev[0][0]
                                                 )
                                                 lab_to_display = (
                                                     mother.label + 0.1 + icell / 10
@@ -1674,7 +1677,7 @@ class CellTracking(object):
 
                             for mitoev in self.mitotic_events:
                                 for ev in mitoev:
-                                    if cell.id == ev[0]:
+                                    if cell.label == ev[0]:
                                         if PACP.t == ev[1]:
                                             sc = PACP.ax[id].scatter(
                                                 [ys], [xs], s=5.0, c="red"

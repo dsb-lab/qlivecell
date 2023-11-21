@@ -55,7 +55,8 @@ from .core.tools.input_tools import (get_file_embcode, get_file_names,
 from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels, read_split_times,
                                     save_cells_to_labels_stack, save_labels_stack,
-                                    save_cells, substitute_labels)
+                                    save_cells, substitute_labels, save_CT_info,
+                                    load_CT_info)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
                                      isotropize_stack, isotropize_stackRGB)
 from .core.tools.tools import (check_and_fill_error_correction_args,
@@ -274,6 +275,9 @@ class CellTrackingBatch(CellTracking):
     def init_batch(self):
 
         files = get_file_names(self.path_to_save)
+        for file in files:
+            if ".npy" not in file:
+                files.remove(file)
         file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
         files = [files[i] for i in file_sort_idxs]
 
@@ -379,10 +383,18 @@ class CellTrackingBatch(CellTracking):
         self.load()
 
     def load(self):
+
+        try:
+            self.CT_info = load_CT_info(self.path_to_save, self.embcode)
+            self.apoptotic_events = self.CT_info.apo_cells
+            self.mitotic_events = self.CT_info.mito_cells
+        except: 
+            self.CT_info = self.init_CT_info()
+    
         printfancy("")
         printfancy("Initializing first batch and cells...")
         self.init_batch()
-
+        
         printfancy("cells initialised. updating labels...", clear_prev=1)
 
         self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
@@ -489,7 +501,7 @@ class CellTrackingBatch(CellTracking):
             printfancy(
                 "Segmentation and corrections completed.", clear_prev=2
             )
-            printfancy("Creating Cells and saving results...")
+            printfancy("Creating cells and saving results...")
             printfancy("")
             
             self.init_cells(TLabels, Labels, Outlines, Masks, label_correspondance)
@@ -508,6 +520,9 @@ class CellTrackingBatch(CellTracking):
     def cell_tracking(self):
             
         files = get_file_names(self.path_to_save)
+        for file in files:
+            if ".npy" not in file:
+                files.remove(file)
         file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
         files = [files[i] for i in file_sort_idxs]
 
@@ -677,11 +692,15 @@ class CellTrackingBatch(CellTracking):
             mode="outlines",
         )
         
+        self.store_CT_info()
+        save_CT_info(self.CT_info, self.path_to_save, self.embcode)
+
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)
 
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)
+
 
     def delete_cell(self, PACP, count_action=True):
         cells = [x[0] for x in PACP.list_of_cells]
@@ -954,36 +973,6 @@ class CellTrackingBatch(CellTracking):
             1,
             mode="outlines",
         )
-
-        self.nactions += 1
-
-    def apoptosis(self, list_of_cells):
-        for cell_att in list_of_cells:
-            lab, cellid, t = cell_att
-            attributes = [cellid, t]
-            if attributes not in self.apoptotic_events:
-                self.apoptotic_events.append(attributes)
-            else:
-                self.apoptotic_events.remove(attributes)
-
-        self.nactions += 1
-
-    def mitosis(self):
-        if len(self.mito_cells) != 3:
-            return
-        cell = self._get_cell(cellid=self.mito_cells[0][1])
-        mito0 = [cell.id, self.mito_cells[0][2]]
-        cell = self._get_cell(cellid=self.mito_cells[1][1])
-        mito1 = [cell.id, self.mito_cells[1][2]]
-        cell = self._get_cell(cellid=self.mito_cells[2][1])
-        mito2 = [cell.id, self.mito_cells[2][2]]
-
-        mito_ev = [mito0, mito1, mito2]
-
-        if mito_ev in self.mitotic_events:
-            self.mitotic_events.remove(mito_ev)
-        else:
-            self.mitotic_events.append(mito_ev)
 
         self.nactions += 1
 

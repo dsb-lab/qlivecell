@@ -85,6 +85,5 @@ CTB.load()
 
 CTB.plot_tracking()
 
-# labs_stack = np.load(CTB.path_to_save+"{:d}.npy".format(2))
-
-# np.unique(labs_stack)
+# for cell in CTB.jitcells:
+#     print(cell.label)

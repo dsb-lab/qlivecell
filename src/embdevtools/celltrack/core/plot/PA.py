@@ -70,6 +70,7 @@ class PlotAction:
         self.bn = 0
         self.cr = 0
         self.t = 0
+        self.tg = 0 # t global
         self.zs = []
         self.z = None
 
@@ -714,10 +715,11 @@ class PlotActionCT(PlotAction):
                 fontsize=width_or_height / scale2,
             )
 
+        print(self.CTapoptotic_events)
         marked_apo = [
-            self._CTget_cell(cellid=event[0]).label
+            self._CTget_cell(label=event[0]).label
             for event in self.CTapoptotic_events
-            if event[1] == self.t
+            if event[1] == self.global_times_list[self.t]
         ]
         marked_apo_str = ""
         for item_id, item in enumerate(marked_apo):
@@ -729,10 +731,10 @@ class PlotActionCT(PlotAction):
             marked_apo_str = "None"
 
         marked_mito = [
-            self._CTget_cell(cellid=mitocell[0]).label
+            self._CTget_cell(label=mitocell[0]).label
             for event in self.CTmitotic_events
             for mitocell in event
-            if mitocell[1] == self.t
+            if mitocell[1] == self.global_times_list[self.t]
         ]
         marked_mito_str = ""
         for item_id, item in enumerate(marked_mito):
@@ -1102,9 +1104,9 @@ class PlotActionCT(PlotAction):
         pop_cell = False
         if cont:
             for jj, _cell in enumerate(self.CTmito_cells):
-                _cellid = _cell[0]
+                _cell_lab = _cell[0]
                 _t = _cell[2]
-                if _cellid == cellid:
+                if _cell_lab == lab:
                     pop_cell = True
                     idxtopop.append(jj)
             if pop_cell:
@@ -1131,7 +1133,7 @@ class PlotActionCT(PlotAction):
             return
         CT_cell = _get_cell(self.jitcells_selected, label=lab)
         cellid = CT_cell.id
-        cell = [lab, cellid, self.t]
+        cell = [lab, cellid, self.global_times_list[self.t]]
         idxtopop = []
         pop_cell = False
         for jj, _cell in enumerate(self.list_of_cells):
