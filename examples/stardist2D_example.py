@@ -41,11 +41,7 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-<<<<<<< HEAD
-    'min_cell_planes': 2,
-=======
     'min_cell_planes': 3,
->>>>>>> dev
 }
 
 tracking_args = {
@@ -98,10 +94,6 @@ CT.run()
 import numpy as np
 IMGS_plot = np.asarray([[255*(IMG/IMG.max()) for IMG in IMGS[0]]]).astype('uint8')
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_plot)
-<<<<<<< HEAD
-=======
-
->>>>>>> dev
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
