@@ -1651,7 +1651,7 @@ class CellTracking(object):
                         lab_to_display = lab
                         if zz == z:
                             
-                            if [cell.label, PACP.t] in self.apoptotic_events:
+                            if [cell.label, PACP.tg] in self.apoptotic_events:
                                 sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                                 self._pos_scatters.append(sc)
                             else:
@@ -1663,7 +1663,7 @@ class CellTracking(object):
                                 for mitoev in self.mitotic_events:
                                     for icell, mitocell in enumerate(mitoev[1:]):
                                         if cell.label == mitocell[0]:
-                                            if PACP.t == mitoev[1]:
+                                            if PACP.tg == mitoev[1]:
                                                 mother = self._get_cell(
                                                     label=mitoev[0][0]
                                                 )
@@ -1678,7 +1678,7 @@ class CellTracking(object):
                             for mitoev in self.mitotic_events:
                                 for ev in mitoev:
                                     if cell.label == ev[0]:
-                                        if PACP.t == ev[1]:
+                                        if PACP.tg == ev[1]:
                                             sc = PACP.ax[id].scatter(
                                                 [ys], [xs], s=5.0, c="red"
                                             )
