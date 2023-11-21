@@ -19,7 +19,7 @@ file, embcode = get_file_embcode(path_data, '8bit.tif', allow_file_fragment=True
 
 
 ### LOAD HYPERSTACKS ###
-channel = 0
+channel = 2
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
 
 
@@ -31,7 +31,7 @@ model = StarDist2D.from_pretrained('2D_versatile_fluo')
 segmentation_args={
     'method': 'stardist2D', 
     'model': model, 
-    # 'blur': [5,1], 
+    'blur': [10,1], 
     # 'scale': 3
 }
           
@@ -41,7 +41,11 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
+<<<<<<< HEAD
     'min_cell_planes': 2,
+=======
+    'min_cell_planes': 3,
+>>>>>>> dev
 }
 
 tracking_args = {
@@ -94,6 +98,10 @@ CT.run()
 import numpy as np
 IMGS_plot = np.asarray([[255*(IMG/IMG.max()) for IMG in IMGS[0]]]).astype('uint8')
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_plot)
+<<<<<<< HEAD
+=======
+
+>>>>>>> dev
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
