@@ -1650,12 +1650,8 @@ class CellTracking(object):
 
                         lab_to_display = lab
                         if zz == z:
-<<<<<<< HEAD
                             
                             if [cell.label, PACP.tg] in self.apoptotic_events:
-=======
-                            if [cell.id, PACP.t] in self.apoptotic_events:
->>>>>>> dev
                                 sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                                 self._pos_scatters.append(sc)
                             else:
