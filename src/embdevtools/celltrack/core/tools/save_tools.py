@@ -9,6 +9,7 @@ from .tools import correct_path
 from .input_tools import read_img_with_resolution
 from .cell_tools import create_cell
 from .ct_tools import compute_labels_stack
+from numba import prange, njit
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -108,7 +109,7 @@ def save_cells_to_json(cells, CT_info, path=None, filename=None):
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
-def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_format="t{}"):
+def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_format="{}"):
 
     if split_times: 
         if not os.path.isdir(pthsave): 
@@ -124,7 +125,7 @@ def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_fo
             np.save(pthsave, labels_stack, allow_pickle=False)
 
 
-def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_times=False, string_format="{}_labels"):
+def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, split_times=False, string_format="{}", save_info=False):
     """save cell objects obtained with celltrack.py
 
     Saves cells as `path`/`filename`_cells.npy
@@ -139,23 +140,39 @@ def save_cells_to_labels_stack(cells, CT_info, path=None, filename=None, split_t
         path to save directory
     filename : str
         name of file or embcode
-
     """
-
-    pthsave = correct_path(path) + filename + "_labels"
+    if filename is not None:
+        pthsave = correct_path(path) + str(filename)
+    else:
+        pthsave = correct_path(path)
         
     labels_stack = np.zeros(
-        (CT_info.times, CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
+        (len(times), CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
     
-    print(labels_stack.shape)
     labels_stack = compute_labels_stack(labels_stack, cells)
-    save_labels_stack(labels_stack, pthsave, range(CT_info.times), split_times=split_times, string_format=string_format)
+    save_labels_stack(labels_stack, pthsave, times, split_times=split_times, string_format=string_format)
 
+    if save_info:
+        file_to_store = pthsave + "_info.json"
+        with open(file_to_store, "w", encoding="utf-8") as f:
+            json.dump(CT_info, f, cls=EnhancedJSONEncoder)
+
+
+def save_CT_info(CT_info, path, filename):
+    pthsave = correct_path(path) + str(filename)
     file_to_store = pthsave + "_info.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
+
+def load_CT_info(path, filename):
+    pthsave = correct_path(path) + str(filename)
+    file_to_store = pthsave + "_info.json"
+    with open(file_to_store, "r", encoding="utf-8") as f:
+        cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
+    
+    return cellinfo_dict
 
 save_cells = save_cells_to_labels_stack
 
@@ -212,7 +229,7 @@ def load_cells_from_labels_stack(path=None, filename=None, times=None, split_tim
     if split_times:
         labels_stack= read_split_times(correct_path(pthload), range(times), extra_name="_labels", extension=".npy")
     else:
-        labels_stack = np.load(pthload+"_labels.npy")
+        labels_stack = np.load(pthload+".npy")
 
     cells = []
     unique_labels_T = [np.unique(labs) for labs in labels_stack]
@@ -257,105 +274,7 @@ load_cells = load_cells_from_labels_stack
 from numba.typed import List
 from numba import njit
 
-@njit
-def _predefine_jitcell_inputs():
-    zs = List([List([1])])
-    zs.pop(0)
 
-    times = List([1])
-    times.pop(0)
-
-    outlines = List([List([np.zeros((2,2), dtype='uint16')])])
-    outlines.pop(0)
-
-    masks = List([List([np.zeros((2,2), dtype='uint16')])])
-    masks.pop(0)
-    
-    centers = List([np.zeros(1, dtype='float32')])
-    centers.pop(0)
-    
-    centers_all = List([List([np.zeros(1, dtype='float32')])])
-    centers_all.pop(0)
-    
-    centers_weight = np.zeros(1, dtype='float32')
-    np.delete(centers_weight, 0)
-    return 0,0, zs, times, outlines, masks, False, centers, centers, centers, centers_all, centers_weight, centers
-
-from numba.np.extensions import cross2d
-
-# functions got from https://stackoverflow.com/a/74817179/7546279
-@njit('(int64[:,:], int64[:], int64, int64)')
-def process(S, P, a, b):
-    signed_dist = cross2d(S[P] - S[a], S[b] - S[a])
-    K = np.array([i for s, i in zip(signed_dist, P) if s > 0 and i != a and i != b], dtype=np.int64)
-
-    if len(K) == 0:
-        return [a, b]
-
-    c = P[np.argmax(signed_dist)]
-    return process(S, K, a, c)[:-1] + process(S, K, c, b)
-
-@njit('(int64[:,:],)')
-def quickhull_2d(S: np.ndarray) -> np.ndarray:
-    a, b = np.argmin(S[:,0]), np.argmax(S[:,0])
-    return process(S, np.arange(S.shape[0]), a, b)[:-1] + process(S, np.arange(S.shape[0]), b, a)[:-1]
-
-from embdevtools.celltrack.core.dataclasses import jitCell
-from numba import prange
-
-jitcellinputs = _predefine_jitcell_inputs()
-jitcell_test = jitCell(*jitcellinputs)
-
-@njit()
-def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
-    jitcellinputs = _predefine_jitcell_inputs()
-    jitcell = jitCell(*jitcellinputs)
-    jitcell.label = lab-1
-    jitcell.id = lab-1
-    for t in prange(labels_stack.shape[0]):
-        if lab in unique_labels_T[t]:
-            jitcell.times.append(t)
-            idxs = np.where(labels_stack[t] == lab)
-            zs = idxs[0]
-            idxxy = np.vstack((idxs[2], idxs[1]))
-            masks = np.transpose(idxxy)
-            
-            jitcell.zs.append(List(np.unique(zs)))
-            
-            cell_maskst = List([np.zeros((2,2), dtype='uint16')])
-            cell_maskst.pop(0)
-            
-            cell_outlinest = List([np.zeros((2,2), dtype='uint16')])
-            cell_outlinest.pop(0)
-            
-            for zid in prange(len(jitcell.zs[-1])):
-                z = jitcell.zs[-1][zid]
-                zids = np.where(zs==z)[0]
-                z1 = zids[0]
-                z2 = zids[-1]
-                mask = masks[z1:z2+1] 
-                
-                hull = np.asarray(quickhull_2d(mask))
-                outline = mask[hull]
-                
-                cell_maskst.append(np.ascontiguousarray(mask.astype('uint16')))
-                cell_outlinest.append(np.ascontiguousarray(outline.astype('uint16')))
-            
-            jitcell.masks.append(cell_maskst)
-            jitcell.outlines.append(cell_outlinest)
-
-    return jitcell
-        
-def extract_jitcells_from_label_stack(labels_stack):
-    cells = []
-    unique_labels_T = [np.unique(labs) for labs in labels_stack]
-    unique_labels = np.unique(np.concatenate(unique_labels_T))
-    for lab in unique_labels:
-        if lab==0: continue
-        jitcell = _extract_jitcell_from_label_stack(lab, labels_stack, List(unique_labels_T))
-        cells.append(jitcell)
-
-    return cells
 
 import numpy as np
 from tifffile import imwrite
@@ -456,8 +375,10 @@ def save_3Dstack(
 def read_split_times(path_data, times, extra_name="", extension=".tif"):
     
     IMGS = []
+
     for t in times:
         path_to_file = correct_path(path_data)+"{}{}{}".format(t, extra_name, extension)
+
         if extension == ".tif":
             IMG, xyres, zres = read_img_with_resolution(path_to_file, channel=None, stack=True)
             IMG = IMG[0]
@@ -469,3 +390,31 @@ def read_split_times(path_data, times, extra_name="", extension=".tif"):
         return np.array(IMGS), xyres, zres
     elif extension == ".npy":
         return np.array(IMGS)
+    
+
+def substitute_labels(times, path_to_save, lcT):
+    for postt in times:
+        labs_stack = np.load(path_to_save+"{:d}.npy".format(postt))
+        new_labs_stack = labs_stack.copy()
+        new_ls, lct = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
+        new_labs_stack = new_ls
+        save_labels_stack(new_labs_stack, path_to_save+"{:d}.npy".format(postt), [postt], split_times=False, string_format="{}")
+
+@njit(parallel=True)
+def _sub_labs(labs_pre, labs_post, lct):
+    for lab_change in lct:
+        pre_label = lab_change[0]
+        post_label = lab_change[1]
+
+        new_lct = np.where(lct[:,1]==post_label, lct[:,1],pre_label)
+        idxs = np.where(labs_pre == pre_label+1)
+        zs = idxs[0]
+        xs = idxs[1]
+        ys = idxs[2]
+        for p in prange(len(zs)):
+            z = zs[p]
+            x = xs[p]
+            y = ys[p]
+            labs_post[z,x,y] = post_label + 1
+    
+    return labs_post, new_lct

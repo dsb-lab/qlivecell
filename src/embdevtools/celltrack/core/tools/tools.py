@@ -19,7 +19,9 @@ def printfancy(string="", finallength=70, clear_prev=0):
     new_str = "#   " + string
     while len(new_str) < finallength - 1:
         new_str += " "
-    new_str += "#"
+    
+    if len(new_str) < finallength:
+        new_str += "#"
     printclear(clear_prev)
     print(new_str)
 
@@ -254,3 +256,10 @@ def increase_outline_width(label_image, neighs):
     nearest_labels = label_image[tuple(masked_nearest_label_coords)]
     labels_out[dilate_mask] = nearest_labels
     return labels_out
+
+import os
+def check_or_create_dir(path):
+    if os.path.isdir(path):
+        return
+    else:
+        os.mkdir(path)

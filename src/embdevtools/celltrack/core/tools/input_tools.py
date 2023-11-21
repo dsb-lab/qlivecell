@@ -8,8 +8,7 @@ def get_file_names(path_data):
     files = os.listdir(path_data)
     return files
 
-
-def get_file_embcode(path_data, f, returnfiles=False):
+def get_file_embcode(path_data, f, allow_file_fragment=False, returnfiles=False):
     """
     Parameters
     ----------
@@ -28,11 +27,18 @@ def get_file_embcode(path_data, f, returnfiles=False):
     fid = -1
     if isinstance(f, str):
         for i, file in enumerate(files):
-            if f==file:
-                fid = i
+            if allow_file_fragment:
+                if f in file:
+                    fid = i
+            else:
+                if f==file:
+                    fid = i
 
         if fid == -1:
-            raise Exception("given file name extract is not present in any file name")
+            if allow_file_fragment:
+                raise Exception("given file name extract is not present in any file name of the given directory")
+            else:
+                raise Exception("given file name is not present in the given directory")
     else:
         fid = f
 
