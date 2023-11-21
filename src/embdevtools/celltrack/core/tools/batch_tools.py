@@ -82,7 +82,6 @@ def fill_label_correspondance_T(new_label_correspondance_T, unique_labels_T, cor
             pre_lab = correspondance.index(lab)
             arr = np.array([[pre_lab, lab]], dtype="uint16")
             new_label_correspondance_T[postt] = nb_add_row(new_label_correspondance_T[postt], arr)
-           
 
 @njit 
 def nb_get_max_nest_list(nested2Dlist):

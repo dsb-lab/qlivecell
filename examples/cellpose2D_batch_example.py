@@ -8,7 +8,7 @@ from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking
 
 embcode = 'test'
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'+embcode
-path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/test_save/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
 try: 
     files = get_file_names(path_save)
@@ -81,7 +81,7 @@ CTB = CellTrackingBatch(
     batch_args=batch_args,
 )
 
-CTB.run()
+CTB.load()
 
 CTB.plot_tracking()
 
