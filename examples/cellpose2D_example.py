@@ -30,13 +30,7 @@ file, embcode = get_file_embcode(path_data, '8bit.tif', allow_file_fragment=True
 ### LOAD HYPERSTACKS ###
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=0)
 import numpy as np
-<<<<<<< HEAD
-from csbdeep.utils import normalize
-
-# IMGS = np.asarray([[normalize(IMG) for IMG in IMGS[0]]]).astype('uint8')
-=======
 IMGS = np.asarray([[255*(IMG/IMG.max()) for IMG in IMGS[0]]]).astype('uint8')
->>>>>>> dev
 
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
@@ -85,11 +79,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-<<<<<<< HEAD
-    IMGS[:,-20:], 
-=======
     IMGS[:,:20], 
->>>>>>> dev
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -109,13 +99,8 @@ CT.run()
 # save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=True, string_format="{}_labels")
 
 ### PLOTTING ###
-<<<<<<< HEAD
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS[:,-20:])
-# save_4Dstack(path_save, "masks", CT._masks_stack, xyres, zres)
-=======
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 save_4Dstack(path_save, "masks", CT._masks_stack, xyres, zres)
->>>>>>> dev
 
 import numpy as np
 mean_intensity = [np.mean(img) for img in IMGS[0]]
