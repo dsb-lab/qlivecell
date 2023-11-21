@@ -108,6 +108,8 @@ class CellTracking(object):
         split_times=False
     ):
         # Basic arguments
+        self.batch = False
+
         self.path_to_save = pthtosave
         self.embcode = embcode
         
@@ -363,7 +365,7 @@ class CellTracking(object):
         self.apoptotic_events = []
         self.mitotic_events = []
 
-        # count number of actions done during manual curation
+         # count number of actions done during manual curation
         # this is not reset after training
         self.nactions = 0
 
@@ -1535,6 +1537,10 @@ class CellTracking(object):
             )
         )
 
+        if len(ax) > 1:
+            zslide_val_fmt = "(%d-%d)" + sliderstr
+        else:
+            zslide_val_fmt ="%d" + sliderstr
         z_slider = Slider_z(
             ax=axslide,
             label="z slice",
@@ -1543,7 +1549,7 @@ class CellTracking(object):
             valmax=max_round,
             valinit=0,
             valstep=1,
-            valfmt="(%d-%d)" + sliderstr,
+            valfmt=zslide_val_fmt,
             counter=counter,
             track_color=[0, 0.7, 0, 0.5],
             facecolor=[0, 0.7, 0, 1.0],
@@ -1633,14 +1639,15 @@ class CellTracking(object):
                 self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
                 for lab in labs:
                     if self._plot_args["plot_centers"][0]:
-                        if zz == z:
-                            cell = self._get_cell(lab)
-                            tid = cell.times.index(t)
-                            zz, ys, xs = cell.centers[tid]
-                            xs = round(xs * self._plot_args["dim_change"])
-                            ys = round(ys * self._plot_args["dim_change"])
+                        cell = self._get_cell(lab)
+                        tid = cell.times.index(t)
+                        zz, ys, xs = cell.centers[tid]
+                        xs = round(xs * self._plot_args["dim_change"])
+                        ys = round(ys * self._plot_args["dim_change"])
 
-                            lab_to_display = lab
+                        lab_to_display = lab
+                        if zz == z:
+                            
                             if [cell.id, PACP.t] in self.apoptotic_events:
                                 sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                                 self._pos_scatters.append(sc)

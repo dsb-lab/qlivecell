@@ -19,7 +19,9 @@ def printfancy(string="", finallength=70, clear_prev=0):
     new_str = "#   " + string
     while len(new_str) < finallength - 1:
         new_str += " "
-    new_str += "#"
+    
+    if len(new_str) < finallength:
+        new_str += "#"
     printclear(clear_prev)
     print(new_str)
 

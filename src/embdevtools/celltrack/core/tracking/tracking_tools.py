@@ -23,11 +23,11 @@ def _get_jitcell(jitcells, label=None, cellid=None):
 
 
 @njit
-def _order_labels_z(jitcells, times, skip_labels_list):
-    if len(skip_labels_list) > 0:
-        current_max_label = jmax(skip_labels_list)
-    else:
-        current_max_label = -1
+def _order_labels_z(jitcells, times):
+    # if len(skip_labels_list) > 0:
+    #     current_max_label = jmax(skip_labels_list)
+    # else:
+    current_max_label = -1
 
     for t in range(times):
         ids = List()
@@ -44,11 +44,11 @@ def _order_labels_z(jitcells, times, skip_labels_list):
 
         for i, id in enumerate(ids):
             cell = _get_jitcell(jitcells, cellid=id)
-            if cell.label in skip_labels_list:
-                pass
-            else:  
-                cell.label = current_max_label + 1
-                current_max_label += 1
+            # if cell.label in skip_labels_list:
+            #     pass
+            # else:  
+            cell.label = current_max_label + 1
+            current_max_label += 1
 
 
 def isListEmpty(inList):
@@ -102,8 +102,8 @@ def jmin(x):
 def jmax(x):
     return max(x)
 
-@njit
-def _order_labels_t(unique_labels_T, max_label, skip_labels_list):
+# @njit
+def _order_labels_t(unique_labels_T, max_label):
     P = unique_labels_T
     Q = List()
     Ci = List()
@@ -124,11 +124,8 @@ def _order_labels_t(unique_labels_T, max_label, skip_labels_list):
             n = p[j]
             Ci[n].append(i)
             Cj[n].append(j)
-
-    if len(skip_labels_list) > 0:
-        nmax = jmax(skip_labels_list)
-    else:
-        nmax = -1
+            
+    nmax = -1
 
     for i in range(len(P)):
         p = P[i]
@@ -136,17 +133,19 @@ def _order_labels_t(unique_labels_T, max_label, skip_labels_list):
             n = p[j]
             if Q[i][j] == -1:
                 for ij in range(len(Ci[n])):
-                    if n in skip_labels_list:
-                        Q[Ci[n][ij]][Cj[n][ij]] = n
-                    else:
-                        Q[Ci[n][ij]][Cj[n][ij]] = nmax + 1
-                if n in skip_labels_list:
-                    PQ[n] = n
-                else:
-                    PQ[n] = nmax + 1
-                    nmax += 1
-                
-    return P, Q, PQ
+                    Q[Ci[n][ij]][Cj[n][ij]] = nmax + 1
+
+                PQ[n] = nmax + 1
+                nmax += 1
+    
+    newQ = List()
+    for i in prange(len(Q)):
+        q = List()
+        for val in Q[i]:
+            q.append(np.uint16(val))
+        newQ.append(q)
+        
+    return P, newQ, PQ
 
 
 def create_toy_cell():
@@ -447,12 +446,12 @@ def replace_labels_t(labels, lab_corr):
 
         for q in prange(len(idxz)):
             labels_t_copy[idxz[q], idxx[q], idxy[q]] = lab_final+1
-        
     return labels_t_copy
 
 @njit(parallel=True)
 def replace_labels_in_place(labels, label_correspondance):
-    labels_copy = np.zeros_like(labels)
+    labels_copy = np.zeros_like(labels, dtype="uint16")
     for t in prange(len(label_correspondance)): 
+        t = np.uint16(t)
         labels_copy[t] = replace_labels_t(labels[t], label_correspondance[t])
     return labels_copy
