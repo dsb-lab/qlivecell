@@ -224,10 +224,10 @@ def get_outlines_masks_labels(label_img):
         try:
             hull = ConvexHull(mask)
         except QhullError:
-            continue
+            print("error in Convex hull")
 
         outline = mask[hull.vertices]
-        outline[:] = outline[:, [1, 0]]
+        # outline[:] = outline[:, [1, 0]]
 
         outlines.append(outline)
         masks.append(mask)
@@ -261,3 +261,4 @@ def check_or_create_dir(path):
         return
     else:
         os.mkdir(path)
+        
