@@ -54,7 +54,8 @@ from .core.tools.input_tools import (get_file_embcode, get_file_names,
                                      read_img_with_resolution)
 from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels, read_split_times,
-                                    save_cells_to_labels_stack, save_labels_stack)
+                                    save_cells_to_labels_stack, save_labels_stack,
+                                    save_2Dtiff)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
                                      isotropize_stack, isotropize_stackRGB)
 from .core.tools.tools import (check_and_fill_error_correction_args,

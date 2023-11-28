@@ -70,9 +70,10 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
     with TiffFile(path_to_file) as tif:
         preIMGS = tif.asarray()
         shapeimg = preIMGS.shape
+        
         if stack:
             if channel == None:
-                if len(shapeimg) == 3:
+                if len(shapeimg) < 4:
                     IMGS = np.array([tif.asarray()])
                 else:
                     IMGS = np.array(tif.asarray())

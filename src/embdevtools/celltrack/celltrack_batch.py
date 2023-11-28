@@ -192,7 +192,6 @@ class CellTrackingBatch(CellTracking):
     
         # Read the stacks
         stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(0, 1), extra_name="", extension=".tif")
-
         self.slices = stacks.shape[1]
         self.stack_dims = np.shape(stacks)[2:4]
 
@@ -213,6 +212,7 @@ class CellTrackingBatch(CellTracking):
 
 
         # check and fill plot arguments
+        print(self.stack_dims)
         self._plot_args = check_and_fill_plot_args(
             plot_args, (self.stack_dims[0], self.stack_dims[1])
         )
