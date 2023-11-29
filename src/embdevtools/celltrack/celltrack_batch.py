@@ -212,7 +212,6 @@ class CellTrackingBatch(CellTracking):
 
 
         # check and fill plot arguments
-        print(self.stack_dims)
         self._plot_args = check_and_fill_plot_args(
             plot_args, (self.stack_dims[0], self.stack_dims[1])
         )

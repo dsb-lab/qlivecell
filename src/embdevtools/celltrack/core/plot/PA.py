@@ -252,6 +252,8 @@ class PlotAction:
             self.t = self.t - 1
             self.tg = self.tg - 1
         self.t = max(self.t, 0)
+        print(self.times)
+        print(self.total_times)
         self.t = min(self.t, self.times - 1)
 
         self.tg = max(self.tg, 0)
