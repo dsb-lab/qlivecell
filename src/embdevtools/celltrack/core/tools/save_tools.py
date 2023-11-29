@@ -110,12 +110,14 @@ def save_cells_to_json(cells, CT_info, path=None, filename=None):
 
 
 def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_format="{}"):
-
+    print("in save labels stack")
     if split_times: 
         if not os.path.isdir(pthsave): 
             os.mkdir(pthsave)
         
-        for tid, t in enumerate(times):    
+        for tid, t in enumerate(times):
+            print(t)
+            print(labels_stack[tid].shape)
             np.save(correct_path(pthsave)+string_format.format(str(t))+".npy", labels_stack[tid], allow_pickle=False)
     else: 
         if labels_stack.shape[0] == 1:
@@ -123,6 +125,8 @@ def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_fo
         
         else:
             np.save(pthsave, labels_stack, allow_pickle=False)
+    
+    print("out")
 
 
 def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, split_times=False, string_format="{}", save_info=False):
@@ -149,8 +153,11 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
     labels_stack = np.zeros(
         (len(times), CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
-    
+    print("in function save_cells_to_labels_stack")
+    print(labels_stack.shape)
     labels_stack = compute_labels_stack(labels_stack, cells)
+    print(labels_stack.shape)
+    print("out")
     save_labels_stack(labels_stack, pthsave, times, split_times=split_times, string_format=string_format)
 
     if save_info:
@@ -413,6 +420,8 @@ def read_split_times(path_data, times, extra_name="", extension=".tif"):
             IMGS.append(IMG.astype('uint8'))
         elif extension == ".npy":
             IMG = np.load(path_to_file)
+            print(t)
+            print(IMG.shape)
             IMGS.append(IMG.astype('uint16'))
     if extension == ".tif":
         return np.array(IMGS), xyres, zres

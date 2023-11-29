@@ -363,6 +363,8 @@ class CellTrackingBatch(CellTracking):
             
     def init_batch_cells(self):
         labels = read_split_times(self.path_to_save, self.batch_times_list_global, extra_name="", extension=".npy")
+        print(labels.shape)
+        print(self.batch_times_list_global)
         self.jitcells = extract_jitcells_from_label_stack(labels)
         for jitcell in self.jitcells:
             update_jitcell(jitcell, self._stacks)

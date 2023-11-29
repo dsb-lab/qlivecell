@@ -555,12 +555,8 @@ def quickhull_2d(S: np.ndarray) -> np.ndarray:
     return process(S, np.arange(S.shape[0]), a, b)[:-1] + process(S, np.arange(S.shape[0]), b, a)[:-1]
 
 
-# @njit
+@njit
 def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
-    print(type(lab))
-    print(type(labels_stack))
-    print(type(unique_labels_T))
-
     jitcellinputs = _predefine_jitcell_inputs()
     jitcell = jitCell(*jitcellinputs)
     jitcell.label = lab-1
@@ -605,8 +601,7 @@ def extract_jitcells_from_label_stack(labels_stack):
     unique_labels = np.unique(np.concatenate(unique_labels_T))
     for lab in unique_labels:
         if lab==0: continue
-        print(lab)
-        print(type(labels_stack))
+        
         jitcell = _extract_jitcell_from_label_stack(lab, labels_stack, List(unique_labels_T))
         cells.append(jitcell)
 
