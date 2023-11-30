@@ -97,7 +97,7 @@ class PlotAction:
         else:
             self.times = CT.times
             self.global_times_list = range(self.times)
-            self._split_times=True
+            self._split_times=False
 
         self._tstep = CT._track_args["time_step"]
 
@@ -247,17 +247,13 @@ class PlotAction:
     def time_scroll(self, event):
         if event.button == "up":
             self.t = self.t + 1
-            self.tg = self.tg + 1
         elif event.button == "down":
             self.t = self.t - 1
-            self.tg = self.tg - 1
         self.t = max(self.t, 0)
-        print(self.times)
-        print(self.total_times)
         self.t = min(self.t, self.times - 1)
-
+        self.tg = self.global_times_list[self.t]
         self.tg = max(self.tg, 0)
-        self.tg = min(self.tg, self.total_times - 1)      
+        self.tg = min(self.tg, self.total_times - 1)  
         self.set_val_t_slider(self.tg + 1)
 
         if self.current_state == "SCL":
@@ -440,7 +436,7 @@ class PlotActionCT(PlotAction):
                     filename = None
                 else:
                     filename=self.filename
-                self.CTsave_cells(self.jitcells, self.CT_info, self.global_times_list, self.path_to_save, filename, split_times=self._split_times)
+                self.CTsave_cells(self.jitcells, self.CT_info, self.global_times_list, self.path_to_save, filename, split_times=self._split_times, save_info=True)
             self.update()
 
         else:

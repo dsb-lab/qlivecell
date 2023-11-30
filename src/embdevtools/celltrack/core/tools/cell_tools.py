@@ -467,7 +467,6 @@ def remove_small_cells(cells, area_th, callback_del, callback_update):
         if area < area_th:
             labs_to_remove.append(cell.label)
 
-    np.mean(areas)
     for lab in labs_to_remove:
         callback_del(lab)
 

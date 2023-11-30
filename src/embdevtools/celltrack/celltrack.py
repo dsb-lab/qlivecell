@@ -115,7 +115,7 @@ class CellTracking(object):
         self.embcode = embcode
         
         self.split_times = split_times
-        
+
         if len(stacks.shape) == 5:
             self._stacks = stacks[:, :, :, :, use_channel]
             self.STACKS = stacks

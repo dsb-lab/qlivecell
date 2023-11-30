@@ -340,7 +340,6 @@ class CellTrackingBatch(CellTracking):
         self.times = len(times)
 
         stacks, xyresolution, zresolution = read_split_times(self.path_to_data, self.batch_times_list_global, extra_name="", extension=".tif")
-        
         # If the stack is RGB, pick the channel to segment
         if len(stacks.shape) == 5:
             self._stacks = stacks[:, :, :, :, self.use_channel]
@@ -348,6 +347,15 @@ class CellTrackingBatch(CellTracking):
         elif len(stacks.shape) == 4:
             self._stacks = stacks
             self.STACKS = stacks
+
+        self.plot_stacks = check_stacks_for_plotting(
+            None,
+            self.STACKS,
+            self._plot_args,
+            self.times,
+            self.slices,
+            self._xyresolution,
+        )
 
         t = self.times
         z = self.slices
@@ -363,8 +371,6 @@ class CellTrackingBatch(CellTracking):
             
     def init_batch_cells(self):
         labels = read_split_times(self.path_to_save, self.batch_times_list_global, extra_name="", extension=".npy")
-        print(labels.shape)
-        print(self.batch_times_list_global)
         self.jitcells = extract_jitcells_from_label_stack(labels)
         for jitcell in self.jitcells:
             update_jitcell(jitcell, self._stacks)
@@ -1063,7 +1069,6 @@ class CellTrackingBatch(CellTracking):
     def plot_tracking(
         self,
         plot_args=None,
-        stacks_for_plotting=None,
         cell_picker=False,
         mode=None,
     ):
@@ -1071,15 +1076,6 @@ class CellTrackingBatch(CellTracking):
             plot_args = self._plot_args
         #  Plotting Attributes
         self._plot_args = check_and_fill_plot_args(plot_args, self._stacks.shape[2:4])
-        self.plot_stacks = check_stacks_for_plotting(
-            stacks_for_plotting,
-            self.STACKS,
-            plot_args,
-            self.times,
-            self.slices,
-            self._xyresolution,
-        )
-
         self._plot_args["plot_masks"] = True
 
         t = self.times
