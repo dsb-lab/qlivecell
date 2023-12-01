@@ -6,9 +6,9 @@ from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects'
 
-### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
+# ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
+# path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
+# path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
 
 try: 
     files = get_file_names(path_save)
@@ -24,7 +24,7 @@ file, embcode = get_file_embcode(path_data, 2)
 
 
 ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=0)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
 
 
 ### LOAD CELLPOSE MODEL ###
@@ -39,8 +39,8 @@ segmentation_args={
     # 'blur': [5,1], 
     'channels': [0,0],
     'flow_threshold': 0.4,
-    'min_size': -1,
-    'diameter': 8,
+    # 'min_size': -1,
+    # 'diameter': 8,
 }
           
 concatenation3D_args = {
@@ -75,7 +75,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:1], 
+    IMGS[:3,:40], 
     path_save, 
     embcode, 
     xyresolution=xyres, 
