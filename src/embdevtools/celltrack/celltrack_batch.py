@@ -45,8 +45,8 @@ from .core.segmentation.segmentation_tools import (assign_labels,
 from .core.segmentation.segmentation_training import (
     check_and_fill_train_segmentation_args, get_training_set,
     train_CellposeModel, train_StardistModel)
-from .core.tools.cell_tools import (create_cell, find_z_discontinuities,
-                                    update_cell, update_jitcell, 
+from .core.tools.cell_tools import (create_cell, find_z_discontinuities_jit,
+                                    update_cell, update_jitcell, find_t_discontinuities_jit, 
                                     extract_jitcells_from_label_stack)
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack)
@@ -800,7 +800,7 @@ class CellTrackingBatch(CellTracking):
             cell = self._get_cell(cellid=cellid)
             new_labs.append(cell.label)
             try:
-                new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities(
+                new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities_jit(
                     cell, self._stacks, self.max_label, self.currentcellid, PACP.t
                 )
                 update_jitcell(cell, self._stacks)
@@ -817,6 +817,21 @@ class CellTrackingBatch(CellTracking):
 
             except ValueError:
                 pass
+            
+            new_maxlabel, new_currentcellid, new_cell = find_t_discontinuities_jit(
+                cell, self._stacks, self.max_label, self.currentcellid
+            )
+            update_jitcell(cell, self._stacks)
+            if new_maxlabel is not None:
+                new_jitcell = construct_jitCell_from_Cell(new_cell)
+                new_labs.append(new_jitcell.label)
+                self.max_label = new_maxlabel
+                self.currentcellid = new_currentcellid
+                update_jitcell(new_jitcell, self._stacks)
+                jitcellslen = len(self.jitcells_selected)
+                self.jitcells.append(new_jitcell)
+                if jitcellslen < len(self.jitcells_selected):
+                    self.jitcells_selected.append(self.jitcells[-1])
 
         self.update_label_attributes()
         compute_point_stack(

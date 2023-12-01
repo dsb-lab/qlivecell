@@ -84,6 +84,3 @@ CTB = CellTrackingBatch(
 CTB.load()
 
 CTB.plot_tracking()
-
-# for cell in CTB.jitcells:
-#     print(cell.label)

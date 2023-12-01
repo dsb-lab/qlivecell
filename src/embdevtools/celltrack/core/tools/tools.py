@@ -3,6 +3,7 @@ import random
 import numpy as np
 from scipy.spatial import ConvexHull, cKDTree
 from scipy.spatial._qhull import QhullError
+from numba import njit
 
 LINE_UP = "\033[1A"
 LINE_CLEAR = "\x1b[2K"
@@ -193,14 +194,26 @@ def compute_distance_xy(x1, x2, y1, y2):
 def compute_distance_xyz(x1, x2, y1, y2, z1, z2):
     return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
 
+@njit
+def numbadiff(x):
+    return x[1:] - x[:-1]
 
+@njit
 def checkConsecutive(l):
     n = len(l) - 1
-    return sum(np.diff(sorted(l)) == 1) >= n
+    a = np.empty(len(l), dtype=l._dtype)
+    for i,v in enumerate(l):
+        a[i] = v
+    sorted_dif = numbadiff(np.sort(a))
+    return np.sum(sorted_dif == 1) >= n
 
 
+@njit
 def whereNotConsecutive(l):
-    return [id + 1 for id, val in enumerate(np.diff(l)) if val > 1]
+    a = np.empty(len(l), dtype=l._dtype)
+    for i,v in enumerate(l):
+        a[i] = v
+    return [id + 1 for id, val in enumerate(numbadiff(a)) if val > 1]
 
 
 def get_outlines_masks_labels(label_img):

@@ -41,7 +41,6 @@ def create_cell(id, label, zs, times, outlines, masks, stacks=None):
     update_cell(cell, stacks)
     return cell
 
-
 def compute_distance_cell(cell1: Cell, cell2: Cell, t, z, axis="xy"):
     t1 = cell1.times.index(t)
     z1 = cell1.zs[t1].index(z)
@@ -232,38 +231,6 @@ def sort_over_t(cell: Cell):
     cell.masks = newmasks
 
 
-def find_z_discontinuities(cell: Cell, stacks, max_label, currentcellid, t):
-    tid = cell.times.index(t)
-    if not checkConsecutive(cell.zs[tid]):
-        discontinuities = whereNotConsecutive(cell.zs[tid])
-        for discid, disc in enumerate(discontinuities):
-            try:
-                nextdisc = discontinuities[discid + 1]
-            except IndexError:
-                nextdisc = len(cell.zs[tid])
-            newzs = cell.zs[tid][disc:nextdisc]
-            newoutlines = cell.outlines[tid][disc:nextdisc]
-            newmasks = cell.masks[tid][disc:nextdisc]
-            new_cell = create_cell(
-                currentcellid,
-                max_label + 1,
-                [newzs],
-                [t],
-                [newoutlines],
-                [newmasks],
-                stacks,
-            )
-            currentcellid += 1
-            max_label += 1
-
-        cell.zs[tid] = cell.zs[tid][0 : discontinuities[0]]
-        cell.outlines[tid] = cell.outlines[tid][0 : discontinuities[0]]
-        cell.masks[tid] = cell.masks[tid][0 : discontinuities[0]]
-        return max_label, currentcellid, new_cell
-    else:
-        return None, None
-
-
 @njit
 def nb_weighted_average(data, weights):
     numerator = 0
@@ -397,8 +364,7 @@ def sort_over_t_jit(cell: jitCell):
     cell.outlines = newouts
     cell.masks = newmasks
 
-
-@njit
+# @njit
 def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, t):
     tid = cell.times.index(t)
     if not checkConsecutive(cell.zs[tid]):
@@ -429,6 +395,37 @@ def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, 
         return max_label, currentcellid, new_cell
     else:
         return None, None
+
+# @njit
+def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid):
+    consecutive = checkConsecutive(cell.times)
+    if not consecutive:
+        discontinuities = whereNotConsecutive(cell.times)
+        for discid, disc in enumerate(discontinuities):
+            try:
+                nextdisc = discontinuities[discid + 1]
+            except IndexError:
+                nextdisc = len(cell.times)
+            
+            new_cell = cell.copy()
+
+            new_cell.zs = new_cell.zs[disc:nextdisc]
+            new_cell.outlines = new_cell.outlines[disc:nextdisc]
+            new_cell.masks = new_cell.masks[disc:nextdisc]
+            new_cell.times = new_cell.times[disc:nextdisc]
+            new_cell.id = currentcellid + 1
+            new_cell.label = max_label + 1
+            update_jitcell(new_cell, stacks)
+            currentcellid += 1
+            max_label += 1
+
+        cell.zs = cell.zs[0:discontinuities[0]]
+        cell.outlines = cell.outlines[0:discontinuities[0]]
+        cell.masks = cell.masks[0:discontinuities[0]]
+        cell.times = cell.times[0:discontinuities[0]]
+        return max_label, currentcellid, new_cell
+    else:
+        return None, None, None
 
 
 @njit

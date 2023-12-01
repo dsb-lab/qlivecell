@@ -97,17 +97,17 @@ class jitCell(object):
         return jitCell(
             self.id,
             self.label,
-            self.zs,
-            self.times,
-            self.outlines,
-            self.masks,
+            self.zs.copy(),
+            self.times.copy(),
+            self.outlines.copy(),
+            self.masks.copy(),
             self._rem,
-            self.centersi,
+            self.centersi.copy(),
             self.centersj,
-            self.centers,
-            self.centers_all,
-            self.centers_weight,
-            self.centers_all_weight,
+            self.centers.copy(),
+            self.centers_all.copy(),
+            self.centers_weight.copy(),
+            self.centers_all_weight.copy(),
         )
 
 
