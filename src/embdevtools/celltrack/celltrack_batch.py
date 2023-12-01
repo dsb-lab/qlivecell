@@ -1,3 +1,4 @@
+import time
 import gc
 import os
 
@@ -12,7 +13,7 @@ import numpy as np
 from matplotlib import cm
 from matplotlib.lines import Line2D, lineStyles
 from matplotlib.ticker import MaxNLocator
-from numba import njit, typed
+from numba import njit, typed, prange
 from scipy.ndimage import zoom
 from scipy.spatial import ConvexHull
 from tifffile import imwrite
@@ -68,7 +69,8 @@ from .core.tools.tools import (check_and_fill_error_correction_args,
 from .core.tools.batch_tools import (compute_batch_times, extract_total_times_from_files,
                                      check_and_fill_batch_args, nb_list_where,
                                      nb_add_row, fill_label_correspondance_T,
-                                     nb_get_max_nest_list,)
+                                     nb_get_max_nest_list, update_unique_labels_T,
+                                     update_new_label_correspondance, remove_static_labels_label_correspondance)
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                                      greedy_tracking, hungarian_tracking)
 from .core.tracking.tracking_tools import (
@@ -319,7 +321,7 @@ class CellTrackingBatch(CellTracking):
         self.set_batch(batch_number=0)
 
     def set_batch(self, batch_change=0, batch_number=None, update_labels=False):
-        
+
         if batch_number is not None:
             if self.batch_number == batch_number:
                 return
@@ -364,16 +366,20 @@ class CellTrackingBatch(CellTracking):
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
 
-        self.init_batch_cells()
+        self.init_batch_cells()        
 
         if update_labels:
             self.update_labels()
             
     def init_batch_cells(self):
+
         labels = read_split_times(self.path_to_save, self.batch_times_list_global, extra_name="", extension=".npy")
+
         self.jitcells = extract_jitcells_from_label_stack(labels)
+
         for jitcell in self.jitcells:
             update_jitcell(jitcell, self._stacks)
+        
 
     def run(self):
 
@@ -631,25 +637,23 @@ class CellTrackingBatch(CellTracking):
         self._get_cellids_celllabels()
 
     def update_labels(self, backup=True):
+
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
         
         #iterate over future times and update manually unique_labels_T
         # I think we should assume that there is no going to be conflict
         # on label substitution, but we have to be careful in the future
-        post_range = range(self.batch_times_list_global[-1]+1,self.batch_totalsize)
-        for postt in post_range:
-            for lab_change in self.label_correspondance_T[postt]:
-                pre_label = lab_change[0]
-                post_label = lab_change[1]
-                id_change = self.unique_labels_T[postt].index(pre_label)
-                self.unique_labels_T[postt][id_change] = post_label
+
+        post_range = prange(self.batch_times_list_global[-1]+1,self.batch_totalsize)
+        update_unique_labels_T(self.batch_times_list_global[-1]+1, self.batch_totalsize, self.label_correspondance_T, self.unique_labels_T)
                 
         # Once unique labels are updated, we can safely run label ordering
         if self.jitcells:
             old_labels, new_labels, correspondance = _order_labels_t(
                 self.unique_labels_T, self.max_label
             )
+
 
             self.unique_labels_T = new_labels
             
@@ -658,32 +662,38 @@ class CellTrackingBatch(CellTracking):
             for cell in self.jitcells:
                 cell.label = correspondance[cell.label]
 
+
             self.new_label_correspondance_T = List([np.empty((0,2), dtype='uint16') for t in range(len(self.unique_labels_T))])
             fill_label_correspondance_T(self.new_label_correspondance_T, self.unique_labels_T, correspondance)
-
-            for postt in post_range:
-                for lab_change in self.label_correspondance_T[postt]:
-                    pre_label = lab_change[0]
-                    post_label = lab_change[1]
-                    idx = np.where(self.new_label_correspondance_T[postt][:,0]==post_label)
-                    self.new_label_correspondance_T[postt][idx[0][0],0] = pre_label
+            
+            update_new_label_correspondance(self.batch_times_list_global[-1]+1, self.batch_totalsize, self.label_correspondance_T, self.new_label_correspondance_T)
             
             for apo_ev in self.apoptotic_events:
-                idx = np.where(self.new_label_correspondance_T[apo_ev[1]][:,0]==apo_ev[0])
-                new_lab = self.new_label_correspondance_T[apo_ev[1]][idx[0][0],1]
-                apo_ev[0] = new_lab
-            
+                try: 
+                    idx = np.where(self.new_label_correspondance_T[apo_ev[1]][:,0]==apo_ev[0])
+                    new_lab = self.new_label_correspondance_T[apo_ev[1]][idx[0][0],1]
+                    apo_ev[0] = new_lab
+                except:
+                    pass
+                
             for mito_ev in self.mitotic_events:
-                for mito_cell in mito_ev:
-                    idx = np.where(self.new_label_correspondance_T[mito_cell[1]][:,0]==mito_cell[0])
-                    new_lab = self.new_label_correspondance_T[mito_cell[1]][idx[0][0],1]
-                    mito_cell[0] = new_lab
+                try:
+                    for mito_cell in mito_ev:
+                        idx = np.where(self.new_label_correspondance_T[mito_cell[1]][:,0]==mito_cell[0])
+                        new_lab = self.new_label_correspondance_T[mito_cell[1]][idx[0][0],1]
+                        mito_cell[0] = new_lab
+                except:
+                    pass
+            
 
             save_cells_to_labels_stack(self.jitcells, self.CT_info, self.batch_times_list_global, path=self.path_to_save, filename=None, split_times=True, string_format="{}", save_info=False)
-            substitute_labels(range(self.batch_times_list_global[-1]+1,self.batch_totalsize), self.path_to_save, self.new_label_correspondance_T)
+
+            remove_static_labels_label_correspondance(self.batch_times_list_global[-1]+1, self.batch_totalsize, self.new_label_correspondance_T)
+            substitute_labels(self.batch_times_list_global[-1]+1,self.batch_totalsize, self.path_to_save, self.new_label_correspondance_T)
             self.label_correspondance_T = List([np.empty((0,2), dtype='uint16') for t in range(len(self.unique_labels_T))])
             # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))
-        
+
+           
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
@@ -783,10 +793,10 @@ class CellTrackingBatch(CellTracking):
                 
                 # If cell is not removed, check if last time is removed
                 if self.batch_number!=self.batch_max:
-                    if PACP.t==self.batch_times_list_global[-1]:
+                    if PACP.tg==self.batch_times_list_global[-1]:
                         if PACP.t not in cell.times:
                             # check which times maxlab appears in future batches
-                            first_future_time = PACP.t + 1
+                            first_future_time = PACP.tg + 1
                             ids = nb_list_where(self.unique_labels_T[first_future_time:], cell.label)
                             self.max_label = self.max_label + 1
                             lab_change = np.array([[cell.label, self.max_label]]).astype('uint16')
@@ -834,6 +844,7 @@ class CellTrackingBatch(CellTracking):
                     self.jitcells_selected.append(self.jitcells[-1])
 
         self.update_label_attributes()
+
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,

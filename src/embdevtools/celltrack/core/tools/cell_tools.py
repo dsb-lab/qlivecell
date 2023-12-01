@@ -5,7 +5,7 @@ from numba.typed import List
 from ..dataclasses import Cell, jitCell
 from .tools import (checkConsecutive, compute_distance_xy,
                     compute_distance_xyz, whereNotConsecutive)
-
+from .ct_tools import nb_unique
 
 
 from embdevtools.celltrack.core.dataclasses import jitCell
@@ -591,14 +591,25 @@ def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
 
     return jitcell
 
+@njit
 def extract_jitcells_from_label_stack(labels_stack):
-    cells = []
-    unique_labels_T = [np.unique(labs) for labs in labels_stack]
-    unique_labels = np.unique(np.concatenate(unique_labels_T))
+    cells = List()
+    unique_labels_T = List()
+    for i in range(len(labels_stack)):
+        unique_labels_T.append(np.unique(labels_stack[i]))
+    total_labs = List()
+    for sublist in unique_labels_T:
+        for lab in sublist:
+            total_labs.append(lab)
+    unique_labels = List()
+    for lab in total_labs:
+        if lab not in unique_labels:
+            unique_labels.append(lab)
+        
     for lab in unique_labels:
         if lab==0: continue
         
-        jitcell = _extract_jitcell_from_label_stack(lab, labels_stack, List(unique_labels_T))
+        jitcell = _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T)
         cells.append(jitcell)
 
-    return List(cells)
+    return cells

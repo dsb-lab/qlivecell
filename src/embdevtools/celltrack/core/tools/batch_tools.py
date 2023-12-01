@@ -1,8 +1,10 @@
 from .input_tools import get_file_names
+from .ct_tools import numba_delete
 import numpy as np
 from numba import njit, prange
 from numba.typed import List
 from numba import uint16
+import numba as nb
 
 def compute_batch_times(round, batch_size, batch_overlap, totalsize):
     first = (batch_size * round) - (batch_overlap * round)
@@ -75,15 +77,16 @@ def nb_add_row(arr, r):
     arr = np.append(arr, r, axis=0)
     return arr
 
-@njit
+@njit(parallel=False)
 def fill_label_correspondance_T(new_label_correspondance_T, unique_labels_T, correspondance):
-    for postt in range(len(new_label_correspondance_T)):
+    for postt in prange(len(new_label_correspondance_T)):
+        postt = nb.int64(postt)
         for lab in unique_labels_T[postt]:
             pre_lab = correspondance.index(lab)
             arr = np.array([[pre_lab, lab]], dtype="uint16")
             new_label_correspondance_T[postt] = nb_add_row(new_label_correspondance_T[postt], arr)
 
-@njit 
+@njit (parallel=False)
 def nb_get_max_nest_list(nested2Dlist):
     max_val = 0
     for sublist in nested2Dlist:
@@ -91,3 +94,39 @@ def nb_get_max_nest_list(nested2Dlist):
             continue
         max_val = np.maximum(max_val, np.max(sublist))
     return max_val
+
+@njit(parallel=False)
+def update_unique_labels_T(post_range_start ,post_range_end, label_correspondance_T, unique_labels_T):
+    post_range = prange(post_range_start, post_range_end)
+    for postt in post_range:
+        for lab_change in label_correspondance_T[postt]:
+            pre_label = lab_change[0]
+            post_label = lab_change[1]
+            id_change = unique_labels_T[postt].index(pre_label)
+            unique_labels_T[postt][id_change] = post_label
+
+@njit(parallel=False)
+def update_new_label_correspondance(post_range_start ,post_range_end, label_correspondance_T, new_label_correspondance_T):
+    post_range = prange(post_range_start, post_range_end)
+    for postt in post_range:
+        for lab_change in label_correspondance_T[postt]:
+            pre_label = lab_change[0]
+            post_label = lab_change[1]
+            idx = np.where(new_label_correspondance_T[postt][:,0]==post_label)
+            new_label_correspondance_T[postt][idx[0][0],0] = pre_label
+
+@njit(parallel=False)
+def remove_static_labels_label_correspondance(post_range_start ,post_range_end, label_correspondance_T):
+    post_range = prange(post_range_start, post_range_end)
+    for postt in post_range:
+
+        lc_remove = List()
+        for lc in prange(len(label_correspondance_T[postt])):
+            lab_change = label_correspondance_T[postt][lc]
+            if lab_change[0] == lab_change[1]:
+                lc_remove.append(lc)
+        
+        lc_remove.reverse()
+        for lc in lc_remove:
+            label_correspondance_T[postt] = numba_delete(label_correspondance_T[postt], lc)
+

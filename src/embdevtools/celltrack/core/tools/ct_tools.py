@@ -74,7 +74,7 @@ def np_all(x, axis=None):
         return _np_all_impl
 
 
-@jit(nopython=True, cache=False)
+@jit(nopython=True)
 def nb_unique(input_data, axis=0):
     """2D np.unique(a, return_index=True, return_counts=True)
 
@@ -126,6 +126,12 @@ def nb_unique(input_data, axis=0):
     counts = counts - idx
     return data[idx]
 
+# from https://stackoverflow.com/a/53651418/7546279
+@njit
+def numba_delete(arr, num):
+    mask = np.zeros(arr.shape[0], dtype=np.int64) == 0
+    mask[np.where(arr == num)[0]] = False
+    return arr[mask]
 
 @njit()
 def set_cell_color(cell_stack, points, times, zs, color, dim_change, t=-1, z=-1):

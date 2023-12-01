@@ -422,8 +422,9 @@ def read_split_times(path_data, times, extra_name="", extension=".tif"):
         return np.array(IMGS)
     
 
-def substitute_labels(times, path_to_save, lcT):
-    for postt in times:
+def substitute_labels(post_range_start ,post_range_end, path_to_save, lcT):
+    post_range = prange(post_range_start, post_range_end)
+    for postt in post_range:
         labs_stack = np.load(path_to_save+"{:d}.npy".format(postt))
         new_labs_stack = labs_stack.copy()
         new_ls, lct = _sub_labs(labs_stack, new_labs_stack, lcT[postt])

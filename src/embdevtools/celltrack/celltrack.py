@@ -959,21 +959,23 @@ class CellTracking(object):
             except ValueError:
                 pass
 
-        new_maxlabel, new_currentcellid, new_cell = find_t_discontinuities_jit(
-            cell, self._stacks, self.max_label, self.currentcellid
-        )
-        update_jitcell(cell, self._stacks)
-        if new_maxlabel is not None:
-            new_jitcell = construct_jitCell_from_Cell(new_cell)
-            new_labs.append(new_jitcell.label)
-            self.max_label = new_maxlabel
-            self.currentcellid = new_currentcellid
-            update_jitcell(new_jitcell, self._stacks)
-            jitcellslen = len(self.jitcells_selected)
-            self.jitcells.append(new_jitcell)
-            if jitcellslen < len(self.jitcells_selected):
-                self.jitcells_selected.append(self.jitcells[-1])
-        self.update_label_attributes()
+            new_maxlabel, new_currentcellid, new_cell = find_t_discontinuities_jit(
+                cell, self._stacks, self.max_label, self.currentcellid
+            )
+            update_jitcell(cell, self._stacks)
+            if new_maxlabel is not None:
+                new_jitcell = construct_jitCell_from_Cell(new_cell)
+                new_labs.append(new_jitcell.label)
+                self.max_label = new_maxlabel
+                self.currentcellid = new_currentcellid
+                update_jitcell(new_jitcell, self._stacks)
+                jitcellslen = len(self.jitcells_selected)
+                self.jitcells.append(new_jitcell)
+                if jitcellslen < len(self.jitcells_selected):
+                    self.jitcells_selected.append(self.jitcells[-1])
+                    
+            self.update_label_attributes()
+
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,

@@ -10,6 +10,7 @@ from ..tools.tools import printfancy
 from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
 
+import time
 
 def get_axis_PACP(PACP, event):
     for id, ax in enumerate(PACP.ax):
@@ -237,6 +238,7 @@ class PlotAction:
         self.set_val_t_slider(self.tg + 1)
 
         self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+
         self.update()
         
         if self.current_state == "SCL":
