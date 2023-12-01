@@ -6,13 +6,13 @@ from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
-### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/belas/2D/Christian/movies/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/belas/2D/Christian/ctobjects/'
+# ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
+# path_data='/home/pablo/Desktop/PhD/projects/Data/belas/2D/Christian/movies/'
+# path_save='/home/pablo/Desktop/PhD/projects/Data/belas/2D/Christian/ctobjects/'
 
-### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/stacks/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/ctobjects/'
+# ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
+# path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/stacks/'
+# path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/ctobjects/'
 
 try: 
     files = get_file_names(path_save)
@@ -24,13 +24,14 @@ except:
 files = get_file_names(path_data)
 
 # file, embcode = get_file_embcode(path_data, 10)
-file, embcode = get_file_embcode(path_data, '8bit.tif', allow_file_fragment=True)
+file, embcode = get_file_embcode(path_data, '_sb.tif', allow_file_fragment=True)
 
 
 ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=0)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
+# IMGS = np.asarray([[255*(IMG/IMG.max()) for IMG in IMGS[0]]]).astype('uint8')
+
 import numpy as np
-IMGS = np.asarray([[255*(IMG/IMG.max()) for IMG in IMGS[0]]]).astype('uint8')
 
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
@@ -52,7 +53,7 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 1,
+    'min_cell_planes': 3,
 }
 
 tracking_args = {
@@ -79,7 +80,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:,:20], 
+    IMGS[:3,:30], 
     path_save, 
     embcode, 
     xyresolution=xyres, 
