@@ -288,7 +288,7 @@ class CellTrackingBatch(CellTracking):
         self.batch_overlap = self._batch_args["batch_overlap"]
         self.batch_rounds = np.int32(np.ceil((self.batch_totalsize ) / (self.batch_size - self.batch_overlap)))
         self.batch_max = self.batch_rounds - 1
-        
+                    
         # loop over all rounds to confirm all can be loaded and compute the absolute max_label and cellid
         self.max_label = -1
         self.currentcellid = -1
@@ -296,9 +296,12 @@ class CellTrackingBatch(CellTracking):
         times_used = []
         self.unique_labels_T = []
         self.batch_number = -1
-        self.set_batch(batch_number = 0)
+        self.batch_all_rounds_times = []
+        
         for r in range(self.batch_rounds):
             self.set_batch(batch_number = r)
+            self.batch_all_rounds_times.append(self.batch_times_list_global)
+            
             labels = read_split_times(self.path_to_save, self.batch_times_list, extra_name="", extension=".npy")
             first = (self.batch_size * r) - (self.batch_overlap * r)
 

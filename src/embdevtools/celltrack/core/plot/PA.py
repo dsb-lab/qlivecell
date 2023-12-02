@@ -93,6 +93,7 @@ class PlotAction:
             self.set_batch = CT.set_batch
             self.batch_rounds = CT.batch_rounds
             self.global_times_list = CT.batch_times_list_global
+            self.batch_all_rounds_times = CT.batch_all_rounds_times
             self.total_times = CT.batch_totalsize
             self._split_times=True
         else:
@@ -205,12 +206,30 @@ class PlotAction:
             self.ctrl_is_held = False
             self.ctrl_shift_is_held = False
 
-    # The function to be called anytime a t-slider's value changes
     def update_slider_t(self, t):
-        # Not sure about this
-        self.t = t - self.global_times_list[0] - 1
-        self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
-        self.update()
+        if t-1 not in self.global_times_list:
+            for bn in range(len(self.batch_all_rounds_times)):
+                if t-1 in self.batch_all_rounds_times[bn]:
+                    self.bn = bn
+                    break
+            self.set_batch(batch_number=self.bn, update_labels=True)
+            self.t = 0
+            self.tg = self.global_times_list[self.t]
+            self.set_val_t_slider(self.tg + 1)
+
+            self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+
+            self.update()
+            
+            if self.current_state == "SCL":
+                self.current_state = None
+                self.ctrl_shift_is_held = False
+                self.ctrl_is_held = False
+
+        else:
+            self.t = t - self.global_times_list[0] - 1
+            self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+            self.update()
 
     # The function to be called anytime a z-slider's value changes
     def update_slider_z(self, cr):

@@ -59,7 +59,7 @@ plot_args = {
 
 error_correction_args = {
     'backup_steps': 10,
-    'line_builder_mode': 'lasso',
+    'line_builder_mode': 'points',
 }
 
 batch_args = {
@@ -81,6 +81,6 @@ CTB = CellTrackingBatch(
     batch_args=batch_args,
 )
 
-CTB.load()
 
+CTB.load()
 CTB.plot_tracking()
