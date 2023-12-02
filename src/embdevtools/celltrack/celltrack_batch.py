@@ -796,16 +796,15 @@ class CellTrackingBatch(CellTracking):
                 
                 # If cell is not removed, check if last time is removed
                 if self.batch_number!=self.batch_max:
-                    if PACP.tg==self.batch_times_list_global[-1]:
-                        if PACP.t not in cell.times:
-                            # check which times maxlab appears in future batches
-                            first_future_time = PACP.tg + 1
-                            ids = nb_list_where(self.unique_labels_T[first_future_time:], cell.label)
-                            self.max_label = self.max_label + 1
-                            lab_change = np.array([[cell.label, self.max_label]]).astype('uint16')
-                            for _t in ids[0]:
-                                t = _t + first_future_time
-                                self.label_correspondance_T[t] = nb_add_row(self.label_correspondance_T[t], lab_change)
+                    if PACP.t not in cell.times:
+                        # check which times maxlab appears in future batches
+                        first_future_time = PACP.tg + 1
+                        ids = nb_list_where(self.unique_labels_T[first_future_time:], cell.label)
+                        self.max_label = self.max_label + 1
+                        lab_change = np.array([[cell.label, self.max_label]]).astype('uint16')
+                        for _t in ids[0]:
+                            t = _t + first_future_time
+                            self.label_correspondance_T[t] = nb_add_row(self.label_correspondance_T[t], lab_change)
 
         new_labs = []
         for i, cellid in enumerate(np.unique(cellids)):
@@ -843,15 +842,14 @@ class CellTrackingBatch(CellTracking):
                 update_jitcell(new_jitcell, self._stacks)
                 jitcellslen = len(self.jitcells_selected)
                 self.jitcells.append(new_jitcell)
-                if jitcellslen < len(self.jitcells_selected):
+                if jitcellslen == len(self.jitcells_selected):
                     self.jitcells_selected.append(self.jitcells[-1])
-
+                    
         self.update_label_attributes()
-
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
-            [PACP.t],
+            list(range(PACP.t, self.times)),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -862,7 +860,7 @@ class CellTrackingBatch(CellTracking):
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
-            [PACP.t],
+            list(range(PACP.t, self.times)),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -883,6 +881,7 @@ class CellTrackingBatch(CellTracking):
 
         maxlab = max(cells)
         minlab = min(cells)
+
         cellmax = self._get_cell(maxlab)
         cellmin = self._get_cell(minlab)
 
@@ -912,24 +911,30 @@ class CellTrackingBatch(CellTracking):
                 mode="outlines",
             )
 
-            return
+        if cellmax.times[0]>cellmin.times[-1]:
+            cell1 = cellmin
+            cell2 = cellmax
+        else:
+            cell2 = cellmin
+            cell1 = cellmax
+            
+        for tid, t in enumerate(cell2.times):
+            cell1.times.append(t)
+            cell1.zs.append(cell2.zs[tid])
+            cell1.outlines.append(cell2.outlines[tid])
+            cell1.masks.append(cell2.masks[tid])
 
-        for tid, t in enumerate(cellmax.times):
-            cellmin.times.append(t)
-            cellmin.zs.append(cellmax.zs[tid])
-            cellmin.outlines.append(cellmax.outlines[tid])
-            cellmin.masks.append(cellmax.masks[tid])
-
-        update_jitcell(cellmin, self._stacks)
+        update_jitcell(cell1, self._stacks)
         
-        lab_change = np.array([[maxlab, minlab]]).astype('uint16')
-        self._del_cell(maxlab, lab_change=lab_change)
+        lab_change = np.array([[cell2.label, cell1.label]]).astype('uint16')
+        self._del_cell(cell2.label, lab_change=lab_change)
 
         self.update_label_attributes()
+        self.jitcells_selected = self.jitcells
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
-            Ts,
+            list(range(min(Ts), self.times)),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -939,7 +944,7 @@ class CellTrackingBatch(CellTracking):
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
-            Ts,
+            list(range(min(Ts), self.times)),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -993,11 +998,13 @@ class CellTrackingBatch(CellTracking):
         # check which times maxlab appears in future batches
         first_future_time = new_cell.times[-1] + 1
         if first_future_time < self.total_times:
+            lab_change = np.array([[cell.label, new_cell.label]]).astype('uint16')
+            print(lab_change)
             ids = nb_list_where(self.unique_labels_T[first_future_time:], cell.label)
             for _t in ids[0]:
                 t = _t + first_future_time
-                lab_change = np.array([[cell.label, new_cell.label]]).astype('uint16')
                 self.label_correspondance_T[t] = nb_add_row(self.label_correspondance_T[t], lab_change)
+        
         self.update_label_attributes()
 
         compute_point_stack(
@@ -1077,7 +1084,7 @@ class CellTrackingBatch(CellTracking):
             idx2 = self._labels_selected.index(label)
 
         poped = self.jitcells.pop(idx1)
-        
+
         if self.batch_number!=self.batch_max:
             # check which times maxlab appears in future batches
             first_future_time = self.batch_times_list_global[-1]+self.batch_overlap
@@ -1085,10 +1092,11 @@ class CellTrackingBatch(CellTracking):
             if lab_change is None:
                 self.max_label = self.max_label + 1
                 lab_change = np.array([[poped.label, self.max_label]]).astype('uint16')
+            
             for _t in ids[0]:
                 t = _t + first_future_time
                 self.label_correspondance_T[t] = nb_add_row(self.label_correspondance_T[t], lab_change)
-        
+            
         if len_selected_jitcells == len(self.jitcells_selected):
             poped = self.jitcells_selected.pop(idx2)
         else:

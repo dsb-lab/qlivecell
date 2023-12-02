@@ -1661,7 +1661,11 @@ class CellTracking(object):
                 for lab in labs:
                     if self._plot_args["plot_centers"][0]:
                         cell = self._get_cell(lab)
-                        tid = cell.times.index(t)
+                        try:
+                            tid = cell.times.index(t)
+                        except:
+                            print(lab)
+                            raise Exception
                         zz, ys, xs = cell.centers[tid]
                         xs = round(xs * self._plot_args["dim_change"])
                         ys = round(ys * self._plot_args["dim_change"])

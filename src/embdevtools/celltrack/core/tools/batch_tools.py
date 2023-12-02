@@ -130,3 +130,8 @@ def remove_static_labels_label_correspondance(post_range_start ,post_range_end, 
         for lc in lc_remove:
             label_correspondance_T[postt] = numba_delete(label_correspondance_T[postt], lc)
 
+def add_lab_change(label, first_future_time, lab_change, label_correspondance_T, unique_labels_T):
+    ids = nb_list_where(unique_labels_T[first_future_time:], label)
+    for _t in ids[0]:
+        t = _t + first_future_time
+        label_correspondance_T[t] = nb_add_row(label_correspondance_T[t], lab_change)

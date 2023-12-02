@@ -394,7 +394,7 @@ def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, 
         cell.masks[tid] = cell.masks[tid][0 : discontinuities[0]]
         return max_label, currentcellid, new_cell
     else:
-        return None, None
+        return None, None, None
 
 # @njit
 def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid):
