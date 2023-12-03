@@ -81,4 +81,3 @@ CTB = CellTrackingBatch(
 
 CTB.load()
 CTB.plot_tracking(plot_args=plot_args)
-

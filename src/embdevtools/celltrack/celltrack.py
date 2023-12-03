@@ -1529,6 +1529,7 @@ class CellTracking(object):
         # Make a horizontal slider to control the time.
         axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
         sliderstr = "/%d" % (self.times)
+        valfmt = "%d" + sliderstr
         time_slider = Slider_t(
             ax=axslide,
             label="time",
@@ -1537,7 +1538,7 @@ class CellTracking(object):
             valmax=self.times,
             valinit=1,
             valstep=1,
-            valfmt="%d" + sliderstr,
+            valfmt=valfmt,
             track_color=[0.8, 0.8, 0, 0.5],
             facecolor=[0.8, 0.8, 0, 1.0],
         )

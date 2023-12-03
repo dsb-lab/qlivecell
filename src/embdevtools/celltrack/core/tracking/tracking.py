@@ -21,7 +21,6 @@ def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args, la
             FinalLabels.append(TLabels[0])
             FinalCenters.append(TCenters[0])
             labmax = np.maximum(np.max(FinalLabels[0]), lab_max)
-            print(labmax)
             for lab in TLabels[0]:
                 label_correspondance[0].append([lab, lab])
             continue
@@ -88,7 +87,6 @@ def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args, la
 
         # update max label
         labmax = np.maximum(np.max(FinalLabels[t - 1]), labmax)
-        print(labmax)
         # for each future cell
         for j in range(len(a)):
             # check if the future cell is in the correspondance
@@ -99,7 +97,6 @@ def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args, la
                 FinalCenters[t].append(TCenters[t][j])
                 labmax += 1
                 notcorrespondentb.append(j)
-        print(labmax)
     return FinalLabels, label_correspondance
 
 

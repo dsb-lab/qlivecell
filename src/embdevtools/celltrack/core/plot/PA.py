@@ -183,7 +183,6 @@ class PlotAction:
     def on_key_press(self, event):
 
         possible_combs = ["shift+ctrl", "ctrl+shift", "control+shift", "shift+control"]
-                
         if event.key == "control":
             self.ctrl_is_held = True
         
@@ -215,7 +214,10 @@ class PlotAction:
             self.set_batch(batch_number=self.bn, update_labels=True)
             self.t = 0
             self.tg = self.global_times_list[self.t]
-            self.set_val_t_slider(self.tg + 1)
+            if self.batch:
+                self.set_val_t_slider(self.tg + 1, self.t+1)
+            else:
+                self.set_val_t_slider(self.tg + 1)
 
             self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
 
@@ -254,7 +256,10 @@ class PlotAction:
 
         self.t = 0
         self.tg = self.global_times_list[self.t]
-        self.set_val_t_slider(self.tg + 1)
+        if self. batch:
+            self.set_val_t_slider(self.tg + 1, self.t+1)
+        else:
+            self.set_val_t_slider(self.tg + 1)
 
         self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
 
@@ -274,8 +279,11 @@ class PlotAction:
         self.t = min(self.t, self.times - 1)
         self.tg = self.global_times_list[self.t]
         self.tg = max(self.tg, 0)
-        self.tg = min(self.tg, self.total_times - 1)  
-        self.set_val_t_slider(self.tg + 1)
+        self.tg = min(self.tg, self.total_times - 1) 
+        if self.batch:
+             self.set_val_t_slider(self.tg + 1, self.t+1)
+        else:
+            self.set_val_t_slider(self.tg + 1)
 
         if self.current_state == "SCL":
             self.current_state = None
@@ -655,10 +663,10 @@ class PlotActionCT(PlotAction):
             for i, x in enumerate(cells_to_plot):
                 cells_to_plot[i][0] = x[0]
             cells_string = [
-                "cell=" + str(x[0]) + " z=" + str(x[1]) for x in cells_to_plot
+                "cell=" + str(x[0]) + " z=" + str(x[1]) + " t=" + str(x[2]) for x in cells_to_plot
             ]
             zs = [x[1] for x in cells_to_plot]
-            ts = [self.t for x in cells_to_plot]
+            ts = [x[2] for x in cells_to_plot]
 
         s = "\n".join(cells_string)
         self.get_size()
@@ -812,19 +820,30 @@ class PlotActionCT(PlotAction):
         else:
             cells = [x[0] for x in self.list_of_cells]
             Zs = [x[1] for x in self.list_of_cells]
+            Ts = [x[2] for x in self.list_of_cells]
             cidxs = np.argsort(cells)
             cells = np.array(cells)[cidxs]
             Zs = np.array(Zs)[cidxs]
-
+            Ts = np.array(Ts)[cidxs]
             ucells = np.unique(cells)
             final_cells = []
             for c in ucells:
                 ids = np.where(cells == c)
                 _cells = cells[ids]
                 _Zs = Zs[ids]
-                zidxs = np.argsort(_Zs)
-                for id in zidxs:
-                    final_cells.append([_cells[id], _Zs[id]])
+                _Ts = Ts[ids]
+                
+                # If all in the same time, order by slice
+                if len(np.unique(_Ts))==1:
+                    zidxs = np.argsort(_Zs)
+                    for id in zidxs:
+                        final_cells.append([_cells[id], _Zs[id], _Ts[id]])
+                
+                # Otherwise order by time
+                else:
+                    tidxs = np.argsort(_Ts)
+                    for id in tidxs:
+                        final_cells.append([_cells[id], _Zs[id], _Ts[id]])
 
             return final_cells
 
@@ -911,7 +930,7 @@ class PlotActionCT(PlotAction):
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
-        cell = [lab, z]
+        cell = [lab, z, self.t]
         if cell not in self.list_of_cells:
             self.list_of_cells.append(cell)
         else:

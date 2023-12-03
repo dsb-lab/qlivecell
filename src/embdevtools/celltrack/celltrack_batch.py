@@ -22,7 +22,7 @@ from numba.typed import List
 from .core.dataclasses import (CellTracking_info, backup_CellTrack,
                                construct_Cell_from_jitCell,
                                construct_jitCell_from_Cell)
-from .core.plot.plot_extraclasses import Slider_t, Slider_z
+from .core.plot.plot_extraclasses import Slider_t_batch, Slider_z 
 from .core.plot.plot_iters import plotRound
 from .core.multiprocessing import (multiprocess_add_tasks, multiprocess_end,
                                    multiprocess_get_results,
@@ -70,7 +70,8 @@ from .core.tools.batch_tools import (compute_batch_times, extract_total_times_fr
                                      check_and_fill_batch_args, nb_list_where,
                                      nb_add_row, fill_label_correspondance_T,
                                      nb_get_max_nest_list, update_unique_labels_T,
-                                     update_new_label_correspondance, remove_static_labels_label_correspondance)
+                                     update_new_label_correspondance, remove_static_labels_label_correspondance,
+                                     add_lab_change)
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                                      greedy_tracking, hungarian_tracking)
 from .core.tracking.tracking_tools import (
@@ -738,19 +739,19 @@ class CellTrackingBatch(CellTracking):
         cells = [x[0] for x in PACP.list_of_cells]
         cellids = []
         Zs = [x[1] for x in PACP.list_of_cells]
-
+        Ts = [x[2] for x in PACP.list_of_cells]
         if len(cells) == 0:
             return
 
         if count_action:
             self.nactions += 1
-            for z in Zs:
-                self._tz_actions.append([PACP.t, z])
+            for cid, z in enumerate(Zs):
+                self._tz_actions.append([Ts[cid], z])
 
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
-            [PACP.t],
+            list(np.unique(Ts).astype("int64")),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -761,7 +762,7 @@ class CellTrackingBatch(CellTracking):
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
-            [PACP.t],
+            list(np.unique(Ts).astype("int64")),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -773,10 +774,11 @@ class CellTrackingBatch(CellTracking):
         labs_to_replot = []
         for i, lab in enumerate(cells):
             z = Zs[i]
+            t = Ts[i]
             cell = self._get_cell(lab)
             if cell.id not in (cellids):
                 cellids.append(cell.id)
-            tid = cell.times.index(PACP.t)
+            tid = cell.times.index(t)
 
             idrem = cell.zs[tid].index(z)
             cell.zs[tid].pop(idrem)
@@ -799,11 +801,12 @@ class CellTrackingBatch(CellTracking):
         new_labs = []
         for i, cellid in enumerate(np.unique(cellids)):
             z = Zs[i]
+            t = Ts[i]
             cell = self._get_cell(cellid=cellid)
             new_labs.append(cell.label)
             try:
                 new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities_jit(
-                    cell, self._stacks, self.max_label, self.currentcellid, PACP.t
+                    cell, self._stacks, self.max_label, self.currentcellid, t
                 )
                 update_jitcell(cell, self._stacks)
                 if new_maxlabel is not None:
@@ -831,14 +834,11 @@ class CellTrackingBatch(CellTracking):
                 self.currentcellid = new_currentcellid
                  # If cell is not removed, check if last time is removed
                 if self.batch_number!=self.batch_max:
-                    if PACP.t not in cell.times:
+                    if t not in cell.times:
                         # check which times maxlab appears in future batches
-                        first_future_time = PACP.tg + 1
-                        ids = nb_list_where(self.unique_labels_T[first_future_time:], cell.label)
+                        first_future_time = PACP.tg + 1 + PACP.t - t
                         lab_change = np.array([[cell.label, self.max_label]]).astype('uint16')
-                        for _t in ids[0]:
-                            t = _t + first_future_time
-                            self.label_correspondance_T[t] = nb_add_row(self.label_correspondance_T[t], lab_change)
+                        add_lab_change(first_future_time, lab_change, self.label_correspondance_T, self.unique_labels_T)
 
                 update_jitcell(new_jitcell, self._stacks)
                 jitcellslen = len(self.jitcells_selected)
@@ -850,7 +850,7 @@ class CellTrackingBatch(CellTracking):
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
-            list(range(PACP.t, self.times)),
+            list(range(min(Ts), self.times)),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -861,7 +861,7 @@ class CellTrackingBatch(CellTracking):
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
-            list(range(PACP.t, self.times)),
+            list(range(min(Ts), self.times)),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -1000,10 +1000,7 @@ class CellTrackingBatch(CellTracking):
         first_future_time = new_cell.times[-1] + 1
         if first_future_time < self.total_times:
             lab_change = np.array([[cell.label, new_cell.label]]).astype('uint16')
-            ids = nb_list_where(self.unique_labels_T[first_future_time:], cell.label)
-            for _t in ids[0]:
-                t = _t + first_future_time
-                self.label_correspondance_T[t] = nb_add_row(self.label_correspondance_T[t], lab_change)
+            add_lab_change(first_future_time, lab_change, self.label_correspondance_T, self.unique_labels_T)
         
         self.update_label_attributes()
 
@@ -1088,14 +1085,11 @@ class CellTrackingBatch(CellTracking):
         if self.batch_number!=self.batch_max:
             # check which times maxlab appears in future batches
             first_future_time = self.batch_times_list_global[-1]+self.batch_overlap
-            ids = nb_list_where(self.unique_labels_T[first_future_time:], poped.label)
             if lab_change is None:
                 self.max_label = self.max_label + 1
                 lab_change = np.array([[poped.label, self.max_label]]).astype('uint16')
-            
-            for _t in ids[0]:
-                t = _t + first_future_time
-                self.label_correspondance_T[t] = nb_add_row(self.label_correspondance_T[t], lab_change)
+                
+            add_lab_change(first_future_time, lab_change, self.label_correspondance_T, self.unique_labels_T)
             
         if len_selected_jitcells == len(self.jitcells_selected):
             poped = self.jitcells_selected.pop(idx2)
@@ -1165,16 +1159,20 @@ class CellTrackingBatch(CellTracking):
 
         # Make a horizontal slider to control the time.
         axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
-        sliderstr = "/%d" % (self.batch_totalsize)
-        time_slider = Slider_t(
+
+        sliderstr1 = "/%d" % (self.batch_totalsize)
+        sliderstr2 = "/%d)" % (self.times)
+        valfmt = "%d" + sliderstr1 + " ; (%d"+sliderstr2
+
+        time_slider = Slider_t_batch(
             ax=axslide,
             label="time",
             initcolor="r",
             valmin=1,
             valmax=self.batch_totalsize,
-            valinit=1,
+            valinit=(1,1),
             valstep=1,
-            valfmt="%d" + sliderstr,
+            valfmt=valfmt,
             track_color=[0.8, 0.8, 0, 0.5],
             facecolor=[0.8, 0.8, 0, 1.0],
         )
