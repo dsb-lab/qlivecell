@@ -63,7 +63,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size': 20,
+    'batch_size': 5,
     'batch_overlap':2,
 }
 

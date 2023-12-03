@@ -128,9 +128,9 @@ def nb_unique(input_data, axis=0):
 
 # from https://stackoverflow.com/a/53651418/7546279
 @njit
-def numba_delete(arr, num):
+def numba_delete(arr, idx):
     mask = np.zeros(arr.shape[0], dtype=np.int64) == 0
-    mask[np.where(arr == num)[0]] = False
+    mask[idx] = False
     return arr[mask]
 
 @njit()
