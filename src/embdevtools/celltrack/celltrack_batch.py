@@ -740,6 +740,7 @@ class CellTrackingBatch(CellTracking):
         cellids = []
         Zs = [x[1] for x in PACP.list_of_cells]
         Ts = [x[2] for x in PACP.list_of_cells]
+        
         if len(cells) == 0:
             return
 

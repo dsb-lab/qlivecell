@@ -878,19 +878,20 @@ class CellTracking(object):
         cells = [x[0] for x in PACP.list_of_cells]
         cellids = []
         Zs = [x[1] for x in PACP.list_of_cells]
-
+        Ts = [x[2] for x in PACP.list_of_cells]
+        
         if len(cells) == 0:
             return
 
         if count_action:
             self.nactions += 1
-            for z in Zs:
-                self._tz_actions.append([PACP.t, z])
+            for cid, z in enumerate(Zs):
+                self._tz_actions.append([Ts[cid], z])
 
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
-            [PACP.t],
+            list(np.unique(Ts).astype("int64")),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -901,7 +902,7 @@ class CellTracking(object):
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
-            [PACP.t],
+            list(np.unique(Ts).astype("int64")),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -913,6 +914,7 @@ class CellTracking(object):
         labs_to_replot = []
         for i, lab in enumerate(cells):
             z = Zs[i]
+            t = Ts[i]
             cell = self._get_cell(lab)
             if cell.id not in (cellids):
                 cellids.append(cell.id)
@@ -938,11 +940,12 @@ class CellTracking(object):
         new_labs = []
         for i, cellid in enumerate(np.unique(cellids)):
             z = Zs[i]
+            t = Ts[i]
             cell = self._get_cell(cellid=cellid)
             new_labs.append(cell.label)
             try:
                 new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities_jit(
-                    cell, self._stacks, self.max_label, self.currentcellid, PACP.t
+                    cell, self._stacks, self.max_label, self.currentcellid, t
                 )
                 update_jitcell(cell, self._stacks)
                 if new_maxlabel is not None:
@@ -979,7 +982,7 @@ class CellTracking(object):
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
-            [PACP.t],
+            list(range(min(Ts), self.times)),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -990,7 +993,7 @@ class CellTracking(object):
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
-            [PACP.t],
+            list(range(min(Ts), self.times)),
             self.unique_labels_T,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
