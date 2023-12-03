@@ -63,7 +63,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size': 20,
+    'batch_size': 5,
     'batch_overlap':2,
 }
 
@@ -79,5 +79,5 @@ CTB = CellTrackingBatch(
     batch_args=batch_args,
 )
 
-CTB.load()
+CTB.run()
 CTB.plot_tracking(plot_args=plot_args)

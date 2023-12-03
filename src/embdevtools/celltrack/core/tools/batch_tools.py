@@ -119,7 +119,6 @@ def update_new_label_correspondance(post_range_start ,post_range_end, label_corr
 def remove_static_labels_label_correspondance(post_range_start ,post_range_end, label_correspondance_T):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
-
         lc_remove = List()
         for lc in prange(len(label_correspondance_T[postt])):
             lab_change = label_correspondance_T[postt][lc]
@@ -129,6 +128,7 @@ def remove_static_labels_label_correspondance(post_range_start ,post_range_end, 
         lc_remove.reverse()
         for lc in lc_remove:
             label_correspondance_T[postt] = numba_delete(label_correspondance_T[postt], lc)
+    return label_correspondance_T
 
 def add_lab_change(label, first_future_time, lab_change, label_correspondance_T, unique_labels_T):
     ids = nb_list_where(unique_labels_T[first_future_time:], label)
