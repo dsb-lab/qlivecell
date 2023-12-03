@@ -5,7 +5,7 @@ from scipy.spatial.distance import directed_hausdorff
 from ..tools.tools import printfancy
 
 
-def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args):
+def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args, lab_max=0):
     dist_th = track_args["dist_th"]
     z_th = track_args["z_th"]
 
@@ -20,7 +20,8 @@ def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args):
         if t == 0:
             FinalLabels.append(TLabels[0])
             FinalCenters.append(TCenters[0])
-            labmax = np.max(FinalLabels[0])
+            labmax = np.maximum(np.max(FinalLabels[0]), lab_max)
+            print(labmax)
             for lab in TLabels[0]:
                 label_correspondance[0].append([lab, lab])
             continue
@@ -87,7 +88,7 @@ def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args):
 
         # update max label
         labmax = np.maximum(np.max(FinalLabels[t - 1]), labmax)
-
+        print(labmax)
         # for each future cell
         for j in range(len(a)):
             # check if the future cell is in the correspondance
@@ -98,12 +99,12 @@ def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args):
                 FinalCenters[t].append(TCenters[t][j])
                 labmax += 1
                 notcorrespondentb.append(j)
-
+        print(labmax)
     return FinalLabels, label_correspondance
 
 
 def hungarian_tracking(
-    TLabels, TCenters, TOutlines, TMasks, xyresolution, zresolution, track_args
+    TLabels, TCenters, TOutlines, TMasks, xyresolution, zresolution, track_args, lab_max=0
 ):
     z_th = track_args["z_th"]
     z_th_units = int(np.rint(z_th / zresolution))
@@ -120,7 +121,7 @@ def hungarian_tracking(
     lc = [[l, l] for l in TLabels[0]]
     label_correspondance.append(lc)
 
-    labmax = 0
+    labmax = np.max(0, lab_max)
     for t in range(1, len(TLabels)):
         FinalLabels_t = []
         label_correspondance_t = []

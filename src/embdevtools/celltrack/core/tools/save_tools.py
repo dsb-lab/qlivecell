@@ -110,6 +110,7 @@ def save_cells_to_json(cells, CT_info, path=None, filename=None):
 
 
 def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_format="{}"):
+    print(labels_stack.max())
     if split_times: 
         if not os.path.isdir(pthsave): 
             os.mkdir(pthsave)
