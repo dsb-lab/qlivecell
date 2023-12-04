@@ -156,7 +156,7 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
     labels_stack = compute_labels_stack(labels_stack, cells)
     save_labels_stack(labels_stack, pthsave, times, split_times=split_times, string_format=string_format)
 
-    end1 = time.time()
+    end = time.time()
     print("elapsed in save cells =", end - start)
     if save_info:
         file_to_store = pthsave + "_info.json"
