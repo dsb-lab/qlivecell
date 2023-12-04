@@ -77,7 +77,7 @@ def nb_add_row(arr, r):
     arr = np.append(arr, r, axis=0)
     return arr
 
-@njit(parallel=False)
+@njit(parallel=True)
 def fill_label_correspondance_T(new_label_correspondance_T, unique_labels_T, correspondance):
     for postt in prange(len(new_label_correspondance_T)):
         postt = nb.int64(postt)
@@ -86,7 +86,7 @@ def fill_label_correspondance_T(new_label_correspondance_T, unique_labels_T, cor
             arr = np.array([[pre_lab, lab]], dtype="uint16")
             new_label_correspondance_T[postt] = nb_add_row(new_label_correspondance_T[postt], arr)
 
-@njit (parallel=False)
+@njit (parallel=True)
 def nb_get_max_nest_list(nested2Dlist):
     max_val = 0
     for sublist in nested2Dlist:
@@ -95,7 +95,7 @@ def nb_get_max_nest_list(nested2Dlist):
         max_val = np.maximum(max_val, np.max(sublist))
     return max_val
 
-@njit(parallel=False)
+@njit(parallel=True)
 def update_unique_labels_T(post_range_start ,post_range_end, label_correspondance_T, unique_labels_T):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
@@ -105,7 +105,7 @@ def update_unique_labels_T(post_range_start ,post_range_end, label_correspondanc
             id_change = unique_labels_T[postt].index(pre_label)
             unique_labels_T[postt][id_change] = post_label
 
-@njit(parallel=False)
+@njit(parallel=True)
 def update_new_label_correspondance(post_range_start ,post_range_end, label_correspondance_T, new_label_correspondance_T):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
@@ -115,7 +115,7 @@ def update_new_label_correspondance(post_range_start ,post_range_end, label_corr
             idx = np.where(new_label_correspondance_T[postt][:,0]==post_label)
             new_label_correspondance_T[postt][idx[0][0],0] = pre_label
 
-@njit(parallel=False)
+@njit(parallel=True)
 def remove_static_labels_label_correspondance(post_range_start ,post_range_end, label_correspondance_T):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:

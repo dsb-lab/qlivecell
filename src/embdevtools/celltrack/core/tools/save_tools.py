@@ -126,7 +126,7 @@ def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_fo
         else:
              np.save(pthsave, labels_stack, allow_pickle=False)
     
-
+import time
 
 def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, split_times=False, string_format="{}", save_info=False):
     """save cell objects obtained with celltrack.py
@@ -144,6 +144,7 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
     filename : str
         name of file or embcode
     """
+    start = time.time()
     if filename is not None:
         pthsave = correct_path(path) + str(filename)
     else:
@@ -155,6 +156,8 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
     labels_stack = compute_labels_stack(labels_stack, cells)
     save_labels_stack(labels_stack, pthsave, times, split_times=split_times, string_format=string_format)
 
+    end1 = time.time()
+    print("elapsed in save cells =", end - start)
     if save_info:
         file_to_store = pthsave + "_info.json"
         with open(file_to_store, "w", encoding="utf-8") as f:

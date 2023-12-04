@@ -1662,8 +1662,33 @@ class CellTracking(object):
                 PACP.zs[id] = z
                 labs = self.ctattr.Labels[t][z]
                 self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
-                for lab in labs:
-                    if self._plot_args["plot_centers"][0]:
+                
+                for mitoev in self.mitotic_events:
+                    for ev in mitoev:
+                        if ev[0] in labs:
+                            cell = self._get_cell(ev[0])
+                            tid = cell.times.index(t)
+                            zz, ys, xs = cell.centers[tid]
+                            xs = round(xs * self._plot_args["dim_change"])
+                            ys = round(ys * self._plot_args["dim_change"])
+                            if PACP.tg == ev[1]:
+                                sc = PACP.ax[id].scatter(
+                                    [ys], [xs], s=5.0, c="red"
+                                )
+                                self._pos_scatters.append(sc)
+                                
+                for apoev in self.apoptotic_events:   
+                    if apoev[0] in labs:
+                        cell = self._get_cell(apoev[0])
+                        tid = cell.times.index(t)
+                        zz, ys, xs = cell.centers[tid]
+                        xs = round(xs * self._plot_args["dim_change"])
+                        ys = round(ys * self._plot_args["dim_change"])
+                        sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
+                        self._pos_scatters.append(sc)
+                    
+                if self._plot_args["plot_centers"][0]:
+                    for lab in labs:
                         cell = self._get_cell(lab)
                         tid = cell.times.index(t)
                         zz, ys, xs = cell.centers[tid]
@@ -1672,7 +1697,6 @@ class CellTracking(object):
 
                         lab_to_display = lab
                         if zz == z:
-                            
                             if [cell.label, PACP.tg] in self.apoptotic_events:
                                 sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                                 self._pos_scatters.append(sc)
@@ -1695,7 +1719,7 @@ class CellTracking(object):
                                 anno = PACP.ax[id].annotate(
                                     str(lab_to_display), xy=(ys, xs), c="white"
                                 )
-                                self._annotations.append(anno)
+                                self._annotations.append(anno) 
 
                             for mitoev in self.mitotic_events:
                                 for ev in mitoev:

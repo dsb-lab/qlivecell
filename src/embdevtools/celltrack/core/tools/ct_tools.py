@@ -211,6 +211,7 @@ def get_cell(cells, label=None, cellid=None):
     return None
 
 
+@njit
 def compute_labels_stack(point_stack, jitcells):
     for jitcell in jitcells:
         color = jitcell.label + 1

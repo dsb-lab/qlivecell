@@ -1,5 +1,5 @@
 import numpy as np
-from numba import njit
+from numba import njit, int64, uint16
 from numba.typed import List
 
 from ..dataclasses import Cell, jitCell
@@ -450,7 +450,12 @@ def update_jitcell(cell: jitCell, stacks):
     sort_over_t_jit(cell)
     extract_jitcell_centers(cell, stacks)
 
-
+@njit(parallel=True)
+def update_jitcells(jitcells, stacks):
+    for j in prange(len(jitcells)):
+        jj = int64(j)
+        update_jitcell(jitcells[jj], stacks)
+        
 def remove_small_cells(cells, area_th, callback_del, callback_update):
     labs_to_remove = []
     areas = []
@@ -551,13 +556,13 @@ def quickhull_2d(S: np.ndarray) -> np.ndarray:
     return process(S, np.arange(S.shape[0]), a, b)[:-1] + process(S, np.arange(S.shape[0]), b, a)[:-1]
 
 
-@njit
+@njit()
 def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
     jitcellinputs = _predefine_jitcell_inputs()
     jitcell = jitCell(*jitcellinputs)
     jitcell.label = lab-1
     jitcell.id = lab-1
-    for t in prange(labels_stack.shape[0]):
+    for t in range(labels_stack.shape[0]):
         if lab in unique_labels_T[t]:
             jitcell.times.append(t)
             idxs = np.where(labels_stack[t] == lab)
@@ -573,7 +578,7 @@ def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
             cell_outlinest = List([np.zeros((2,2), dtype='uint16')])
             cell_outlinest.pop(0)
             
-            for zid in prange(len(jitcell.zs[-1])):
+            for zid in range(len(jitcell.zs[-1])):
                 z = jitcell.zs[-1][zid]
                 zids = np.where(zs==z)[0]
                 z1 = zids[0]
@@ -591,9 +596,24 @@ def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
 
     return jitcell
 
+import time
 @njit
 def extract_jitcells_from_label_stack(labels_stack):
-    cells = List()
+    # start_extract1 = time.time()
+    unique_labels, unique_labels_T = extract_jitcells_from_label_stack_part1(labels_stack)
+    # end_extract1 = time.time()
+    # print("elapsed extract 1 =", end_extract1 - start_extract1)
+    
+    # start_extract2 = time.time()
+    unique_labels.remove(uint16(0))
+    jitcells = extract_jitcells_from_label_stack_part2(labels_stack, unique_labels, unique_labels_T)
+    # print("unique_labels =", len(unique_labels))
+    # end_extract2 = time.time()
+    # print("elapsed extract 2 =", end_extract2 - start_extract2)
+    return jitcells
+
+@njit
+def extract_jitcells_from_label_stack_part1(labels_stack):
     unique_labels_T = List()
     for i in range(len(labels_stack)):
         unique_labels_T.append(np.unique(labels_stack[i]))
@@ -605,11 +625,17 @@ def extract_jitcells_from_label_stack(labels_stack):
     for lab in total_labs:
         if lab not in unique_labels:
             unique_labels.append(lab)
-        
-    for lab in unique_labels:
-        if lab==0: continue
-        
-        jitcell = _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T)
-        cells.append(jitcell)
 
+    return unique_labels, unique_labels_T
+    
+@njit(parallel=True)        
+def extract_jitcells_from_label_stack_part2(labels_stack, unique_labels, unique_labels_T):
+    jitcellinputs = _predefine_jitcell_inputs()
+    jcell = jitCell(*jitcellinputs)
+    cells = List([jcell for l in range(len(unique_labels))])
+    for l in prange(len(unique_labels)):
+        ll = int64(l)
+        lab = unique_labels[ll]
+        jitcell = _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T)
+        cells[ll] = jitcell
     return cells
