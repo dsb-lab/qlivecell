@@ -2,7 +2,7 @@ from copy import copy
 
 import matplotlib as mtp
 import numpy as np
-
+from numba.typed import List
 from ..dataclasses import construct_Cell_from_jitCell
 from ..tools.ct_tools import set_cell_color
 from ..tools.save_tools import save_cells
@@ -694,8 +694,8 @@ class PlotActionCT(PlotAction):
                 jitcell.zs,
                 color,
                 self._plot_args["dim_change"],
-                t=lab_z_t[2],
-                z=lab_z_t[1],
+                List([lab_z_t[2]]),
+                lab_z_t[1],
             )
 
         labs_z_to_remove = [
@@ -718,8 +718,8 @@ class PlotActionCT(PlotAction):
                 jitcell.zs,
                 color,
                 self._plot_args["dim_change"],
-                t=lab_z_t[2],
-                z=lab_z_t[1],
+                List([lab_z_t[2]]),
+                lab_z_t[1],
             )
 
         self._pre_labs_z_to_plot = labs_z_to_plot
@@ -870,8 +870,8 @@ class PlotActionCT(PlotAction):
                 jitcell.zs,
                 color,
                 self._plot_args["dim_change"],
-                t=-1,
-                z=-1,
+                jitcell.times,
+                -1,
             )
         self.visualization()
 

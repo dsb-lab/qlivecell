@@ -424,16 +424,22 @@ def read_split_times(path_data, times, extra_name="", extension=".tif"):
     elif extension == ".npy":
         return np.array(IMGS)
     
-
+import time
 def substitute_labels(post_range_start ,post_range_end, path_to_save, lcT):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
         labs_stack = np.load(path_to_save+"{:d}.npy".format(postt))
         new_labs_stack = labs_stack.copy()
+        start1 = time.time()
         new_ls, lct = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
+        end1 = time.time()
+        print("sub labs save_cells", end1 - start1)
+        
         new_labs_stack = new_ls
+        start2 = time.time()
         save_labels_stack(new_labs_stack, path_to_save+"{:d}.npy".format(postt), [postt], split_times=False, string_format="{}")
-
+        end2 = time.time()
+        print("elapsed save_cells", end2 - start2)
 @njit(parallel=True)
 def _sub_labs(labs_pre, labs_post, lct):
     for lab_change in lct:
