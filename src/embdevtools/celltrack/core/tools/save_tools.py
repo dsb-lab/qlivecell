@@ -144,7 +144,6 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
     filename : str
         name of file or embcode
     """
-    start = time.time()
     if filename is not None:
         pthsave = correct_path(path) + str(filename)
     else:
@@ -156,8 +155,6 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
     labels_stack = compute_labels_stack(labels_stack, cells)
     save_labels_stack(labels_stack, pthsave, times, split_times=split_times, string_format=string_format)
 
-    end = time.time()
-    print("elapsed in save cells =", end - start)
     if save_info:
         file_to_store = pthsave + "_info.json"
         with open(file_to_store, "w", encoding="utf-8") as f:
@@ -430,24 +427,16 @@ def substitute_labels(post_range_start ,post_range_end, path_to_save, lcT):
     for postt in post_range:
         labs_stack = np.load(path_to_save+"{:d}.npy".format(postt))
         new_labs_stack = labs_stack.copy()
-        start1 = time.time()
-        new_ls, lct = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
-        end1 = time.time()
-        print("sub labs save_cells", end1 - start1)
+        new_ls = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
+        save_labels_stack(new_ls, path_to_save+"{:d}.npy".format(postt), [postt], split_times=False, string_format="{}")
         
-        new_labs_stack = new_ls
-        start2 = time.time()
-        save_labels_stack(new_labs_stack, path_to_save+"{:d}.npy".format(postt), [postt], split_times=False, string_format="{}")
-        end2 = time.time()
-        print("elapsed save_cells", end2 - start2)
 @njit(parallel=True)
 def _sub_labs(labs_pre, labs_post, lct):
     for lab_change in lct:
-        pre_label = lab_change[0]
-        post_label = lab_change[1]
+        pre_label = lab_change[0] + 1
+        post_label = lab_change[1] + 1
 
-        new_lct = np.where(lct[:,1]==post_label, lct[:,1],pre_label)
-        idxs = np.where(labs_pre == pre_label+1)
+        idxs = np.where(labs_pre == pre_label)
         zs = idxs[0]
         xs = idxs[1]
         ys = idxs[2]
@@ -455,6 +444,6 @@ def _sub_labs(labs_pre, labs_post, lct):
             z = zs[p]
             x = xs[p]
             y = ys[p]
-            labs_post[z,x,y] = post_label + 1
+            labs_post[z,x,y] = post_label
     
-    return labs_post, new_lct
+    return labs_post
