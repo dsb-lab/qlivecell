@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 import gc
 import os
 
@@ -7,7 +9,6 @@ from collections import deque
 from copy import copy, deepcopy
 from datetime import datetime
 
-import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 from matplotlib.lines import Line2D, lineStyles
@@ -81,6 +82,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.simplefilter("ignore", UserWarning)
 
 plt.rcParams["keymap.save"].remove("s")
+plt.rcParams["keymap.yscale"].remove("l")
 plt.rcParams["keymap.pan"].remove("p")
 plt.rcParams["keymap.zoom"][0] = ","
 
@@ -1621,12 +1623,12 @@ class CellTracking(object):
         plt.show()
 
     def replot_axis(self, img, z, t, imid, plot_outlines=True):
-        self._imshows[imid].set_data(img)
-        self._imshows_masks[imid].set_data(self._masks_stack[t][z])
+        self._imshows[imid].set_array(img)
+        self._imshows_masks[imid].set_array(self._masks_stack[t][z])
         if plot_outlines:
-            self._imshows_outlines[imid].set_data(self._outlines_stack[t][z])
+            self._imshows_outlines[imid].set_array(self._outlines_stack[t][z])
         else:
-            self._imshows_outlines[imid].set_data(
+            self._imshows_outlines[imid].set_array(
                 np.zeros_like(self._outlines_stack[t][z])
             )
         self._titles[imid].set_text("z = %d" % (z + 1))
@@ -1653,16 +1655,46 @@ class CellTracking(object):
             # select current z plane
             if z == None:
                 img = np.zeros(self._plot_args["plot_stack_dims"])
-                self._imshows[id].set_data(img)
-                self._imshows_masks[id].set_data(img)
-                self._imshows_outlines[id].set_data(img)
+                self._imshows[id].set_array(img)
+                self._imshows_masks[id].set_array(img)
+                self._imshows_outlines[id].set_array(img)
                 self._titles[id].set_text("")
             else:
                 img = imgs[z, :, :]
                 PACP.zs[id] = z
                 labs = self.ctattr.Labels[t][z]
                 self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
-                
+                    
+                if self._plot_args["plot_centers"][0]:
+                    for lab in labs:
+                        cell = self._get_cell(lab)
+                        tid = cell.times.index(t)
+                        zz, ys, xs = cell.centers[tid]
+                        xs = round(xs * self._plot_args["dim_change"])
+                        ys = round(ys * self._plot_args["dim_change"])
+
+                        lab_to_display = lab
+                        if zz == z:
+                            sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
+                            self._pos_scatters.append(sc)
+
+                            if self._plot_args["plot_centers"][1]:
+                                # Check if cell is an immeadiate dauther and plot the corresponding label
+                                for mitoev in self.mitotic_events:
+                                    for icell, mitocell in enumerate(mitoev[1:]):
+                                        if cell.label == mitocell[0]:
+                                            if PACP.tg == mitoev[1]:
+                                                mother = self._get_cell(
+                                                    label=mitoev[0][0]
+                                                )
+                                                lab_to_display = (
+                                                    mother.label + 0.1 + icell / 10
+                                                )
+                                anno = PACP.ax[id].annotate(
+                                    str(lab_to_display), xy=(ys, xs), c="white"
+                                )
+                                self._annotations.append(anno) 
+                                
                 for mitoev in self.mitotic_events:
                     for ev in mitoev:
                         if ev[0] in labs:
@@ -1686,49 +1718,6 @@ class CellTracking(object):
                         ys = round(ys * self._plot_args["dim_change"])
                         sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                         self._pos_scatters.append(sc)
-                    
-                if self._plot_args["plot_centers"][0]:
-                    for lab in labs:
-                        cell = self._get_cell(lab)
-                        tid = cell.times.index(t)
-                        zz, ys, xs = cell.centers[tid]
-                        xs = round(xs * self._plot_args["dim_change"])
-                        ys = round(ys * self._plot_args["dim_change"])
-
-                        lab_to_display = lab
-                        if zz == z:
-                            if [cell.label, PACP.tg] in self.apoptotic_events:
-                                sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
-                                self._pos_scatters.append(sc)
-                            else:
-                                sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
-                                self._pos_scatters.append(sc)
-
-                            if self._plot_args["plot_centers"][1]:
-                                # Check if cell is an immeadiate dauther and plot the corresponding label
-                                for mitoev in self.mitotic_events:
-                                    for icell, mitocell in enumerate(mitoev[1:]):
-                                        if cell.label == mitocell[0]:
-                                            if PACP.tg == mitoev[1]:
-                                                mother = self._get_cell(
-                                                    label=mitoev[0][0]
-                                                )
-                                                lab_to_display = (
-                                                    mother.label + 0.1 + icell / 10
-                                                )
-                                anno = PACP.ax[id].annotate(
-                                    str(lab_to_display), xy=(ys, xs), c="white"
-                                )
-                                self._annotations.append(anno) 
-
-                            for mitoev in self.mitotic_events:
-                                for ev in mitoev:
-                                    if cell.label == ev[0]:
-                                        if PACP.tg == ev[1]:
-                                            sc = PACP.ax[id].scatter(
-                                                [ys], [xs], s=5.0, c="red"
-                                            )
-                                            self._pos_scatters.append(sc)
 
         plt.subplots_adjust(bottom=0.075)
 

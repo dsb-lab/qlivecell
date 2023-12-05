@@ -113,6 +113,7 @@ class PlotAction:
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
+        self.CTplot_args = CT._plot_args
         # Point to sliders
         CT._time_slider.on_changed(self.update_slider_t)
         self.set_val_t_slider = CT._time_slider.set_val
@@ -171,6 +172,7 @@ class PlotAction:
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
+        self.CTplot_args = CT._plot_args
         self.times = CT.times
         if self.batch:
             self.global_times_list = CT.batch_times_list_global
@@ -441,6 +443,8 @@ class PlotActionCT(PlotAction):
                 self.visualization()
             elif event.key == "m":
                 self.switch_masks(masks=None)
+            elif event.key == "l":
+                self.switch_centers()
             elif event.key == "S":
                 # self.CTone_step_copy(self.t)
                 self.current_state = "Sep"
@@ -874,7 +878,11 @@ class PlotActionCT(PlotAction):
                 -1,
             )
         self.visualization()
-
+    
+    def switch_centers(self):
+        self.CTplot_args["plot_centers"] = [not i for i in self.CTplot_args["plot_centers"]]
+        self.visualization()
+        
     def add_cells(self):
         self.title.set(text="ADD CELL MODE", ha="left", x=0.01)
         if hasattr(self, "CP"):

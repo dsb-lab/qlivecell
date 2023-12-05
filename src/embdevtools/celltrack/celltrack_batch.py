@@ -402,13 +402,16 @@ class CellTrackingBatch(CellTracking):
 
         self.load(load_ct_info=False)
 
-    def load(self, load_ct_info=True):
+    def load(self, load_ct_info=True, batch_args=None):
 
         if load_ct_info:
             self.CT_info = load_CT_info(self.path_to_save, self.embcode)
             self.apoptotic_events = self.CT_info.apo_cells
             self.mitotic_events = self.CT_info.mito_cells
     
+        if batch_args is None: batch_args = self._batch_args
+        self._batch_args = check_and_fill_batch_args(batch_args)
+
         printfancy("")
         printfancy("Initializing first batch and cells...")
         self.init_batch()
@@ -616,6 +619,25 @@ class CellTrackingBatch(CellTracking):
             self.jitcells.append(jitcell)
         self.jitcells_selected = self.jitcells
         self.currentcellid = len(self.unique_labels) - 1
+
+    def _get_hints(self):
+        del self.hints[:]
+        for t in range(self.times - 1):
+            self.hints.append([])
+            tg = self.batch_times_list_global[t]
+            self.hints[t].append(
+                np.setdiff1d(self.unique_labels_T[tg], self.unique_labels_T[tg + 1])
+            )
+            self.hints[t].append(
+                np.setdiff1d(self.unique_labels_T[tg + 1], self.unique_labels_T[tg])
+            )
+
+    def _get_number_of_conflicts(self):
+        total_hints = np.sum([len(h) for hh in self.hints for h in hh])
+        total_marked_apo = len(self.apoptotic_events)
+        total_marked_mito = len(self.mitotic_events) * 3
+        total_marked = total_marked_apo + total_marked_mito
+        self.conflicts = total_hints - total_marked
 
     def update_label_attributes(self):
         _reinit_update_CT_cell_attributes(
@@ -1118,7 +1140,6 @@ class CellTrackingBatch(CellTracking):
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self.update_labels()
-        print(self._masks_stack.max())
         self._imshows = []
         self._imshows_masks = []
         self._imshows_outlines = []
