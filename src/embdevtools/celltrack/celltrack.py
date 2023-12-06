@@ -175,6 +175,7 @@ class CellTracking(object):
         # list of cells used by the pickers
         self.list_of_cells = []
         self.mito_cells = []
+        self.blocked_cells = []
 
         # extra attributes
         self._min_outline_length = 50
@@ -1284,9 +1285,45 @@ class CellTracking(object):
 
         self.nactions += 1
 
+    def block_cells(self, list_of_cells): 
+        
+        for cell in list_of_cells:
+            lab = cell[0]
+            if lab in self.blocked_cells:
+                self.blocked_cells.remove(lab)
+            else:
+                self.blocked_cells.append(lab)
+        
+        compute_point_stack(
+            self._masks_stack,
+            self.jitcells_selected,
+            List(range(self.times)),
+            self.unique_labels_batch,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
+            labels=self.blocked_cells,
+            alpha=0,
+            mode="masks",
+        )
+        compute_point_stack(
+            self._outlines_stack,
+            self.jitcells_selected,
+            List(range(self.times)),
+            self.unique_labels_batch,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
+            labels=self.blocked_cells,
+            alpha=1,
+            mode="outlines",
+        )
+
+        self.nactions += 1
+        
     def apoptosis(self, list_of_cells):
         for cell_att in list_of_cells:
-            lab, cell_id, t = cell_att
+            lab, z, t = cell_att
             attributes = [lab, t]
             if attributes not in self.apoptotic_events:
                 self.apoptotic_events.append(attributes)

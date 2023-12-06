@@ -152,7 +152,7 @@ def set_cell_color(cell_stack, points, cell_times, cell_zs, color, dim_change, t
 
 
 def get_cell_color(jitcell, labels_colors, alpha, blocked_cells):
-    if jitcell.label in blocked_cells: return np.array([0.3, 0.3, 0.3, alpha])
+    if jitcell.label in blocked_cells: return np.array([1.0, 1.0, 1.0, alpha])
     return np.append(labels_colors[jitcell.label], alpha)
 
 # @njit

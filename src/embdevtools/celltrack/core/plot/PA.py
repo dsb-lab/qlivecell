@@ -27,7 +27,7 @@ def get_point_PACP(dim_change, event):
     return np.rint(picked_point / dim_change).astype("uint16")
 
 
-def get_cell_PACP(PACP, event, block):
+def get_cell_PACP(PACP, event, block=True):
     picked_point = get_point_PACP(PACP._plot_args["dim_change"], event)
     for i, mask in enumerate(PACP.CTMasks[PACP.t][PACP.z]):
         for point in mask:
@@ -108,6 +108,7 @@ class PlotAction:
 
         self.CTlist_of_cells = CT.list_of_cells
         self.CTmito_cells = CT.mito_cells
+        self.CTblocked_cells = CT.blocked_cells
         self.CTapoptotic_events = CT.apoptotic_events
         self.CTmitotic_events = CT.mitotic_events
         self.CThints = CT.hints
@@ -117,8 +118,8 @@ class PlotAction:
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
         self.CTplot_args = CT._plot_args
-        self.CTblocked_cells = CT.blocked_cells
-        
+        self.CTblock_cells = CT.block_cells
+
         # Point to sliders
         CT._time_slider.on_changed(self.update_slider_t)
         self.set_val_t_slider = CT._time_slider.set_val
@@ -434,6 +435,9 @@ class PlotActionCT(PlotAction):
                 self.switch_masks(masks=False)
                 self.add_cells()
             if event.key == "p":
+                # TODO
+                # NOT WORKIND SINCE BATCH ADDITION
+                return
                 self.CTupdate_labels()
                 self.current_state = "pic"
                 self.switch_masks(masks=False)
@@ -609,6 +613,8 @@ class PlotActionCT(PlotAction):
                 elif self.current_state == "blo":
                     self.CP.stopit()
                     delattr(self, "CP")
+                    self.CTblock_cells(self.list_of_cells)
+                    del self.list_of_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
 
@@ -623,19 +629,6 @@ class PlotActionCT(PlotAction):
                     del self.CTmito_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-
-                elif self.current_state == "pic":
-                    self.CP.stopit()
-                    delattr(self, "CP")
-                    self.CTselect_jitcells(self.list_of_cells)
-                    self.current_subplot = None
-                    self.current_state = None
-                    self.ax_sel = None
-                    self.z = None
-                    del self.list_of_cells[:]
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
-                    self.visualization()
-                    self.switch_masks(True)
 
                 elif self.current_state == "pic":
                     self.CP.stopit()
@@ -916,17 +909,17 @@ class PlotActionCT(PlotAction):
         cell = [lab, z, self.tg]
         idxtopop = []
         pop_cell = False
-        for jj, _lab in enumerate(self.CTblocked_cells):
+        for jj, _cell in enumerate(self.list_of_cells):
+            _lab = _cell[0]
+            _t = _cell[2]
             if _lab == lab:
                 pop_cell = True
                 idxtopop.append(jj)
         if pop_cell:
             idxtopop.sort(reverse=True)
             for jj in idxtopop:
-                self.CTblocked_cells.pop(jj)
                 self.list_of_cells.pop(jj)
         else:
-            self.CTblocked_cells.append(lab)
             self.list_of_cells.append(cell)
 
         self.update()
@@ -1194,9 +1187,8 @@ class PlotActionCT(PlotAction):
         if lab is None:
             return
         CT_cell = _get_cell(self.jitcells_selected, label=lab)
-        cellid = CT_cell.id
         cont = True
-        cell = [lab, cellid, self.tg]
+        cell = [lab, z, self.tg]
         if cell not in self.CTmito_cells:
             if len(self.CTmito_cells) == 3:
                 printfancy("ERROR: cannot select more than 3 cells")
@@ -1237,8 +1229,7 @@ class PlotActionCT(PlotAction):
         if lab is None:
             return
         CT_cell = _get_cell(self.jitcells_selected, label=lab)
-        cellid = CT_cell.id
-        cell = [lab, cellid, self.tg]
+        cell = [lab, z, self.tg]
         idxtopop = []
         pop_cell = False
         for jj, _cell in enumerate(self.list_of_cells):

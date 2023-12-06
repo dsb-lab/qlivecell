@@ -152,7 +152,6 @@ class CellTrackingBatch(CellTracking):
         # list of cells used by the pickers
         self.list_of_cells = []
         self.mito_cells = []
-        self.blocked_cells = []
         
         # extra attributes
         self._min_outline_length = 50
@@ -229,6 +228,7 @@ class CellTrackingBatch(CellTracking):
         ##  Mito and Apo events
         self.apoptotic_events = []
         self.mitotic_events = []
+        self.blocked_cells = []
 
         # count number of actions done during manual curation
         # this is not reset after training
@@ -259,6 +259,7 @@ class CellTrackingBatch(CellTracking):
             self._track_args["time_step"],
             self.apoptotic_events,
             self.mitotic_events,
+            self.blocked_cells,
             self.nactions,
             args,
         )
@@ -273,8 +274,12 @@ class CellTrackingBatch(CellTracking):
         self.CT_info.time_step = self._track_args["time_step"]
         self.CT_info.apo_cells = self.apoptotic_events
         self.CT_info.mito_cells = self.mitotic_events
+        self.CT_info.blocked_cells = self.blocked_cells
         self.CT_info.nactions = self.nactions
 
+    def unblock_cells(self):
+        del self.blocked_cells[:]
+        
     def init_batch(self):
 
         files = get_file_names(self.path_to_save)
@@ -409,7 +414,8 @@ class CellTrackingBatch(CellTracking):
             self.CT_info = load_CT_info(self.path_to_save, self.embcode)
             self.apoptotic_events = self.CT_info.apo_cells
             self.mitotic_events = self.CT_info.mito_cells
-    
+            self.blocked_cells = self.CT_info.blocked_cells
+            
         if batch_args is None: batch_args = self._batch_args
         self._batch_args = check_and_fill_batch_args(batch_args)
 
@@ -727,7 +733,7 @@ class CellTrackingBatch(CellTracking):
                         mito_cell[0] = new_lab
 
             unique_lab_changes = get_unique_lab_changes(self.new_label_correspondance_T)
-            for blid, blabel in self.blocked_cells:
+            for blid, blabel in enumerate(self.blocked_cells):
                 if blabel in unique_lab_changes[:,0]:
                     post_label_id = np.where(unique_lab_changes[:,0]==blabel)[0][0]
                     self.blocked_cells[blid] = unique_lab_changes[post_label_id,1]
@@ -866,12 +872,11 @@ class CellTrackingBatch(CellTracking):
                 self.max_label = new_maxlabel
                 self.currentcellid = new_currentcellid
                  # If cell is not removed, check if last time is removed
-                if self.batch_number!=self.batch_max:
-                    if t not in cell.times:
-                        # check which times maxlab appears in future batches
-                        first_future_time = PACP.tg + 1 + PACP.t - t
-                        lab_change = np.array([[cell.label, self.max_label]]).astype('uint16')
-                        add_lab_change(first_future_time, lab_change, self.label_correspondance_T, self.unique_labels_T)
+                lab_change = np.array([[cell.label, self.max_label]]).astype('uint16')
+                
+                if t not in cell.times:
+                    first_future_time = self.batch_times_list_global[t]
+                    add_lab_change(first_future_time, lab_change, self.label_correspondance_T, self.unique_labels_T)
 
                 update_jitcell(new_jitcell, self._stacks)
                 jitcellslen = len(self.jitcells_selected)
@@ -1036,10 +1041,9 @@ class CellTrackingBatch(CellTracking):
             self.jitcells_selected.append(self.jitcells[-1])
 
         # check which times maxlab appears in future batches
-        first_future_time = new_cell.times[-1] + 1
-        if first_future_time < self.total_times:
-            lab_change = np.array([[cell.label, new_cell.label]]).astype('uint16')
-            add_lab_change(first_future_time, lab_change, self.label_correspondance_T, self.unique_labels_T)
+        first_future_time = self.batch_times_list_global[min(Ts)]
+        lab_change = np.array([[cell.label, new_cell.label]]).astype('uint16')
+        add_lab_change(first_future_time, lab_change, self.label_correspondance_T, self.unique_labels_T)
         
         self.update_label_attributes()
 
@@ -1125,14 +1129,15 @@ class CellTrackingBatch(CellTracking):
 
         poped = self.jitcells.pop(idx1)
 
-        if self.batch_number!=self.batch_max:
-            # check which times maxlab appears in future batches
-            first_future_time = self.batch_times_list_global[-1]+self.batch_overlap
-            if lab_change is None:
-                self.max_label = self.max_label + 1
-                lab_change = np.array([[poped.label, self.max_label]]).astype('uint16')
-                
-            add_lab_change(first_future_time, lab_change, self.label_correspondance_T, self.unique_labels_T)
+        # check which times maxlab appears in future batches
+        # first_future_time = self.batch_times_list_global[-1]+self.batch_overlap
+        first_future_time = self.batch_times_list_global[poped.times[0]]
+
+        if lab_change is None:
+            self.max_label = self.max_label + 1
+            lab_change = np.array([[poped.label, self.max_label]]).astype('uint16')
+            
+        add_lab_change(first_future_time, lab_change, self.label_correspondance_T, self.unique_labels_T)
             
         if len_selected_jitcells == len(self.jitcells_selected):
             poped = self.jitcells_selected.pop(idx2)

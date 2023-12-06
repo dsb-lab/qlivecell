@@ -61,6 +61,7 @@ class CTinfoJSONDecoder(json.JSONDecoder):
             time_step = d["time_step"]
             apo_cells = d["apo_cells"]
             mito_cells = d["mito_cells"]
+            blocked_cells = d["blocked_cells"]
             nactions = d["nactions"]
             args = d["args"]
 
@@ -73,6 +74,7 @@ class CTinfoJSONDecoder(json.JSONDecoder):
                 time_step,
                 apo_cells,
                 mito_cells,
+                blocked_cells,
                 nactions,
                 args,
             )
