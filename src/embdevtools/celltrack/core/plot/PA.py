@@ -454,6 +454,7 @@ class PlotActionCT(PlotAction):
                 self.switch_centers()
             elif event.key == "b":
                 self.current_state = "blo"
+                self.switch_masks(masks=False)
                 self.block_cells()
             elif event.key == "S":
                 # self.CTone_step_copy(self.t)
@@ -669,7 +670,7 @@ class PlotActionCT(PlotAction):
                 cells_to_plot = self.CTlist_of_cells
             if self.current_state == "mit":
                 cells_to_plot = self.CTmito_cells
-            elif self.current_state == "apo":
+            elif self.current_state in ["apo", "blo"]:
                 cells_to_plot = self.list_of_cells
 
             cells_string = [
@@ -907,8 +908,8 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.block_cells_callback)
     
     def block_cells_callback(self, event):
-        get_axis_PACP(self, event, block=False)
-        lab, z = get_cell_PACP(self, event)
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event, block=False)
         if lab is None:
             return
         CT_cell = _get_cell(self.jitcells_selected, label=lab)
