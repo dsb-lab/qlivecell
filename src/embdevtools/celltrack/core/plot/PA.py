@@ -4,7 +4,7 @@ import matplotlib as mtp
 import numpy as np
 from numba.typed import List
 from ..dataclasses import construct_Cell_from_jitCell
-from ..tools.ct_tools import set_cell_color
+from ..tools.ct_tools import set_cell_color, get_cell_color
 from ..tools.save_tools import save_cells
 from ..tools.tools import printfancy
 from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
@@ -27,13 +27,16 @@ def get_point_PACP(dim_change, event):
     return np.rint(picked_point / dim_change).astype("uint16")
 
 
-def get_cell_PACP(PACP, event):
+def get_cell_PACP(PACP, event, block):
     picked_point = get_point_PACP(PACP._plot_args["dim_change"], event)
     for i, mask in enumerate(PACP.CTMasks[PACP.t][PACP.z]):
         for point in mask:
             if (picked_point == point).all():
                 z = PACP.z
                 lab = PACP.CTLabels[PACP.t][z][i]
+                if block and lab in PACP.CTblocked_cells:
+                    printfancy("ERROR: cell {} is blocked. Unblock it to do any other action on it")
+                    return None, None
                 return lab, z
     return None, None
 
@@ -114,6 +117,8 @@ class PlotAction:
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
         self.CTplot_args = CT._plot_args
+        self.CTblocked_cells = CT.blocked_cells
+        
         # Point to sliders
         CT._time_slider.on_changed(self.update_slider_t)
         self.set_val_t_slider = CT._time_slider.set_val
@@ -162,6 +167,7 @@ class PlotAction:
 
         self.CTlist_of_cells = CT.list_of_cells
         self.CTmito_cells = CT.mito_cells
+        self.CTblocked_cells = CT.blocked_cells
 
         self.CTapoptotic_events = CT.apoptotic_events
         self.CTmitotic_events = CT.mitotic_events
@@ -173,6 +179,7 @@ class PlotAction:
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
         self.CTplot_args = CT._plot_args
+        
         self.times = CT.times
         if self.batch:
             self.global_times_list = CT.batch_times_list_global
@@ -445,6 +452,9 @@ class PlotActionCT(PlotAction):
                 self.switch_masks(masks=None)
             elif event.key == "l":
                 self.switch_centers()
+            elif event.key == "b":
+                self.current_state = "blo"
+                self.block_cells()
             elif event.key == "S":
                 # self.CTone_step_copy(self.t)
                 self.current_state = "Sep"
@@ -594,6 +604,12 @@ class PlotActionCT(PlotAction):
                     del self.list_of_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
+                
+                elif self.current_state == "blo":
+                    self.CP.stopit()
+                    delattr(self, "CP")
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.visualization()
 
                 elif self.current_state == "mit":
                     self.CP.stopit()
@@ -689,7 +705,7 @@ class PlotActionCT(PlotAction):
 
         for i, lab_z_t in enumerate(labs_z_to_plot):
             jitcell = self._CTget_cell(label=lab_z_t[0])
-            color = np.append(self._plot_args["labels_colors"][jitcell.label], 1)
+            color = get_cell_color(jitcell, self._plot_args["labels_colors"], 1, self.CTblocked_cells)
             color = np.rint(color * 255).astype("uint8")
             set_cell_color(
                 self._masks_stack,
@@ -713,7 +729,7 @@ class PlotActionCT(PlotAction):
             if jitcell is None:
                 continue
 
-            color = np.append(self._plot_args["labels_colors"][jitcell.label], 0)
+            color = get_cell_color(jitcell, self._plot_args["labels_colors"], 0, self.CTblocked_cells)
             color = np.rint(color * 255).astype("uint8")
             set_cell_color(
                 self._masks_stack,
@@ -865,7 +881,7 @@ class PlotActionCT(PlotAction):
                 alpha = 1
             else:
                 alpha = 0
-            color = np.append(self._plot_args["labels_colors"][jitcell.label], alpha)
+            color = get_cell_color(jitcell, self._plot_args["labels_colors"], alpha, self.CTblocked_cells)
             color = np.rint(color * 255).astype("uint8")
             set_cell_color(
                 self._masks_stack,
@@ -882,6 +898,38 @@ class PlotActionCT(PlotAction):
     def switch_centers(self):
         self.CTplot_args["plot_centers"] = [not i for i in self.CTplot_args["plot_centers"]]
         self.visualization()
+    
+    def block_cells(self):
+        self.title.set(text="BLOCK CELLS", ha="left", x=0.01)
+        self.instructions.set(text="Right-click to select cells to block")
+        self.instructions.set_backgroundcolor((0.26, 0.16, 0.055, 0.4))
+        self.fig.patch.set_facecolor((0.26, 0.16, 0.055, 0.1))
+        self.CP = CellPicker(self.fig.canvas, self.block_cells_callback)
+    
+    def block_cells_callback(self, event):
+        get_axis_PACP(self, event, block=False)
+        lab, z = get_cell_PACP(self, event)
+        if lab is None:
+            return
+        CT_cell = _get_cell(self.jitcells_selected, label=lab)
+        cell = [lab, z, self.tg]
+        idxtopop = []
+        pop_cell = False
+        for jj, _lab in enumerate(self.CTblocked_cells):
+            if _lab == lab:
+                pop_cell = True
+                idxtopop.append(jj)
+        if pop_cell:
+            idxtopop.sort(reverse=True)
+            for jj in idxtopop:
+                self.CTblocked_cells.pop(jj)
+                self.list_of_cells.pop(jj)
+        else:
+            self.CTblocked_cells.append(lab)
+            self.list_of_cells.append(cell)
+
+        self.update()
+        self.reploting()
         
     def add_cells(self):
         self.title.set(text="ADD CELL MODE", ha="left", x=0.01)
@@ -1177,7 +1225,7 @@ class PlotActionCT(PlotAction):
 
     def apoptosis(self):
         self.title.set(text="DETECT APOPTOSIS", ha="left", x=0.01)
-        self.instructions.set(text="Double left-click to select Z-PLANE")
+        self.instructions.set(text="Right-click to select apoptotic cells")
         self.instructions.set_backgroundcolor((0.0, 0.0, 0.0, 0.4))
         self.fig.patch.set_facecolor((0.0, 0.0, 0.0, 0.1))
         self.CP = CellPicker(self.fig.canvas, self.apoptosis_callback)

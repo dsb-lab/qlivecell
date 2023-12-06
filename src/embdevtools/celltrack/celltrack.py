@@ -496,7 +496,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="masks",
         )
         compute_point_stack(
@@ -506,7 +507,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="outlines",
         )
 
@@ -711,7 +713,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="masks",
         )
         self._plot_args["plot_masks"] = True
@@ -723,7 +726,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="outlines",
         )
         self.store_CT_info()
@@ -857,7 +861,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            0,
+            blocked_cells=self.blocked_cells,
+            alpha=0,
             labels=[self.jitcells_selected[-1].label],
             mode="masks",
         )
@@ -868,7 +873,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             labels=[self.jitcells_selected[-1].label],
             mode="outlines",
         )
@@ -897,6 +903,7 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
             labels=cells,
             mode="masks",
             rem=True,
@@ -908,6 +915,7 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
             labels=cells,
             mode="outlines",
             rem=True,
@@ -989,6 +997,7 @@ class CellTracking(object):
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
             labels=[*new_labs, *labs_to_replot],
+            blocked_cells=self.blocked_cells,
             alpha=0,
             mode="masks",
         )
@@ -1000,6 +1009,7 @@ class CellTracking(object):
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
             labels=[*new_labs, *labs_to_replot],
+            blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
         )
@@ -1050,6 +1060,7 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
             alpha=0,
             mode="masks",
         )
@@ -1060,6 +1071,7 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
         )
@@ -1109,6 +1121,7 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
             alpha=0,
             mode="masks",
         )
@@ -1119,6 +1132,7 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
         )
@@ -1150,7 +1164,8 @@ class CellTracking(object):
                 self.unique_labels,
                 self._plot_args["dim_change"],
                 self._plot_args["labels_colors"],
-                0,
+                blocked_cells=self.blocked_cells,
+                alpha=0,
                 mode="masks",
             )
             compute_point_stack(
@@ -1160,7 +1175,8 @@ class CellTracking(object):
                 self.unique_labels,
                 self._plot_args["dim_change"],
                 self._plot_args["labels_colors"],
-                1,
+                blocked_cells=self.blocked_cells,
+                alpha=1,
                 mode="outlines",
             )
 
@@ -1183,7 +1199,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            0,
+            blocked_cells=self.blocked_cells,
+            alpha=0,
             mode="masks",
         )
         compute_point_stack(
@@ -1193,7 +1210,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="outlines",
         )
 
@@ -1248,7 +1266,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            0,
+            blocked_cells=self.blocked_cells,
+            alpha=0,
             mode="masks",
         )
         compute_point_stack(
@@ -1258,7 +1277,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="outlines",
         )
 
@@ -1319,7 +1339,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="masks",
         )
         compute_point_stack(
@@ -1329,7 +1350,8 @@ class CellTracking(object):
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="outlines",
         )
         
@@ -1498,7 +1520,8 @@ class CellTracking(object):
                 self.unique_labels,
                 self._plot_args["dim_change"],
                 self._plot_args["labels_colors"],
-                1,
+                blocked_cells=self.blocked_cells,
+                alpha=1,
                 mode="masks",
             )
             compute_point_stack(
@@ -1508,7 +1531,8 @@ class CellTracking(object):
                 self.unique_labels,
                 self._plot_args["dim_change"],
                 self._plot_args["labels_colors"],
-                1,
+                blocked_cells=self.blocked_cells,
+                alpha=1,
                 mode="outlines",
             )
 

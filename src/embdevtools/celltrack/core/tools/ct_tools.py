@@ -151,7 +151,8 @@ def set_cell_color(cell_stack, points, cell_times, cell_zs, color, dim_change, t
                         cell_stack[tc, zc, x, y] = color
 
 
-def get_cell_color(jitcell, labels_colors, alpha):
+def get_cell_color(jitcell, labels_colors, alpha, blocked_cells):
+    if jitcell.label in blocked_cells: return np.array([0.3, 0.3, 0.3, alpha])
     return np.append(labels_colors[jitcell.label], alpha)
 
 # @njit
@@ -162,6 +163,7 @@ def compute_point_stack(
     unique_labs,
     dim_change,
     labels_colors,
+    blocked_cells = [],
     alpha=1,
     labels=None,
     mode=None,
@@ -181,7 +183,7 @@ def compute_point_stack(
         if rem:
             color = np.zeros(4)
         else:
-            color = get_cell_color(jitcell, labels_colors, alpha)
+            color = get_cell_color(jitcell, labels_colors, alpha, blocked_cells)
 
         color = np.rint(color * 255).astype("uint8")
         if mode == "outlines":

@@ -5,6 +5,7 @@ from numba import njit, prange
 from numba.typed import List
 from numba import uint16
 import numba as nb
+from .ct_tools import nb_unique
 
 def compute_batch_times(round, batch_size, batch_overlap, totalsize):
     first = (batch_size * round) - (batch_overlap * round)
@@ -135,3 +136,11 @@ def add_lab_change(first_future_time, lab_change, label_correspondance_T, unique
     for _t in ids[0]:
         t = _t + first_future_time
         label_correspondance_T[t] = nb_add_row(label_correspondance_T[t], lab_change)
+
+@njit()
+def get_unique_lab_changes(label_correspondance_T):
+    lc_flatten = np.empty((0,2), dtype='uint16')
+    for t in prange(len(label_correspondance_T)):
+        for lcid in prange(len(label_correspondance_T[t])):
+            nb_add_row(lc_flatten, label_correspondance_T[t][lcid:lcid+1])
+    return nb_unique(lc_flatten, axis=0)

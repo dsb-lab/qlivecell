@@ -71,7 +71,7 @@ from .core.tools.batch_tools import (compute_batch_times, extract_total_times_fr
                                      nb_add_row, fill_label_correspondance_T,
                                      nb_get_max_nest_list, update_unique_labels_T,
                                      update_new_label_correspondance, remove_static_labels_label_correspondance,
-                                     add_lab_change)
+                                     add_lab_change, get_unique_lab_changes)
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                                      greedy_tracking, hungarian_tracking)
 from .core.tracking.tracking_tools import (
@@ -152,7 +152,8 @@ class CellTrackingBatch(CellTracking):
         # list of cells used by the pickers
         self.list_of_cells = []
         self.mito_cells = []
-
+        self.blocked_cells = []
+        
         # extra attributes
         self._min_outline_length = 50
         self._nearest_neighs = self._min_outline_length
@@ -725,6 +726,12 @@ class CellTrackingBatch(CellTracking):
                         new_lab = self.new_label_correspondance_T[mito_cell[1]][idx[0][0],1]
                         mito_cell[0] = new_lab
 
+            unique_lab_changes = get_unique_lab_changes(self.new_label_correspondance_T)
+            for blid, blabel in self.blocked_cells:
+                if blabel in unique_lab_changes[:,0]:
+                    post_label_id = np.where(unique_lab_changes[:,0]==blabel)[0][0]
+                    self.blocked_cells[blid] = unique_lab_changes[post_label_id,1]
+
             substitute_labels(self.batch_times_list_global[-1]+1,self.batch_totalsize, self.path_to_save, self.new_label_correspondance_T)
             self.label_correspondance_T = List([np.empty((0,2), dtype='uint16') for t in range(len(self.unique_labels_T))])
             # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))
@@ -740,7 +747,8 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="masks",
         )
         self._plot_args["plot_masks"] = True
@@ -752,7 +760,8 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="outlines",
         )
 
@@ -777,6 +786,7 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
             labels=cells,
             mode="masks",
             rem=True,
@@ -788,6 +798,7 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
             labels=cells,
             mode="outlines",
             rem=True,
@@ -876,6 +887,7 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
             labels=[*new_labs, *labs_to_replot],
             alpha=0,
             mode="masks",
@@ -887,6 +899,7 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
             labels=[*new_labs, *labs_to_replot],
             alpha=1,
             mode="outlines",
@@ -920,7 +933,8 @@ class CellTrackingBatch(CellTracking):
                 self.unique_labels_batch,
                 self._plot_args["dim_change"],
                 self._plot_args["labels_colors"],
-                0,
+                blocked_cells=self.blocked_cells,
+                alpha=0,
                 mode="masks",
             )
             compute_point_stack(
@@ -930,7 +944,8 @@ class CellTrackingBatch(CellTracking):
                 self.unique_labels_batch,
                 self._plot_args["dim_change"],
                 self._plot_args["labels_colors"],
-                1,
+                blocked_cells=self.blocked_cells,
+                alpha=1,
                 mode="outlines",
             )
 
@@ -961,7 +976,8 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            0,
+            blocked_cells=self.blocked_cells,
+            alpha=0,
             mode="masks",
         )
         compute_point_stack(
@@ -971,7 +987,8 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="outlines",
         )
 
@@ -1033,7 +1050,8 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            0,
+            blocked_cells=self.blocked_cells,
+            alpha=0,
             mode="masks",
         )
         compute_point_stack(
@@ -1043,7 +1061,8 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="outlines",
         )
 
@@ -1074,7 +1093,8 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="masks",
         )
         compute_point_stack(
@@ -1084,7 +1104,8 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_batch,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
-            1,
+            blocked_cells=self.blocked_cells,
+            alpha=1,
             mode="outlines",
         )
 
