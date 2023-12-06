@@ -409,7 +409,8 @@ class CellTrackingBatch(CellTracking):
         self.load(load_ct_info=False)
 
     def load(self, load_ct_info=True, batch_args=None):
-
+        print("###############        LOADING AND INITIALIZING       ################")
+        printfancy("")
         if load_ct_info:
             self.CT_info = load_CT_info(self.path_to_save, self.embcode)
             self.apoptotic_events = self.CT_info.apo_cells
@@ -533,7 +534,8 @@ class CellTrackingBatch(CellTracking):
             printfancy("")
             
             self.init_cells(TLabels, Labels, Outlines, Masks, label_correspondance)
-            save_cells_to_labels_stack(self.jitcells, self.CT_info, [t], path=self.path_to_save, filename=t, split_times=False, save_info=False)
+
+            save_cells_to_labels_stack(self.jitcells, self.CT_info, List([t]), path=self.path_to_save, filename=t, split_times=False, save_info=False)
 
 
             # Initialize cells with this
@@ -603,7 +605,10 @@ class CellTrackingBatch(CellTracking):
         else:
             self.max_label = int(max(self.unique_labels))
 
-        self.jitcells = typed.List()
+        jitcellinputs = _predefine_jitcell_inputs()
+        jitcell = jitCell(*jitcellinputs)
+        self.jitcells = typed.List([jitcell])
+        self.jitcells.pop(0)
 
         printfancy("Progress: ")
 
@@ -1131,7 +1136,7 @@ class CellTrackingBatch(CellTracking):
 
         # check which times maxlab appears in future batches
         # first_future_time = self.batch_times_list_global[-1]+self.batch_overlap
-        first_future_time = self.batch_times_list_global[poped.times[0]]
+        first_future_time = self.batch_times_list_global[0]
 
         if lab_change is None:
             self.max_label = self.max_label + 1

@@ -45,7 +45,6 @@ def progressbar(step, total, width=46):
 
 
 import inspect
-
 """
     copied from https://stackoverflow.com/questions/12627118/get-a-function-arguments-default-value
 """
