@@ -21,7 +21,7 @@ from numba.typed import List
 
 from .core.dataclasses import (CellTracking_info, backup_CellTrack,
                                construct_Cell_from_jitCell,
-                               construct_jitCell_from_Cell)
+                               construct_jitCell_from_Cell, jitCell)
 from .core.plot.plot_extraclasses import Slider_t_batch, Slider_z 
 from .core.plot.plot_iters import plotRound
 from .core.multiprocessing import (multiprocess_add_tasks, multiprocess_end,
@@ -48,7 +48,8 @@ from .core.segmentation.segmentation_training import (
     train_CellposeModel, train_StardistModel)
 from .core.tools.cell_tools import (create_cell, find_z_discontinuities_jit,
                                     update_cell, update_jitcell, find_t_discontinuities_jit, 
-                                    extract_jitcells_from_label_stack, update_jitcells)
+                                    extract_jitcells_from_label_stack, update_jitcells,
+                                    _predefine_jitcell_inputs)
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack)
 from .core.tools.input_tools import (get_file_embcode, get_file_names,
