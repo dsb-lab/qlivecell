@@ -110,7 +110,9 @@ def update_unique_labels_T(post_range_start ,post_range_end, label_correspondanc
 def update_new_label_correspondance(post_range_start ,post_range_end, label_correspondance_T, new_label_correspondance_T):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
-        for lab_change in label_correspondance_T[postt]:
+        lab_corr_range = prange(len(label_correspondance_T[postt]))
+        for lcid in lab_corr_range:
+            lab_change = label_correspondance_T[postt][lcid]
             pre_label = lab_change[0]
             post_label = lab_change[1]
             idx = np.where(new_label_correspondance_T[postt][:,0]==post_label)
@@ -135,12 +137,36 @@ def add_lab_change(first_future_time, lab_change, label_correspondance_T, unique
     ids = nb_list_where(unique_labels_T[first_future_time:], lab_change[0][0])
     for _t in ids[0]:
         t = _t + first_future_time
-        label_correspondance_T[t] = nb_add_row(label_correspondance_T[t], lab_change)
+        if lab_change[0][0] in label_correspondance_T[t][:,1]:
+            idx = np.where(label_correspondance_T[t][:,1]==lab_change[0][0])
+            label_correspondance_T[t][idx[0][0],1] = lab_change[0][1]
+        else:
+            label_correspondance_T[t] = nb_add_row(label_correspondance_T[t], lab_change)
 
 @njit()
 def get_unique_lab_changes(label_correspondance_T):
     lc_flatten = np.empty((0,2), dtype='uint16')
     for t in prange(len(label_correspondance_T)):
         for lcid in prange(len(label_correspondance_T[t])):
-            nb_add_row(lc_flatten, label_correspondance_T[t][lcid:lcid+1])
+            lc_flatten = nb_add_row(lc_flatten, label_correspondance_T[t][lcid:lcid+1])
+
     return nb_unique(lc_flatten, axis=0)
+
+
+def update_apo_cells(apoptotic_events, t, lab_change):
+    for apo_ev in apoptotic_events:
+        if apo_ev[1] >= t:
+            if apo_ev[0] == lab_change[0][0]:
+                apo_ev[0] = lab_change[0][1]
+
+def update_mito_cells(mitotic_events, t, lab_change):
+    for mito_ev in mitotic_events:
+        for mito_cell in mito_ev:
+            if mito_cell[1] >= t:
+                if mito_cell[0] == lab_change[0][0]:
+                    mito_cell[0] = lab_change[0][1]
+
+def update_blocked_cells(blocked_cells, lab_change):
+    for blid, blabel in enumerate(blocked_cells):
+        if blabel == lab_change[0][0]:
+            blocked_cells[blid] = lab_change[1]
