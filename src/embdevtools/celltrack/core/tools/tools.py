@@ -10,7 +10,6 @@ LINE_CLEAR = "\x1b[2K"
 
 
 def printclear(n=1):
-    return
     LINE_UP = "\033[1A"
     LINE_CLEAR = "\x1b[2K"
     for i in range(n):
@@ -18,12 +17,18 @@ def printclear(n=1):
 
 
 def printfancy(string="", finallength=70, clear_prev=0):
-    new_str = "#   " + string
-    while len(new_str) < finallength - 1:
-        new_str += " "
-    
-    if len(new_str) < finallength:
-        new_str += "#"
+    if string is None:
+        new_str=""
+        while len(new_str) < finallength - 1:
+            new_str += "#"
+    else:
+        new_str = "#   " + string
+        while len(new_str) < finallength - 1:
+            new_str += " "
+        
+        if len(new_str) < finallength:
+            new_str += "#"
+        
     printclear(clear_prev)
     print(new_str)
 

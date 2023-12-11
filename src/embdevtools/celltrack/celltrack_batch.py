@@ -424,7 +424,6 @@ class CellTrackingBatch(CellTracking):
         if batch_args is None: batch_args = self._batch_args
         self._batch_args = check_and_fill_batch_args(batch_args)
 
-        printfancy("")
         printfancy("Initializing first batch and cells...")
         self.init_batch()
         
@@ -657,10 +656,10 @@ class CellTrackingBatch(CellTracking):
 
     def update_label_attributes(self):
         _reinit_update_CT_cell_attributes(
-            self.jitcells_selected, self.slices, self.times, self.ctattr
+            self.jitcells, self.slices, self.times, self.ctattr
         )
-        if len(self.jitcells_selected) != 0:
-            _update_CT_cell_attributes(self.jitcells_selected, self.ctattr)
+        if len(self.jitcells) != 0:
+            _update_CT_cell_attributes(self.jitcells, self.ctattr)
         self.unique_labels_batch, self.max_label_batch = _extract_unique_labels_and_max_label(
             self.ctattr.Labels
         )
@@ -672,7 +671,7 @@ class CellTrackingBatch(CellTracking):
             self.unique_labels_T[t] = self.unique_labels_T_batch[tid]
         
         self.unique_labels = self.unique_labels_batch
-        self.max_label_T = [np.max(sublist) for sublist in self.unique_labels_T]
+        self.max_label_T = [np.max(sublist) if len(sublist)!=0 else 0 for sublist in self.unique_labels_T]
         self.max_label = np.max(self.max_label_T)
         max_lab = nb_get_max_nest_list(self.label_correspondance_T)
         self.max_label = np.maximum(self.max_label, max_lab)
@@ -1193,7 +1192,7 @@ class CellTrackingBatch(CellTracking):
             cells = [cell for cell in cells if cell!=cell2.label]
             
         self.update_label_attributes()
-        self.jitcells_selected = self.jitcells
+        # self.jitcells_selected = self.jitcells
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
@@ -1327,7 +1326,46 @@ class CellTrackingBatch(CellTracking):
 
         self.nactions += 1
         
-   
+    def select_jitcells(self, list_of_cells):
+        cells = [x[0] for x in list_of_cells]
+
+        if len(cells) == 0:
+            return
+
+        self.jitcells = typed.List([jitcell.copy() for jitcell in self.jitcells])
+
+        del self.jitcells_selected[:]
+
+        for lab in cells:
+            cell = self._get_cell(lab)
+            self.jitcells_selected.append(cell)
+
+        self.update_label_attributes()
+
+        compute_point_stack(
+            self._masks_stack,
+            self.jitcells_selected,
+            List(range(self.times)),
+            self.unique_labels,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
+            alpha=1,
+            mode="masks",
+        )
+        compute_point_stack(
+            self._outlines_stack,
+            self.jitcells_selected,
+            List(range(self.times)),
+            self.unique_labels,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
+            alpha=1,
+            mode="outlines",
+        )
+
+
     def _del_cell(self, label=None, cellid=None, lab_change=None, t=None):
         len_selected_jitcells = len(self.jitcells_selected)
         idx1 = None
@@ -1363,6 +1401,94 @@ class CellTrackingBatch(CellTracking):
         else:
             pass  # selected jitcells is a copy of jitcells so it was deleted already
         self._get_cellids_celllabels()
+
+    def print_actions(self, event):
+
+        actions = ["- ESC : visualization",
+                   "- a : add cell",
+                   "- d : delete cell",
+                   "- D : delete cell in batch"
+                   "- j : join cells",
+                   "- c : combine cells - z",
+                   "- C : combine cells - t",
+                   "- S : separate cells - t",
+                   "- A : apoptotic event",
+                   "- M : mitotic events",
+                   "- z : undo previous action",
+                   "- Z : undo all actions",
+                   "- o : show/hide outlines",
+                   "- m : show/hide outlines",
+                   "- u : update and save cells",
+                   "- q : quit plot"]
+        
+        printfancy("")
+        printfancy("List of possible actions and their key")
+        printfancy("")
+        for action in actions:
+            printfancy(action)
+        printfancy("")
+        printfancy(None)
+
+
+    def print_hints(self, _event):
+
+        marked_apo = []
+        for event in self.apoptotic_events:
+            if event[1] == self.PACP.tg:
+                cell = self._get_cell(label=event[0])
+                if cell is None: 
+                    self.apoptotic_events.remove(event)
+                else:
+                    marked_apo.append(cell.label)
+    
+
+        marked_mito = []
+        for event in self.mitotic_events:
+            for mitocell in event:
+                if mitocell[1] == self.tg:
+                    cell = self._CTget_cell(label=mitocell[0])
+                    if cell is None: 
+                        self.mitotic_events.remove(event)
+                    else:
+                        marked_mito.append(cell.label)
+    
+        disappeared_cells = []
+
+        if self.PACP.t != self.times - 1:
+            for item_id, item in enumerate(self.hints[self.PACP.t][0]):
+                disappeared_cells.append(item)
+
+        appeared_cells = []
+        if self.PACP.t != 0:
+            for item_id, item in enumerate(self.hints[self.PACP.t - 1][1]):
+                appeared_cells.append(item)
+        
+        printfancy("")
+        printfancy("HINTS for TIME {:d}: posible apo/mito cells".format(self.PACP.tg+1))
+        printfancy("")
+        printfancy("disappeared cells: ")
+        for lab in disappeared_cells:
+            printfancy("{:d}".format(lab))
+        printfancy("")
+
+        printfancy("appeared cells: ")
+        for lab in appeared_cells:
+            printfancy("{:d}".format(lab))
+        printfancy("")
+
+        printfancy("apo cells: ")
+        for lab in marked_apo:
+            printfancy("{:d}".format(lab))
+        printfancy("")
+
+        printfancy("mito cells: ")
+        for lab in marked_mito:
+            printfancy("{:d}".format(lab))
+        printfancy("")
+
+        printfancy("CONFLICTS = {:d}".format(self.conflicts))
+        printfancy("")
+        printfancy(None)
 
     def plot_tracking(
         self,
@@ -1457,16 +1583,26 @@ class CellTrackingBatch(CellTracking):
         )
         self._z_slider = z_slider
 
-
+        axbutt_actions = fig.add_axes([0.02, 0.8, 0.06, 0.06])
         self._actions_button = Button(
-            ax[0],
-            "Action list",
+            axbutt_actions,
+            "ACTIONS",
             color="grey",
             hovercolor="black",
             useblit=True,
         )
         self._actions_button.on_clicked(self.print_actions)
-        
+
+        axbutt_hints = fig.add_axes([0.02, 0.7, 0.06, 0.06])
+        self._actions_hints = Button(
+            axbutt_hints,
+            "HINTS",
+            color="brown",
+            hovercolor="black",
+            useblit=True,
+        )
+        self._actions_hints.on_clicked(self.print_hints)
+
         if cell_picker:
             self.PACP = PlotActionCellPicker(fig, ax, self, mode)
         else:

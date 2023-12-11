@@ -356,16 +356,12 @@ class PlotActionCT(PlotAction):
         # Define text boxes to plot
         self.current_state = "START"
 
-        actionsbox = "Possible actions: \n- ESC : visualization\n- a : add cell\n- d : delete cell\n- j : join cells\n- c : combine cells - z\n- C : combine cells - t\n- S : separate cells - t\n- A : apoptotic event\n- M : mitotic events\n- z : undo previous action\n- Z : undo all actions\n- o : show/hide outlines\n- m : show/hide outlines\n- s : save cells \n- q : quit plot"
-        self.actionlist = self.fig.text(
-            0.01, 0.8, actionsbox, fontsize=1, ha="left", va="top"
-        )
         self.title = self.fig.text(0.02, 0.96, "", ha="left", va="top", fontsize=1)
         if self.batch:
             self.timetxt = self.fig.text(
                 0.02,
                 0.92,
-                "TIME = {timem} min  ({t}/{tt})  ;BATCH = {b}/{bb}".format(
+                "TIME = {timem} min  ({t}/{tt})  ; BATCH = {b}/{bb}".format(
                     timem=self._tstep * self.tg, t=self.tg + 1, tt=self.total_times, b=self.bn+1, bb=self.batch_rounds
                 ),
                 fontsize=1,
@@ -394,8 +390,6 @@ class PlotActionCT(PlotAction):
         self.selected_cells = self.fig.text(
             0.98, 0.89, "Selection", fontsize=1, ha="right", va="top"
         )
-        hints = "possible apo/mito cells:\n\ncells\n\n\n\nmarked apo cells:\n\ncells\n\n\nmarked mito cells:\n\ncells"
-        self.hints = self.fig.text(0.01, 0.5, hints, fontsize=1, ha="left", va="top")
 
         # Predefine some variables
         self.plot_outlines = True
@@ -404,6 +398,7 @@ class PlotActionCT(PlotAction):
         self.update()
 
     def __call__(self, event):
+        print(event.key)
         if self.current_state == None:
             if event.key == "d":
                 # self.CTone_step_copy(self.t)
@@ -441,9 +436,6 @@ class PlotActionCT(PlotAction):
                 self.switch_masks(masks=False)
                 self.add_cells()
             if event.key == "p":
-                # TODO
-                # NOT WORKIND SINCE BATCH ADDITION
-                return
                 self.CTupdate_labels()
                 self.current_state = "pic"
                 self.switch_masks(masks=False)
@@ -519,7 +511,14 @@ class PlotActionCT(PlotAction):
                 self.z = None
                 self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                 self.visualization()
-
+            
+            elif event.key == "espace":
+                if self.current_state == "pic":
+                    if len(self.list_of_cells) == 0:
+                        self.list_of_cells = [[lab, 0, 0] for lab in self.CTunique_labels]
+                    else: 
+                        del self.list_of_cells[:]
+    
             elif event.key == "enter":
                 if self.current_state == "add":
                     try:
@@ -695,11 +694,13 @@ class PlotActionCT(PlotAction):
             zs = [-1 for _ in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
 
-        elif self.current_state in ["Del"]:
+        elif self.current_state in ["Del", "pic"]:
             cells_to_plot = self.sort_list_of_cells()
             cells_string = [
                 "cell=" + str(x[0]) for x in cells_to_plot
             ]
+            zs = [x[1] for x in cells_to_plot]
+            ts = [x[2] for x in cells_to_plot]
         else:
             cells_to_plot = self.sort_list_of_cells()
             for i, x in enumerate(cells_to_plot):
@@ -724,8 +725,10 @@ class PlotActionCT(PlotAction):
         labs_z_to_plot = [
             [x[0], zs[xid], ts[xid]] for xid, x in enumerate(cells_to_plot)
         ]
-
+        print()
+        print(labs_z_to_plot)
         for i, lab_z_t in enumerate(labs_z_to_plot):
+            print(lab_z_t[0])
             jitcell = self._CTget_cell(label=lab_z_t[0])
             color = get_cell_color(jitcell, self._plot_args["labels_colors"], 1, self.CTblocked_cells)
             color = np.rint(color * 255).astype("uint8")
@@ -735,6 +738,9 @@ class PlotActionCT(PlotAction):
             else:
                 times_to_plot = List([lab_z_t[2]])
                 zs_to_plot = lab_z_t[1]
+            print(color)
+            print(times_to_plot)
+            print(zs_to_plot)
             set_cell_color(
                 self._masks_stack,
                 jitcell.masks,
@@ -765,6 +771,8 @@ class PlotActionCT(PlotAction):
             else:
                 times_to_plot = List([lab_z_t[2]])
                 zs_to_plot = lab_z_t[1]
+            
+            
             set_cell_color(
                 self._masks_stack,
                 jitcell.masks,
@@ -776,17 +784,14 @@ class PlotActionCT(PlotAction):
                 zs_to_plot,
             )
 
-
         self._pre_labs_z_to_plot = labs_z_to_plot
-
-        self.actionlist.set(fontsize=width_or_height / scale1)
 
         self.selected_cells.set(fontsize=width_or_height / scale1)
         self.selected_cells.set(text="Selection\n\n" + s)
         self.instructions.set(fontsize=width_or_height / scale2)
         if self.batch:
             self.timetxt.set(
-                text="TIME = {timem} min  ({t}/{tt})  ;BATCH = {b}/{bb}".format(
+                text="TIME = {timem} min  ({t}/{tt})  ; BATCH = {b}/{bb}".format(
                     timem=self._tstep * self.tg, t=self.tg + 1, tt=self.total_times, b=self.bn+1, bb=self.batch_rounds
                 ),
                 fontsize=width_or_height / scale2,
@@ -800,73 +805,8 @@ class PlotActionCT(PlotAction):
             )
 
         
-        marked_apo = []
-        for event in self.CTapoptotic_events:
-            if event[1] == self.tg:
-                cell = self._CTget_cell(label=event[0])
-                if cell is None: 
-                    self.CTapoptotic_events.remove(event)
-                else:
-                    marked_apo.append(cell.label)
-        
-        marked_apo_str = ""
-        for item_id, item in enumerate(marked_apo):
-            if item_id % 7 == 6:
-                marked_apo_str += "%d\n" % item
-            else:
-                marked_apo_str += "%d, " % item
-        if marked_apo_str == "":
-            marked_apo_str = "None"
-
-        marked_mito = []
-        for event in self.CTmitotic_events:
-            for mitocell in event:
-                if mitocell[1] == self.tg:
-                    cell = self._CTget_cell(label=mitocell[0])
-                    if cell is None: 
-                        self.CTmitotic_events.remove(event)
-                    else:
-                        marked_mito.append(cell.label)
-    
-        marked_mito_str = ""
-        for item_id, item in enumerate(marked_mito):
-            if item_id % 7 == 6:
-                marked_mito_str += "%d\n" % item
-            else:
-                marked_mito_str += "%d, " % item
-        if marked_mito_str == "":
-            marked_mito_str = "None"
-
-        disappeared_cells = ""
-
-        if self.t != self.times - 1:
-            for item_id, item in enumerate(self.CThints[self.t][0]):
-                if item_id % 7 == 6:
-                    disappeared_cells += "%d\n" % item
-                else:
-                    disappeared_cells += "%d, " % item
-        if disappeared_cells == "":
-            disappeared_cells = "None"
-
-        appeared_cells = ""
-        if self.t != 0:
-            for item_id, item in enumerate(self.CThints[self.t - 1][1]):
-                if item_id % 7 == 6:
-                    appeared_cells += "%d\n" % item
-                else:
-                    appeared_cells += "%d, " % item
-        if appeared_cells == "":
-            appeared_cells = "None"
-        hints = "HINT: posible apo/mito cells:\n\ncells disapear:\n{discells}\n\ncells appeared:\n{appcells}\n\n\nmarked apo cells:\n{apocells}\n\n\nmarked mito cells:\n{mitocells}\n\nCONFLICTS: {conflicts}".format(
-            discells=disappeared_cells,
-            appcells=appeared_cells,
-            apocells=marked_apo_str,
-            mitocells=marked_mito_str,
-            conflicts=self.CTconflicts,
-        )
-        self.hints.set(text=hints, fontsize=width_or_height / scale1)
         self.title.set(fontsize=width_or_height / scale2)
-        self.fig.subplots_adjust(top=0.9, left=0.2)
+        self.fig.subplots_adjust(top=0.9, left=0.1)
         self.fig.canvas.draw_idle()
 
     def sort_list_of_cells(self):
@@ -1324,28 +1264,7 @@ class PlotActionCT(PlotAction):
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
-        cell = [lab, z]
-        if cell not in self.list_of_cells:
-            self.list_of_cells.append(cell)
-        else:
-            self.list_of_cells.remove(cell)
-
-        self.update()
-        self.reploting()
-
-    def pick_cells(self):
-        self.title.set(text="PICK CELL", ha="left", x=0.01)
-        self.instructions.set(text="Right-click to select cell")
-        self.instructions.set_backgroundcolor((1.0, 1.0, 1.0, 0.4))
-        self.fig.patch.set_facecolor((0.3, 0.3, 0.3, 0.1))
-        self.CP = CellPicker(self.fig.canvas, self.pick_cells_callback)
-
-    def pick_cells_callback(self, event):
-        get_axis_PACP(self, event)
-        lab, z = get_cell_PACP(self, event)
-        if lab is None:
-            return
-        cell = [lab, z]
+        cell = [lab, 0, 0]
         if cell not in self.list_of_cells:
             self.list_of_cells.append(cell)
         else:
