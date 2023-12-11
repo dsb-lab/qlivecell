@@ -148,6 +148,7 @@ class PlotAction:
         self.CTadd_cell = CT.add_cell
         self.CTcomplete_add_cell = CT.complete_add_cell
         self.CTdelete_cell = CT.delete_cell
+        self.CTdelete_cell_in_batch = CT.delete_cell_in_batch
         self.CTcombine_cells_t = CT.combine_cells_t
         self.CTcombine_cells_z = CT.combine_cells_z
         self.CTjoin_cells = CT.join_cells
@@ -409,6 +410,11 @@ class PlotActionCT(PlotAction):
                 self.current_state = "del"
                 self.switch_masks(masks=False)
                 self.delete_cells()
+            if event.key == "D":
+                # self.CTone_step_copy(self.t)
+                self.current_state = "Del"
+                self.switch_masks(masks=False)
+                self.delete_cells_in_batch()
             elif event.key == "C":
                 # self.CTone_step_copy(self.t)
                 self.current_state = "Com"
@@ -554,6 +560,23 @@ class PlotActionCT(PlotAction):
 
                     self.visualization()
 
+                if self.current_state == "Del":
+                    self.CP.stopit()
+
+                    delattr(self, "CP")
+
+                    self.CTdelete_cell_in_batch(self)
+
+                    del self.list_of_cells[:]
+                    self.current_subplot = None
+                    self.current_state = None
+                    self.ax_sel = None
+                    self.z = None
+
+                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+
+                    self.visualization()
+
                 elif self.current_state == "Com":
                     self.CP.stopit()
                     delattr(self, "CP")
@@ -658,7 +681,7 @@ class PlotActionCT(PlotAction):
             super().onscroll(event)
 
     def update(self):
-        if self.current_state in ["apo", "Com", "mit", "Sep"]:
+        if self.current_state in ["apo", "Com", "mit", "Sep", "blo"]:
             if self.current_state in ["Com", "Sep"]:
                 cells_to_plot = self.CTlist_of_cells
             if self.current_state == "mit":
@@ -672,6 +695,11 @@ class PlotActionCT(PlotAction):
             zs = [-1 for _ in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
 
+        elif self.current_state in ["Del"]:
+            cells_to_plot = self.sort_list_of_cells()
+            cells_string = [
+                "cell=" + str(x[0]) for x in cells_to_plot
+            ]
         else:
             cells_to_plot = self.sort_list_of_cells()
             for i, x in enumerate(cells_to_plot):
@@ -701,6 +729,12 @@ class PlotActionCT(PlotAction):
             jitcell = self._CTget_cell(label=lab_z_t[0])
             color = get_cell_color(jitcell, self._plot_args["labels_colors"], 1, self.CTblocked_cells)
             color = np.rint(color * 255).astype("uint8")
+            if self.current_state in ["Del"]:
+                times_to_plot = List([i for i in range(self.times)])
+                zs_to_plot = -1
+            else:
+                times_to_plot = List([lab_z_t[2]])
+                zs_to_plot = lab_z_t[1]
             set_cell_color(
                 self._masks_stack,
                 jitcell.masks,
@@ -708,8 +742,8 @@ class PlotActionCT(PlotAction):
                 jitcell.zs,
                 color,
                 self._plot_args["dim_change"],
-                List([lab_z_t[2]]),
-                lab_z_t[1],
+                times_to_plot,
+                zs_to_plot,
             )
 
         labs_z_to_remove = [
@@ -725,6 +759,12 @@ class PlotActionCT(PlotAction):
 
             color = get_cell_color(jitcell, self._plot_args["labels_colors"], 0, self.CTblocked_cells)
             color = np.rint(color * 255).astype("uint8")
+            if self.current_state in ["Del"]:
+                times_to_plot = List([i for i in range(self.times)])
+                zs_to_plot = -1
+            else:
+                times_to_plot = List([lab_z_t[2]])
+                zs_to_plot = lab_z_t[1]
             set_cell_color(
                 self._masks_stack,
                 jitcell.masks,
@@ -732,9 +772,10 @@ class PlotActionCT(PlotAction):
                 jitcell.zs,
                 color,
                 self._plot_args["dim_change"],
-                List([lab_z_t[2]]),
-                lab_z_t[1],
+                times_to_plot,
+                zs_to_plot,
             )
+
 
         self._pre_labs_z_to_plot = labs_z_to_plot
 
@@ -1008,7 +1049,31 @@ class PlotActionCT(PlotAction):
                 self.list_of_cells.pop(jj)
             if add_all:
                 for zz in zs:
-                    self.list_of_cells.append([lab, zz])
+                    self.list_of_cells.append([lab, zz, self.t])
+        self.update()
+        self.reploting()
+
+
+    def delete_cells_in_batch(self):
+        self.title.set(text="DELETE CELL (all times)", ha="left", x=0.01)
+        self.instructions.set(
+            text="Right-click to select cell to delete"
+        )
+        self.instructions.set_backgroundcolor((1.0, 0.0, 0.0, 0.4))
+        self.fig.patch.set_facecolor((1.0, 0.0, 0.0, 0.1))
+        self.CP = CellPicker(self.fig.canvas, self.delete_cells_in_batch_callback)
+
+    def delete_cells_in_batch_callback(self, event):
+        get_axis_PACP(self, event)
+        lab, z = get_cell_PACP(self, event)
+        if lab is None:
+            return
+        cell = [lab, 0, 0]
+        if cell not in self.list_of_cells:
+            self.list_of_cells.append(cell)
+        else:
+            self.list_of_cells.remove(cell)
+
         self.update()
         self.reploting()
 

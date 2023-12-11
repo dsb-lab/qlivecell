@@ -13,6 +13,7 @@ import numpy as np
 from matplotlib import cm
 from matplotlib.lines import Line2D, lineStyles
 from matplotlib.ticker import MaxNLocator
+from matplotlib.widgets import Button
 from numba import njit, typed, prange
 from scipy.ndimage import zoom
 from scipy.spatial import ConvexHull
@@ -109,6 +110,7 @@ class CellTrackingBatch(CellTracking):
         use_channel=0,
     ):
         print("###############           INIT ON BATCH MODE          ################")
+        printfancy("")
         # Basic arguments
         self.batch = True
         
@@ -132,7 +134,7 @@ class CellTrackingBatch(CellTracking):
         printfancy("embcode = {}".format(embcode))
         printfancy("path to data = {}".format(self.path_to_data))
         printfancy("path to save = {}".format(self.path_to_save))
-
+        printfancy("")
         # in batch mode times has to be always split
         self.split_times = True
 
@@ -923,7 +925,49 @@ class CellTrackingBatch(CellTracking):
             alpha=1,
             mode="outlines",
         )
+
+    def delete_cell_in_batch(self, PACP, count_action=True):
+        cells = [x[0] for x in PACP.list_of_cells]
+        Zs = [x[1] for x in PACP.list_of_cells]
+        Ts = [x[2] for x in PACP.list_of_cells]
         
+        if len(cells) == 0:
+            return
+
+        if count_action:
+            self.nactions += 1
+            for cid, z in enumerate(Zs):
+                self._tz_actions.append([Ts[cid], z])
+
+        compute_point_stack(
+            self._masks_stack,
+            self.jitcells_selected,
+            List(range(self.times)),
+            self.unique_labels_batch,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
+            labels=cells,
+            mode="masks",
+            rem=True,
+        )
+        compute_point_stack(
+            self._outlines_stack,
+            self.jitcells_selected,
+            List(range(self.times)),
+            self.unique_labels_batch,
+            self._plot_args["dim_change"],
+            self._plot_args["labels_colors"],
+            blocked_cells=self.blocked_cells,
+            labels=cells,
+            mode="outlines",
+            rem=True,
+        )
+
+        for lab in cells:
+            self._del_cell(lab)
+        self.update_label_attributes()
+
     def join_cells(self, PACP):
         labels, Zs, Ts = list(zip(*PACP.list_of_cells))
         sortids = np.argsort(np.asarray(labels))
@@ -1413,6 +1457,16 @@ class CellTrackingBatch(CellTracking):
         )
         self._z_slider = z_slider
 
+
+        self._actions_button = Button(
+            ax[0],
+            "Action list",
+            color="grey",
+            hovercolor="black",
+            useblit=True,
+        )
+        self._actions_button.on_clicked(self.print_actions)
+        
         if cell_picker:
             self.PACP = PlotActionCellPicker(fig, ax, self, mode)
         else:

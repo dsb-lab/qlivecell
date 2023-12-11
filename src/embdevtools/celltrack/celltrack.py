@@ -85,6 +85,9 @@ plt.rcParams["keymap.save"].remove("s")
 plt.rcParams["keymap.yscale"].remove("l")
 plt.rcParams["keymap.pan"].remove("p")
 plt.rcParams["keymap.zoom"][0] = ","
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = 'Ubuntu'
+plt.rcParams['font.monospace'] = 'Ubuntu Mono'
 
 PLTLINESTYLES = list(lineStyles.keys())
 PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X", "p", "^"]
