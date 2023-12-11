@@ -701,8 +701,11 @@ class CellTrackingBatch(CellTracking):
         #iterate over future times and update manually unique_labels_T
         # I think we should assume that there is no going to be conflict
         # on label substitution, but we have to be careful in the future
-        update_unique_labels_T(self.batch_times_list_global[-1]+1, self.batch_totalsize, self.label_correspondance_T, self.unique_labels_T)
-
+        try:
+            update_unique_labels_T(self.batch_times_list_global[-1]+1, self.batch_totalsize, self.label_correspondance_T, self.unique_labels_T)
+        except:
+            print(self.batch_times_list_global[-1]+1)
+            print(self.label_correspondance_T)
         # Once unique labels are updated, we can safely run label ordering
         if self.jitcells:
             old_labels, new_labels, correspondance = _order_labels_t(
@@ -1104,9 +1107,7 @@ class CellTrackingBatch(CellTracking):
                 cell2 = cellmin
                 cell1 = cellmax
             
-            if cell1.times[-1] - cell2.times[0] !=1:
-                #TODO
-                print(cell1.times[-1] - cell2.times[0])
+            if cell2.times[0]-cell1.times[-1] !=1:
                 printfancy("ERROR: cells not in consecutive times")
                 self.update_label_attributes()
                 compute_point_stack(
