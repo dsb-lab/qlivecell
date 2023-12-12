@@ -51,10 +51,8 @@ plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), 
-    'plot_centers':[True, True], # [Plot center as a dot, plot label on 3D center]
-    'batch_size':5,
-    'batch_overlap':1,
+    'plot_stack_dims': (256, 256), 
+    'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
 }
 
 error_correction_args = {
@@ -69,19 +67,21 @@ batch_args = {
 
 from embdevtools.celltrack.celltrack_batch import CellTrackingBatch
 
-CTB = CellTrackingBatch(
-    path_data,
-    path_save,
-    embcode=embcode,
-    segmentation_args=segmentation_args,
-    concatenation3D_args=concatenation3D_args,
-    tracking_args=tracking_args,
-    error_correction_args=error_correction_args,
-    plot_args=plot_args,
-    batch_args=batch_args,
-)
+if __name__ == "__main__":
+
+    CTB = CellTrackingBatch(
+        path_data,
+        path_save,
+        embcode=embcode,
+        segmentation_args=segmentation_args,
+        concatenation3D_args=concatenation3D_args,
+        tracking_args=tracking_args,
+        error_correction_args=error_correction_args,
+        plot_args=plot_args,
+        batch_args=batch_args,
+    )
 
 
-CTB.load()
-CTB.plot_tracking()
+    CTB.run()
+    CTB.plot_tracking(plot_args=plot_args)
 

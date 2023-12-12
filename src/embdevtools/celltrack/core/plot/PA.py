@@ -70,6 +70,7 @@ class PlotAction:
         self.ctrl_shift_is_held = False
 
         self.current_state = None
+        self.past_state = None
         self.current_subplot = None
         self.bn = 0
         self.cr = 0
@@ -398,7 +399,7 @@ class PlotActionCT(PlotAction):
         self.update()
 
     def __call__(self, event):
-        print(event.key)
+
         if self.current_state == None:
             if event.key == "d":
                 # self.CTone_step_copy(self.t)
@@ -506,6 +507,7 @@ class PlotActionCT(PlotAction):
                 del self.CTmito_cells[:]
 
                 self.current_subplot = None
+                self.past_state = self.current_state
                 self.current_state = None
                 self.ax_sel = None
                 self.z = None
@@ -520,6 +522,7 @@ class PlotActionCT(PlotAction):
                         del self.list_of_cells[:]
     
             elif event.key == "enter":
+                self.past_state = self.current_state
                 if self.current_state == "add":
                     try:
                         self.CP.stopit()
@@ -725,10 +728,8 @@ class PlotActionCT(PlotAction):
         labs_z_to_plot = [
             [x[0], zs[xid], ts[xid]] for xid, x in enumerate(cells_to_plot)
         ]
-        print()
-        print(labs_z_to_plot)
+
         for i, lab_z_t in enumerate(labs_z_to_plot):
-            print(lab_z_t[0])
             jitcell = self._CTget_cell(label=lab_z_t[0])
             color = get_cell_color(jitcell, self._plot_args["labels_colors"], 1, self.CTblocked_cells)
             color = np.rint(color * 255).astype("uint8")
@@ -736,11 +737,14 @@ class PlotActionCT(PlotAction):
                 times_to_plot = List([i for i in range(self.times)])
                 zs_to_plot = -1
             else:
-                times_to_plot = List([lab_z_t[2]])
+                if self.current_state in ["apo", "mit", "blo"]:
+                    tt = self.global_times_list.index(lab_z_t[2])
+                else:
+                    tt = lab_z_t[2]
+                    
+                times_to_plot = List([tt])
                 zs_to_plot = lab_z_t[1]
-            print(color)
-            print(times_to_plot)
-            print(zs_to_plot)
+
             set_cell_color(
                 self._masks_stack,
                 jitcell.masks,
@@ -765,11 +769,16 @@ class PlotActionCT(PlotAction):
 
             color = get_cell_color(jitcell, self._plot_args["labels_colors"], 0, self.CTblocked_cells)
             color = np.rint(color * 255).astype("uint8")
-            if self.current_state in ["Del"]:
+            if self.past_state in ["Del"]:
                 times_to_plot = List([i for i in range(self.times)])
                 zs_to_plot = -1
             else:
-                times_to_plot = List([lab_z_t[2]])
+                if self.past_state in ["apo", "mit", "blo"]:
+                    tt = self.global_times_list.index(lab_z_t[2])
+                else:
+                    tt = lab_z_t[2]
+                    
+                times_to_plot = List([tt])
                 zs_to_plot = lab_z_t[1]
             
             
@@ -804,7 +813,7 @@ class PlotActionCT(PlotAction):
                 fontsize=width_or_height / scale2,
             )
 
-        
+        self.past_state = None
         self.title.set(fontsize=width_or_height / scale2)
         self.fig.subplots_adjust(top=0.9, left=0.1)
         self.fig.canvas.draw_idle()

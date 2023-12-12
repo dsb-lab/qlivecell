@@ -1297,7 +1297,7 @@ class CellTrackingBatch(CellTracking):
     def apoptosis(self, list_of_cells):
         for cell_att in list_of_cells:
             lab, z, t = cell_att
-            attributes = [lab, t+self.batch_times_list_global[0]]
+            attributes = [lab, t]
             if attributes not in self.apoptotic_events:
                 self.apoptotic_events.append(attributes)
             else:
@@ -1308,14 +1308,12 @@ class CellTrackingBatch(CellTracking):
     def mitosis(self):
         if len(self.mito_cells) != 3:
             return
-
-        t_inc = self.batch_times_list_global[0]
         cell = self._get_cell(label=self.mito_cells[0][0])
-        mito0 = [cell.label, self.mito_cells[0][2]+t_inc]
+        mito0 = [cell.label, self.mito_cells[0][2]]
         cell = self._get_cell(label=self.mito_cells[1][0])
-        mito1 = [cell.label, self.mito_cells[1][2]+t_inc]
+        mito1 = [cell.label, self.mito_cells[1][2]]
         cell = self._get_cell(label=self.mito_cells[2][0])
-        mito2 = [cell.label, self.mito_cells[2][2]+t_inc]
+        mito2 = [cell.label, self.mito_cells[2][2]]
 
         mito_ev = [mito0, mito1, mito2]
 
@@ -1642,3 +1640,102 @@ class CellTrackingBatch(CellTracking):
 
         plt.subplots_adjust(bottom=0.075)
         plt.show()
+
+    def replot_axis(self, img, z, t, imid, plot_outlines=True):
+        self._imshows[imid].set_array(img)
+        self._imshows_masks[imid].set_array(self._masks_stack[t][z])
+        if plot_outlines:
+            self._imshows_outlines[imid].set_array(self._outlines_stack[t][z])
+        else:
+            self._imshows_outlines[imid].set_array(
+                np.zeros_like(self._outlines_stack[t][z])
+            )
+        self._titles[imid].set_text("z = %d" % (z + 1))
+
+    def replot_tracking(self, PACP, plot_outlines=True):
+
+        t = PACP.t
+        counter = plotRound(
+            layout=self._plot_args["plot_layout"],
+            totalsize=self.slices,
+            overlap=self._plot_args["plot_overlap"],
+            round=PACP.cr,
+        )
+        zidxs = np.unravel_index(range(counter.groupsize), counter.layout)
+        imgs = self.plot_stacks[t, :, :, :]
+        # Plot all our Zs in the corresponding round
+        for sc in self._pos_scatters:
+            sc.remove()
+        for ano in self._annotations:
+            ano.remove()
+        del self._pos_scatters[:]
+        del self._annotations[:]
+        for z, id, r in counter:
+            # select current z plane
+            if z == None:
+                img = np.zeros(self._plot_args["plot_stack_dims"])
+                self._imshows[id].set_array(img)
+                self._imshows_masks[id].set_array(img)
+                self._imshows_outlines[id].set_array(img)
+                self._titles[id].set_text("")
+            else:
+                img = imgs[z, :, :]
+                PACP.zs[id] = z
+                labs = self.ctattr.Labels[t][z]
+                self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
+                    
+                if self._plot_args["plot_centers"][0]:
+                    for lab in labs:
+                        cell = self._get_cell(lab)
+                        tid = cell.times.index(t)
+                        zz, ys, xs = cell.centers[tid]
+                        xs = round(xs * self._plot_args["dim_change"])
+                        ys = round(ys * self._plot_args["dim_change"])
+
+                        lab_to_display = lab
+                        if zz == z:
+                            sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
+                            self._pos_scatters.append(sc)
+
+                            if self._plot_args["plot_centers"][1]:
+                                # Check if cell is an immeadiate dauther and plot the corresponding label
+                                for mitoev in self.mitotic_events:
+                                    for icell, mitocell in enumerate(mitoev[1:]):
+                                        if cell.label == mitocell[0]:
+                                            if PACP.tg == mitoev[1]:
+                                                mother = self._get_cell(
+                                                    label=mitoev[0][0]
+                                                )
+                                                lab_to_display = (
+                                                    mother.label + 0.1 + icell / 10
+                                                )
+                                anno = PACP.ax[id].annotate(
+                                    str(lab_to_display), xy=(ys, xs), c="white"
+                                )
+                                self._annotations.append(anno) 
+                                
+                for mitoev in self.mitotic_events:
+                    for ev in mitoev:
+                        if ev[0] in labs:
+                            cell = self._get_cell(ev[0])
+                            tid = cell.times.index(t)
+                            zz, ys, xs = cell.centers[tid]
+                            xs = round(xs * self._plot_args["dim_change"])
+                            ys = round(ys * self._plot_args["dim_change"])
+                            if PACP.tg == ev[1]:
+                                sc = PACP.ax[id].scatter(
+                                    [ys], [xs], s=5.0, c="red"
+                                )
+                                self._pos_scatters.append(sc)
+                                
+                for apoev in self.apoptotic_events:   
+                    if apoev[0] in labs:
+                        cell = self._get_cell(apoev[0])
+                        tid = cell.times.index(t)
+                        zz, ys, xs = cell.centers[tid]
+                        xs = round(xs * self._plot_args["dim_change"])
+                        ys = round(ys * self._plot_args["dim_change"])
+                        sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
+                        self._pos_scatters.append(sc)
+
+        plt.subplots_adjust(bottom=0.075)

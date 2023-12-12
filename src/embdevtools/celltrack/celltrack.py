@@ -1287,10 +1287,12 @@ class CellTracking(object):
 
     def block_cells(self, list_of_cells): 
         
+        unblocked_cells = []
         for cell in list_of_cells:
             lab = cell[0]
             if lab in self.blocked_cells:
                 self.blocked_cells.remove(lab)
+                unblocked_cells.append(lab)
             else:
                 self.blocked_cells.append(lab)
         
@@ -1302,7 +1304,7 @@ class CellTracking(object):
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
             blocked_cells=self.blocked_cells,
-            labels=self.blocked_cells,
+            labels=[*self.blocked_cells, *unblocked_cells],
             alpha=0,
             mode="masks",
         )
@@ -1314,7 +1316,7 @@ class CellTracking(object):
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
             blocked_cells=self.blocked_cells,
-            labels=self.blocked_cells,
+            labels=[*self.blocked_cells, *unblocked_cells],
             alpha=1,
             mode="outlines",
         )
