@@ -70,7 +70,7 @@ class LineBuilder_lasso:
         self.outline = []
 
     def onselect(self, verts):
-        self.outline = np.floor([[x[0], x[1]] for x in verts]).astype("uint16")
+        self.outline = np.rint([[x[0], x[1]] for x in verts]).astype("uint16")
         self.outline = np.unique(self.outline, axis=0)
 
         fl = 100
