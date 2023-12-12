@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels
+from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
@@ -65,11 +65,10 @@ batch_args = {
     'batch_overlap':1,
 }
 
-from embdevtools.celltrack.celltrack_batch import CellTrackingBatch
 
 if __name__ == "__main__":
 
-    CTB = CellTrackingBatch(
+    CTB = CellTracking(
         path_data,
         path_save,
         embcode=embcode,
@@ -82,6 +81,6 @@ if __name__ == "__main__":
     )
 
 
-    CTB.run()
+    CTB.load()
     CTB.plot_tracking(plot_args=plot_args)
 

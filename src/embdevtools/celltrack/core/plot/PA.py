@@ -141,8 +141,8 @@ class PlotAction:
         self.plot_outlines = True
 
         # Point to CT functions
-        self.CTone_step_copy = CT.one_step_copy
-        self.CTundo_corrections = CT.undo_corrections
+        # self.CTone_step_copy = CT.one_step_copy
+        # self.CTundo_corrections = CT.undo_corrections
         self.CTreplot_tracking = CT.replot_tracking
         self.CTsave_cells = save_cells
 
@@ -469,11 +469,11 @@ class PlotActionCT(PlotAction):
                 self.visualization()
                 self.update()
             elif event.key == "z":
-                self.CTundo_corrections(all=False)
+                # self.CTundo_corrections(all=False)
                 self.visualization()
                 self.update()
             elif event.key == "Z":
-                self.CTundo_corrections(all=True)
+                # self.CTundo_corrections(all=True)
                 self.visualization()
                 self.update()
             elif event.key == "s":
