@@ -80,7 +80,6 @@ if __name__ == "__main__":
         batch_args=batch_args,
     )
 
-
     CTB.load()
     CTB.plot_tracking(plot_args=plot_args)
 
