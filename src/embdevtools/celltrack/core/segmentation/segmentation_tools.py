@@ -245,14 +245,18 @@ def extract_cell_centers(stack, Outlines, Masks):
         # Loop over all the cells detected in this level
         for cell, outline in enumerate(outlines):
             # x and y coordinates of the centroid.
-            xs = np.average(
-                Masks[z][cell][:, 1],
-                weights=img[Masks[z][cell][:, 1], Masks[z][cell][:, 0]],
-            )
-            ys = np.average(
-                Masks[z][cell][:, 0],
-                weights=img[Masks[z][cell][:, 1], Masks[z][cell][:, 0]],
-            )
+            try:
+                xs = np.average(
+                    Masks[z][cell][:, 1],
+                    weights=img[Masks[z][cell][:, 1], Masks[z][cell][:, 0]],
+                )
+                ys = np.average(
+                    Masks[z][cell][:, 0],
+                    weights=img[Masks[z][cell][:, 1], Masks[z][cell][:, 0]],
+                )
+            except ZeroDivisionError:
+                xs = np.mean(Masks[z][cell][:, 1])
+                ys = np.mean(Masks[z][cell][:, 0])
             centersi[z].append(xs)
             centersj[z].append(ys)
 
