@@ -26,7 +26,7 @@ model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/Ph
 segmentation_args={
     'method': 'cellpose2D', 
     'model': model, 
-    'blur': [5,1], 
+    # 'blur': [5,1], 
     'channels': [0,0],
     'flow_threshold': 0.4,
 }
