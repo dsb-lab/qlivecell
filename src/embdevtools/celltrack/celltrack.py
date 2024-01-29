@@ -118,7 +118,7 @@ class CellTracking(object):
         self.use_channel = use_channel
         
         # Name of the embryo to analyse (ussually date of imaging + info about the channels)
-        self.embcode = embcode
+        self.embcode = embcode 
         
         # Directory containing stakcs
         self.path_to_data = pthtodata

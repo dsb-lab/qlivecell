@@ -404,7 +404,7 @@ def save_2Dtiff(
         },
     )
 
-def read_split_times(path_data, times, extra_name="", extension=".tif"):
+def read_split_times(path_data, times, extra_name="", extension=".tif", channels=None):
     
     IMGS = []
 
@@ -412,7 +412,7 @@ def read_split_times(path_data, times, extra_name="", extension=".tif"):
         path_to_file = correct_path(path_data)+"{}{}{}".format(t, extra_name, extension)
 
         if extension == ".tif":
-            IMG, xyres, zres = read_img_with_resolution(path_to_file, channel=None, stack=True)
+            IMG, xyres, zres = read_img_with_resolution(path_to_file, channels=channels, stack=True)
             IMG = IMG[0]
             IMGS.append(IMG.astype('uint8'))
         elif extension == ".npy":
