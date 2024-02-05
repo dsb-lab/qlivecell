@@ -25,7 +25,7 @@ model = StarDist2D.from_pretrained('2D_versatile_fluo')
 segmentation_args={
     'method': 'stardist2D', 
     'model': model, 
-    'blur': [10,1], 
+    'blur': [5,1], 
     # 'scale': 3
 }
 
