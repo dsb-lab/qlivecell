@@ -6,30 +6,52 @@ from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
-embcode = 'test'
-path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'+embcode
-path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
+embcode = 'test_stephen'
+path_data='/home/pablo/Downloads/test_stephen/'
+path_save='/home/pablo/Downloads/ctobjects/'
+
 
 try: 
     files = get_file_names(path_save)
 except: 
     import os
     os.mkdir(path_save)
+### GET FULL FILE NAME AND FILE CODE ###
+files = get_file_names(path_data)
+
+file, embcode = get_file_embcode(path_data, 0, allow_file_fragment=False, returnfiles=False)
 
 
-### LOAD CELLPOSE MODEL ###
-from cellpose import models
-model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
+### LOAD HYPERSTACKS ###
+channel = 3
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
 
+
+### LOAD STARDIST MODEL ###
+from stardist.models import StarDist2D
+model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
 ### DEFINE ARGUMENTS ###
 segmentation_args={
-    'method': 'cellpose2D', 
+    'method': 'stardist2D', 
     'model': model, 
-    'blur': [5,1], 
-    'channels': [0,0],
-    'flow_threshold': 0.4,
+    # 'blur': [5,1], 
+    # 'scale': 3
 }
+
+# ### LOAD CELLPOSE MODEL ###
+# from cellpose import models
+# model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
+
+
+# ### DEFINE ARGUMENTS ###
+# segmentation_args={
+#     'method': 'cellpose2D', 
+#     'model': model, 
+#     'blur': [5,1], 
+#     'channels': [0,0],
+#     'flow_threshold': 0.4,
+# }
 
 concatenation3D_args = {
     'distance_th_z': 3.0, 
@@ -37,7 +59,7 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 3,
+    'min_cell_planes': 2,
 }
 
 tracking_args = {
@@ -81,9 +103,7 @@ CTB = CellTrackingBatch(
     batch_args=batch_args,
 )
 
-CTB.load()
+CTB.run()
 
 CTB.plot_tracking()
 
-# for cell in CTB.jitcells:
-#     print(cell.label)
