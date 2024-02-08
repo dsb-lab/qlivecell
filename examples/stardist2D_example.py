@@ -70,7 +70,7 @@ plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (1024, 1024), 
+    'plot_stack_dims': (512, 512), 
     'plot_centers':[False, False]
 }
 
@@ -97,10 +97,11 @@ CT = CellTracking(
 
 ### RUN SEGMENTATION AND TRACKING ###
 CT.run()
-save_4Dstack_labels(path_save, "labels", CT.jitcells, CT.CT_info)
-import numpy as np
+
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_DAPI)
 
+save_4Dstack_labels(path_save, "labels", CT.jitcells, CT.CT_info)
+import numpy as np
 masks_stack = np.zeros((IMGS_DAPI[0].shape[0], 4, IMGS_DAPI[0].shape[1], IMGS_DAPI[0].shape[2]))
 for z in range(IMGS_DAPI[0].shape[0]):
     masks_stack[z,0,:,:] = CT._masks_stack[0,z,:,:,0]

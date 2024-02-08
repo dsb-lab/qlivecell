@@ -14,6 +14,10 @@ path_save='/home/pablo/Desktop/PhD/projects/Data/belas/2D/Christian/ctobjects/'
 path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/stacks/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/ctobjects/'
 
+### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
+path_data='/home/pablo/Desktop/PhD/projects/Data/test_carles/raw/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/test_carles/ctobjects/'
+
 try: 
     files = get_file_names(path_save)
 except: 
@@ -24,17 +28,15 @@ except:
 files = get_file_names(path_data)
 
 # file, embcode = get_file_embcode(path_data, 10)
-file, embcode = get_file_embcode(path_data, '8bit.tif', allow_file_fragment=True)
-
+file, embcode = get_file_embcode(path_data, 0, allow_file_fragment=True)
 
 ### LOAD HYPERSTACKS ###
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=0)
-import numpy as np
-IMGS = np.asarray([[255*(IMG/IMG.max()) for IMG in IMGS[0]]]).astype('uint8')
-
+ 
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
-model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
+# model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
+model  = models.CellposeModel(gpu=True, model_type="cyto2")
 
 
 ### DEFINE ARGUMENTS ###
@@ -79,7 +81,7 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:,:20], 
+    IMGS, 
     path_save, 
     embcode, 
     xyresolution=xyres, 
@@ -99,12 +101,6 @@ CT.run()
 # save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=True, string_format="{}_labels")
 
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
-save_4Dstack(path_save, "masks", CT._masks_stack, xyres, zres)
-
-import numpy as np
-mean_intensity = [np.mean(img) for img in IMGS[0]]
-max_inensity = [np.max(img) for img in IMGS[0]]
-import matplotlib.pyplot as plt
-plt.plot(mean_intensity)
-plt.show()
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS
+                 )
+# save_4Dstack(path_save, "masks", CT._masks_stack, xyres, zres)
