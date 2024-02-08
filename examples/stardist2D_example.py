@@ -8,6 +8,13 @@ embcode = 'test_stephen'
 path_data='/home/pablo/Downloads/test_stephen/'
 path_save='/home/pablo/Downloads/ctobjects/'
 
+path_data='/home/pablo/Downloads/test_lydvina/'
+path_save='/home/pablo/Downloads/ctobjects/'
+
+path_data='/home/pablo/Desktop/PhD/projects/Data/test_lydvina/raw/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/test_lydvina/ctobjects/'
+
+
 try: 
     files = get_file_names(path_save)
 except: 
@@ -19,23 +26,24 @@ files = get_file_names(path_data)
 file, embcode = get_file_embcode(path_data, 0, allow_file_fragment=False, returnfiles=False)
 
 
-### LOAD HYPERSTACKS ###
-channel = 0
-IMGS_SOX2, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
-IMGS_SOX2 = IMGS_SOX2.astype("float32")
+# ### LOAD HYPERSTACKS ###
+# channel = 0
+# IMGS_SOX2, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
+# IMGS_SOX2 = IMGS_SOX2.astype("float32")
 
-channel = 1
-IMGS_OCT4, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
-IMGS_OCT4 = IMGS_OCT4.astype("float32")
+# channel = 1
+# IMGS_OCT4, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
+# IMGS_OCT4 = IMGS_OCT4.astype("float32")
 
-channel = 2
-IMGS_BRA, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
-IMGS_BRA = IMGS_BRA.astype("float32")
+# channel = 2
+# IMGS_BRA, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
+# IMGS_BRA = IMGS_BRA.astype("float32")
 
-channel = 3
-IMGS_DAPI, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
-IMGS_DAPI = IMGS_DAPI.astype("float32")
+# channel = 3
+# IMGS_DAPI, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
+# IMGS_DAPI = IMGS_DAPI.astype("float32")
 
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
 
 
 ### LOAD STARDIST MODEL ###
@@ -56,7 +64,7 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 2,
+    'min_cell_planes': 4,
 }
 
 tracking_args = {
@@ -70,7 +78,7 @@ plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), 
+    'plot_stack_dims': (1024, 1024), 
     'plot_centers':[False, False]
 }
 
@@ -82,9 +90,9 @@ error_correction_args = {
 
 ### CREATE CELLTRACKING CLASS ###
 CT = CellTracking(
-    IMGS_DAPI, 
+    IMGS, 
     path_save, 
-    embcode+"ch_%d" %(channel+1), 
+    embcode, 
     xyresolution=xyres, 
     zresolution=zres,
     segmentation_args=segmentation_args,
@@ -98,18 +106,18 @@ CT = CellTracking(
 ### RUN SEGMENTATION AND TRACKING ###
 CT.run()
 
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_DAPI)
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
 save_4Dstack_labels(path_save, "labels", CT.jitcells, CT.CT_info)
 import numpy as np
-masks_stack = np.zeros((IMGS_DAPI[0].shape[0], 4, IMGS_DAPI[0].shape[1], IMGS_DAPI[0].shape[2]))
-for z in range(IMGS_DAPI[0].shape[0]):
+masks_stack = np.zeros((IMGS[0].shape[0], 4, IMGS[0].shape[1], IMGS[0].shape[2]))
+for z in range(IMGS[0].shape[0]):
     masks_stack[z,0,:,:] = CT._masks_stack[0,z,:,:,0]
     masks_stack[z,1,:,:] = CT._masks_stack[0,z,:,:,1]
     masks_stack[z,2,:,:] = CT._masks_stack[0,z,:,:,2]
     masks_stack[z,3,:,:] = CT._masks_stack[0,z,:,:,3]
 
-masks_stack = masks_stack.astype("float32")
+masks_stack = masks_stack.astype("uint8")
 mdata = {"axes": "ZCYX", "spacing": zres, "unit": "um"}
 import tifffile
 tifffile.imwrite(

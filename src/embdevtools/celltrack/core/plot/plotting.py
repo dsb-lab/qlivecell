@@ -74,10 +74,12 @@ def check_stacks_for_plotting(
                     plot_stack = resize(
                         stacks_for_plotting[t, z], plot_args["plot_stack_dims"], clip=True
                     )
-                if stacks_for_plotting[0].max() <=1:
-                    plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
-                else:
-                    plot_stacks[t, z] = plot_stack.astype("uint8")
+                
+                plot_stacks[t, z] = np.rint((plot_stack/plot_stack.max()) * 255).astype("uint8")
+                # if stacks_for_plotting[0].max() <=1:
+                #     plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
+                # else:
+                #     plot_stacks[t, z] = plot_stack.astype("uint8")
     else:
         plot_stacks = stacks_for_plotting
 

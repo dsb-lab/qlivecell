@@ -31,8 +31,11 @@ files = get_file_names(path_data)
 file, embcode = get_file_embcode(path_data, 0, allow_file_fragment=True)
 
 ### LOAD HYPERSTACKS ###
-IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=0)
+IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=False, channel=None)
  
+import matplotlib.pyplot as plt
+plt.imshow(IMGS[0][0])
+plt.show()
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
 # model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/cell_tracking/training_set_expanded_nuc/models/blasto')
@@ -45,6 +48,7 @@ segmentation_args={
     'model': model, 
     # 'blur': [5,1], 
     'channels': [0,0],
+    "diameter": 0.8 / xyres,
     'flow_threshold': 0.4,
 }
           
@@ -101,6 +105,5 @@ CT.run()
 # save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=True, string_format="{}_labels")
 
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS
-                 )
+CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 # save_4Dstack(path_save, "masks", CT._masks_stack, xyres, zres)
