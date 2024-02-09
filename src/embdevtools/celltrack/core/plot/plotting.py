@@ -4,6 +4,7 @@ from skimage.transform import resize
 
 from ..tools.tools import printfancy
 from .plot_iters import CyclicList
+from ..tools.ct_tools import set_cell_color, get_cell_color
 
 
 def check_and_fill_plot_args(plot_args, stack_dims):
@@ -23,11 +24,6 @@ def check_and_fill_plot_args(plot_args, stack_dims):
         plot_args["plot_stack_dims"] = stack_dims
     if "plot_centers" not in plot_args.keys():
         plot_args["plot_centers"] = [True, True]
-    if "batch_size" not in plot_args.keys():
-        plot_args["batch_size"] = 5
-    if "batch_overlap" not in plot_args.keys():
-        plot_args["batch_overlap"] = 1
-        
     plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stack_dims[-1]
 
     _cmap = cm.get_cmap(plot_args["masks_cmap"])
@@ -93,3 +89,33 @@ def norm_stack_per_z(IMGS, saturation=0.7):
         for z in range(IMGS.shape[1]):
             IMGS_norm[t, z] = (IMGS[t, z] / np.max(IMGS[t, z])) * saturation
     return IMGS_norm
+
+#TODO need to make the label color iterator numba compatible
+# def switch_masks(self, masks=None):
+
+#         if masks is None:
+#             if self.CTplot_masks is None:
+#                 self.CTplot_masks = True
+#             else:
+#                 self.CTplot_masks = not self.CTplot_masks
+#         else:
+#             self.CTplot_masks = masks
+        
+# def _switch_masks(jitcells_selected, CTplot_masks, CTblocked_cells, masks_stack, dim_change):
+#     for jitcell in jitcells_selected:
+#         if CTplot_masks:
+#             alpha = 1
+#         else:
+#             alpha = 0
+#         color = get_cell_color(jitcell, self._plot_args["labels_colors"], alpha, CTblocked_cells)
+#         color = np.rint(color * 255).astype("uint8")
+#         set_cell_color(
+#             masks_stack,
+#             jitcell.masks,
+#             jitcell.times,
+#             jitcell.zs,
+#             color,
+#             dim_change,
+#             jitcell.times,
+#             -1,
+#         )

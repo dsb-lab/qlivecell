@@ -102,7 +102,7 @@ def jmin(x):
 def jmax(x):
     return max(x)
 
-# @njit
+@njit
 def _order_labels_t(unique_labels_T, max_label):
     P = unique_labels_T
     Q = List()

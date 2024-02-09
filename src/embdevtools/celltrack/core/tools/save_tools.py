@@ -61,6 +61,7 @@ class CTinfoJSONDecoder(json.JSONDecoder):
             time_step = d["time_step"]
             apo_cells = d["apo_cells"]
             mito_cells = d["mito_cells"]
+            blocked_cells = d["blocked_cells"]
             nactions = d["nactions"]
             args = d["args"]
 
@@ -73,6 +74,7 @@ class CTinfoJSONDecoder(json.JSONDecoder):
                 time_step,
                 apo_cells,
                 mito_cells,
+                blocked_cells,
                 nactions,
                 args,
             )
@@ -110,20 +112,23 @@ def save_cells_to_json(cells, CT_info, path=None, filename=None):
 
 
 def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_format="{}"):
-
     if split_times: 
         if not os.path.isdir(pthsave): 
             os.mkdir(pthsave)
         
-        for tid, t in enumerate(times):    
+        for tid, t in enumerate(times):
             np.save(correct_path(pthsave)+string_format.format(str(t))+".npy", labels_stack[tid], allow_pickle=False)
     else: 
-        if labels_stack.shape[0] == 1:
-            np.save(pthsave, labels_stack[0], allow_pickle=False)
-        
+        if len(labels_stack.shape)==4:
+            if labels_stack.shape[0] == 1:
+                np.save(pthsave, labels_stack[0], allow_pickle=False)
+            
+            else:
+                np.save(pthsave, labels_stack, allow_pickle=False)
         else:
-            np.save(pthsave, labels_stack, allow_pickle=False)
-
+             np.save(pthsave, labels_stack, allow_pickle=False)
+    
+import time
 
 def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, split_times=False, string_format="{}", save_info=False):
     """save cell objects obtained with celltrack.py
@@ -149,7 +154,6 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
     labels_stack = np.zeros(
         (len(times), CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
-    
     labels_stack = compute_labels_stack(labels_stack, cells)
     save_labels_stack(labels_stack, pthsave, times, split_times=split_times, string_format=string_format)
 
@@ -419,23 +423,22 @@ def read_split_times(path_data, times, extra_name="", extension=".tif"):
     elif extension == ".npy":
         return np.array(IMGS)
     
-
-def substitute_labels(times, path_to_save, lcT):
-    for postt in times:
+import time
+def substitute_labels(post_range_start ,post_range_end, path_to_save, lcT):
+    post_range = prange(post_range_start, post_range_end)
+    for postt in post_range:
         labs_stack = np.load(path_to_save+"{:d}.npy".format(postt))
         new_labs_stack = labs_stack.copy()
-        new_ls, lct = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
-        new_labs_stack = new_ls
-        save_labels_stack(new_labs_stack, path_to_save+"{:d}.npy".format(postt), [postt], split_times=False, string_format="{}")
-
+        new_ls = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
+        save_labels_stack(new_ls, path_to_save+"{:d}.npy".format(postt), [postt], split_times=False, string_format="{}")
+        
 @njit(parallel=True)
 def _sub_labs(labs_pre, labs_post, lct):
     for lab_change in lct:
-        pre_label = lab_change[0]
-        post_label = lab_change[1]
+        pre_label = lab_change[0] + 1
+        post_label = lab_change[1] + 1
 
-        new_lct = np.where(lct[:,1]==post_label, lct[:,1],pre_label)
-        idxs = np.where(labs_pre == pre_label+1)
+        idxs = np.where(labs_pre == pre_label)
         zs = idxs[0]
         xs = idxs[1]
         ys = idxs[2]
@@ -443,6 +446,6 @@ def _sub_labs(labs_pre, labs_post, lct):
             z = zs[p]
             x = xs[p]
             y = ys[p]
-            labs_post[z,x,y] = post_label + 1
+            labs_post[z,x,y] = post_label
     
-    return labs_post, new_lct
+    return labs_post

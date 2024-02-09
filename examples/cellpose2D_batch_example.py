@@ -2,14 +2,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels
+from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
-embcode = 'test_stephen'
-path_data='/home/pablo/Downloads/test_stephen/'
-path_save='/home/pablo/Downloads/ctobjects/'
-
+embcode = '20230607_CAG_H2B_GFP_16_cells_stack2'
+path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'+embcode
+path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
 try: 
     files = get_file_names(path_save)
@@ -73,15 +72,13 @@ plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), 
-    'plot_centers':[True, True], # [Plot center as a dot, plot label on 3D center]
-    'batch_size':5,
-    'batch_overlap':1,
+    'plot_stack_dims': (256, 256), 
+    'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
 }
 
 error_correction_args = {
     'backup_steps': 10,
-    'line_builder_mode': 'lasso',
+    'line_builder_mode': 'points',
 }
 
 batch_args = {
@@ -89,21 +86,21 @@ batch_args = {
     'batch_overlap':1,
 }
 
-from embdevtools.celltrack.celltrack_batch import CellTrackingBatch
 
-CTB = CellTrackingBatch(
-    path_data,
-    path_save,
-    embcode=embcode,
-    segmentation_args=segmentation_args,
-    concatenation3D_args=concatenation3D_args,
-    tracking_args=tracking_args,
-    error_correction_args=error_correction_args,
-    plot_args=plot_args,
-    batch_args=batch_args,
-)
+if __name__ == "__main__":
 
-CTB.run()
+    CTB = CellTracking(
+        path_data,
+        path_save,
+        embcode=embcode,
+        segmentation_args=segmentation_args,
+        concatenation3D_args=concatenation3D_args,
+        tracking_args=tracking_args,
+        error_correction_args=error_correction_args,
+        plot_args=plot_args,
+        batch_args=batch_args,
+    )
 
-CTB.plot_tracking()
+    CTB.load()
+    CTB.plot_tracking(plot_args=plot_args)
 

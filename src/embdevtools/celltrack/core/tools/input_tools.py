@@ -14,9 +14,9 @@ def get_file_embcode(path_data, f, allow_file_fragment=False, returnfiles=False)
     ----------
     path_data : str
         The path to the directory containing emb
-    f : str or int
-        if str returns path_data/emb
+    f : int, str or list(str)
         if int returns the emb element in path_data
+        if str returns path_data/emb
 
     Returns
     -------
@@ -25,6 +25,7 @@ def get_file_embcode(path_data, f, allow_file_fragment=False, returnfiles=False)
     """
     files = os.listdir(path_data)
     fid = -1
+    
     if isinstance(f, str):
         for i, file in enumerate(files):
             if allow_file_fragment:
@@ -40,7 +41,30 @@ def get_file_embcode(path_data, f, allow_file_fragment=False, returnfiles=False)
             else:
                 raise Exception("given file name is not present in the given directory")
     else:
-        fid = f
+        if hasattr(f, "__iter__"):
+            if not allow_file_fragment: raise Exception("using a list as a file name or fragment is only allowed under allow_file_fragment=True")
+            possible_files = []
+            for sub_f in f:
+                possible_files.append([])
+                for i, file in enumerate(files):
+                        if sub_f in file:
+                            possible_files[-1].append(i)
+                            
+            final_files = set(possible_files[0])
+            for l in possible_files[1:]:
+                final_files &= set(l)
+            
+            # Converting to list
+            final_files = list(final_files)
+            
+            if len(final_files)==0:
+                raise Exception("given combination of file name extracts is not present in any file name of the given directory")
+            elif len(final_files)>1:
+                raise Exception("given combination of file name extracts is present in more than 1 file")
+            else: 
+                fid = final_files[0]
+        else:
+            fid = f
 
     if fid > len(files):
         raise Exception("given file index is greater than number of files")
