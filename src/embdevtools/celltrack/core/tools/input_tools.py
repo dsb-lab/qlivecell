@@ -78,7 +78,7 @@ def get_file_embcode(path_data, f, allow_file_fragment=False, returnfiles=False)
 
 # Need a image reader that can automatically detect wheter the image has time, or channels and so on. 
 # Or should I leave it as it is and rely on the user to know it's data and know if it's a stack or 2D data. Same for channels
-def read_img_with_resolution(path_to_file, channels=None, stack=True):
+def read_img_with_resolution(path_to_file, channel=None, stack=True):
     """
     Parameters
     ----------
@@ -98,29 +98,29 @@ def read_img_with_resolution(path_to_file, channels=None, stack=True):
         shapeimg = preIMGS.shape
         
         if stack:
-            if channels == None:
+            if channel == None:
                 if len(shapeimg) < 4:
                     IMGS = np.array([tif.asarray()])
                 else:
                     IMGS = np.array(tif.asarray())
             else:
                 if len(shapeimg) == 4:
-                    IMGS = np.array([tif.asarray()[:, channels, :, :]])
+                    IMGS = np.array([tif.asarray()[:, channel, :, :]])
                 else:
-                    IMGS = np.array(tif.asarray()[:, :, channels, :, :])
+                    IMGS = np.array(tif.asarray()[:, :, channel, :, :])
             if len(IMGS.shape) == 3:
                 IMGS = np.array([IMGS])
         else:
-            if channels == None:
+            if channel == None:
                 if len(shapeimg) == 2:
                     IMGS = np.array([tif.asarray()])
                 else:
                     IMGS = np.array(tif.asarray())
             else:
                 if len(shapeimg) == 3:
-                    IMGS = np.array([tif.asarray()[channels, :, :]])
+                    IMGS = np.array([tif.asarray()[channel, :, :]])
                 else:
-                    IMGS = np.array(tif.asarray()[:, channels, :, :])
+                    IMGS = np.array(tif.asarray()[:, channel, :, :])
 
             if len(IMGS.shape) == 3:
                 sh = IMGS.shape
