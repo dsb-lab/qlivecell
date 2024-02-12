@@ -1,8 +1,8 @@
 ### LOAD PACKAGE ###
-# from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
+# from embdevtools import get_file_name, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
+from embdevtools import get_file_name, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
@@ -10,8 +10,8 @@ path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_M
 
 
 ### GET FULL FILE NAME AND FILE CODE ###
-file, embcode, files = get_file_embcode(path_data, 10, returnfiles=True)
-file, embcode, files = get_file_embcode(path_data, 'Lineage_2hr_082119_p1.tif', returnfiles=True)
+file, files = get_file_name(path_data, 10, returnfiles=True)
+file, files = get_file_name(path_data, 'Lineage_2hr_082119_p1.tif', returnfiles=True)
 
 
 ### LOAD HYPERSTACKS ###

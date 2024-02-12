@@ -49,7 +49,7 @@ from .core.tools.cell_tools import (create_cell, find_z_discontinuities_jit,
                                     _predefine_jitcell_inputs)
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack)
-from .core.tools.input_tools import (get_file_embcode, get_file_names,
+from .core.tools.input_tools import (get_file_name, get_file_names,
                                      read_img_with_resolution)
 from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels, read_split_times,
@@ -674,7 +674,7 @@ class CellTracking(object):
         self.update_label_pre()
 
         self.store_CT_info()
-        save_CT_info(self.CT_info, self.path_to_save, self.embcode)
+        save_CT_info(self.CT_info, self.path_to_save)
 
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)

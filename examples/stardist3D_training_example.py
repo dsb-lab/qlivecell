@@ -10,7 +10,7 @@ import numpy as np
 
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_names, get_file_embcode, read_img_with_resolution
+from embdevtools import get_file_names, get_file_name, read_img_with_resolution
 from csbdeep.utils import normalize
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
@@ -24,15 +24,15 @@ Y = []
 files = get_file_names(path_data) 
 
 # get file name and file code
-file, embcode = get_file_embcode(path_data, 0)
+file = get_file_name(path_data, 0)
 for file in files:
     if ".tif" in file:
         if "labels" in file:
-            file, embcode, files = get_file_embcode(path_data, file, returnfiles=True)
+            file, files = get_file_name(path_data, file, returnfiles=True)
             IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
             Y.append(IMGS[0])
         else:
-            file, embcode, files = get_file_embcode(path_data, file, returnfiles=True)
+            file, files = get_file_name(path_data, file, returnfiles=True)
             IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
             # X.append(normalize(IMGS[0]))
             X.append(IMGS[0])

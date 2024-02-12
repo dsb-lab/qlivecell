@@ -29,7 +29,6 @@ def generate_set(
             if data_subtype not in file:
                 continue
 
-        embcode = file.split(".")[0]
 
         if not isinstance(channels, list):
             channels = [channels]
@@ -46,7 +45,7 @@ def generate_set(
             img = skimage.filters.gaussian(
                 img, sigma=blur_args[0], truncate=blur_args[1]
             )
-        path_file_save = path_to_save + embcode + "_t%d" % t + "_z%d" % z + ".tif"
+        path_file_save = path_to_save + "t%d" % t + "_z%d" % z + ".tif"
 
         if exclude_if_in_path is not None:
             files_to_exclude = os.listdir(exclude_if_in_path)

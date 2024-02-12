@@ -161,7 +161,7 @@ def create_toy_cell():
     return cell
 
 
-def _init_CT_cell_attributes(jitcells: ListType(jitCell)):
+def _init_CT_cell_attributes(jitcells: ListType(jitCell)): # type: ignore
     hints = []
     if len(jitcells) == 0:
         cell = create_toy_cell()
@@ -179,7 +179,7 @@ def _init_CT_cell_attributes(jitcells: ListType(jitCell)):
 
 
 def _reinit_update_CT_cell_attributes(
-    jitcells: ListType(jitCell), slices, times, ctattr: CTattributes
+    jitcells: ListType(jitCell), slices, times, ctattr: CTattributes  # type: ignore
 ):
     if len(jitcells) == 0:
         cell = create_toy_cell()
@@ -212,7 +212,7 @@ def _reinit_update_CT_cell_attributes(
 
 
 @njit
-def _update_CT_cell_attributes(jitcells: ListType(jitCell), ctattr: CTattributes):
+def _update_CT_cell_attributes(jitcells: ListType(jitCell), ctattr: CTattributes): # type: ignore
     for cell in jitcells:
         for tid in range(len(cell.times)):
             t = cell.times[tid]

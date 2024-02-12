@@ -1,6 +1,6 @@
 ### LOAD PACKAGE ###
 
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, get_file_names, save_4Dstack_labels
+from embdevtools import get_file_name, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, get_file_names, save_4Dstack_labels
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'
@@ -23,8 +23,7 @@ except:
 ### GET FULL FILE NAME AND FILE CODE ###
 files = get_file_names(path_data)
 
-# file, embcode = get_file_embcode(path_data, 10)
-file, embcode = get_file_embcode(path_data, '_sb.tif', allow_file_fragment=True)
+file = get_file_name(path_data, '_sb.tif', allow_file_fragment=True)
 
 
 ### LOAD HYPERSTACKS ###

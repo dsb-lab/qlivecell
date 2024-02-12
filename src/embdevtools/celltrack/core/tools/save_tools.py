@@ -82,11 +82,11 @@ class CTinfoJSONDecoder(json.JSONDecoder):
             return d
 
 
-def save_cells_to_json(cells, CT_info, path=None, filename=None):
+def save_cells_to_json(cells, CT_info, path=None):
     """save cell objects obtained with celltrack.py
 
-    Saves cells as `path`/`filename`_cells.json
-    Saves cell tracking info as `path`/`filename`_info.json
+    Saves cells as `path`/cells.json
+    Saves cell tracking info as `path`/info.json
 
     Parameters
     ----------
@@ -127,11 +127,11 @@ def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_fo
     
 import time
 
-def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, split_times=False, string_format="{}", save_info=False):
+def save_cells_to_labels_stack(cells, CT_info, times, path=None, split_times=False, string_format="{}", save_info=False):
     """save cell objects obtained with celltrack.py
 
-    Saves cells as `path`/`filename`_cells.npy
-    Saves cell tracking info as `path`/`filename`_info.json
+    Saves cells as `path`/cells.npy
+    Saves cell tracking info as `path`/info.json
 
     Parameters
     ----------
@@ -140,13 +140,9 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
 
     path : str
         path to save directory
-    filename : str
-        name of file or embcode
     """
-    if filename is not None:
-        pthsave = correct_path(path) + str(filename)
-    else:
-        pthsave = correct_path(path)
+
+    pthsave = correct_path(path)
         
     labels_stack = np.zeros(
         (len(times), CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
@@ -178,28 +174,25 @@ def load_CT_info(path):
 save_cells = save_cells_to_labels_stack
 
 
-def load_cells_from_json(path=None, filename=None):
+def load_cells_from_json(path=None):
     """load cell objects obtained with celltrack.py
 
-    load cells from `path`/`filename`_cells.json
-    load cell tracking info from `path`/`filename`_info.json
+    load cells from `path`/cells.json
+    load cell tracking info from `path`/info.json
 
     Parameters
     ----------
     path : str
         path to save directory
-    filename : str
-        name of file or embcode
-
     """
 
-    pthsave = correct_path(path) + filename
+    pthsave = correct_path(path)
 
-    file_to_store = pthsave + "_cells.json"
+    file_to_store = pthsave + "cells.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
         cell_dict = json.load(f, cls=CellJSONDecoder)
 
-    file_to_store = pthsave + "_info.json"
+    file_to_store = pthsave + "info.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
         cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
 
@@ -209,8 +202,8 @@ def load_cells_from_json(path=None, filename=None):
 def load_cells_from_labels_stack(path=None, times=None, split_times=False):
     """load cell objects obtained with celltrack.py from npy file
 
-    load cells from `path`/`filename`_labels.tif
-    load cell tracking info from `path`/`filename`_info.json
+    load cells from `path`/labels.tif
+    load cell tracking info from `path`/info.json
 
     Parameters
     ----------
@@ -287,7 +280,7 @@ def save_4Dstack_labels(path, filename, cells, CT_info, imagejformat="TZYX"):
     labels_stack = compute_labels_stack(labels_stack, cells)
 
     imwrite(
-        path + filename + "_labels.tif",
+        path + filename + ".tif",
         labels_stack,
         imagej=True,
         resolution=(1 / CT_info.xyresolution, 1 / CT_info.xyresolution),

@@ -8,14 +8,14 @@ def get_file_names(path_data):
     files = os.listdir(path_data)
     return files
 
-def get_file_embcode(path_data, f, allow_file_fragment=False, returnfiles=False):
+def get_file_name(path_data, f, allow_file_fragment=False, returnfiles=False):
     """
     Parameters
     ----------
     path_data : str
-        The path to the directory containing emb
+        The path to the directory containing `f`
     f : int, str or list(str)
-        if int returns the emb element in path_data
+        if int returns the `f` element in path_data
         if str returns path_data/emb
 
     Returns
@@ -70,10 +70,9 @@ def get_file_embcode(path_data, f, allow_file_fragment=False, returnfiles=False)
         raise Exception("given file index is greater than number of files")
 
     file = files[fid]
-    name = file.split(".")[0]
     if returnfiles:
-        return file, name, files
-    return file, name
+        return file, files
+    return file
 
 
 def read_img_with_resolution(path_to_file, channel=None, stack=True):
