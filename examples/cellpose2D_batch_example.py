@@ -60,7 +60,7 @@ plot_args = {
     'masks_cmap': 'tab10',
     'plot_stack_dims': (512, 512), 
     'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-    'channels':[0,1]
+    'channels':[0]
 }
 
 error_correction_args = {

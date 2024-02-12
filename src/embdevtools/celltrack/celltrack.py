@@ -1751,7 +1751,7 @@ class CellTracking(object):
         zidxs = np.unravel_index(range(counter.groupsize), counter.layout)
         t = 0
         
-        imgs = self.plot_stacks[t, :, :, :, :]
+        imgs = self.plot_stacks[t]
 
         # Plot all our Zs in the corresponding round
         for z, id, _round in counter:
