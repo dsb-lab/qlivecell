@@ -6,7 +6,7 @@ import os
 
 from ..dataclasses import Cell, CellTracking_info
 from .tools import correct_path
-from .input_tools import read_img_with_resolution
+from .input_tools import tif_reader_5D
 from .cell_tools import create_cell
 from .ct_tools import compute_labels_stack
 from numba import prange, njit
@@ -109,8 +109,7 @@ def save_cells_to_json(cells, CT_info, path=None):
 
 
 def save_labels_stack(labels_stack, pthsave, times, filename=None, split_times=False, string_format="{}"):
-    print(pthsave)
-    print(filename)
+
     if split_times: 
         if not os.path.isdir(pthsave): 
             os.mkdir(pthsave)
@@ -149,8 +148,7 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
     """
 
     pthsave = correct_path(path)
-    print(pthsave)
-    print(filename)
+
     labels_stack = np.zeros(
         (len(times), CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
@@ -400,7 +398,7 @@ def save_2Dtiff(
         },
     )
 
-def read_split_times(path_data, times, extra_name="", extension=".tif"):
+def read_split_times(path_data, times, extra_name="", extension=".tif", channels=None):
     
     IMGS = []
 
@@ -408,18 +406,19 @@ def read_split_times(path_data, times, extra_name="", extension=".tif"):
         path_to_file = correct_path(path_data)+"{}{}{}".format(t, extra_name, extension)
 
         if extension == ".tif":
-            IMG, xyres, zres = read_img_with_resolution(path_to_file, channel=None, stack=True)
-            IMG = IMG[0]
-            IMGS.append(IMG.astype('uint8'))
+            IMG, metadata = tif_reader_5D(path_to_file)
+            if channels is None:
+                channels = [i for i in range(IMG.shape[2])]
+            IMG = IMG[:, :, channels, :, :]
+            IMGS.append(IMG[0].astype('uint8'))
         elif extension == ".npy":
             IMG = np.load(path_to_file)
             IMGS.append(IMG.astype('uint16'))
     if extension == ".tif":
-        return np.array(IMGS), xyres, zres
+        return np.array(IMGS), metadata
     elif extension == ".npy":
         return np.array(IMGS)
     
-import time
 def substitute_labels(post_range_start ,post_range_end, path_to_save, lcT):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:

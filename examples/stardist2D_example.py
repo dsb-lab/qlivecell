@@ -1,11 +1,11 @@
 ### LOAD PACKAGE ###
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_name, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack, get_file_names
+from embdevtools import get_file_name, read_img_with_resolution, CellTracking, tif_reader_5D, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack, get_file_names
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/stacks/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/ctobjects/'
+path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/20230607_CAG_H2B_GFP_16_cells_stack2/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
 try: 
     files = get_file_names(path_save)
@@ -17,6 +17,7 @@ files = get_file_names(path_data)
 
 file = get_file_name(path_data, '8bit.tif', allow_file_fragment=True, returnfiles=False)
 
+hyperstack, imagej_metadata = tif_reader_5D(path_data+file)
 
 ### LOAD HYPERSTACKS ###
 channel = 2

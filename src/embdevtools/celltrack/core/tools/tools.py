@@ -10,6 +10,7 @@ LINE_CLEAR = "\x1b[2K"
 
 
 def printclear(n=1):
+    return
     LINE_UP = "\033[1A"
     LINE_CLEAR = "\x1b[2K"
     for i in range(n):
@@ -247,7 +248,7 @@ def get_outlines_masks_labels(label_img):
             continue
 
         outline = mask[hull.vertices]
-        # outline[:] = outline[:, [1, 0]]
+        outline[:] = outline[:, [1, 0]]
 
         outlines.append(outline)
         masks.append(mask)

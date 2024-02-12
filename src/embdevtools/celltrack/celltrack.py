@@ -50,7 +50,7 @@ from .core.tools.cell_tools import (create_cell, find_z_discontinuities_jit,
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack)
 from .core.tools.input_tools import (get_file_name, get_file_names,
-                                     read_img_with_resolution)
+                                     tif_reader_5D)
 from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels, read_split_times,
                                     save_cells_to_labels_stack, save_labels_stack,
@@ -107,15 +107,15 @@ class CellTracking(object):
         error_correction_args={},
         plot_args={},
         batch_args={},
-        use_channel=0,
+        channels=[0], # first element is the channel used for computing cell centers and for segmentation on stardist
     ):
         print("###############           INIT ON BATCH MODE          ################")
         printfancy("")
         # Basic arguments
         self.batch = True
         
-        self.use_channel = use_channel
-        
+        self.channels = np.sort(channels)
+        self.channels_order = np.array(channels)
         # Directory containing stakcs
         self.path_to_data = pthtodata
 
@@ -191,15 +191,10 @@ class CellTracking(object):
         )
     
         # Read the stacks
-        stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(0, 1), extra_name="", extension=".tif")
-        self.slices = stacks.shape[1]
-        self.stack_dims = np.shape(stacks)[2:4]
+        self.hyperstack, self.metadata = read_split_times(self.path_to_data, range(0, 1), extra_name="", extension=".tif", channels=self.channels)
+        self.slices = self.hyperstack.shape[1]
+        self.stack_dims = np.shape(self.hyperstack)[3:]
 
-        # Define xy and z resolutions
-        self._xyresolution = xyresolution
-        self._zresolution = zresolution
-    
-    
         # check if the segmentation is directly in 3D or it needs concatenation
         self.segment3D = check3Dmethod(self._seg_args["method"])
         if not self.segment3D:
@@ -248,8 +243,8 @@ class CellTracking(object):
         }
 
         CT_info = CellTracking_info(
-            self._xyresolution,
-            self._zresolution,
+            self.metadata["XYresolution"],
+            self.metadata["Zresolution"],
             self.total_times,
             self.slices,
             self.stack_dims,
@@ -263,8 +258,8 @@ class CellTracking(object):
         return CT_info
 
     def store_CT_info(self):
-        self.CT_info.xyresolution = self._xyresolution
-        self.CT_info.zresolution = self._zresolution
+        self.CT_info.xyresolution = self.metadata["XYresolution"]
+        self.CT_info.zresolution = self.metadata["Zresolution"]
         self.CT_info.times = self.total_times
         self.CT_info.slices = self.slices
         self.CT_info.stack_dims = self.stack_dims
@@ -347,22 +342,16 @@ class CellTracking(object):
         self.batch_times_list_global = times
         self.times = len(times)
 
-        stacks, xyresolution, zresolution = read_split_times(self.path_to_data, self.batch_times_list_global, extra_name="", extension=".tif")
+        self.hyperstack, self.metadata = read_split_times(self.path_to_data, self.batch_times_list_global, extra_name="", extension=".tif", channels=self.channels)
         # If the stack is RGB, pick the channel to segment
-        if len(stacks.shape) == 5:
-            self._stacks = stacks[:, :, :, :, self.use_channel]
-            self.STACKS = stacks
-        elif len(stacks.shape) == 4:
-            self._stacks = stacks
-            self.STACKS = stacks
 
         self.plot_stacks = check_stacks_for_plotting(
             None,
-            self.STACKS,
+            self.hyperstack,
             self._plot_args,
             self.times,
             self.slices,
-            self._xyresolution,
+            self.metadata["XYresolution"],
         )
         t = self.times
         z = self.slices
@@ -381,7 +370,7 @@ class CellTracking(object):
         
         self.jitcells = extract_jitcells_from_label_stack(labels)
         
-        update_jitcells(self.jitcells, self._stacks)
+        update_jitcells(self.jitcells, self.hyperstack[:,:,self.channels_order[0],:,:,])
         
         self.jitcells_selected = self.jitcells
         
@@ -442,55 +431,26 @@ class CellTracking(object):
             label_correspondance = []
 
             # Read the stacks
-            stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(t, t+1), extra_name="", extension=".tif")
-
-            # If the stack is RGB, pick the channel to segment
-            if len(stacks.shape) == 5:
-                self._stacks = stacks[:, :, :, :, self.use_channel]
-                self.STACKS = stacks
-            elif len(stacks.shape) == 4:
-                self._stacks = stacks
-                self.STACKS = stacks
+            self.hyperstack, self.metadata = read_split_times(self.path_to_data, range(t, t+1), extra_name="", extension=".tif", channels=self.channels)
             
-            # If segmentation method is cellpose and stack is RGB, use that for segmentation
-            # since you can specify channels for segmentation in cellpose
-            # array could have an extra dimension if RGB
-            if "cellpose" in self._seg_args["method"]:
-                if len(self.STACKS.shape) == 5:
-                    ch = self._seg_method_args["channels"][0] - 1
-                    self._stacks = self.STACKS[:, :, :, :, ch]
-
-            if "stardist" in self._seg_args["method"]:
-                pre_stack_seg = self._stacks[0]
-            elif "cellpose" in self._seg_args["method"]:
-                pre_stack_seg = self.STACKS[0]
-
-            # If not 3D, don't isotropize
+            pre_stack_seg = self.hyperstack[0]
 
             if self._seg_args["make_isotropic"][0]:
                 iso_frac = self._seg_args["make_isotropic"][1]
-                zres = self._zresolution
-                xyres = self._xyresolution
-                if len(pre_stack_seg.shape) == 4:
-                    stack_seg, ori_idxs = isotropize_stackRGB(
-                        pre_stack_seg,
-                        zres,
-                        xyres,
-                        isotropic_fraction=iso_frac,
-                        return_original_idxs=True,
-                    )
-
-                elif len(pre_stack_seg.shape) == 3:
-                    stack_seg, ori_idxs = isotropize_stack(
-                        pre_stack_seg,
-                        zres,
-                        xyres,
-                        isotropic_fraction=iso_frac,
-                        return_original_idxs=True,
-                    )
+                zres = self.metadata["Zresolution"]
+                xyres = self.metadata["XYresolution"]
+                stack_seg, ori_idxs = isotropize_stackRGB(
+                    pre_stack_seg,
+                    zres,
+                    xyres,
+                    isotropic_fraction=iso_frac,
+                    return_original_idxs=True,
+                )
             else:
                 stack_seg = pre_stack_seg
 
+            if "stardist" in self._seg_args["method"]: 
+                stack_seg = stack_seg[:, self.channels_order[0], :, :]
             outlines, masks, labels = cell_segmentation3D(
                 stack_seg, self._seg_args, self._seg_method_args
             )
@@ -500,12 +460,11 @@ class CellTracking(object):
                 labels = [labels[i] for i in ori_idxs]
 
             if not self.segment3D:
-                stack = self._stacks[0]
+                stack = self.hyperstack[0,:, self.channels_order[0], :, :]    
                 # outlines and masks are modified in place
                 labels = concatenate_to_3D(
-                    stack, outlines, masks, self._conc3D_args, self._xyresolution
+                    stack, outlines, masks, self._conc3D_args, self.metadata["XYresolution"]
                 )
-
 
             Outlines.append(outlines)
             Masks.append(masks)
@@ -513,7 +472,7 @@ class CellTracking(object):
 
             
             TLabels, TOutlines, TMasks, TCenters = get_labels_centers(
-                self._stacks, Labels, Outlines, Masks
+                self.hyperstack[:,:,self.channels_order[0],:,:,], Labels, Outlines, Masks
             )
 
             lc = [[lab,lab] for lab in TLabels[0]]
@@ -545,7 +504,6 @@ class CellTracking(object):
         for file in files:
             if ".npy" not in file:
                 files.remove(file)
-        print(files)
         file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
         files = [files[i] for i in file_sort_idxs]
 
@@ -567,16 +525,16 @@ class CellTracking(object):
             
             labels = read_split_times(self.path_to_save, times, extra_name="", extension=".npy")
 
-            IMGS, xyres, zres = read_split_times(self.path_to_data, times, extra_name="", extension=".tif")
+            IMGS, metadata = read_split_times(self.path_to_data, times, extra_name="", extension=".tif")
 
             labels = labels.astype("uint16")
             Labels, Outlines, Masks = prepare_labels_stack_for_tracking(labels)
-            TLabels, TOutlines, TMasks, TCenters = get_labels_centers(IMGS, Labels, Outlines, Masks)
+            TLabels, TOutlines, TMasks, TCenters = get_labels_centers(IMGS[:,:,self.channels_order[0],:,:], Labels, Outlines, Masks)
             FinalLabels, label_correspondance = greedy_tracking(
                     TLabels,
                     TCenters,
-                    xyres,
-                    zres,
+                    metadata["XYresolution"],
+                    metadata["Zresolution"],
                     self._track_args,
                     lab_max=maxlab
                     )
@@ -620,7 +578,7 @@ class CellTracking(object):
             )
 
             jitcell = construct_jitCell_from_Cell(cell)
-            update_jitcell(jitcell, self._stacks)
+            update_jitcell(jitcell, self.hyperstack[:,:,self.channels_order[0],:,:,])
             self.jitcells.append(jitcell)
         self.jitcells_selected = self.jitcells
         self.currentcellid = len(self.unique_labels) - 1
@@ -860,12 +818,12 @@ class CellTracking(object):
             [t],
             outlines,
             masks,
-            self._stacks,
+            self.hyperstack[:,:,self.channels_order[0],:,:,],
         )
         self.max_label += 1
         self.currentcellid += 1
         new_jitcell = construct_jitCell_from_Cell(new_cell)
-        update_jitcell(new_jitcell, self._stacks)
+        update_jitcell(new_jitcell, self.hyperstack[:,:,self.channels_order[0],:,:,])
         jitcellslen = len(self.jitcells_selected)
         self.jitcells.append(new_jitcell)
         
@@ -988,7 +946,7 @@ class CellTracking(object):
             cell.zs[tid].pop(idrem)
             cell.outlines[tid].pop(idrem)
             cell.masks[tid].pop(idrem)
-            update_jitcell(cell, self._stacks)
+            update_jitcell(cell, self.hyperstack[:,:,self.channels_order[0],:,:,])
 
             if cell._rem:
                 idrem = cell.id
@@ -1010,15 +968,15 @@ class CellTracking(object):
             new_labs.append(cell.label)
             try:
                 new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities_jit(
-                    cell, self._stacks, self.max_label, self.currentcellid, t
+                    cell, self.hyperstack[:,:,self.channels_order[0],:,:,], self.max_label, self.currentcellid, t
                 )
-                update_jitcell(cell, self._stacks)
+                update_jitcell(cell, self.hyperstack[:,:,self.channels_order[0],:,:,])
                 if new_maxlabel is not None:
                     new_jitcell = construct_jitCell_from_Cell(new_cell)
                     new_labs.append(new_jitcell.label)
                     self.max_label = new_maxlabel
                     self.currentcellid = new_currentcellid
-                    update_jitcell(new_jitcell, self._stacks)
+                    update_jitcell(new_jitcell, self.hyperstack[:,:,self.channels_order[0],:,:,])
                     jitcellslen = len(self.jitcells_selected)
                     self.jitcells.append(new_jitcell)
                     if jitcellslen < len(self.jitcells_selected):
@@ -1028,9 +986,9 @@ class CellTracking(object):
                 pass
             
             new_maxlabel, new_currentcellid, new_cell = find_t_discontinuities_jit(
-                cell, self._stacks, self.max_label, self.currentcellid
+                cell, self.hyperstack[:,:,self.channels_order[0],:,:,], self.max_label, self.currentcellid
             )
-            update_jitcell(cell, self._stacks)
+            update_jitcell(cell, self.hyperstack[:,:,self.channels_order[0],:,:,])
             if new_maxlabel is not None:
                 new_jitcell = construct_jitCell_from_Cell(new_cell)
                 new_labs.append(new_jitcell.label)
@@ -1046,7 +1004,7 @@ class CellTracking(object):
                     first_future_time = self.batch_times_list_global[-1]+1
                     add_lab_change(first_future_time, lab_change, self.label_correspondance_T, self.unique_labels_T)
 
-                update_jitcell(new_jitcell, self._stacks)
+                update_jitcell(new_jitcell, self.hyperstack[:,:,self.channels_order[0],:,:,])
                 jitcellslen = len(self.jitcells_selected)
                 self.jitcells.append(new_jitcell)
                 if jitcellslen == len(self.jitcells_selected):
@@ -1208,13 +1166,13 @@ class CellTracking(object):
                 cell1.zs[tid_cell1].append(z)
                 cell1.outlines[tid_cell1].append(outlines_cell2[zid])
                 cell1.masks[tid_cell1].append(masks_cell2[zid])
-            update_jitcell(cell1, self._stacks)
+            update_jitcell(cell1, self.hyperstack[:,:,self.channels_order[0],:,:,])
 
             t_rem = cell2.times.pop(tid_cell2)
             cell2.zs.pop(tid_cell2)
             cell2.outlines.pop(tid_cell2)
             cell2.masks.pop(tid_cell2)
-            update_jitcell(cell2, self._stacks)
+            update_jitcell(cell2, self.hyperstack[:,:,self.channels_order[0],:,:,])
             if cell2._rem:
                 self._del_cell(cell2.label, t=t_rem)
 
@@ -1337,7 +1295,7 @@ class CellTracking(object):
                 cell1.outlines.append(cell2.outlines[tid])
                 cell1.masks.append(cell2.masks[tid])
 
-            update_jitcell(cell1, self._stacks)
+            update_jitcell(cell1, self.hyperstack[:,:,self.channels_order[0],:,:,])
             
             lab_change = np.array([[cell2.label, cell1.label]]).astype('uint16')
             self._del_cell(cell2.label, lab_change=lab_change, t=cell2.times[0])
@@ -1391,7 +1349,7 @@ class CellTracking(object):
         cell.times = cell.times[:border]
         cell.outlines = cell.outlines[:border]
         cell.masks = cell.masks[:border]
-        update_jitcell(cell, self._stacks)
+        update_jitcell(cell, self.hyperstack[:,:,self.channels_order[0],:,:,])
 
         new_cell.zs = new_cell.zs[border:]
         new_cell.times = new_cell.times[border:]
@@ -1406,7 +1364,7 @@ class CellTracking(object):
         new_cell.id = self.currentcellid + 1
         self.max_label += 1
         self.currentcellid += 1
-        update_jitcell(new_cell, self._stacks)
+        update_jitcell(new_cell, self.hyperstack[:,:,self.channels_order[0],:,:,])
         self.jitcells.append(new_cell)
         jitcellslen = len(self.jitcells_selected)
         if jitcellslen < len(self.jitcells_selected):
@@ -1674,9 +1632,18 @@ class CellTracking(object):
             plot_args = self._plot_args
             
         #  Plotting Attributes
-        self._plot_args = check_and_fill_plot_args(plot_args, self._stacks.shape[2:4])
+        self._plot_args = check_and_fill_plot_args(plot_args, self.hyperstack.shape[3:])
         self._plot_args["plot_masks"] = True
 
+        self.plot_stacks = check_stacks_for_plotting(
+            None,
+            self.hyperstack,
+            self._plot_args,
+            self.times,
+            self.slices,
+            self.metadata["XYresolution"],
+        )
+        
         t = self.times
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
@@ -1783,7 +1750,8 @@ class CellTracking(object):
         self.PACP.zs = np.zeros_like(ax)
         zidxs = np.unravel_index(range(counter.groupsize), counter.layout)
         t = 0
-        imgs = self.plot_stacks[t, :, :, :]
+        
+        imgs = self.plot_stacks[t]
 
         # Plot all our Zs in the corresponding round
         for z, id, _round in counter:
@@ -1837,7 +1805,7 @@ class CellTracking(object):
             round=PACP.cr,
         )
         zidxs = np.unravel_index(range(counter.groupsize), counter.layout)
-        imgs = self.plot_stacks[t, :, :, :]
+        imgs = self.plot_stacks[t]
         # Plot all our Zs in the corresponding round
         for sc in self._pos_scatters:
             sc.remove()
@@ -1854,7 +1822,7 @@ class CellTracking(object):
                 self._imshows_outlines[id].set_array(img)
                 self._titles[id].set_text("")
             else:
-                img = imgs[z, :, :]
+                img = imgs[z]
                 PACP.zs[id] = z
                 labs = self.ctattr.Labels[t][z]
                 self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)

@@ -24,6 +24,8 @@ def check_and_fill_plot_args(plot_args, stack_dims):
         plot_args["plot_stack_dims"] = stack_dims
     if "plot_centers" not in plot_args.keys():
         plot_args["plot_centers"] = [True, True]
+    if "channels" not in plot_args.keys():
+        plot_args["channels"] = None
     plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stack_dims[-1]
 
     _cmap = cm.get_cmap(plot_args["masks_cmap"])
@@ -43,8 +45,10 @@ def check_stacks_for_plotting(
             plot_args["plot_stack_dims"][1],
             3,
         ]
-
-    plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[3]
+        channels = plot_args["channels"]
+        if channels is None:
+            channels = [i for i in range(stacks_for_plotting.shape[2])]
+    plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[-2]
     plot_args["_plot_xyresolution"] = xyresolution * plot_args["dim_change"]
 
     if plot_args["dim_change"] != 1:
@@ -55,9 +59,9 @@ def check_stacks_for_plotting(
         for t in range(times):
             for z in range(slices):
                 if len(plot_args["plot_stack_dims"]) == 3:
-                    for ch in range(3):
+                    for ch in range(stacks_for_plotting.shape[2]):
                         plot_stack_ch = resize(
-                            stacks_for_plotting[t, z, :, :, ch],
+                            stacks_for_plotting[t, z, ch, :, :],
                             plot_args["plot_stack_dims"][0:2],
                         )
 
@@ -70,9 +74,20 @@ def check_stacks_for_plotting(
                     plot_stack = resize(
                         stacks_for_plotting[t, z], plot_args["plot_stack_dims"]
                     )
-                plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
+                # plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
     else:
-        plot_stacks = stacks_for_plotting
+        if len(plot_args["plot_stack_dims"])==3:
+            plot_stacks = np.zeros(
+            (times, slices, *plot_args["plot_stack_dims"]), dtype="uint8"
+            )   
+            for ch in range(stacks_for_plotting.shape[2]):
+                if ch in channels:
+                    plot_stacks[:,:,:,:,ch] = stacks_for_plotting[:,:,ch,:,:]
+
+            if len(channels)==1:
+                plot_stacks = plot_stacks[:,:,:,:,channels[0]]
+        else:
+            plot_stacks = stacks_for_plotting
 
     return plot_stacks
 
