@@ -6,7 +6,7 @@ from embdevtools import get_file_name, read_img_with_resolution, CellTracking, s
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
-path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/20230607_CAG_H2B_GFP_16_cells_stack2_registered/'
+path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/20230607_CAG_H2B_GFP_16_cells_stack2_registered/test/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
 try: 
@@ -65,19 +65,18 @@ batch_args = {
 }
 
 
-if __name__ == "__main__":
 
-    CTB = CellTracking(
-        path_data,
-        path_save,
-        segmentation_args=segmentation_args,
-        concatenation3D_args=concatenation3D_args,
-        tracking_args=tracking_args,
-        error_correction_args=error_correction_args,
-        plot_args=plot_args,
-        batch_args=batch_args,
-    )
+CTB = CellTracking(
+    path_data,
+    path_save,
+    segmentation_args=segmentation_args,
+    concatenation3D_args=concatenation3D_args,
+    tracking_args=tracking_args,
+    error_correction_args=error_correction_args,
+    plot_args=plot_args,
+    batch_args=batch_args,
+)
 
-    CTB.run()
-    CTB.plot_tracking(plot_args=plot_args)
+CTB.run()
+CTB.plot_tracking(plot_args=plot_args)
 

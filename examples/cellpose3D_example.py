@@ -57,7 +57,6 @@ error_correction_args = {
 CT = CellTracking(
     IMGS[:1], 
     path_save, 
-    embcode, 
     xyresolution=xyres, 
     zresolution=zres,
     segmentation_args=segmentation_args,

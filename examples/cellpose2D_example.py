@@ -81,7 +81,6 @@ error_correction_args = {
 CT = CellTracking(
     IMGS[:3,:30], 
     path_save, 
-    embcode, 
     xyresolution=xyres, 
     zresolution=zres,
     segmentation_args=segmentation_args,
@@ -96,7 +95,7 @@ CT = CellTracking(
 CT.run()
 
 # from embdevtools.celltrack.core.tools.save_tools import save_cells_to_labels_stack
-# save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=True, string_format="{}_labels")
+# save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, split_times=True, string_format="{}_labels")
 
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)

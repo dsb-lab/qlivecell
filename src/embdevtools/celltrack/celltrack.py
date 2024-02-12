@@ -545,6 +545,7 @@ class CellTracking(object):
         for file in files:
             if ".npy" not in file:
                 files.remove(file)
+        print(files)
         file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
         files = [files[i] for i in file_sort_idxs]
 
