@@ -107,7 +107,7 @@ class CellTracking(object):
         error_correction_args={},
         plot_args={},
         batch_args={},
-        channels=[0], 
+        channels=[0], # first element is the channel used for computing cell centers and for segmentation on stardist
     ):
         print("###############           INIT ON BATCH MODE          ################")
         printfancy("")
