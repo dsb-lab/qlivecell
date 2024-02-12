@@ -44,7 +44,7 @@ def check_stacks_for_plotting(
             3,
         ]
 
-    plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[3]
+    plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[-2]
     plot_args["_plot_xyresolution"] = xyresolution * plot_args["dim_change"]
 
     if plot_args["dim_change"] != 1:
@@ -55,9 +55,9 @@ def check_stacks_for_plotting(
         for t in range(times):
             for z in range(slices):
                 if len(plot_args["plot_stack_dims"]) == 3:
-                    for ch in range(3):
+                    for ch in range(stacks_for_plotting.shape[2]):
                         plot_stack_ch = resize(
-                            stacks_for_plotting[t, z, :, :, ch],
+                            stacks_for_plotting[t, z, ch, :, :],
                             plot_args["plot_stack_dims"][0:2],
                         )
 
@@ -70,9 +70,17 @@ def check_stacks_for_plotting(
                     plot_stack = resize(
                         stacks_for_plotting[t, z], plot_args["plot_stack_dims"]
                     )
-                plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
+                # plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
     else:
-        plot_stacks = stacks_for_plotting
+        if len(plot_args["plot_stack_dims"])==3:
+            plot_stacks = np.zeros(
+            (times, slices, *plot_args["plot_stack_dims"]), dtype="uint8"
+            )   
+            for ch in range(stacks_for_plotting.shape[2]):
+               plot_stacks[:,:,:,:,ch] = stacks_for_plotting[:,:,ch,:,:]
+        
+        else:
+            plot_stacks = stacks_for_plotting
 
     return plot_stacks
 

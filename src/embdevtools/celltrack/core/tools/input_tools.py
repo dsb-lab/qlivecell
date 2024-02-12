@@ -169,9 +169,7 @@ def tif_reader_5D(path_to_file):
         hyperstack = tif.asarray()
         imagej_metadata = tif.imagej_metadata
         tags = tif.pages[0].tags
-        
-        metadata_keys = imagej_metadata.keys()
-        
+                
         try: 
             frames = imagej_metadata['frames']
         except KeyError:
@@ -218,7 +216,7 @@ def tif_reader_5D(path_to_file):
         else:
             xyres = np.mean([xres, yres])
     
-    imagej_metadata["xyres"] = xyres
-    imagej_metadata["zres"]  = zres
-    imagej_metadata["res_unit"] = res_unit
+    imagej_metadata["XYresolution"] = xyres
+    imagej_metadata["Zresolution"]  = zres
+    imagej_metadata["ResolutionUnit"] = res_unit
     return hyperstack, imagej_metadata
