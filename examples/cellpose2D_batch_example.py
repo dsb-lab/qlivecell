@@ -58,9 +58,9 @@ plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), 
+    'plot_stack_dims': (256, 256), 
     'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-    'channels':[0]
+    'channels':[0,1]
 }
 
 error_correction_args = {

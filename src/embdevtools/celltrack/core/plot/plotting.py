@@ -60,21 +60,23 @@ def check_stacks_for_plotting(
             for z in range(slices):
                 if len(plot_args["plot_stack_dims"]) == 3:
                     for ch in range(stacks_for_plotting.shape[2]):
-                        plot_stack_ch = resize(
-                            stacks_for_plotting[t, z, ch, :, :],
-                            plot_args["plot_stack_dims"][0:2],
-                        )
+                        if ch in channels:
+                            plot_stack_ch = resize(
+                                stacks_for_plotting[t, z, ch, :, :],
+                                plot_args["plot_stack_dims"][0:2],
+                            )
 
-                        norm_factor = np.max(plot_stacks[t, z, :, :, ch])
-                        if norm_factor < 0.01:
-                            norm_factor = 1.0
-                        plot_stack[:, :, ch] = plot_stack_ch / norm_factor
+                            norm_factor = np.max(plot_stacks[t, z, :, :, ch])
+                            if norm_factor < 0.01:
+                                norm_factor = 1.0
+                            plot_stack[:, :, ch] = plot_stack_ch / norm_factor
 
                 else:
                     plot_stack = resize(
                         stacks_for_plotting[t, z], plot_args["plot_stack_dims"]
                     )
-                # plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
+                plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
+        
     else:
         if len(plot_args["plot_stack_dims"])==3:
             plot_stacks = np.zeros(
@@ -84,11 +86,12 @@ def check_stacks_for_plotting(
                 if ch in channels:
                     plot_stacks[:,:,:,:,ch] = stacks_for_plotting[:,:,ch,:,:]
 
-            if len(channels)==1:
-                plot_stacks = plot_stacks[:,:,:,:,channels[0]]
         else:
             plot_stacks = stacks_for_plotting
-
+            
+    if len(plot_args["plot_stack_dims"]) == 3:
+        if len(channels)==1:
+            plot_stacks = plot_stacks[:,:,:,:,channels[0]]
     return plot_stacks
 
 
