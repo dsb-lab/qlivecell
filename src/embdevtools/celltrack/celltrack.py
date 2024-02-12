@@ -1805,7 +1805,7 @@ class CellTracking(object):
             round=PACP.cr,
         )
         zidxs = np.unravel_index(range(counter.groupsize), counter.layout)
-        imgs = self.plot_stacks[t, :, :, :, :]
+        imgs = self.plot_stacks[t]
         # Plot all our Zs in the corresponding round
         for sc in self._pos_scatters:
             sc.remove()
@@ -1822,7 +1822,7 @@ class CellTracking(object):
                 self._imshows_outlines[id].set_array(img)
                 self._titles[id].set_text("")
             else:
-                img = imgs[z, :, :]
+                img = imgs[z]
                 PACP.zs[id] = z
                 labs = self.ctattr.Labels[t][z]
                 self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
