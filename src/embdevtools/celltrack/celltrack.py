@@ -50,7 +50,7 @@ from .core.tools.cell_tools import (create_cell, find_z_discontinuities_jit,
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack)
 from .core.tools.input_tools import (get_file_embcode, get_file_names,
-                                     read_img_with_resolution)
+                                     read_img_with_resolution, tif_reader_5D)
 from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels, read_split_times,
                                     save_cells_to_labels_stack, save_labels_stack,

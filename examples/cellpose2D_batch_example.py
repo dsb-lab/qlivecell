@@ -63,7 +63,7 @@ plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (256, 256), 
+    'plot_stack_dims': (512, 512), 
     'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
 }
 
@@ -78,20 +78,18 @@ batch_args = {
 }
 
 
-if __name__ == "__main__":
+CTB = CellTracking(
+    path_data,
+    path_save,
+    embcode=embcode,
+    segmentation_args=segmentation_args,
+    concatenation3D_args=concatenation3D_args,
+    tracking_args=tracking_args,
+    error_correction_args=error_correction_args,
+    plot_args=plot_args,
+    batch_args=batch_args,
+)
 
-    CTB = CellTracking(
-        path_data,
-        path_save,
-        embcode=embcode,
-        segmentation_args=segmentation_args,
-        concatenation3D_args=concatenation3D_args,
-        tracking_args=tracking_args,
-        error_correction_args=error_correction_args,
-        plot_args=plot_args,
-        batch_args=batch_args,
-    )
-
-    CTB.run()
-    CTB.plot_tracking(plot_args=plot_args)
+CTB.run()
+CTB.plot_tracking(plot_args=plot_args)
 

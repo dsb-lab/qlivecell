@@ -1,11 +1,11 @@
 ### LOAD PACKAGE ###
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack, get_file_names
+from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack, get_file_names, tif_reader_5D
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/stacks/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/ctobjects/'
+path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/20230607_CAG_H2B_GFP_16_cells_stack2/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
 try: 
     files = get_file_names(path_save)
@@ -15,8 +15,9 @@ except:
 ### GET FULL FILE NAME AND FILE CODE ###
 files = get_file_names(path_data)
 
-file, embcode = get_file_embcode(path_data, '8bit.tif', allow_file_fragment=True, returnfiles=False)
+file, embcode = get_file_embcode(path_data,0, allow_file_fragment=True, returnfiles=False)
 
+hyperstack, imagej_metadata = tif_reader_5D(path_data+file)
 
 ### LOAD HYPERSTACKS ###
 channel = 2
@@ -95,47 +96,3 @@ import numpy as np
 IMGS_plot = np.asarray([[255*(IMG/IMG.max()) for IMG in IMGS[0]]]).astype('uint8')
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_plot)
 
-
-# ### SAVE RESULTS AS MASKS HYPERSTACK ###
-# save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
-
-
-# ### SAVE RESULTS AS LABELS HYPERSTACK ###
-# save_4Dstack_labels(path_save, embcode, CT._labels_stack, xyres, zres, imagejformat="TZYX")
-
-
-# ### LOAD PREVIOUSLY SAVED RESULTS ###
-# CT=load_CellTracking(
-#         IMGS, 
-#         path_save, 
-#         embcode+"ch_%d" %(channel+1), 
-#         xyresolution=xyres, 
-#         zresolution=zres,
-#         segmentation_args=segmentation_args,
-#         concatenation3D_args=concatenation3D_args,
-#         tracking_args = tracking_args, 
-#         error_correction_args=error_correction_args,    
-#         plot_args = plot_args,
-#     )
-
-# ### PLOTTING ###
-# IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
-# CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
-
-### SAVE RESULTS AS LABELS HYPERSTACK ###
-
-
-# ### TRAINING ARGUMENTS ###
-# train_segmentation_args = {
-#     'blur': None,
-#     'channels': [0,0],
-#     'normalize': True,
-#     'min_train_masks':2,
-#     'save_path':path_save,
-#     }
-
-
-# ### RUN TRAINING ###
-# new_model = CT.train_segmentation_model(train_segmentation_args)
-# CT.set_model(new_model)
-# CT.run()
