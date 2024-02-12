@@ -95,18 +95,15 @@ def save_cells_to_json(cells, CT_info, path=None, filename=None):
 
     path : str
         path to save directory
-    filename : str
-        name of file or embcode
-
     """
 
-    pthsave = correct_path(path) + filename
+    pthsave = correct_path(path)
 
-    file_to_store = pthsave + "_cells.json"
+    file_to_store = pthsave + "cells.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
         json.dump(cells, f, cls=EnhancedJSONEncoder)
 
-    file_to_store = pthsave + "_info.json"
+    file_to_store = pthsave + "info.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
@@ -158,21 +155,21 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
     save_labels_stack(labels_stack, pthsave, times, split_times=split_times, string_format=string_format)
 
     if save_info:
-        file_to_store = pthsave + "_info.json"
+        file_to_store = pthsave + "info.json"
         with open(file_to_store, "w", encoding="utf-8") as f:
             json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
-def save_CT_info(CT_info, path, filename):
-    pthsave = correct_path(path) + str(filename)
-    file_to_store = pthsave + "_info.json"
+def save_CT_info(CT_info, path):
+    pthsave = correct_path(path)
+    file_to_store = pthsave + "info.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
-def load_CT_info(path, filename):
-    pthsave = correct_path(path) + str(filename)
-    file_to_store = pthsave + "_info.json"
+def load_CT_info(path):
+    pthsave = correct_path(path)
+    file_to_store = pthsave + "info.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
         cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
     
@@ -209,7 +206,7 @@ def load_cells_from_json(path=None, filename=None):
     return cell_dict, cellinfo_dict
 
 
-def load_cells_from_labels_stack(path=None, filename=None, times=None, split_times=False):
+def load_cells_from_labels_stack(path=None, times=None, split_times=False):
     """load cell objects obtained with celltrack.py from npy file
 
     load cells from `path`/`filename`_labels.tif
@@ -219,11 +216,10 @@ def load_cells_from_labels_stack(path=None, filename=None, times=None, split_tim
     ----------
     path : str
         path to save directory
-    filename : str
-        name of file or embcode
+
     """
 
-    pthload = correct_path(path) + filename 
+    pthload = correct_path(path) 
     
     file_to_store = pthload + "_info.json"
     with open(file_to_store, "r", encoding="utf-8") as f:

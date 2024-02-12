@@ -101,7 +101,6 @@ class CellTracking(object):
         self,
         pthtodata,
         pthtosave,
-        embcode=None,
         segmentation_args={},
         concatenation3D_args={},
         tracking_args={},
@@ -117,22 +116,15 @@ class CellTracking(object):
         
         self.use_channel = use_channel
         
-        # Name of the embryo to analyse (ussually date of imaging + info about the channels)
-        self.embcode = embcode
-        
         # Directory containing stakcs
         self.path_to_data = pthtodata
 
         # Directory in which to save results. If folder does not exist, it will be created on pthtosave
-        if embcode is None:
-            self.path_to_save = pthtosave
-        else:
-            self.path_to_save = correct_path(pthtosave)+correct_path(embcode)
+        self.path_to_save = pthtosave
             
         check_or_create_dir(self.path_to_data)
         check_or_create_dir(self.path_to_save)
 
-        printfancy("embcode = {}".format(embcode))
         printfancy("path to data = {}".format(self.path_to_data))
         printfancy("path to save = {}".format(self.path_to_save))
         printfancy("")
@@ -413,7 +405,7 @@ class CellTracking(object):
         print("###############        LOADING AND INITIALIZING       ################")
         printfancy("")
         if load_ct_info:
-            self.CT_info = load_CT_info(self.path_to_save, self.embcode)
+            self.CT_info = load_CT_info(self.path_to_save)
             self.apoptotic_events = self.CT_info.apo_cells
             self.mitotic_events = self.CT_info.mito_cells
             self.blocked_cells = self.CT_info.blocked_cells
