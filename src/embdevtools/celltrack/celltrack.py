@@ -191,13 +191,14 @@ class CellTracking(object):
         )
     
         # Read the stacks
-        stacks, xyresolution, zresolution = read_split_times(self.path_to_data, range(0, 1), extra_name="", extension=".tif")
+        stacks, metadata = read_split_times(self.path_to_data, range(0, 1), extra_name="", extension=".tif")
         self.slices = stacks.shape[1]
         self.stack_dims = np.shape(stacks)[2:4]
 
         # Define xy and z resolutions
-        self._xyresolution = xyresolution
-        self._zresolution = zresolution
+        self.metadata = metadata
+        # self._xyresolution = xyresolution
+        # self._zresolution = zresolution
     
     
         # check if the segmentation is directly in 3D or it needs concatenation

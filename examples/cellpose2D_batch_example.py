@@ -1,8 +1,5 @@
 ### LOAD PACKAGE ###
-import numpy as np
-import matplotlib.pyplot as plt
-
-from embdevtools import get_file_name, read_img_with_resolution, CellTracking, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels
+from embdevtools import get_file_name, read_img_with_resolution, CellTracking, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels, tif_reader_5D
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
@@ -15,6 +12,7 @@ except:
     import os
     os.mkdir(path_save)
 
+staks, metadata = tif_reader_5D(path_data+"0.tif")
 
 ### LOAD STARDIST MODEL ###
 from stardist.models import StarDist2D
