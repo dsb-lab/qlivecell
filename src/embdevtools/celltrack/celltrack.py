@@ -49,8 +49,8 @@ from .core.tools.cell_tools import (create_cell, find_z_discontinuities_jit,
                                     _predefine_jitcell_inputs)
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack)
-from .core.tools.input_tools import (get_file_embcode, get_file_names,
-                                     read_img_with_resolution, tif_reader_5D)
+from .core.tools.input_tools import (get_file_name, get_file_names,
+                                     read_img_with_resolution)
 from .core.tools.save_tools import (load_cells, save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels, read_split_times,
                                     save_cells_to_labels_stack, save_labels_stack,
@@ -101,7 +101,6 @@ class CellTracking(object):
         self,
         pthtodata,
         pthtosave,
-        embcode=None,
         segmentation_args={},
         concatenation3D_args={},
         tracking_args={},
@@ -117,22 +116,15 @@ class CellTracking(object):
         
         self.use_channel = use_channel
         
-        # Name of the embryo to analyse (ussually date of imaging + info about the channels)
-        self.embcode = embcode 
-        
         # Directory containing stakcs
         self.path_to_data = pthtodata
 
         # Directory in which to save results. If folder does not exist, it will be created on pthtosave
-        if embcode is None:
-            self.path_to_save = pthtosave
-        else:
-            self.path_to_save = correct_path(pthtosave)+correct_path(embcode)
+        self.path_to_save = pthtosave
             
         check_or_create_dir(self.path_to_data)
         check_or_create_dir(self.path_to_save)
 
-        printfancy("embcode = {}".format(embcode))
         printfancy("path to data = {}".format(self.path_to_data))
         printfancy("path to save = {}".format(self.path_to_save))
         printfancy("")
@@ -413,7 +405,7 @@ class CellTracking(object):
         print("###############        LOADING AND INITIALIZING       ################")
         printfancy("")
         if load_ct_info:
-            self.CT_info = load_CT_info(self.path_to_save, self.embcode)
+            self.CT_info = load_CT_info(self.path_to_save)
             self.apoptotic_events = self.CT_info.apo_cells
             self.mitotic_events = self.CT_info.mito_cells
             self.blocked_cells = self.CT_info.blocked_cells
@@ -553,6 +545,7 @@ class CellTracking(object):
         for file in files:
             if ".npy" not in file:
                 files.remove(file)
+        print(files)
         file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
         files = [files[i] for i in file_sort_idxs]
 
@@ -682,7 +675,7 @@ class CellTracking(object):
         self.update_label_pre()
 
         self.store_CT_info()
-        save_CT_info(self.CT_info, self.path_to_save, self.embcode)
+        save_CT_info(self.CT_info, self.path_to_save)
 
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)

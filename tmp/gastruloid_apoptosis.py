@@ -12,7 +12,7 @@ home = os.path.expanduser('~')
 path_data=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsheet/movies_registered/'
 path_save=home+'/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsheet/CellTrackObjects/'
 
-file, embcode = get_file_embcode(path_data, 0)
+file = get_file_name(path_data, 0)
 
 IMGS_F3, xyres, zres  = read_img_with_resolution(path_data+file, channel=1)
 IMGS_KO, xyres, zres  = read_img_with_resolution(path_data+file, channel=0)

@@ -1,7 +1,7 @@
 ### LOAD PACKAGE ###
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack
+from embdevtools import get_file_name, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/movies/'
@@ -9,13 +9,13 @@ path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/P
 
 
 ### GET FULL FILE NAME AND FILE CODE ###
-file, embcode, files = get_file_embcode(path_data, 0, returnfiles=True)
+file, files = get_file_name(path_data, 0, returnfiles=True)
 
 
 ### LOAD HYPERSTACKS ###
 channel = 0
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=channel)
-# save_4Dstack(path_save,  embcode+"ch_%d" %(channel+1), IMGS, xyres, zres, imagejformat="TZYX", masks=False)
+# save_4Dstack(path_save %(channel+1), IMGS, xyres, zres, imagejformat="TZYX", masks=False)
 
 gpu = False
 if gpu:
@@ -71,7 +71,6 @@ error_correction_args = {
 CT = CellTracking(
     IMGS, 
     path_save, 
-    embcode+"ch_%d" %(channel+1), 
     xyresolution=xyres, 
     zresolution=zres,
     segmentation_args=segmentation_args,
@@ -97,18 +96,17 @@ CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
-# save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
+# save_4Dstack(path_save, CT._masks_stack, xyres, zres)
 
 
 # ### SAVE RESULTS AS LABELS HYPERSTACK ###
-# save_4Dstack_labels(path_save, embcode, CT._labels_stack, xyres, zres, imagejformat="TZYX")
+# save_4Dstack_labels(path_save, CT._labels_stack, xyres, zres, imagejformat="TZYX")
 
 
 # ### LOAD PREVIOUSLY SAVED RESULTS ###
 # CT=load_CellTracking(
 #         IMGS, 
 #         path_save, 
-#         embcode+"ch_%d" %(channel+1), 
 #         xyresolution=xyres, 
 #         zresolution=zres,
 #         segmentation_args=segmentation_args,
@@ -122,7 +120,7 @@ CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 # CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
 
 # ### SAVE RESULTS AS LABELS HYPERSTACK ###
-# save_4Dstack_labels(path_save, embcode+"ch_%d" %(channel+1), CT, imagejformat="TZYX")
+# save_4Dstack_labels(path_save, CT, imagejformat="TZYX")
 
 
 # ### TRAINING ARGUMENTS ###

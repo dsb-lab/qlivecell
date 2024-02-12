@@ -179,7 +179,7 @@ def _init_CT_cell_attributes(jitcells: ListType(jitCell)): # type: ignore
 
 
 def _reinit_update_CT_cell_attributes(
-    jitcells: ListType(jitCell), slices, times, ctattr: CTattributes # type: ignore
+    jitcells: ListType(jitCell), slices, times, ctattr: CTattributes  # type: ignore
 ):
     if len(jitcells) == 0:
         cell = create_toy_cell()

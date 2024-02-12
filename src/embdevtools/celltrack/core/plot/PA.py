@@ -81,7 +81,6 @@ class PlotAction:
 
         # Point to CT variables
         self.path_to_save = CT.path_to_save
-        self.filename = CT.embcode
         self.jitcells = CT.jitcells
         self.jitcells_selected = CT.jitcells_selected
 
@@ -479,11 +478,7 @@ class PlotActionCT(PlotAction):
             elif event.key == "s":
                 self.CT_info.apo_cells = self.CTapoptotic_events
                 self.CT_info.mito_cells = self.CTmitotic_events
-                if self._split_times:
-                    filename = None
-                else:
-                    filename=self.filename
-                self.CTsave_cells(self.jitcells, self.CT_info, self.global_times_list, self.path_to_save, filename, split_times=self._split_times, save_info=True)
+                self.CTsave_cells(self.jitcells, self.CT_info, self.global_times_list, self.path_to_save, split_times=self._split_times, save_info=True)
             self.update()
 
         else:

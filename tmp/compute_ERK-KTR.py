@@ -4,7 +4,7 @@ from src.cytodonut.cytodonut import *
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/celltrack/src/celltrack')
 
-from celltrack import get_file_embcode, read_img_with_resolution, load_cells
+from celltrack import get_file_name, read_img_with_resolution, load_cells
 
 import os 
 home = os.path.expanduser('~')
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     home = os.path.expanduser('~')
     path_data=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
     path_save=home+'/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/CellTrackObjects/'
-    file, embcode = get_file_embcode(path_data, "082119_p1")
+    file = get_file_name(path_data, "082119_p1")
 
     IMGS, xyres, zres = read_img_with_resolution(path_data+file, channel=1)
 
