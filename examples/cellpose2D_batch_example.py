@@ -3,7 +3,7 @@ from embdevtools import get_file_name, CellTracking, save_3Dstack, save_4Dstack,
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
-path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/test/raw/0.tif'
+path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/test/raw/test.tif'
 path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/test/ctobjects/'
 
 try: 
@@ -26,7 +26,7 @@ except:
 ### LOAD CELLPOSE MODEL ###
 from cellpose import models
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/models/blasto')
-model  = models.CellposeModel(gpu=True, model_type="cyto2")
+# model  = models.CellposeModel(gpu=True, model_type="cyto2")
 
 
 ### DEFINE ARGUMENTS ###
@@ -34,7 +34,7 @@ segmentation_args={
     'method': 'cellpose2D', 
     'model': model, 
     # 'blur': [5,1], 
-    'channels': [1,2],
+    'channels': [2,0],
     'flow_threshold': 0.4,
 }
 
@@ -44,7 +44,7 @@ concatenation3D_args = {
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
     'overlap_gradient_th':0.3, 
-    'min_cell_planes': 2,
+    'min_cell_planes': 4,
 }
 
 tracking_args = {
