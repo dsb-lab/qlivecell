@@ -1,11 +1,11 @@
 ### LOAD PACKAGE ###
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack, get_file_names
+from embdevtools import get_file_name, read_img_with_resolution, CellTracking, tif_reader_5D, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack, get_file_names
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/stacks/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/ctobjects/'
+path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/20230607_CAG_H2B_GFP_16_cells_stack2/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
 try: 
     files = get_file_names(path_save)
@@ -15,8 +15,9 @@ except:
 ### GET FULL FILE NAME AND FILE CODE ###
 files = get_file_names(path_data)
 
-file, embcode = get_file_embcode(path_data, '8bit.tif', allow_file_fragment=True, returnfiles=False)
+file = get_file_name(path_data, '8bit.tif', allow_file_fragment=True, returnfiles=False)
 
+hyperstack, imagej_metadata = tif_reader_5D(path_data+file)
 
 ### LOAD HYPERSTACKS ###
 channel = 2
@@ -69,7 +70,6 @@ error_correction_args = {
 CT = CellTracking(
     IMGS, 
     path_save, 
-    embcode+"ch_%d" %(channel+1), 
     xyresolution=xyres, 
     zresolution=zres,
     segmentation_args=segmentation_args,
@@ -97,18 +97,17 @@ CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_plot)
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
-# save_4Dstack(path_save, embcode, CT._masks_stack, xyres, zres)
+# save_4Dstack(path_save, CT._masks_stack, xyres, zres)
 
 
 # ### SAVE RESULTS AS LABELS HYPERSTACK ###
-# save_4Dstack_labels(path_save, embcode, CT._labels_stack, xyres, zres, imagejformat="TZYX")
+# save_4Dstack_labels(path_save, CT._labels_stack, xyres, zres, imagejformat="TZYX")
 
 
 # ### LOAD PREVIOUSLY SAVED RESULTS ###
 # CT=load_CellTracking(
 #         IMGS, 
 #         path_save, 
-#         embcode+"ch_%d" %(channel+1), 
 #         xyresolution=xyres, 
 #         zresolution=zres,
 #         segmentation_args=segmentation_args,

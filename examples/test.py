@@ -1,54 +1,103 @@
+from tifffile import TiffFile, imwrite
+import numpy as np
 
-def init_label_correspondance(unique_labels_T, times, overlap):
-    label_correspondance = []
-    t = times[-1] + overlap
-    total_t = len(unique_labels_T)
-    
-    if t > total_t: 
-        return label_correspondance
-    
-    for _t in range(t, total_t):
-        label_pair = [[lab, lab] for lab in unique_labels_T[_t]]
-        label_correspondance.append(label_pair)
-    
-    return label_correspondance
 
-def set_label_correspondance(unique_labels_T, corr_times, corr_labels_T, times, overlap):
-    label_correspondance = []
-    t = times[-1] + overlap
-    total_t = len(unique_labels_T)
-    
-    new_corr_times = [j for j in range(t, total_t)]
+img = np.random.random((4,10,2, 20,20))*255
+img = np.rint(img).astype("uint8")
+imagejformat = "TZCYX"
+imwrite(
+    "test.tif",
+    img,
+    imagej=True,
+    resolution=(5, 5),
+    resolutionunit=5,
+    metadata={
+        "spacing": 1,
+        "unit": "um",
+        "finterval": 300,
+        "axes": imagejformat,
+    },
+)
 
-    print(new_corr_times)
-    
-    
-    # if t > total_t: 
-    #     return label_correspondance, new_corr_times
-    
-    # for i, _t in enumerate(new_corr_times):
-    #     label_pair = []
-    #     for l in range(len(unique_labels_T[_t])):
-    #         label_pair.append([corr_labels_T[l], unique_labels_T])
-    #     label_correspondance.append(label_pair)
-    
-    # return label_correspondance
+def tif_reader_5D(path_to_file):
+    """
+    Parameters
+    ----------
+    path_to_file : str
+        The path to the tif file.
 
-labelst1 = [0,1,2,3,4]
-labelst2 = [0,2,3,4,5,6]
-labelst3 = [2,3,4,5,6]
-labelst4 = [2,3,4,6,7]
-unique_labels_T = [labelst1, labelst2, labelst3, labelst4]
+    Returns
+    -------
+    hyperstack: 
+        5D numpy array with shape (t, z, c, x, y)
+    metadata:
+        Dict containing imagej metadata and xy and z spacings (inverse of resolution)
+        
+    """
+    with TiffFile(path_to_file) as tif:
+        hyperstack = tif.asarray()
+        imagej_metadata = tif.imagej_metadata
+        tags = tif.pages[0].tags
+        
+        metadata_keys = imagej_metadata.keys()
+        
+        try: 
+            frames = imagej_metadata['frames']
+        except KeyError:
+            frames = 1
+        
+        try:
+            slices = imagej_metadata['slices']
+        except KeyError:
+            slices = 1
+        
+        try: 
+            channels = imagej_metadata['channels']
+        except KeyError:
+            channels=1
 
-bo = 1
-bsize = 2
-btimes_global = [0,1]
+        hyperstack = np.reshape(hyperstack, (frames, slices, channels, *hyperstack.shape[-2:]))
 
-lc = init_label_correspondance(unique_labels_T, btimes_global, bo)
+        # parse X, Y resolution
+        try:
+            npix, unit = tags["XResolution"].value
+            xres = unit / npix
+        except KeyError:
+            xres = 1
 
-btimes_global = [1,2]
-labelst1 = [0,1,2,3,4]
-labelst2 = [0,2,3,4,5,6]
-labelst3 = [2,3,4,5,6]
-labelst4 = [2,3,4,6,7]
-unique_labels_T = [labelst1, labelst2, labelst3, labelst4]
+        try:
+            npix, unit = tags["YResolution"].value
+            yres = unit / npix
+        except KeyError:
+            yres = 1
+
+
+        try:
+            res_unit= tags["ResolutionUnit"].value
+        except KeyError:
+            yres = 1
+
+        try:
+            zres = imagej_metadata["spacing"]
+        except:
+            zres = 1
+
+        if xres == yres:
+            xyres = xres
+        else:
+            xyres = np.mean([xres, yres])
+    
+    imagej_metadata["xyres"] = xyres
+    imagej_metadata["zres"]  = zres
+    imagej_metadata["res_unit"] = res_unit
+    return hyperstack, imagej_metadata
+
+hyperstack, metadata = tif_reader_5D("test.tif")
+
+
+### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
+
+embcode = '20230607_CAG_H2B_GFP_16_cells_stack2_registered'
+path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'+embcode
+
+hyperstack, metadata = tif_reader_5D(path_data+"/0.tif")

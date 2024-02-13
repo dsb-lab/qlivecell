@@ -8,14 +8,14 @@ def get_file_names(path_data):
     files = os.listdir(path_data)
     return files
 
-def get_file_embcode(path_data, f, allow_file_fragment=False, returnfiles=False):
+def get_file_name(path_data, f, allow_file_fragment=False, returnfiles=False):
     """
     Parameters
     ----------
     path_data : str
-        The path to the directory containing emb
+        The path to the directory containing `f`
     f : int, str or list(str)
-        if int returns the emb element in path_data
+        if int returns the `f` element in path_data
         if str returns path_data/emb
 
     Returns
@@ -70,12 +70,13 @@ def get_file_embcode(path_data, f, allow_file_fragment=False, returnfiles=False)
         raise Exception("given file index is greater than number of files")
 
     file = files[fid]
-    name = file.split(".")[0]
     if returnfiles:
-        return file, name, files
-    return file, name
+        return file, files
+    return file
 
 
+# Need a image reader that can automatically detect wheter the image has time, or channels and so on. 
+# Or should I leave it as it is and rely on the user to know it's data and know if it's a stack or 2D data. Same for channels
 def read_img_with_resolution(path_to_file, channel=None, stack=True):
     """
     Parameters
@@ -148,3 +149,74 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
         else:
             xyres = (xres, yres)
     return IMGS, xyres, zres
+
+def tif_reader_5D(path_to_file):
+    """
+    Parameters
+    ----------
+    path_to_file : str
+        The path to the tif file.
+
+    Returns
+    -------
+    hyperstack: 
+        5D numpy array with shape (t, z, c, x, y)
+    metadata:
+        Dict containing imagej metadata and xy and z spacings (inverse of resolution)
+        
+    """
+    with TiffFile(path_to_file) as tif:
+        hyperstack = tif.asarray()
+        imagej_metadata = tif.imagej_metadata
+        tags = tif.pages[0].tags
+                
+        try: 
+            frames = imagej_metadata['frames']
+        except KeyError:
+            frames = 1
+        
+        try:
+            slices = imagej_metadata['slices']
+        except KeyError:
+            slices = 1
+        
+        try: 
+            channels = imagej_metadata['channels']
+        except KeyError:
+            channels=1
+
+        hyperstack = np.reshape(hyperstack, (frames, slices, channels, *hyperstack.shape[-2:]))
+
+        # parse X, Y resolution
+        try:
+            npix, unit = tags["XResolution"].value
+            xres = unit / npix
+        except KeyError:
+            xres = 1
+
+        try:
+            npix, unit = tags["YResolution"].value
+            yres = unit / npix
+        except KeyError:
+            yres = 1
+
+
+        try:
+            res_unit= tags["ResolutionUnit"].value
+        except KeyError:
+            yres = 1
+
+        try:
+            zres = imagej_metadata["spacing"]
+        except:
+            zres = 1
+
+        if xres == yres:
+            xyres = xres
+        else:
+            xyres = np.mean([xres, yres])
+    
+    imagej_metadata["XYresolution"] = xyres
+    imagej_metadata["Zresolution"]  = zres
+    imagej_metadata["ResolutionUnit"] = res_unit
+    return hyperstack, imagej_metadata

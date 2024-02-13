@@ -6,7 +6,7 @@ import os
 
 from ..dataclasses import Cell, CellTracking_info
 from .tools import correct_path
-from .input_tools import read_img_with_resolution
+from .input_tools import tif_reader_5D
 from .cell_tools import create_cell
 from .ct_tools import compute_labels_stack
 from numba import prange, njit
@@ -82,11 +82,11 @@ class CTinfoJSONDecoder(json.JSONDecoder):
             return d
 
 
-def save_cells_to_json(cells, CT_info, path=None, filename=None):
+def save_cells_to_json(cells, CT_info, path=None):
     """save cell objects obtained with celltrack.py
 
-    Saves cells as `path`/`filename`_cells.json
-    Saves cell tracking info as `path`/`filename`_info.json
+    Saves cells as `path`/cells.json
+    Saves cell tracking info as `path`/info.json
 
     Parameters
     ----------
@@ -95,46 +95,48 @@ def save_cells_to_json(cells, CT_info, path=None, filename=None):
 
     path : str
         path to save directory
-    filename : str
-        name of file or embcode
-
     """
 
-    pthsave = correct_path(path) + filename
+    pthsave = correct_path(path)
 
-    file_to_store = pthsave + "_cells.json"
+    file_to_store = pthsave + "cells.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
         json.dump(cells, f, cls=EnhancedJSONEncoder)
 
-    file_to_store = pthsave + "_info.json"
+    file_to_store = pthsave + "info.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
-def save_labels_stack(labels_stack, pthsave, times, split_times=False, string_format="{}"):
+def save_labels_stack(labels_stack, pthsave, times, filename=None, split_times=False, string_format="{}"):
+
     if split_times: 
         if not os.path.isdir(pthsave): 
             os.mkdir(pthsave)
         
         for tid, t in enumerate(times):
-            np.save(correct_path(pthsave)+string_format.format(str(t))+".npy", labels_stack[tid], allow_pickle=False)
+            np.save(correct_path(pthsave)+string_format.format(str(t)), labels_stack[tid], allow_pickle=False)
     else: 
+        if filename is None:
+            filename="labels"
+        if not isinstance(filename, str):
+            filename =  str(filename)
+            
         if len(labels_stack.shape)==4:
             if labels_stack.shape[0] == 1:
-                np.save(pthsave, labels_stack[0], allow_pickle=False)
+                np.save(pthsave+filename, labels_stack[0], allow_pickle=False)
             
             else:
-                np.save(pthsave, labels_stack, allow_pickle=False)
+                np.save(pthsave+filename, labels_stack, allow_pickle=False)
         else:
-             np.save(pthsave, labels_stack, allow_pickle=False)
+             np.save(pthsave+filename, labels_stack, allow_pickle=False)
     
-import time
 
 def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, split_times=False, string_format="{}", save_info=False):
     """save cell objects obtained with celltrack.py
 
-    Saves cells as `path`/`filename`_cells.npy
-    Saves cell tracking info as `path`/`filename`_info.json
+    Saves cells as `path`/cells.npy
+    Saves cell tracking info as `path`/info.json
 
     Parameters
     ----------
@@ -143,36 +145,32 @@ def save_cells_to_labels_stack(cells, CT_info, times, path=None, filename=None, 
 
     path : str
         path to save directory
-    filename : str
-        name of file or embcode
     """
-    if filename is not None:
-        pthsave = correct_path(path) + str(filename)
-    else:
-        pthsave = correct_path(path)
-        
+
+    pthsave = correct_path(path)
+
     labels_stack = np.zeros(
         (len(times), CT_info.slices, CT_info.stack_dims[0], CT_info.stack_dims[1]), dtype="uint16"
     )
     labels_stack = compute_labels_stack(labels_stack, cells)
-    save_labels_stack(labels_stack, pthsave, times, split_times=split_times, string_format=string_format)
+    save_labels_stack(labels_stack, pthsave, times, filename=filename, split_times=split_times, string_format=string_format)
 
     if save_info:
-        file_to_store = pthsave + "_info.json"
+        file_to_store = pthsave + "info.json"
         with open(file_to_store, "w", encoding="utf-8") as f:
             json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
-def save_CT_info(CT_info, path, filename):
-    pthsave = correct_path(path) + str(filename)
-    file_to_store = pthsave + "_info.json"
+def save_CT_info(CT_info, path):
+    pthsave = correct_path(path)
+    file_to_store = pthsave + "info.json"
     with open(file_to_store, "w", encoding="utf-8") as f:
         json.dump(CT_info, f, cls=EnhancedJSONEncoder)
 
 
-def load_CT_info(path, filename):
-    pthsave = correct_path(path) + str(filename)
-    file_to_store = pthsave + "_info.json"
+def load_CT_info(path):
+    pthsave = correct_path(path)
+    file_to_store = pthsave + "info.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
         cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
     
@@ -181,49 +179,45 @@ def load_CT_info(path, filename):
 save_cells = save_cells_to_labels_stack
 
 
-def load_cells_from_json(path=None, filename=None):
+def load_cells_from_json(path=None):
     """load cell objects obtained with celltrack.py
 
-    load cells from `path`/`filename`_cells.json
-    load cell tracking info from `path`/`filename`_info.json
+    load cells from `path`/cells.json
+    load cell tracking info from `path`/info.json
 
     Parameters
     ----------
     path : str
         path to save directory
-    filename : str
-        name of file or embcode
-
     """
 
-    pthsave = correct_path(path) + filename
+    pthsave = correct_path(path)
 
-    file_to_store = pthsave + "_cells.json"
+    file_to_store = pthsave + "cells.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
         cell_dict = json.load(f, cls=CellJSONDecoder)
 
-    file_to_store = pthsave + "_info.json"
+    file_to_store = pthsave + "info.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
         cellinfo_dict = json.load(f, cls=CTinfoJSONDecoder)
 
     return cell_dict, cellinfo_dict
 
 
-def load_cells_from_labels_stack(path=None, filename=None, times=None, split_times=False):
+def load_cells_from_labels_stack(path=None, times=None, split_times=False):
     """load cell objects obtained with celltrack.py from npy file
 
-    load cells from `path`/`filename`_labels.tif
-    load cell tracking info from `path`/`filename`_info.json
+    load cells from `path`/labels.tif
+    load cell tracking info from `path`/info.json
 
     Parameters
     ----------
     path : str
         path to save directory
-    filename : str
-        name of file or embcode
+
     """
 
-    pthload = correct_path(path) + filename 
+    pthload = correct_path(path) 
     
     file_to_store = pthload + "_info.json"
     with open(file_to_store, "r", encoding="utf-8") as f:
@@ -231,7 +225,7 @@ def load_cells_from_labels_stack(path=None, filename=None, times=None, split_tim
 
     # labels_stack, xyres_labs, zres_labs = read_img_with_resolution(pthload+"_labels.tif", stack=True, channel=None)
     if split_times:
-        labels_stack= read_split_times(correct_path(pthload), range(times), extra_name="_labels", extension=".npy")
+        labels_stack= read_split_times(correct_path(pthload), range(times), name_format="_labels", extension=".npy")
     else:
         labels_stack = np.load(pthload+".npy")
 
@@ -291,7 +285,7 @@ def save_4Dstack_labels(path, filename, cells, CT_info, imagejformat="TZYX"):
     labels_stack = compute_labels_stack(labels_stack, cells)
 
     imwrite(
-        path + filename + "_labels.tif",
+        path + filename + ".tif",
         labels_stack,
         imagej=True,
         resolution=(1 / CT_info.xyresolution, 1 / CT_info.xyresolution),
@@ -404,26 +398,30 @@ def save_2Dtiff(
         },
     )
 
-def read_split_times(path_data, times, extra_name="", extension=".tif"):
+def read_split_times(path_data, times, name_format="{}", extension=".tif", channels=None):
     
     IMGS = []
 
     for t in times:
-        path_to_file = correct_path(path_data)+"{}{}{}".format(t, extra_name, extension)
+        if extension in path_data:
+            path_to_file = path_data
+        else:
+            path_to_file = correct_path(path_data)+name_format.format(t)+extension
 
         if extension == ".tif":
-            IMG, xyres, zres = read_img_with_resolution(path_to_file, channel=None, stack=True)
-            IMG = IMG[0]
-            IMGS.append(IMG.astype('uint8'))
+            IMG, metadata = tif_reader_5D(path_to_file)
+            if channels is None:
+                channels = [i for i in range(IMG.shape[2])]
+            IMG = IMG[:, :, channels, :, :]
+            IMGS.append(IMG[0].astype('uint8'))
         elif extension == ".npy":
             IMG = np.load(path_to_file)
             IMGS.append(IMG.astype('uint16'))
     if extension == ".tif":
-        return np.array(IMGS), xyres, zres
+        return np.array(IMGS), metadata
     elif extension == ".npy":
         return np.array(IMGS)
     
-import time
 def substitute_labels(post_range_start ,post_range_end, path_to_save, lcT):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:

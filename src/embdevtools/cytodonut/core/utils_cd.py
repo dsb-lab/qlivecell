@@ -12,7 +12,7 @@ from tifffile import TiffFile
 np.seterr(all="warn")
 
 
-def get_file_embcode(path_data, f):
+def get_file_name(path_data, f):
     """
     Parameters
     ----------

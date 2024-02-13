@@ -1,4 +1,4 @@
-from .input_tools import get_file_names
+from .input_tools import get_file_names, tif_reader_5D
 from .ct_tools import numba_delete
 import numpy as np
 from numba import njit, prange
@@ -14,14 +14,18 @@ def compute_batch_times(round, batch_size, batch_overlap, totalsize):
     return first, last
 
 def extract_total_times_from_files(path):
-    total_times = 0
-    files = get_file_names(path)
-    for file in files:
-        try:
-            _ = int(file.split(".")[0])
-            total_times += 1
-        except:
-            continue
+    if ".tif" in path:
+        stack, metadata = tif_reader_5D(path)
+        return stack.shape[0]
+    else:
+        total_times = 0
+        files = get_file_names(path)
+        for file in files:
+            try:
+                _ = int(file.split(".")[0])
+                total_times += 1
+            except:
+                continue
 
     return total_times
 
@@ -30,6 +34,8 @@ def check_and_fill_batch_args(batch_args):
     new_batch_args = {
         "batch_size": 5,
         "batch_overlap": 1,
+        "name_format":"{}",
+        "extension":".tif",
     }
     if batch_args["batch_size"] <= batch_args["batch_overlap"]:
         raise Exception("batch size has to be bigger than batch overlap")

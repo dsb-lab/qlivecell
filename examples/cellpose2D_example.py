@@ -1,14 +1,18 @@
 ### LOAD PACKAGE ###
 
-from embdevtools import get_file_embcode, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, get_file_names, save_4Dstack_labels
+from embdevtools import get_file_name, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, get_file_names, save_4Dstack_labels
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'
 path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
 # ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-# path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
-# path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/resolution_optimization/'
+# path_data='/home/pablo/Desktop/PhD/projects/Data/belas/2D/Christian/movies/'
+# path_save='/home/pablo/Desktop/PhD/projects/Data/belas/2D/Christian/ctobjects/'
+
+# ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
+# path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/stacks/'
+# path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/2023_11_17_Casp3/ctobjects/'
 
 try: 
     files = get_file_names(path_save)
@@ -19,12 +23,12 @@ except:
 ### GET FULL FILE NAME AND FILE CODE ###
 files = get_file_names(path_data)
 
-# file, embcode = get_file_embcode(path_data, 10)
-file, embcode = get_file_embcode(path_data, '_sb.tif', allow_file_fragment=True)
+file = get_file_name(path_data, '_sb.tif', allow_file_fragment=True)
 
 
 ### LOAD HYPERSTACKS ###
 IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
+# IMGS = np.asarray([[255*(IMG/IMG.max()) for IMG in IMGS[0]]]).astype('uint8')
 
 import numpy as np
 
@@ -77,9 +81,8 @@ error_correction_args = {
 
 ### CREATE CELL TRACKING CLASS ###
 CT = CellTracking(
-    IMGS[:3,:40], 
+    IMGS[:3,:30], 
     path_save, 
-    embcode, 
     xyresolution=xyres, 
     zresolution=zres,
     segmentation_args=segmentation_args,
@@ -94,7 +97,7 @@ CT = CellTracking(
 CT.run()
 
 # from embdevtools.celltrack.core.tools.save_tools import save_cells_to_labels_stack
-# save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, filename=embcode, split_times=True, string_format="{}_labels")
+# save_cells_to_labels_stack(CT.jitcells, CT.CT_info, path=path_save, split_times=True, string_format="{}_labels")
 
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)

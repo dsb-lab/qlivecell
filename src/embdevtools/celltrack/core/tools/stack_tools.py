@@ -94,10 +94,10 @@ def isotropize_stackRGB(
 
     for ch in range(stack.shape[-1]):
         zoom(
-            stack[:, :, :, ch],
+            stack[:, ch, :, :],
             zoom_factors,
             order=1,
-            output=isotropic_image[:, :, :, ch],
+            output=isotropic_image[:, ch, :, :],
         )
 
     if return_original_idxs:

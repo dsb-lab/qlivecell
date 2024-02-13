@@ -4,6 +4,7 @@ from skimage.transform import resize
 
 from ..tools.tools import printfancy
 from .plot_iters import CyclicList
+from ..tools.ct_tools import set_cell_color, get_cell_color
 
 
 def check_and_fill_plot_args(plot_args, stack_dims):
@@ -23,6 +24,8 @@ def check_and_fill_plot_args(plot_args, stack_dims):
         plot_args["plot_stack_dims"] = stack_dims
     if "plot_centers" not in plot_args.keys():
         plot_args["plot_centers"] = [True, True]
+    if "channels" not in plot_args.keys():
+        plot_args["channels"] = None
     plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stack_dims[-1]
 
     _cmap = cm.get_cmap(plot_args["masks_cmap"])
@@ -42,8 +45,10 @@ def check_stacks_for_plotting(
             plot_args["plot_stack_dims"][1],
             3,
         ]
-
-    plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[3]
+        channels = plot_args["channels"]
+        if channels is None:
+            channels = [i for i in range(stacks_for_plotting.shape[2])]
+    plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[-2]
     plot_args["_plot_xyresolution"] = xyresolution * plot_args["dim_change"]
 
     if plot_args["dim_change"] != 1:
@@ -54,25 +59,39 @@ def check_stacks_for_plotting(
         for t in range(times):
             for z in range(slices):
                 if len(plot_args["plot_stack_dims"]) == 3:
-                    for ch in range(3):
-                        plot_stack_ch = resize(
-                            stacks_for_plotting[t, z, :, :, ch],
-                            plot_args["plot_stack_dims"][0:2],
-                        )
+                    for ch in range(stacks_for_plotting.shape[2]):
+                        if ch in channels:
+                            plot_stack_ch = resize(
+                                stacks_for_plotting[t, z, ch, :, :],
+                                plot_args["plot_stack_dims"][0:2],
+                            )
 
-                        norm_factor = np.max(plot_stacks[t, z, :, :, ch])
-                        if norm_factor < 0.01:
-                            norm_factor = 1.0
-                        plot_stack[:, :, ch] = plot_stack_ch / norm_factor
+                            norm_factor = np.max(plot_stacks[t, z, :, :, ch])
+                            if norm_factor < 0.01:
+                                norm_factor = 1.0
+                            plot_stack[:, :, ch] = plot_stack_ch / norm_factor
 
                 else:
                     plot_stack = resize(
                         stacks_for_plotting[t, z], plot_args["plot_stack_dims"]
                     )
                 plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
+        
     else:
-        plot_stacks = stacks_for_plotting
+        if len(plot_args["plot_stack_dims"])==3:
+            plot_stacks = np.zeros(
+            (times, slices, *plot_args["plot_stack_dims"]), dtype="uint8"
+            )   
+            for ch in range(stacks_for_plotting.shape[2]):
+                if ch in channels:
+                    plot_stacks[:,:,:,:,ch] = stacks_for_plotting[:,:,ch,:,:]
 
+        else:
+            plot_stacks = stacks_for_plotting
+            
+    if len(plot_args["plot_stack_dims"]) == 3:
+        if len(channels)==1:
+            plot_stacks = plot_stacks[:,:,:,:,channels[0]]
     return plot_stacks
 
 
@@ -83,3 +102,33 @@ def norm_stack_per_z(IMGS, saturation=0.7):
         for z in range(IMGS.shape[1]):
             IMGS_norm[t, z] = (IMGS[t, z] / np.max(IMGS[t, z])) * saturation
     return IMGS_norm
+
+#TODO need to make the label color iterator numba compatible
+# def switch_masks(self, masks=None):
+
+#         if masks is None:
+#             if self.CTplot_masks is None:
+#                 self.CTplot_masks = True
+#             else:
+#                 self.CTplot_masks = not self.CTplot_masks
+#         else:
+#             self.CTplot_masks = masks
+        
+# def _switch_masks(jitcells_selected, CTplot_masks, CTblocked_cells, masks_stack, dim_change):
+#     for jitcell in jitcells_selected:
+#         if CTplot_masks:
+#             alpha = 1
+#         else:
+#             alpha = 0
+#         color = get_cell_color(jitcell, self._plot_args["labels_colors"], alpha, CTblocked_cells)
+#         color = np.rint(color * 255).astype("uint8")
+#         set_cell_color(
+#             masks_stack,
+#             jitcell.masks,
+#             jitcell.times,
+#             jitcell.zs,
+#             color,
+#             dim_change,
+#             jitcell.times,
+#             -1,
+#         )

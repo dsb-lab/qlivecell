@@ -266,7 +266,7 @@ def compute_distances_with_pre_post_z(
     slices = stack.shape[0]
     distances_idx = []
     distances_val = []
-    distance_th = np.round(distance_th_z / xyresolution)
+    distance_th = distance_th_z / xyresolution
     for z in range(slices):
         distances_idx.append([])
         distances_val.append([])
