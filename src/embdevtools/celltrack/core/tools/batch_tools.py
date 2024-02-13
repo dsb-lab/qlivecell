@@ -17,7 +17,6 @@ def compute_batch_times(round, batch_size, batch_overlap, totalsize):
 def extract_total_times_from_files(path):
     if ".tif" in path:
         stack, metadata = tif_reader_5D(path)
-        print(stack.shape)
         return stack.shape[0]
     else:
         total_times = 0
