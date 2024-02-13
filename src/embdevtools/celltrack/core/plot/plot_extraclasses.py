@@ -19,6 +19,7 @@ class Slider_t(Slider):
                 v, 0, 1, color=colr, lw=1, clip_path=TransformedPatchPath(self.track)
             )
 
+
 # This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
 class Slider_t_batch(Slider):
     def __init__(self, *args, **kwargs):
@@ -34,7 +35,7 @@ class Slider_t_batch(Slider):
             vline = ax.axvline(
                 v, 0, 1, color=colr, lw=1, clip_path=TransformedPatchPath(self.track)
             )
-    
+
     def set_val(self, val1, val2=1):
         """
         Set slider value to *val*.
@@ -44,13 +45,13 @@ class Slider_t_batch(Slider):
         val : float
         """
         xy = self.poly.xy
-        if self.orientation == 'vertical':
-            xy[1] = .25, val1
-            xy[2] = .75, val1
+        if self.orientation == "vertical":
+            xy[1] = 0.25, val1
+            xy[2] = 0.75, val1
             self._handle.set_ydata([val1])
         else:
-            xy[2] = val1, .75
-            xy[3] = val1, .25
+            xy[2] = val1, 0.75
+            xy[3] = val1, 0.25
             self._handle.set_xdata([val1])
         self.poly.xy = xy
         self.valtext.set_text(self._format(val1, val2))
@@ -58,11 +59,12 @@ class Slider_t_batch(Slider):
             self.ax.figure.canvas.draw_idle()
         self.val = val1
         if self.eventson:
-            self._observers.process('changed', val1)
+            self._observers.process("changed", val1)
 
     def _format(self, val1, val2=1):
         if self.valfmt is not None:
             return self.valfmt % (val1, val2)
+
 
 class Slider_z(Slider):
     def __init__(self, *args, **kwargs):
@@ -86,7 +88,7 @@ class Slider_z(Slider):
                 return self.valfmt % (first)
         else:
             if self.valfmt is not None:
-                    return self.valfmt % (first, last)
+                return self.valfmt % (first, last)
 
 
 class CustomLassoSelector(LassoSelector):

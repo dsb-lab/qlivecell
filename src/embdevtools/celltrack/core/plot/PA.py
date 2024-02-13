@@ -1,16 +1,17 @@
+import time
 from copy import copy
 
 import matplotlib as mtp
 import numpy as np
 from numba.typed import List
+
 from ..dataclasses import construct_Cell_from_jitCell
-from ..tools.ct_tools import set_cell_color, get_cell_color
+from ..tools.ct_tools import get_cell_color, set_cell_color
 from ..tools.save_tools import save_cells
 from ..tools.tools import printfancy
 from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
 
-import time
 
 def get_axis_PACP(PACP, event):
     for id, ax in enumerate(PACP.ax):
@@ -35,7 +36,9 @@ def get_cell_PACP(PACP, event, block=True):
                 z = PACP.z
                 lab = PACP.CTLabels[PACP.t][z][i]
                 if block and lab in PACP.CTblocked_cells:
-                    printfancy("ERROR: cell {} is blocked. Unblock it to do any other action on it")
+                    printfancy(
+                        "ERROR: cell {} is blocked. Unblock it to do any other action on it"
+                    )
                     return None, None
                 return lab, z
     return None, None
@@ -75,7 +78,7 @@ class PlotAction:
         self.bn = 0
         self.cr = 0
         self.t = 0
-        self.tg = 0 # t global
+        self.tg = 0  # t global
         self.zs = []
         self.z = None
 
@@ -98,11 +101,11 @@ class PlotAction:
             self.global_times_list = CT.batch_times_list_global
             self.batch_all_rounds_times = CT.batch_all_rounds_times
             self.total_times = CT.batch_totalsize
-            self._split_times=True
+            self._split_times = True
         else:
             self.times = CT.times
             self.global_times_list = range(self.times)
-            self._split_times=False
+            self._split_times = False
 
         self._tstep = CT._track_args["time_step"]
 
@@ -181,59 +184,56 @@ class PlotAction:
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
         self.CTplot_args = CT._plot_args
-        
+
         self.times = CT.times
         if self.batch:
             self.global_times_list = CT.batch_times_list_global
-            
 
     def __call__(self, event):
         # To be defined
         pass
 
     def on_key_press(self, event):
-
         possible_combs = ["shift+ctrl", "ctrl+shift", "control+shift", "shift+control"]
         if event.key == "control":
             self.ctrl_is_held = True
-        
+
         elif event.key in possible_combs:
             self.ctrl_shift_is_held = True
 
     def on_key_release(self, event):
-
         possible_combs = ["shift+ctrl", "ctrl+shift", "control+shift", "shift+control"]
 
         if event.key == "control":
             self.ctrl_is_held = False
             self.ctrl_shift_is_held = False
-            
+
         elif event.key == "shift":
             self.ctrl_is_held = False
             self.ctrl_shift_is_held = False
-        
+
         elif event.key in possible_combs:
             self.ctrl_is_held = False
             self.ctrl_shift_is_held = False
 
     def update_slider_t(self, t):
-        if t-1 not in self.global_times_list:
+        if t - 1 not in self.global_times_list:
             for bn in range(len(self.batch_all_rounds_times)):
-                if t-1 in self.batch_all_rounds_times[bn]:
+                if t - 1 in self.batch_all_rounds_times[bn]:
                     self.bn = bn
                     break
             self.set_batch(batch_number=self.bn, update_labels=True)
             self.t = 0
             self.tg = self.global_times_list[self.t]
             if self.batch:
-                self.set_val_t_slider(self.tg + 1, self.t+1)
+                self.set_val_t_slider(self.tg + 1, self.t + 1)
             else:
                 self.set_val_t_slider(self.tg + 1)
 
             self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
 
             self.update()
-            
+
             if self.current_state == "SCL":
                 self.current_state = None
                 self.ctrl_shift_is_held = False
@@ -251,31 +251,31 @@ class PlotAction:
         self.update()
 
     def batch_scroll(self, event):
+        if self.current_state == "SCL":
+            return
 
-        if self.current_state == "SCL":return
-        
-        self.current_state="SCL"
+        self.current_state = "SCL"
         if event.button == "up":
             self.bn = self.bn + 1
         elif event.button == "down":
             self.bn = self.bn - 1
-        
+
         self.bn = max(self.bn, 0)
         self.bn = min(self.bn, self.batch_rounds - 1)
-        
+
         self.set_batch(batch_number=self.bn, update_labels=True)
 
         self.t = 0
         self.tg = self.global_times_list[self.t]
-        if self. batch:
-            self.set_val_t_slider(self.tg + 1, self.t+1)
+        if self.batch:
+            self.set_val_t_slider(self.tg + 1, self.t + 1)
         else:
             self.set_val_t_slider(self.tg + 1)
 
         self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
 
         self.update()
-        
+
         if self.current_state == "SCL":
             self.current_state = None
             self.ctrl_shift_is_held = False
@@ -290,15 +290,15 @@ class PlotAction:
         self.t = min(self.t, self.times - 1)
         self.tg = self.global_times_list[self.t]
         self.tg = max(self.tg, 0)
-        self.tg = min(self.tg, self.total_times - 1) 
+        self.tg = min(self.tg, self.total_times - 1)
         if self.batch:
-             self.set_val_t_slider(self.tg + 1, self.t+1)
+            self.set_val_t_slider(self.tg + 1, self.t + 1)
         else:
             self.set_val_t_slider(self.tg + 1)
 
         if self.current_state == "SCL":
             self.current_state = None
-    
+
     def cr_scroll(self, event):
         if event.button == "up":
             self.cr = self.cr - 1
@@ -313,13 +313,13 @@ class PlotAction:
             self.current_state = None
 
     def onscroll(self, event):
-
         if self.ctrl_shift_is_held:
-            if self.current_state == "SCL": return
+            if self.current_state == "SCL":
+                return
             self.batch_scroll(event)
             return
         elif self.ctrl_is_held:
-                self.time_scroll(event)
+            self.time_scroll(event)
         else:
             # if data is 2D, scroll moves always on time
             if self.max_round == 0:
@@ -362,7 +362,11 @@ class PlotActionCT(PlotAction):
                 0.02,
                 0.92,
                 "TIME = {timem} min  ({t}/{tt})  ; BATCH = {b}/{bb}".format(
-                    timem=self._tstep * self.tg, t=self.tg + 1, tt=self.total_times, b=self.bn+1, bb=self.batch_rounds
+                    timem=self._tstep * self.tg,
+                    t=self.tg + 1,
+                    tt=self.total_times,
+                    b=self.bn + 1,
+                    bb=self.batch_rounds,
                 ),
                 fontsize=1,
                 ha="left",
@@ -398,7 +402,6 @@ class PlotActionCT(PlotAction):
         self.update()
 
     def __call__(self, event):
-
         if self.current_state == None:
             if event.key == "d":
                 # self.CTone_step_copy(self.t)
@@ -478,7 +481,14 @@ class PlotActionCT(PlotAction):
             elif event.key == "s":
                 self.CT_info.apo_cells = self.CTapoptotic_events
                 self.CT_info.mito_cells = self.CTmitotic_events
-                self.CTsave_cells(self.jitcells, self.CT_info, self.global_times_list, self.path_to_save, split_times=self._split_times, save_info=True)
+                self.CTsave_cells(
+                    self.jitcells,
+                    self.CT_info,
+                    self.global_times_list,
+                    self.path_to_save,
+                    split_times=self._split_times,
+                    save_info=True,
+                )
             self.update()
 
         else:
@@ -508,14 +518,16 @@ class PlotActionCT(PlotAction):
                 self.z = None
                 self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                 self.visualization()
-            
+
             elif event.key == "espace":
                 if self.current_state == "pic":
                     if len(self.list_of_cells) == 0:
-                        self.list_of_cells = [[lab, 0, 0] for lab in self.CTunique_labels]
-                    else: 
+                        self.list_of_cells = [
+                            [lab, 0, 0] for lab in self.CTunique_labels
+                        ]
+                    else:
                         del self.list_of_cells[:]
-    
+
             elif event.key == "enter":
                 self.past_state = self.current_state
                 if self.current_state == "add":
@@ -629,7 +641,7 @@ class PlotActionCT(PlotAction):
                     del self.list_of_cells[:]
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
-                
+
                 elif self.current_state == "blo":
                     self.CP.stopit()
                     delattr(self, "CP")
@@ -662,7 +674,7 @@ class PlotActionCT(PlotAction):
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.switch_masks(True)
-                    
+
                 else:
                     self.visualization()
 
@@ -694,9 +706,7 @@ class PlotActionCT(PlotAction):
 
         elif self.current_state in ["Del", "pic"]:
             cells_to_plot = self.sort_list_of_cells()
-            cells_string = [
-                "cell=" + str(x[0]) for x in cells_to_plot
-            ]
+            cells_string = ["cell=" + str(x[0]) for x in cells_to_plot]
             zs = [x[1] for x in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
         else:
@@ -704,7 +714,8 @@ class PlotActionCT(PlotAction):
             for i, x in enumerate(cells_to_plot):
                 cells_to_plot[i][0] = x[0]
             cells_string = [
-                "cell=" + str(x[0]) + " z=" + str(x[1]) + " t=" + str(x[2]) for x in cells_to_plot
+                "cell=" + str(x[0]) + " z=" + str(x[1]) + " t=" + str(x[2])
+                for x in cells_to_plot
             ]
             zs = [x[1] for x in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
@@ -726,7 +737,9 @@ class PlotActionCT(PlotAction):
 
         for i, lab_z_t in enumerate(labs_z_to_plot):
             jitcell = self._CTget_cell(label=lab_z_t[0])
-            color = get_cell_color(jitcell, self._plot_args["labels_colors"], 1, self.CTblocked_cells)
+            color = get_cell_color(
+                jitcell, self._plot_args["labels_colors"], 1, self.CTblocked_cells
+            )
             color = np.rint(color * 255).astype("uint8")
             if self.current_state in ["Del"]:
                 times_to_plot = List([i for i in range(self.times)])
@@ -736,7 +749,7 @@ class PlotActionCT(PlotAction):
                     tt = self.global_times_list.index(lab_z_t[2])
                 else:
                     tt = lab_z_t[2]
-                    
+
                 times_to_plot = List([tt])
                 zs_to_plot = lab_z_t[1]
 
@@ -762,7 +775,9 @@ class PlotActionCT(PlotAction):
             if jitcell is None:
                 continue
 
-            color = get_cell_color(jitcell, self._plot_args["labels_colors"], 0, self.CTblocked_cells)
+            color = get_cell_color(
+                jitcell, self._plot_args["labels_colors"], 0, self.CTblocked_cells
+            )
             color = np.rint(color * 255).astype("uint8")
             if self.past_state in ["Del"]:
                 times_to_plot = List([i for i in range(self.times)])
@@ -772,11 +787,10 @@ class PlotActionCT(PlotAction):
                     tt = self.global_times_list.index(lab_z_t[2])
                 else:
                     tt = lab_z_t[2]
-                    
+
                 times_to_plot = List([tt])
                 zs_to_plot = lab_z_t[1]
-            
-            
+
             set_cell_color(
                 self._masks_stack,
                 jitcell.masks,
@@ -796,7 +810,11 @@ class PlotActionCT(PlotAction):
         if self.batch:
             self.timetxt.set(
                 text="TIME = {timem} min  ({t}/{tt})  ; BATCH = {b}/{bb}".format(
-                    timem=self._tstep * self.tg, t=self.tg + 1, tt=self.total_times, b=self.bn+1, bb=self.batch_rounds
+                    timem=self._tstep * self.tg,
+                    t=self.tg + 1,
+                    tt=self.total_times,
+                    b=self.bn + 1,
+                    bb=self.batch_rounds,
                 ),
                 fontsize=width_or_height / scale2,
             )
@@ -831,13 +849,13 @@ class PlotActionCT(PlotAction):
                 _cells = cells[ids]
                 _Zs = Zs[ids]
                 _Ts = Ts[ids]
-                
+
                 # If all in the same time, order by slice
-                if len(np.unique(_Ts))==1:
+                if len(np.unique(_Ts)) == 1:
                     zidxs = np.argsort(_Zs)
                     for id in zidxs:
                         final_cells.append([_cells[id], _Zs[id], _Ts[id]])
-                
+
                 # Otherwise order by time
                 else:
                     tidxs = np.argsort(_Ts)
@@ -847,7 +865,6 @@ class PlotActionCT(PlotAction):
             return final_cells
 
     def switch_masks(self, masks=None):
-
         if masks is None:
             if self.CTplot_masks is None:
                 self.CTplot_masks = True
@@ -860,7 +877,9 @@ class PlotActionCT(PlotAction):
                 alpha = 1
             else:
                 alpha = 0
-            color = get_cell_color(jitcell, self._plot_args["labels_colors"], alpha, self.CTblocked_cells)
+            color = get_cell_color(
+                jitcell, self._plot_args["labels_colors"], alpha, self.CTblocked_cells
+            )
             color = np.rint(color * 255).astype("uint8")
             set_cell_color(
                 self._masks_stack,
@@ -873,18 +892,20 @@ class PlotActionCT(PlotAction):
                 -1,
             )
         self.visualization()
-    
+
     def switch_centers(self):
-        self.CTplot_args["plot_centers"] = [not i for i in self.CTplot_args["plot_centers"]]
+        self.CTplot_args["plot_centers"] = [
+            not i for i in self.CTplot_args["plot_centers"]
+        ]
         self.visualization()
-    
+
     def block_cells(self):
         self.title.set(text="BLOCK CELLS", ha="left", x=0.01)
         self.instructions.set(text="Right-click to select cells to block")
         self.instructions.set_backgroundcolor((0.26, 0.16, 0.055, 0.4))
         self.fig.patch.set_facecolor((0.26, 0.16, 0.055, 0.1))
         self.CP = CellPicker(self.fig.canvas, self.block_cells_callback)
-    
+
     def block_cells_callback(self, event):
         get_axis_PACP(self, event)
         lab, z = get_cell_PACP(self, event, block=False)
@@ -909,7 +930,7 @@ class PlotActionCT(PlotAction):
 
         self.update()
         self.reploting()
-        
+
     def add_cells(self):
         self.title.set(text="ADD CELL MODE", ha="left", x=0.01)
         if hasattr(self, "CP"):
@@ -997,12 +1018,9 @@ class PlotActionCT(PlotAction):
         self.update()
         self.reploting()
 
-
     def delete_cells_in_batch(self):
         self.title.set(text="DELETE CELL (all times)", ha="left", x=0.01)
-        self.instructions.set(
-            text="Right-click to select cell to delete"
-        )
+        self.instructions.set(text="Right-click to select cell to delete")
         self.instructions.set_backgroundcolor((1.0, 0.0, 0.0, 0.4))
         self.fig.patch.set_facecolor((1.0, 0.0, 0.0, 0.1))
         self.CP = CellPicker(self.fig.canvas, self.delete_cells_in_batch_callback)
@@ -1253,16 +1271,14 @@ class PlotActionCT(PlotAction):
 
         self.update()
         self.reploting()
-    
+
     def pick_cells(self):
         self.title.set(text="PICK CELL", ha="left", x=0.01)
-        self.instructions.set(
-            text="Right-click to select cell"
-        )
+        self.instructions.set(text="Right-click to select cell")
         self.instructions.set_backgroundcolor((1.0, 1.0, 1.0, 0.4))
         self.fig.patch.set_facecolor((0.3, 0.3, 0.3, 0.1))
         self.CP = CellPicker(self.fig.canvas, self.pick_cells_callback)
-        
+
     def pick_cells_callback(self, event):
         get_axis_PACP(self, event)
         lab, z = get_cell_PACP(self, event)
@@ -1374,4 +1390,3 @@ class PlotActionCellPicker(PlotAction):
         self.fig.canvas.draw_idle()
         # if self.mode == "CM": self.CT.fig_cellmovement.canvas.draw()
         self.fig.canvas.draw()
-

@@ -126,6 +126,7 @@ def nb_unique(input_data, axis=0):
     counts = counts - idx
     return data[idx]
 
+
 # from https://stackoverflow.com/a/53651418/7546279
 @njit
 def numba_delete(arr, idx):
@@ -133,8 +134,11 @@ def numba_delete(arr, idx):
     mask[idx] = False
     return arr[mask]
 
+
 @njit()
-def set_cell_color(cell_stack, points, cell_times, cell_zs, color, dim_change, times, z):
+def set_cell_color(
+    cell_stack, points, cell_times, cell_zs, color, dim_change, times, z
+):
     for tid in nb.prange(len(cell_times)):
         tc = cell_times[tid]
         if tc in times:
@@ -152,8 +156,10 @@ def set_cell_color(cell_stack, points, cell_times, cell_zs, color, dim_change, t
 
 
 def get_cell_color(jitcell, labels_colors, alpha, blocked_cells):
-    if jitcell.label in blocked_cells: return np.array([1.0, 1.0, 1.0, alpha])
+    if jitcell.label in blocked_cells:
+        return np.array([1.0, 1.0, 1.0, alpha])
     return np.append(labels_colors[jitcell.label], alpha)
+
 
 # @njit
 def compute_point_stack(
@@ -163,23 +169,22 @@ def compute_point_stack(
     unique_labs,
     dim_change,
     labels_colors,
-    blocked_cells = [],
+    blocked_cells=[],
     alpha=1,
     labels=None,
     mode=None,
     rem=False,
 ):
-
     if labels is None:
         for t in times:
             point_stack[t] = 0
         _labels = unique_labs
     else:
         _labels = np.unique(labels)
-    
+
     for lab in _labels:
         jitcell = get_cell(jitcells, lab)
-        
+
         if rem:
             color = np.zeros(4)
         else:
@@ -190,8 +195,7 @@ def compute_point_stack(
             points = jitcell.outlines
         elif mode == "masks":
             points = jitcell.masks
-        
-        
+
         set_cell_color(
             point_stack,
             points,
@@ -214,7 +218,7 @@ def get_cell(cells, label=None, cellid=None):
         for cell in cells:
             if cell.label == label:
                 return cell
-    
+
     print("LABEL NOT FOUND")
     print(label)
     return None
@@ -248,4 +252,3 @@ def check_and_override_args(args_preferred, args_unpreferred, raise_exception=Tr
             new_args[arg] = args_preferred[arg]
 
     return new_args
-

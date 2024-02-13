@@ -8,6 +8,7 @@ def get_file_names(path_data):
     files = os.listdir(path_data)
     return files
 
+
 def get_file_name(path_data, f, allow_file_fragment=False, returnfiles=False):
     """
     Parameters
@@ -25,43 +26,52 @@ def get_file_name(path_data, f, allow_file_fragment=False, returnfiles=False):
     """
     files = os.listdir(path_data)
     fid = -1
-    
+
     if isinstance(f, str):
         for i, file in enumerate(files):
             if allow_file_fragment:
                 if f in file:
                     fid = i
             else:
-                if f==file:
+                if f == file:
                     fid = i
 
         if fid == -1:
             if allow_file_fragment:
-                raise Exception("given file name extract is not present in any file name of the given directory")
+                raise Exception(
+                    "given file name extract is not present in any file name of the given directory"
+                )
             else:
                 raise Exception("given file name is not present in the given directory")
     else:
         if hasattr(f, "__iter__"):
-            if not allow_file_fragment: raise Exception("using a list as a file name or fragment is only allowed under allow_file_fragment=True")
+            if not allow_file_fragment:
+                raise Exception(
+                    "using a list as a file name or fragment is only allowed under allow_file_fragment=True"
+                )
             possible_files = []
             for sub_f in f:
                 possible_files.append([])
                 for i, file in enumerate(files):
-                        if sub_f in file:
-                            possible_files[-1].append(i)
-                            
+                    if sub_f in file:
+                        possible_files[-1].append(i)
+
             final_files = set(possible_files[0])
             for l in possible_files[1:]:
                 final_files &= set(l)
-            
+
             # Converting to list
             final_files = list(final_files)
-            
-            if len(final_files)==0:
-                raise Exception("given combination of file name extracts is not present in any file name of the given directory")
-            elif len(final_files)>1:
-                raise Exception("given combination of file name extracts is present in more than 1 file")
-            else: 
+
+            if len(final_files) == 0:
+                raise Exception(
+                    "given combination of file name extracts is not present in any file name of the given directory"
+                )
+            elif len(final_files) > 1:
+                raise Exception(
+                    "given combination of file name extracts is present in more than 1 file"
+                )
+            else:
                 fid = final_files[0]
         else:
             fid = f
@@ -75,7 +85,7 @@ def get_file_name(path_data, f, allow_file_fragment=False, returnfiles=False):
     return file
 
 
-# Need a image reader that can automatically detect wheter the image has time, or channels and so on. 
+# Need a image reader that can automatically detect wheter the image has time, or channels and so on.
 # Or should I leave it as it is and rely on the user to know it's data and know if it's a stack or 2D data. Same for channels
 def read_img_with_resolution(path_to_file, channel=None, stack=True):
     """
@@ -95,7 +105,7 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
     with TiffFile(path_to_file) as tif:
         preIMGS = tif.asarray()
         shapeimg = preIMGS.shape
-        
+
         if stack:
             if channel == None:
                 if len(shapeimg) < 4:
@@ -150,6 +160,7 @@ def read_img_with_resolution(path_to_file, channel=None, stack=True):
             xyres = (xres, yres)
     return IMGS, xyres, zres
 
+
 def tif_reader_5D(path_to_file):
     """
     Parameters
@@ -159,33 +170,35 @@ def tif_reader_5D(path_to_file):
 
     Returns
     -------
-    hyperstack: 
+    hyperstack:
         5D numpy array with shape (t, z, c, x, y)
     metadata:
         Dict containing imagej metadata and xy and z spacings (inverse of resolution)
-        
+
     """
     with TiffFile(path_to_file) as tif:
         hyperstack = tif.asarray()
         imagej_metadata = tif.imagej_metadata
         tags = tif.pages[0].tags
-                
-        try: 
-            frames = imagej_metadata['frames']
+
+        try:
+            frames = imagej_metadata["frames"]
         except KeyError:
             frames = 1
-        
+
         try:
-            slices = imagej_metadata['slices']
+            slices = imagej_metadata["slices"]
         except KeyError:
             slices = 1
-        
-        try: 
-            channels = imagej_metadata['channels']
-        except KeyError:
-            channels=1
 
-        hyperstack = np.reshape(hyperstack, (frames, slices, channels, *hyperstack.shape[-2:]))
+        try:
+            channels = imagej_metadata["channels"]
+        except KeyError:
+            channels = 1
+
+        hyperstack = np.reshape(
+            hyperstack, (frames, slices, channels, *hyperstack.shape[-2:])
+        )
 
         # parse X, Y resolution
         try:
@@ -200,9 +213,8 @@ def tif_reader_5D(path_to_file):
         except KeyError:
             yres = 1
 
-
         try:
-            res_unit= tags["ResolutionUnit"].value
+            res_unit = tags["ResolutionUnit"].value
         except KeyError:
             yres = 1
 
@@ -215,8 +227,8 @@ def tif_reader_5D(path_to_file):
             xyres = xres
         else:
             xyres = np.mean([xres, yres])
-    
+
     imagej_metadata["XYresolution"] = xyres
-    imagej_metadata["Zresolution"]  = zres
+    imagej_metadata["Zresolution"] = zres
     imagej_metadata["ResolutionUnit"] = res_unit
     return hyperstack, imagej_metadata

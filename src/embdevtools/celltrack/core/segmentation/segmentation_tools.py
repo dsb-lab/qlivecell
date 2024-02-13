@@ -350,7 +350,9 @@ def assign_labels(stack, Outlines, Masks, distance_th_z, xyresolution):
                         label = labels[z - 1][idx_closest_cell]
                         if label in current_labels:
                             curr_dist = np.min(distances_val[z][cell][0])
-                            idx_other = np.where(np.array(current_labels) == label)[0][0]
+                            idx_other = np.where(np.array(current_labels) == label)[0][
+                                0
+                            ]
                             close_cells = True
 
                             if len(distances_val[z][idx_other]) == 0:

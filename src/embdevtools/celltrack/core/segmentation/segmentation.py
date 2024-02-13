@@ -27,7 +27,7 @@ def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_arg
     masks, flows, styles = model.eval(img, **segmentation_method_args)
 
     outlines = outlines_list(masks)
-        
+
     return outlines
 
 
@@ -119,16 +119,16 @@ def cell_segmentation3D_from2D(
         outlines = segmentation_function(
             img, segmentation_args, segmentation_method_args
         )
-        
+
         # Some segmentatin methods can return empty outlines, doen't make sense but has happen before
         outlines_pop = []
-        for o,outline in enumerate(outlines):
-            if len(outline)==0:
+        for o, outline in enumerate(outlines):
+            if len(outline) == 0:
                 outlines_pop.append(o)
-    
+
         for o in reversed(outlines_pop):
             outlines.pop(o)
-            
+
         # Append the empty masks list for the current z-level.
         Masks.append([])
 
@@ -382,8 +382,7 @@ def check_and_fill_concatenation3D_args(concatenation3D_args):
             new_concatenation3d_args[sarg] = concatenation3D_args[sarg]
         except KeyError:
             raise Exception(
-                "key %s is not a correct argument 3D concatenation method"
-                % sarg
+                "key %s is not a correct argument 3D concatenation method" % sarg
             )
 
     return new_concatenation3d_args

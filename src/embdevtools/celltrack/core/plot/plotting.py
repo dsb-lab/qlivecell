@@ -2,9 +2,9 @@ import numpy as np
 from matplotlib import cm
 from skimage.transform import resize
 
+from ..tools.ct_tools import get_cell_color, set_cell_color
 from ..tools.tools import printfancy
 from .plot_iters import CyclicList
-from ..tools.ct_tools import set_cell_color, get_cell_color
 
 
 def check_and_fill_plot_args(plot_args, stack_dims):
@@ -76,22 +76,22 @@ def check_stacks_for_plotting(
                         stacks_for_plotting[t, z], plot_args["plot_stack_dims"]
                     )
                 plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
-        
+
     else:
-        if len(plot_args["plot_stack_dims"])==3:
+        if len(plot_args["plot_stack_dims"]) == 3:
             plot_stacks = np.zeros(
-            (times, slices, *plot_args["plot_stack_dims"]), dtype="uint8"
-            )   
+                (times, slices, *plot_args["plot_stack_dims"]), dtype="uint8"
+            )
             for ch in range(stacks_for_plotting.shape[2]):
                 if ch in channels:
-                    plot_stacks[:,:,:,:,ch] = stacks_for_plotting[:,:,ch,:,:]
+                    plot_stacks[:, :, :, :, ch] = stacks_for_plotting[:, :, ch, :, :]
 
         else:
             plot_stacks = stacks_for_plotting
-            
+
     if len(plot_args["plot_stack_dims"]) == 3:
-        if len(channels)==1:
-            plot_stacks = plot_stacks[:,:,:,:,channels[0]]
+        if len(channels) == 1:
+            plot_stacks = plot_stacks[:, :, :, :, channels[0]]
     return plot_stacks
 
 
@@ -103,7 +103,8 @@ def norm_stack_per_z(IMGS, saturation=0.7):
             IMGS_norm[t, z] = (IMGS[t, z] / np.max(IMGS[t, z])) * saturation
     return IMGS_norm
 
-#TODO need to make the label color iterator numba compatible
+
+# TODO need to make the label color iterator numba compatible
 # def switch_masks(self, masks=None):
 
 #         if masks is None:
@@ -113,7 +114,7 @@ def norm_stack_per_z(IMGS, saturation=0.7):
 #                 self.CTplot_masks = not self.CTplot_masks
 #         else:
 #             self.CTplot_masks = masks
-        
+
 # def _switch_masks(jitcells_selected, CTplot_masks, CTblocked_cells, masks_stack, dim_change):
 #     for jitcell in jitcells_selected:
 #         if CTplot_masks:

@@ -5,7 +5,9 @@ from scipy.spatial.distance import directed_hausdorff
 from ..tools.tools import printfancy
 
 
-def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args, lab_max=0):
+def greedy_tracking(
+    TLabels, TCenters, xyresolution, zresolution, track_args, lab_max=0
+):
     dist_th = track_args["dist_th"]
     z_th = track_args["z_th"]
 
@@ -101,7 +103,14 @@ def greedy_tracking(TLabels, TCenters, xyresolution, zresolution, track_args, la
 
 
 def hungarian_tracking(
-    TLabels, TCenters, TOutlines, TMasks, xyresolution, zresolution, track_args, lab_max=0
+    TLabels,
+    TCenters,
+    TOutlines,
+    TMasks,
+    xyresolution,
+    zresolution,
+    track_args,
+    lab_max=0,
 ):
     z_th = track_args["z_th"]
     z_th_units = int(np.rint(z_th / zresolution))

@@ -1,15 +1,14 @@
 import numpy as np
-from numba import njit, int64, uint16
+from numba import int64, njit, prange, uint16
 from numba.typed import List
 
+from embdevtools.celltrack.core.dataclasses import jitCell
+
 from ..dataclasses import Cell, jitCell
+from .ct_tools import nb_unique
 from .tools import (checkConsecutive, compute_distance_xy,
                     compute_distance_xyz, whereNotConsecutive)
-from .ct_tools import nb_unique
 
-
-from embdevtools.celltrack.core.dataclasses import jitCell
-from numba import prange
 
 def create_cell(id, label, zs, times, outlines, masks, stacks=None):
     centersi = [np.array([0], dtype="float32") for tid, t in enumerate(times)]
@@ -40,6 +39,7 @@ def create_cell(id, label, zs, times, outlines, masks, stacks=None):
         return cell
     update_cell(cell, stacks)
     return cell
+
 
 def compute_distance_cell(cell1: Cell, cell2: Cell, t, z, axis="xy"):
     t1 = cell1.times.index(t)
@@ -364,6 +364,7 @@ def sort_over_t_jit(cell: jitCell):
     cell.outlines = newouts
     cell.masks = newmasks
 
+
 # @njit
 def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, t):
     tid = cell.times.index(t)
@@ -396,6 +397,7 @@ def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, 
     else:
         return None, None, None
 
+
 # @njit
 def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid):
     consecutive = checkConsecutive(cell.times)
@@ -406,7 +408,7 @@ def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid):
                 nextdisc = discontinuities[discid + 1]
             except IndexError:
                 nextdisc = len(cell.times)
-            
+
             new_cell = cell.copy()
 
             new_cell.zs = new_cell.zs[disc:nextdisc]
@@ -419,10 +421,10 @@ def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid):
             currentcellid += 1
             max_label += 1
 
-        cell.zs = cell.zs[0:discontinuities[0]]
-        cell.outlines = cell.outlines[0:discontinuities[0]]
-        cell.masks = cell.masks[0:discontinuities[0]]
-        cell.times = cell.times[0:discontinuities[0]]
+        cell.zs = cell.zs[0 : discontinuities[0]]
+        cell.outlines = cell.outlines[0 : discontinuities[0]]
+        cell.masks = cell.masks[0 : discontinuities[0]]
+        cell.times = cell.times[0 : discontinuities[0]]
         return max_label, currentcellid, new_cell
     else:
         return None, None, None
@@ -450,12 +452,14 @@ def update_jitcell(cell: jitCell, stacks):
     sort_over_t_jit(cell)
     extract_jitcell_centers(cell, stacks)
 
+
 @njit(parallel=True)
 def update_jitcells(jitcells, stacks):
     for j in prange(len(jitcells)):
         jj = int64(j)
         update_jitcell(jitcells[jj], stacks)
-        
+
+
 def remove_small_cells(cells, area_th, callback_del, callback_update):
     labs_to_remove = []
     areas = []
@@ -511,7 +515,6 @@ def remove_small_planes_at_boders(
     callback_update(backup=False)
 
 
-
 @njit
 def _predefine_jitcell_inputs():
     zs = List([List([1])])
@@ -520,29 +523,48 @@ def _predefine_jitcell_inputs():
     times = List([1])
     times.pop(0)
 
-    outlines = List([List([np.zeros((2,2), dtype='uint16')])])
+    outlines = List([List([np.zeros((2, 2), dtype="uint16")])])
     outlines.pop(0)
 
-    masks = List([List([np.zeros((2,2), dtype='uint16')])])
+    masks = List([List([np.zeros((2, 2), dtype="uint16")])])
     masks.pop(0)
-    
-    centers = List([np.zeros(1, dtype='float32')])
+
+    centers = List([np.zeros(1, dtype="float32")])
     centers.pop(0)
-    
-    centers_all = List([List([np.zeros(1, dtype='float32')])])
+
+    centers_all = List([List([np.zeros(1, dtype="float32")])])
     centers_all.pop(0)
-    
-    centers_weight = np.zeros(1, dtype='float32')
+
+    centers_weight = np.zeros(1, dtype="float32")
     np.delete(centers_weight, 0)
-    return 0,0, zs, times, outlines, masks, False, centers, centers, centers, centers_all, centers_weight, centers
+    return (
+        0,
+        0,
+        zs,
+        times,
+        outlines,
+        masks,
+        False,
+        centers,
+        centers,
+        centers,
+        centers_all,
+        centers_weight,
+        centers,
+    )
+
 
 from numba.np.extensions import cross2d
 
+
 # functions got from https://stackoverflow.com/a/74817179/7546279
-@njit('(int64[:,:], int64[:], int64, int64)')
+@njit("(int64[:,:], int64[:], int64, int64)")
 def process(S, P, a, b):
     signed_dist = cross2d(S[P] - S[a], S[b] - S[a])
-    K = np.array([i for s, i in zip(signed_dist, P) if s > 0 and i != a and i != b], dtype=np.int64)
+    K = np.array(
+        [i for s, i in zip(signed_dist, P) if s > 0 and i != a and i != b],
+        dtype=np.int64,
+    )
 
     if len(K) == 0:
         return [a, b]
@@ -550,18 +572,22 @@ def process(S, P, a, b):
     c = P[np.argmax(signed_dist)]
     return process(S, K, a, c)[:-1] + process(S, K, c, b)
 
-@njit('(int64[:,:],)')
+
+@njit("(int64[:,:],)")
 def quickhull_2d(S: np.ndarray) -> np.ndarray:
-    a, b = np.argmin(S[:,0]), np.argmax(S[:,0])
-    return process(S, np.arange(S.shape[0]), a, b)[:-1] + process(S, np.arange(S.shape[0]), b, a)[:-1]
+    a, b = np.argmin(S[:, 0]), np.argmax(S[:, 0])
+    return (
+        process(S, np.arange(S.shape[0]), a, b)[:-1]
+        + process(S, np.arange(S.shape[0]), b, a)[:-1]
+    )
 
 
 @njit()
 def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
     jitcellinputs = _predefine_jitcell_inputs()
     jitcell = jitCell(*jitcellinputs)
-    jitcell.label = lab-1
-    jitcell.id = lab-1
+    jitcell.label = lab - 1
+    jitcell.id = lab - 1
     for t in range(labels_stack.shape[0]):
         if lab in unique_labels_T[t]:
             jitcell.times.append(t)
@@ -569,48 +595,56 @@ def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
             zs = idxs[0]
             idxxy = np.vstack((idxs[2], idxs[1]))
             masks = np.transpose(idxxy)
-            
+
             jitcell.zs.append(List(np.unique(zs)))
-            
-            cell_maskst = List([np.zeros((2,2), dtype='uint16')])
+
+            cell_maskst = List([np.zeros((2, 2), dtype="uint16")])
             cell_maskst.pop(0)
-            
-            cell_outlinest = List([np.zeros((2,2), dtype='uint16')])
+
+            cell_outlinest = List([np.zeros((2, 2), dtype="uint16")])
             cell_outlinest.pop(0)
-            
+
             for zid in range(len(jitcell.zs[-1])):
                 z = jitcell.zs[-1][zid]
-                zids = np.where(zs==z)[0]
+                zids = np.where(zs == z)[0]
                 z1 = zids[0]
                 z2 = zids[-1]
-                mask = masks[z1:z2+1] 
-                
+                mask = masks[z1 : z2 + 1]
+
                 hull = np.asarray(quickhull_2d(mask))
                 outline = mask[hull]
-                
-                cell_maskst.append(np.ascontiguousarray(mask.astype('uint16')))
-                cell_outlinest.append(np.ascontiguousarray(outline.astype('uint16')))
-            
+
+                cell_maskst.append(np.ascontiguousarray(mask.astype("uint16")))
+                cell_outlinest.append(np.ascontiguousarray(outline.astype("uint16")))
+
             jitcell.masks.append(cell_maskst)
             jitcell.outlines.append(cell_outlinest)
 
     return jitcell
 
+
 import time
+
+
 @njit
 def extract_jitcells_from_label_stack(labels_stack):
     # start_extract1 = time.time()
-    unique_labels, unique_labels_T = extract_jitcells_from_label_stack_part1(labels_stack)
+    unique_labels, unique_labels_T = extract_jitcells_from_label_stack_part1(
+        labels_stack
+    )
     # end_extract1 = time.time()
     # print("elapsed extract 1 =", end_extract1 - start_extract1)
-    
+
     # start_extract2 = time.time()
     unique_labels.remove(uint16(0))
-    jitcells = extract_jitcells_from_label_stack_part2(labels_stack, unique_labels, unique_labels_T)
+    jitcells = extract_jitcells_from_label_stack_part2(
+        labels_stack, unique_labels, unique_labels_T
+    )
     # print("unique_labels =", len(unique_labels))
     # end_extract2 = time.time()
     # print("elapsed extract 2 =", end_extract2 - start_extract2)
     return jitcells
+
 
 @njit
 def extract_jitcells_from_label_stack_part1(labels_stack):
@@ -627,9 +661,12 @@ def extract_jitcells_from_label_stack_part1(labels_stack):
             unique_labels.append(lab)
 
     return unique_labels, unique_labels_T
-    
-@njit(parallel=True)        
-def extract_jitcells_from_label_stack_part2(labels_stack, unique_labels, unique_labels_T):
+
+
+@njit(parallel=True)
+def extract_jitcells_from_label_stack_part2(
+    labels_stack, unique_labels, unique_labels_T
+):
     jitcellinputs = _predefine_jitcell_inputs()
     jcell = jitCell(*jitcellinputs)
     cells = List([jcell for l in range(len(unique_labels))])

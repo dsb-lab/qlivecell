@@ -1,9 +1,9 @@
 import random
 
 import numpy as np
+from numba import njit
 from scipy.spatial import ConvexHull, cKDTree
 from scipy.spatial._qhull import QhullError
-from numba import njit
 
 LINE_UP = "\033[1A"
 LINE_CLEAR = "\x1b[2K"
@@ -18,17 +18,17 @@ def printclear(n=1):
 
 def printfancy(string="", finallength=70, clear_prev=0):
     if string is None:
-        new_str=""
+        new_str = ""
         while len(new_str) < finallength - 1:
             new_str += "#"
     else:
         new_str = "#   " + string
         while len(new_str) < finallength - 1:
             new_str += " "
-        
+
         if len(new_str) < finallength:
             new_str += "#"
-        
+
     printclear(clear_prev)
     print(new_str)
 
@@ -51,6 +51,7 @@ def progressbar(step, total, width=46):
 
 
 import inspect
+
 """
     copied from https://stackoverflow.com/questions/12627118/get-a-function-arguments-default-value
 """
@@ -199,15 +200,17 @@ def compute_distance_xy(x1, x2, y1, y2):
 def compute_distance_xyz(x1, x2, y1, y2, z1, z2):
     return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
 
+
 @njit
 def numbadiff(x):
     return x[1:] - x[:-1]
+
 
 @njit
 def checkConsecutive(l):
     n = len(l) - 1
     a = np.empty(len(l), dtype=l._dtype)
-    for i,v in enumerate(l):
+    for i, v in enumerate(l):
         a[i] = v
     sorted_dif = numbadiff(np.sort(a))
     return np.sum(sorted_dif == 1) >= n
@@ -216,7 +219,7 @@ def checkConsecutive(l):
 @njit
 def whereNotConsecutive(l):
     a = np.empty(len(l), dtype=l._dtype)
-    for i,v in enumerate(l):
+    for i, v in enumerate(l):
         a[i] = v
     return [id + 1 for id, val in enumerate(numbadiff(a)) if val > 1]
 
@@ -275,10 +278,14 @@ def increase_outline_width(label_image, neighs):
     labels_out[dilate_mask] = nearest_labels
     return labels_out
 
+
 import os
+
+
 def check_or_create_dir(path):
     if os.path.isdir(path):
         return
     else:
-        if ".tif" in path: return
+        if ".tif" in path:
+            return
         os.mkdir(path)

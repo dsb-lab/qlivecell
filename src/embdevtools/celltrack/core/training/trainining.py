@@ -29,7 +29,6 @@ def generate_set(
             if data_subtype not in file:
                 continue
 
-
         if not isinstance(channels, list):
             channels = [channels]
         channel = random.choice(channels)  # In this case there are two channel
