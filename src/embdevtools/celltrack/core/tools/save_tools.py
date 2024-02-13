@@ -225,7 +225,7 @@ def load_cells_from_labels_stack(path=None, times=None, split_times=False):
 
     # labels_stack, xyres_labs, zres_labs = read_img_with_resolution(pthload+"_labels.tif", stack=True, channel=None)
     if split_times:
-        labels_stack= read_split_times(correct_path(pthload), range(times), extra_name="_labels", extension=".npy")
+        labels_stack= read_split_times(correct_path(pthload), range(times), name_format="_labels", extension=".npy")
     else:
         labels_stack = np.load(pthload+".npy")
 
@@ -398,7 +398,7 @@ def save_2Dtiff(
         },
     )
 
-def read_split_times(path_data, times, extra_name="", extension=".tif", channels=None):
+def read_split_times(path_data, times, name_format="{}", extension=".tif", channels=None):
     
     IMGS = []
 
@@ -406,7 +406,7 @@ def read_split_times(path_data, times, extra_name="", extension=".tif", channels
         if extension in path_data:
             path_to_file = path_data
         else:
-            path_to_file = correct_path(path_data)+"{}{}{}".format(t, extra_name, extension)
+            path_to_file = correct_path(path_data)+name_format.format(t)+extension
 
         if extension == ".tif":
             IMG, metadata = tif_reader_5D(path_to_file)

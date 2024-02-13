@@ -34,6 +34,8 @@ def check_and_fill_batch_args(batch_args):
     new_batch_args = {
         "batch_size": 5,
         "batch_overlap": 1,
+        "name_format":"{}",
+        "extension":".tif",
     }
     if batch_args["batch_size"] <= batch_args["batch_overlap"]:
         raise Exception("batch size has to be bigger than batch overlap")

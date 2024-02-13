@@ -190,8 +190,10 @@ class CellTracking(object):
             error_correction_args
         )
     
+        self._batch_args = check_and_fill_batch_args(batch_args)
+        
         # Read the stacks
-        self.hyperstack, self.metadata = read_split_times(self.path_to_data, range(0, 1), extra_name="", extension=".tif", channels=self.channels)
+        self.hyperstack, self.metadata = read_split_times(self.path_to_data, range(0, 1), name_format=self._batch_args["name_format"], extension=self._batch_args["extension"], channels=self.channels)
         self.slices = self.hyperstack.shape[1]
         self.stack_dims = np.shape(self.hyperstack)[3:]
 
@@ -298,7 +300,7 @@ class CellTracking(object):
             self.set_batch(batch_number = r)
             self.batch_all_rounds_times.append(self.batch_times_list_global)
             
-            labels = read_split_times(self.path_to_save, self.batch_times_list_global, extra_name="", extension=".npy")
+            labels = read_split_times(self.path_to_save, self.batch_times_list_global, name_format=self._batch_args["name_format"], extension=".npy")
             first = (self.batch_size * r) - (self.batch_overlap * r)
             for t in range(labels.shape[0]):
                 real_t = t + first
@@ -342,7 +344,7 @@ class CellTracking(object):
         self.batch_times_list_global = times
         self.times = len(times)
 
-        self.hyperstack, self.metadata = read_split_times(self.path_to_data, self.batch_times_list_global, extra_name="", extension=".tif", channels=self.channels)
+        self.hyperstack, self.metadata = read_split_times(self.path_to_data, self.batch_times_list_global, name_format=self._batch_args["name_format"], extension=self._batch_args["extension"], channels=self.channels)
         # If the stack is RGB, pick the channel to segment
 
         self.plot_stacks = check_stacks_for_plotting(
@@ -366,7 +368,7 @@ class CellTracking(object):
         
     def init_batch_cells(self):
 
-        labels = read_split_times(self.path_to_save, self.batch_times_list_global, extra_name="", extension=".npy")
+        labels = read_split_times(self.path_to_save, self.batch_times_list_global, name_format=self._batch_args["name_format"], extension=".npy")
         
         self.jitcells = extract_jitcells_from_label_stack(labels)
         
@@ -431,7 +433,7 @@ class CellTracking(object):
             label_correspondance = []
 
             # Read the stacks
-            self.hyperstack, self.metadata = read_split_times(self.path_to_data, range(t, t+1), extra_name="", extension=".tif", channels=self.channels)
+            self.hyperstack, self.metadata = read_split_times(self.path_to_data, range(t, t+1), name_format=self._batch_args["name_format"], extension=self._batch_args["extension"], channels=self.channels)
             
             pre_stack_seg = self.hyperstack[0]
 
@@ -523,9 +525,9 @@ class CellTracking(object):
             if len(times) <= boverlap: 
                 continue
             
-            labels = read_split_times(self.path_to_save, times, extra_name="", extension=".npy")
+            labels = read_split_times(self.path_to_save, times, name_format=self._batch_args["name_format"], extension=".npy")
 
-            IMGS, metadata = read_split_times(self.path_to_data, times, extra_name="", extension=".tif")
+            IMGS, metadata = read_split_times(self.path_to_data, times, name_format=self._batch_args["name_format"], extension=self._batch_args["extension"])
 
             labels = labels.astype("uint16")
             Labels, Outlines, Masks = prepare_labels_stack_for_tracking(labels)
@@ -628,7 +630,7 @@ class CellTracking(object):
         self._get_number_of_conflicts()
         self._get_cellids_celllabels()
 
-    def update_labels(self, backup=True):
+    def update_labels(self, backup=False):
 
         self.update_label_pre()
 
