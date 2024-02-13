@@ -74,7 +74,7 @@ def np_all(x, axis=None):
         return _np_all_impl
 
 
-@jit(nopython=True, cache=False)
+@jit(nopython=True)
 def nb_unique(input_data, axis=0):
     """2D np.unique(a, return_index=True, return_counts=True)
 
@@ -126,67 +126,82 @@ def nb_unique(input_data, axis=0):
     counts = counts - idx
     return data[idx]
 
+# from https://stackoverflow.com/a/53651418/7546279
+@njit
+def numba_delete(arr, idx):
+    mask = np.zeros(arr.shape[0], dtype=np.int64) == 0
+    mask[idx] = False
+    return arr[mask]
 
 @njit()
-def set_cell_color(cell_stack, points, times, zs, color, dim_change, t=-1, z=-1):
-    for tid in nb.prange(len(times)):
-        tc = times[tid]
-        if t < 0 or t == tc:
-            for zid in nb.prange(len(zs[tid])):
-                zc = zs[tid][zid]
+def set_cell_color(cell_stack, points, cell_times, cell_zs, color, dim_change, times, z):
+    for tid in nb.prange(len(cell_times)):
+        tc = cell_times[tid]
+        if tc in times:
+            for zid in nb.prange(len(cell_zs[tid])):
+                zc = cell_zs[tid][zid]
                 if z < 0 or z == zc:
                     outline = nb_unique(points[tid][zid], axis=0)
-
-                    for p in outline:
-                        x = np.uint16(np.floor(p[1] * dim_change))
-                        y = np.uint16(np.floor(p[0] * dim_change))
+                    # outline = points[tid][zid]
+                    for pid in nb.prange(len(outline)):
+                        pid = nb.int64(pid)
+                        p = outline[pid]
+                        x = np.int64(np.floor(p[1] * dim_change))
+                        y = np.int64(np.floor(p[0] * dim_change))
                         cell_stack[tc, zc, x, y] = color
 
 
-def get_cell_color(jitcell, labels_colors, alpha):
+def get_cell_color(jitcell, labels_colors, alpha, blocked_cells):
+    if jitcell.label in blocked_cells: return np.array([1.0, 1.0, 1.0, alpha])
     return np.append(labels_colors[jitcell.label], alpha)
 
-
+# @njit
 def compute_point_stack(
     point_stack,
     jitcells,
     times,
-    labels_per_t,
+    unique_labs,
     dim_change,
     labels_colors,
+    blocked_cells = [],
     alpha=1,
     labels=None,
     mode=None,
     rem=False,
 ):
-    for t in times:
-        if labels is None:
+
+    if labels is None:
+        for t in times:
             point_stack[t] = 0
-            _labels = labels_per_t[t]
+        _labels = unique_labs
+    else:
+        _labels = np.unique(labels)
+    
+    for lab in _labels:
+        jitcell = get_cell(jitcells, lab)
+        
+        if rem:
+            color = np.zeros(4)
         else:
-            _labels = labels
-        for lab in _labels:
-            jitcell = get_cell(jitcells, lab)
-            if rem:
-                color = np.zeros(4)
-            else:
-                color = get_cell_color(jitcell, labels_colors, alpha)
+            color = get_cell_color(jitcell, labels_colors, alpha, blocked_cells)
 
-            color = np.rint(color * 255).astype("uint8")
-
-            if mode == "outlines":
-                points = jitcell.outlines
-            elif mode == "masks":
-                points = jitcell.masks
-            set_cell_color(
-                point_stack,
-                points,
-                jitcell.times,
-                jitcell.zs,
-                np.array(color),
-                dim_change,
-                t=t,
-            )
+        color = np.rint(color * 255).astype("uint8")
+        if mode == "outlines":
+            points = jitcell.outlines
+        elif mode == "masks":
+            points = jitcell.masks
+        
+        
+        set_cell_color(
+            point_stack,
+            points,
+            jitcell.times,
+            jitcell.zs,
+            color,
+            dim_change,
+            times,
+            -1,
+        )
     return point_stack
 
 
@@ -199,9 +214,13 @@ def get_cell(cells, label=None, cellid=None):
         for cell in cells:
             if cell.label == label:
                 return cell
+    
+    print("LABEL NOT FOUND")
+    print(label)
     return None
 
 
+@njit
 def compute_labels_stack(point_stack, jitcells):
     for jitcell in jitcells:
         color = jitcell.label + 1
@@ -229,3 +248,4 @@ def check_and_override_args(args_preferred, args_unpreferred, raise_exception=Tr
             new_args[arg] = args_preferred[arg]
 
     return new_args
+

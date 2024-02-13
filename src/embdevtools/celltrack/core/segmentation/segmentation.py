@@ -371,7 +371,7 @@ def check_and_fill_concatenation3D_args(concatenation3D_args):
             new_concatenation3d_args[sarg] = concatenation3D_args[sarg]
         except KeyError:
             raise Exception(
-                "key %s is not a correct argument for the selected segmentation method"
+                "key %s is not a correct argument 3D concatenation method"
                 % sarg
             )
 

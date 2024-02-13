@@ -1,5 +1,5 @@
 import numpy as np
-from numba import jit, njit, typeof
+from numba import jit, njit, typeof, prange
 from numba.typed import List
 from numba.types import ListType
 
@@ -24,7 +24,11 @@ def _get_jitcell(jitcells, label=None, cellid=None):
 
 @njit
 def _order_labels_z(jitcells, times):
+    # if len(skip_labels_list) > 0:
+    #     current_max_label = jmax(skip_labels_list)
+    # else:
     current_max_label = -1
+
     for t in range(times):
         ids = List()
         zs = List()
@@ -40,8 +44,11 @@ def _order_labels_z(jitcells, times):
 
         for i, id in enumerate(ids):
             cell = _get_jitcell(jitcells, cellid=id)
+            # if cell.label in skip_labels_list:
+            #     pass
+            # else:  
+            cell.label = current_max_label + 1
             current_max_label += 1
-            cell.label = current_max_label
 
 
 def isListEmpty(inList):
@@ -52,7 +59,7 @@ def isListEmpty(inList):
 
 def _extract_unique_labels_per_time(Labels, times):
     unique_labels_T = list(
-        [list(np.unique(np.hstack(Labels[i]))) for i in range(times)]
+        [list(np.unique(np.hstack(Labels[i])).astype('uint16')) for i in range(times)]
     )
 
     if isListEmpty(Labels):
@@ -63,24 +70,22 @@ def _extract_unique_labels_per_time(Labels, times):
         sublist_pre = []
         if sublist:
             for x in sublist:
-                sublist_pre.append(int(x))
+                sublist_pre.append(np.uint16(x))
+            
+            unique_labels_T_pre.append(List(sublist_pre))
         else:
-            sublist_pre.append(-1)
-
-        unique_labels_T_pre.append(List(sublist_pre))
+            sublist_pre.append(np.uint16(0))
+            unique_labels_T_pre.append(List(sublist_pre))
+            unique_labels_T_pre[-1].pop(0)
 
     unique_labels_T = List(unique_labels_T_pre)
     # unique_labels_T = List(
     #     [List([int(x) for x in sublist]) for sublist in unique_labels_T]
     # )
-    _remove_nonlabels(unique_labels_T)
+    # _remove_nonlabels(unique_labels_T)
     return unique_labels_T
 
-@njit 
-def _remove_nonlabels(unique_labels_T):
-    for sublist in unique_labels_T:
-        if -1 in sublist:
-            sublist.remove(-1)
+
 
 @njit
 def _remove_nonlabels(unique_labels_T):
@@ -88,6 +93,14 @@ def _remove_nonlabels(unique_labels_T):
         if -1 in sublist:
             sublist.remove(-1)
 
+
+@njit
+def jmin(x):
+    return min(x)
+
+@njit
+def jmax(x):
+    return max(x)
 
 @njit
 def _order_labels_t(unique_labels_T, max_label):
@@ -111,18 +124,28 @@ def _order_labels_t(unique_labels_T, max_label):
             n = p[j]
             Ci[n].append(i)
             Cj[n].append(j)
+            
+    nmax = -1
 
-    nmax = 0
     for i in range(len(P)):
         p = P[i]
         for j in range(len(p)):
             n = p[j]
             if Q[i][j] == -1:
                 for ij in range(len(Ci[n])):
-                    Q[Ci[n][ij]][Cj[n][ij]] = nmax
-                PQ[n] = nmax
+                    Q[Ci[n][ij]][Cj[n][ij]] = nmax + 1
+
+                PQ[n] = nmax + 1
                 nmax += 1
-    return P, Q, PQ
+    
+    newQ = List()
+    for i in prange(len(Q)):
+        q = List()
+        for val in Q[i]:
+            q.append(np.uint16(val))
+        newQ.append(q)
+        
+    return P, newQ, PQ
 
 
 def create_toy_cell():
@@ -244,7 +267,8 @@ def _init_cell(
 
             Zlabel_l, Zlabel_z = label_per_z_jit(slices, labst)
             TIMES.append(t)
-            idd = np.where(np.array(label_correspondance[t])[:, 1] == lab)[0][0]
+
+            idd = np.where(np.asarray(label_correspondance[t])[:, 1] == lab)[0][0]
             _lab = label_correspondance[t][idd][0]
             _labid = Zlabel_l.index(_lab)
             ZS.append(Zlabel_z[_labid])
@@ -315,3 +339,119 @@ def get_labels_centers(stacks, Labels, Outlines, Masks):
         TCenters.append(centers)
 
     return TLabels, TOutlines, TMasks, TCenters
+
+
+from numba.np.extensions import cross2d
+
+# functions got from https://stackoverflow.com/a/74817179/7546279
+@njit('(int64[:,:], int64[:], int64, int64)')
+def process(S, P, a, b):
+    signed_dist = cross2d(S[P] - S[a], S[b] - S[a])
+    K = np.array([i for s, i in zip(signed_dist, P) if s > 0 and i != a and i != b], dtype=np.int64)
+
+    if len(K) == 0:
+        return [a, b]
+
+    c = P[np.argmax(signed_dist)]
+    return process(S, K, a, c)[:-1] + process(S, K, c, b)
+
+@njit('(int64[:,:],)')
+def quickhull_2d(S: np.ndarray) -> np.ndarray:
+    a, b = np.argmin(S[:,0]), np.argmax(S[:,0])
+    return process(S, np.arange(S.shape[0]), a, b)[:-1] + process(S, np.arange(S.shape[0]), b, a)[:-1]
+
+@njit
+def prepare_labels_stack_for_tracking(labels_stack):
+    times = labels_stack.shape[0]
+    zs = labels_stack.shape[1]
+
+    labelsz = List([0])
+    labelsz.pop(0)
+    labelst = List([labelsz])
+    labelst.pop(0)
+    Labels = List([labelst])
+    Labels.pop(0)
+
+    outlinesz = List([np.array([[0,0], [0,0]])])
+    outlinesz.pop(0)
+    outlinest = List([outlinesz])
+    outlinest.pop(0)
+    Outlines = List([outlinest])
+    Outlines.pop(0)
+
+    masksz = List([np.array([[0,0], [0,0]])])
+    masksz.pop(0)
+    maskst = List([masksz])
+    maskst.pop(0)
+    Masks = List([maskst])
+    Masks.pop(0)
+
+    for t in range(times):
+        labelsz = List([0])
+        labelsz.pop(0)
+        labelst = List([labelsz])
+        labelst.pop(0)
+        
+        outlinesz = List([np.array([[0,0], [0,0]])])
+        outlinesz.pop(0)
+        outlinest = List([outlinesz])
+        outlinest.pop(0)
+
+        masksz = List([np.array([[0,0], [0,0]])])
+        masksz.pop(0)
+        maskst = List([masksz])
+        maskst.pop(0)
+
+        Labels.append(labelst)
+        Outlines.append(outlinest)
+        Masks.append(maskst)
+        
+        for z in range(zs):
+            
+            labelsz = List([0])
+            labelsz.pop(0)
+            
+            outlinesz = List([np.array([[0,0], [0,0]])])
+            outlinesz.pop(0)
+
+            masksz = List([np.array([[0,0], [0,0]])])
+            masksz.pop(0)
+        
+            Labels[t].append(labelsz)
+            Outlines[t].append(outlinesz)
+            Masks[t].append(masksz)
+
+            labels = np.unique(labels_stack[t, z])[1:]
+            for lab in labels:
+                idxs = np.where(lab == labels_stack[t,z])
+                idxs = np.vstack((idxs[1], idxs[0]))
+                mask = idxs.transpose()
+                hull = np.asarray(quickhull_2d(mask))
+                outline = mask[hull]
+                Labels[t][z].append(lab-1)
+                Outlines[t][z].append(outline)
+                Masks[t][z].append(np.ascontiguousarray(mask))
+
+    return Labels, Outlines, Masks
+
+@njit(parallel=True)
+def replace_labels_t(labels, lab_corr):
+    labels_t_copy = labels.copy()
+    for lab_init, lab_final in lab_corr:
+        idxs = np.where(lab_init+1 == labels)
+
+        idxz = idxs[0]
+        idxx = idxs[1]
+        idxy = idxs[2]
+
+        for q in prange(len(idxz)):
+            labels_t_copy[idxz[q], idxx[q], idxy[q]] = lab_final+1
+    return labels_t_copy
+
+@njit(parallel=True)
+def replace_labels_in_place(labels, label_correspondance):
+    labels_copy = np.zeros_like(labels, dtype="uint16")
+    for t in prange(len(label_correspondance)): 
+        t = np.uint16(t)
+        labels_copy[t] = replace_labels_t(labels[t], label_correspondance[t])
+    return labels_copy
