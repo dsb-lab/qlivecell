@@ -44,6 +44,8 @@ segmentation_args={
     # 'blur': [5,1], 
     'channels': [0,0],
     'flow_threshold': 0.4,
+    # 'min_size': -1,
+    # 'diameter': 8,
 }
           
 concatenation3D_args = {
