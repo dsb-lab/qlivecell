@@ -3,7 +3,7 @@ from embdevtools import get_file_name, CellTracking, save_3Dstack, save_4Dstack,
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
-path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/test/raw/'
+path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/test/raw/0.tif'
 path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/test/ctobjects/'
 
 try: 
@@ -85,5 +85,5 @@ CTB = CellTracking(
     channels=[1,0]
 )
 
-CTB.load()
+CTB.run()
 CTB.plot_tracking(plot_args=plot_args)

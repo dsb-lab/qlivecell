@@ -403,7 +403,10 @@ def read_split_times(path_data, times, extra_name="", extension=".tif", channels
     IMGS = []
 
     for t in times:
-        path_to_file = correct_path(path_data)+"{}{}{}".format(t, extra_name, extension)
+        if extension in path_data:
+            path_to_file = path_data
+        else:
+            path_to_file = correct_path(path_data)+"{}{}{}".format(t, extra_name, extension)
 
         if extension == ".tif":
             IMG, metadata = tif_reader_5D(path_to_file)
