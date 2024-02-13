@@ -605,14 +605,27 @@ class CellTracking(object):
             TLabels, TOutlines, TMasks, TCenters = get_labels_centers(
                 IMGS[:, :, self.channels_order[0], :, :], Labels, Outlines, Masks
             )
-            FinalLabels, label_correspondance = greedy_tracking(
-                TLabels,
-                TCenters,
-                metadata["XYresolution"],
-                metadata["Zresolution"],
-                self._track_args,
-                lab_max=maxlab,
-            )
+
+            if self._track_args["method"] == "greedy":
+                FinalLabels, label_correspondance = greedy_tracking(
+                    TLabels,
+                    TCenters,
+                    metadata["XYresolution"],
+                    metadata["Zresolution"],
+                    self._track_args,
+                    lab_max=maxlab,
+                )
+            elif self._track_args["method"] == "hungarian":
+                FinalLabels, label_correspondance = hungarian_tracking(
+                    TLabels,
+                    TCenters,
+                    TOutlines,
+                    TMasks,
+                    metadata["XYresolution"],
+                    metadata["Zresolution"],
+                    self._track_args,
+                    lab_max=maxlab,
+                )
 
             label_correspondance = List(
                 [np.array(sublist).astype("uint16") for sublist in label_correspondance]
