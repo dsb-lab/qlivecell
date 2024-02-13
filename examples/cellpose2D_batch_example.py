@@ -39,7 +39,7 @@ segmentation_args={
 # }
 
 concatenation3D_args = {
-    'distance_th_z': 3.0, 
+    'distance_th_z': 3.0, # microns
     'relative_overlap':False, 
     'use_full_matrix_to_compute_overlap':True, 
     'z_neighborhood':2, 
@@ -59,8 +59,8 @@ plot_args = {
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
     'plot_stack_dims': (256, 256), 
-    'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-    'channels':[0,1]
+    'plot_centers':[True, True], # [Plot center as a dot, plot label on 3D center]
+    'channels':[0, 1]
 }
 
 error_correction_args = {
@@ -85,5 +85,5 @@ CTB = CellTracking(
     channels=[1,0]
 )
 
-CTB.run()
+CTB.load()
 CTB.plot_tracking(plot_args=plot_args)

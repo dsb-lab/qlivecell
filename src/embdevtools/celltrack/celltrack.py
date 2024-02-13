@@ -1564,8 +1564,8 @@ class CellTracking(object):
         marked_mito = []
         for event in self.mitotic_events:
             for mitocell in event:
-                if mitocell[1] == self.tg:
-                    cell = self._CTget_cell(label=mitocell[0])
+                if mitocell[1] == self.PACP.tg:
+                    cell = self._get_cell(label=mitocell[0])
                     if cell is None: 
                         self.mitotic_events.remove(event)
                     else:
@@ -1863,22 +1863,24 @@ class CellTracking(object):
                             cell = self._get_cell(ev[0])
                             tid = cell.times.index(t)
                             zz, ys, xs = cell.centers[tid]
-                            xs = round(xs * self._plot_args["dim_change"])
-                            ys = round(ys * self._plot_args["dim_change"])
-                            if PACP.tg == ev[1]:
-                                sc = PACP.ax[id].scatter(
-                                    [ys], [xs], s=5.0, c="red"
-                                )
-                                self._pos_scatters.append(sc)
+                            if zz == z:
+                                xs = round(xs * self._plot_args["dim_change"])
+                                ys = round(ys * self._plot_args["dim_change"])
+                                if PACP.tg == ev[1]:
+                                    sc = PACP.ax[id].scatter(
+                                        [ys], [xs], s=5.0, c="red"
+                                    )
+                                    self._pos_scatters.append(sc)
                                 
                 for apoev in self.apoptotic_events:   
                     if apoev[0] in labs:
                         cell = self._get_cell(apoev[0])
                         tid = cell.times.index(t)
                         zz, ys, xs = cell.centers[tid]
-                        xs = round(xs * self._plot_args["dim_change"])
-                        ys = round(ys * self._plot_args["dim_change"])
-                        sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
-                        self._pos_scatters.append(sc)
+                        if zz == z:
+                            xs = round(xs * self._plot_args["dim_change"])
+                            ys = round(ys * self._plot_args["dim_change"])
+                            sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
+                            self._pos_scatters.append(sc)
 
         plt.subplots_adjust(bottom=0.075)
