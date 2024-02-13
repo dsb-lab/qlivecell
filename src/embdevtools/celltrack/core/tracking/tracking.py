@@ -127,7 +127,7 @@ def hungarian_tracking(
     lc = [[l, l] for l in TLabels[0]]
     label_correspondance.append(lc)
 
-    labmax = np.max(0, lab_max)
+    labmax = np.maximum(np.max(FinalLabels[0]), lab_max)
     for t in range(1, len(TLabels)):
         FinalLabels_t = []
         label_correspondance_t = []
