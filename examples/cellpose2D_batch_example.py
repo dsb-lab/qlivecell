@@ -85,18 +85,18 @@ CTB = CellTracking(
     error_correction_args=error_correction_args,
     plot_args=plot_args,
     batch_args=batch_args,
-    channels=[3,0,1,2]
+    channels=[0]
 )
 
-CTB.run()
+CTB.load()
 
 plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), 
+    # 'plot_stack_dims': (512, 512), 
     'plot_centers':[True, True], # [Plot center as a dot, plot label on 3D center]
-    'channels':[3]
+    'channels':[0]
 }
 CTB.plot_tracking(plot_args=plot_args)
 
