@@ -6,6 +6,7 @@ from embdevtools.celltrack.core.dataclasses import jitCell
 
 from ..dataclasses import Cell, jitCell
 from .ct_tools import nb_unique
+from .batch_tools import reorder_list
 from .tools import (checkConsecutive, compute_distance_xy,
                     compute_distance_xyz, whereNotConsecutive)
 
@@ -623,44 +624,82 @@ def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
     return jitcell
 
 
-import time
-
-
 @njit
 def extract_jitcells_from_label_stack(labels_stack):
-    # start_extract1 = time.time()
     unique_labels, unique_labels_T = extract_jitcells_from_label_stack_part1(
         labels_stack
     )
-    # end_extract1 = time.time()
-    # print("elapsed extract 1 =", end_extract1 - start_extract1)
-
-    # start_extract2 = time.time()
     unique_labels.remove(uint16(0))
     jitcells = extract_jitcells_from_label_stack_part2(
         labels_stack, unique_labels, unique_labels_T
     )
-    # print("unique_labels =", len(unique_labels))
-    # end_extract2 = time.time()
-    # print("elapsed extract 2 =", end_extract2 - start_extract2)
     return jitcells
 
 
 @njit
+def list_unique(lst):
+    lst_unique = List([lst[0]])
+    lst_unique.clear()
+    for a in lst:
+        if a not in lst_unique:
+            lst_unique.append(a)
+    return lst_unique
+
+
+@njit
 def extract_jitcells_from_label_stack_part1(labels_stack):
-    unique_labels_T = List()
-    for i in range(len(labels_stack)):
-        unique_labels_T.append(np.unique(labels_stack[i]))
-    total_labs = List()
-    for sublist in unique_labels_T:
-        for lab in sublist:
-            total_labs.append(lab)
-    unique_labels = List()
-    for lab in total_labs:
-        if lab not in unique_labels:
-            unique_labels.append(lab)
+    unique_labels_T, order = extract_unique_labels_T(labels_stack, len(labels_stack))
+    unique_labels_T = reorder_list(unique_labels_T, order)
+    
+    total_labs = extract_all_elements(unique_labels_T)
+    
+    unique_labels = list_unique(total_labs)
 
     return unique_labels, unique_labels_T
+
+
+@njit(parallel=True)
+def extract_unique_labels_T(labels, times):
+    labs_t = List()
+    order = List()
+    for t in prange(times):
+        stack = labels[np.int64(t)]
+        labs_t.append(List(np.unique(stack)))
+        order.append(np.int64(t))
+    return labs_t, order
+
+
+# is there a way to make this parallel?
+@njit(parallel=False)
+def extract_all_elements(lst):
+    total_labs = List()
+    for i in prange(len(lst)):
+        sublist = lst[np.int64(i)]
+        for lab in sublist:
+            total_labs.append(np.uint16(lab))
+    return total_labs
+
+
+# @njit(parallel=True)
+# def extract_all_elements(lst, sizes):
+#     s = np.int64(len(lst) * np.max(sizes))
+#     total_labs = np.empty(s, dtype=np.uint16)
+#     idx = np.int64(0)
+#     for i in prange(len(lst)):
+#         sublist = lst[np.int64(i)]
+#         for lab in sublist:
+#             total_labs[idx] = np.uint16(lab)
+#             idx += np.int64(1)
+#     return total_labs[:idx]
+
+
+@njit(parallel=True)
+def get_nested_list_full_size(lst):
+    sizes = np.empty((len(lst)))
+    for i in prange(len(lst)):
+        sublist = lst[np.int64(i)]
+        sizes[i] = len(sublist)
+    return sizes
 
 
 @njit(parallel=True)

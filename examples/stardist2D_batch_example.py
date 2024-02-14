@@ -16,9 +16,27 @@ except:
     import os
     os.mkdir(path_save)
 
+import os
+files = get_file_names(path_data)
+import os
+
+# ### LOAD STARDIST MODEL ###
+# from stardist.models import StarDist2D
+# model = StarDist2D.from_pretrained('2D_versatile_fluo')
+
+# ### DEFINE ARGUMENTS ###
+# segmentation_args={
+#     'method': 'stardist2D', 
+#     'model': model, 
+#     'blur': None, 
+#     # 'n_tiles': (2,2),
+# }
+    
 ### LOAD CELLPOSE MODEL ###
+import cellpose
 from cellpose import models
 model  = models.CellposeModel(gpu=True, pretrained_model='/home/pablo/Desktop/PhD/projects/Data/blastocysts/models/blasto')
+# model  = models.CellposeModel(gpu=True, model_type="cyto2")
 
 
 ### DEFINE ARGUMENTS ###
@@ -50,9 +68,9 @@ plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), # Dimension of the smaller axis
+    # 'plot_stack_dims': (256, 256), 
     'plot_centers':[True, True], # [Plot center as a dot, plot label on 3D center]
-    'channels':[0]
+    'channels':[0,1,3]
 }
 
 error_correction_args = {
@@ -61,7 +79,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size': 20,
+    'batch_size': 2,
     'batch_overlap':1,
     'name_format':"{}",
     'extension':".tif",
@@ -81,17 +99,17 @@ if __name__ == "__main__":
         channels=[0]
     )
 
-    CTB.load(load_ct_info=False)
+    CTB.run()
 
-    plot_args = {
-        'plot_layout': (1,1),
-        'plot_overlap': 1,
-        'masks_cmap': 'tab10',
-        # 'plot_stack_dims': (512, 512), 
-        'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-        'channels':[0]
-    }
-    CTB.plot_tracking(plot_args=plot_args)
+# plot_args = {
+#     'plot_layout': (1,1),
+#     'plot_overlap': 1,
+#     'masks_cmap': 'tab10',
+#     'plot_stack_dims': (512, 512), 
+#     'plot_centers':[True, True], # [Plot center as a dot, plot label on 3D center]
+#     'channels':[0]
+# }
+# CTB.plot_tracking(plot_args=plot_args)
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###

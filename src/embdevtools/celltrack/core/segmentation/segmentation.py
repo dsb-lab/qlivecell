@@ -4,7 +4,8 @@ from ..tools.tools import (get_default_args, get_outlines_masks_labels,
                            increase_point_resolution, mask_from_outline,
                            printclear, printfancy, progressbar)
 from .segmentation_tools import check3Dmethod
-
+import logging
+logging.disable(logging.WARNING)
 
 def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_args):
     """
@@ -23,11 +24,9 @@ def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_arg
     from cellpose.utils import outlines_list
 
     model = segmentation_args["model"]
-
     masks, flows, styles = model.eval(img, **segmentation_method_args)
 
     outlines = outlines_list(masks)
-
     return outlines
 
 

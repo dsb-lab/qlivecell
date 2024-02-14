@@ -473,8 +473,9 @@ def substitute_labels(post_range_start, post_range_end, path_to_save, lcT):
         new_ls = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
         save_labels_stack(
             new_ls,
-            path_to_save + "{:d}.npy".format(postt),
+            path_to_save,
             [postt],
+            filename="{:d}.npy".format(postt),
             split_times=False,
             string_format="{}",
         )
