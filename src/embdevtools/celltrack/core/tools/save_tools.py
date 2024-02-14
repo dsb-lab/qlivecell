@@ -113,7 +113,9 @@ def save_cells_to_json(cells, CT_info, path=None):
 def save_labels_stack(
     labels_stack, pthsave, times, filename=None, split_times=False, string_format="{}"
 ):
+    print("in save labels stack inner")
     if split_times:
+        print("split times true")
         if not os.path.isdir(pthsave):
             os.mkdir(pthsave)
 
@@ -124,6 +126,7 @@ def save_labels_stack(
                 allow_pickle=False,
             )
     else:
+        print("split times false, wtf")
         if filename is None:
             filename = "labels"
         if not isinstance(filename, str):
@@ -162,7 +165,7 @@ def save_cells_to_labels_stack(
     path : str
         path to save directory
     """
-
+    print("inside save cells")
     pthsave = correct_path(path)
 
     labels_stack = np.zeros(
@@ -473,8 +476,9 @@ def substitute_labels(post_range_start, post_range_end, path_to_save, lcT):
         new_ls = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
         save_labels_stack(
             new_ls,
-            path_to_save + "{:d}.npy".format(postt),
+            path_to_save,
             [postt],
+            filename=postt,
             split_times=False,
             string_format="{}",
         )
