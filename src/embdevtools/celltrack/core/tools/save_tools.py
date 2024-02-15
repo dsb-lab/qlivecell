@@ -162,7 +162,6 @@ def save_cells_to_labels_stack(
     path : str
         path to save directory
     """
-
     pthsave = correct_path(path)
 
     labels_stack = np.zeros(
@@ -475,7 +474,7 @@ def substitute_labels(post_range_start, post_range_end, path_to_save, lcT):
             new_ls,
             path_to_save,
             [postt],
-            filename="{:d}.npy".format(postt),
+            filename=postt,
             split_times=False,
             string_format="{}",
         )

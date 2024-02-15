@@ -835,6 +835,7 @@ class CellTracking(object):
                 self.new_label_correspondance_T,
             )
 
+            print("in update labels pre")
             save_cells_to_labels_stack(
                 self.jitcells,
                 self.CT_info,
@@ -845,7 +846,7 @@ class CellTracking(object):
                 string_format="{}",
                 save_info=False,
             )
-
+            print("in update labels pre after saving")
             self.new_label_correspondance_T = remove_static_labels_label_correspondance(
                 0, self.batch_totalsize, self.new_label_correspondance_T
             )

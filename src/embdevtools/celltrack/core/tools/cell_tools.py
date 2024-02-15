@@ -658,7 +658,7 @@ def extract_jitcells_from_label_stack_part1(labels_stack):
     return unique_labels, unique_labels_T
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def extract_unique_labels_T(labels, times):
     labs_t = List()
     order = List()
