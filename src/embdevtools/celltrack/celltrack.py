@@ -340,7 +340,8 @@ class CellTracking(object):
             print("elapsed 3", end - start)
             
             start = time.time()
-            unique_labels_T_step = reorder_list(unique_labels_T_step, order)
+            new_order = np.argsort(order)
+            unique_labels_T_step = reorder_list(unique_labels_T_step, new_order)
             end = time.time()
             print("elapsed 4", end - start)
             
@@ -1599,7 +1600,7 @@ class CellTracking(object):
 
         self.nactions += 1
 
-    def separate_cells_t(self):
+    def separate_cells_t(self, return_new_label=False):
         # 2 cells selected
         if len(self.list_of_cells) != 2:
             return
@@ -1696,6 +1697,10 @@ class CellTracking(object):
         )
 
         self.nactions += 1
+        if return_new_label:
+            return new_cell.label
+        else:
+            return None
 
     def apoptosis(self, list_of_cells):
         for cell_att in list_of_cells:
@@ -1709,22 +1714,53 @@ class CellTracking(object):
         self.nactions += 1
 
     def mitosis(self):
+        
+        # If less than 3 cells have been selected, check if first cell selected is in 
+        # any event, if so remove event
         if len(self.mito_cells) != 3:
+            cell = self._get_cell(label=self.mito_cells[0][0])
+            mito = [cell.label, self.mito_cells[0][2]]
+            for mito_ev in self.mitotic_events:
+                if mito in mito_ev:
+                    self.mitotic_events.remove(mito_ev)
+            
             return
+        
+        # Extract cells from self.mito_cells
         cell = self._get_cell(label=self.mito_cells[0][0])
         mito0 = [cell.label, self.mito_cells[0][2]]
         cell = self._get_cell(label=self.mito_cells[1][0])
         mito1 = [cell.label, self.mito_cells[1][2]]
         cell = self._get_cell(label=self.mito_cells[2][0])
         mito2 = [cell.label, self.mito_cells[2][2]]
-
+        
+        # Times of the two daughters must be equal
+        if self.mito_cells[1][2] != self.mito_cells[2][2]:
+            return
+        
+        # If one cell has been selected as mother and daughther, separate it in time.
+        if mito0[0] == mito1[0]:
+            self.list_of_cells.append([mito0[0], 0, mito0[2]])
+            self.list_of_cells.append([mito1[0], 0, mito1[2]])
+            new_label = self.separate_cells_t(return_new_label=True)
+            del self.list_of_cells[:]
+            mito1[0] = new_label
+            
+        elif mito0[0] == mito2[0]:
+            self.list_of_cells.append([mito0[0], 0, mito0[2]])
+            self.list_of_cells.append([mito2[0], 0, mito2[2]])
+            self.separate_cells_t(return_new_label=True)
+            del self.list_of_cells[:]
+            mito2[0] = new_label
+        
+        # Create mitotic event and add or remove
         mito_ev = [mito0, mito1, mito2]
-
         if mito_ev in self.mitotic_events:
             self.mitotic_events.remove(mito_ev)
         else:
             self.mitotic_events.append(mito_ev)
 
+        # Count as 1 action
         self.nactions += 1
 
     def select_jitcells(self, list_of_cells):

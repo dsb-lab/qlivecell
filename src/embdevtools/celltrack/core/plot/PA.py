@@ -1219,17 +1219,19 @@ class PlotActionCT(PlotAction):
                 cont = False
             if len(self.CTmito_cells) != 0:
                 if cell[2] <= self.CTmito_cells[0][2]:
-                    printfancy("ERROR: Check instructions for mitosis marking")
+                    printfancy("ERROR: Select Mother then Daughters")
                     cont = False
         idxtopop = []
+        
         pop_cell = False
         if cont:
             for jj, _cell in enumerate(self.CTmito_cells):
                 _cell_lab = _cell[0]
                 _t = _cell[2]
                 if _cell_lab == lab:
-                    pop_cell = True
-                    idxtopop.append(jj)
+                    if _t == self.tg:
+                        pop_cell = True
+                        idxtopop.append(jj)
             if pop_cell:
                 idxtopop.sort(reverse=True)
                 for jj in idxtopop:

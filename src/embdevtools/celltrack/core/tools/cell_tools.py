@@ -649,7 +649,8 @@ def list_unique(lst):
 @njit
 def extract_jitcells_from_label_stack_part1(labels_stack):
     unique_labels_T, order = extract_unique_labels_T(labels_stack, len(labels_stack))
-    unique_labels_T = reorder_list(unique_labels_T, order)
+    new_order = np.argsort(order)
+    unique_labels_T = reorder_list(unique_labels_T, new_order)
     
     total_labs = extract_all_elements(unique_labels_T)
     
