@@ -624,7 +624,7 @@ def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
     return jitcell
 
 
-@njit
+# @njit
 def extract_jitcells_from_label_stack(labels_stack):
     unique_labels, unique_labels_T = extract_jitcells_from_label_stack_part1(
         labels_stack

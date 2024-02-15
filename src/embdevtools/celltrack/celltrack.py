@@ -336,6 +336,7 @@ class CellTracking(object):
             else: 
                 start_id = self.batch_overlap
             unique_labels_T_step, order = extract_unique_labels_T(labels, start_id, labels.shape[0])
+            print("order =", order)
             end = time.time()
             print("elapsed 3", end - start)
             
@@ -810,6 +811,7 @@ class CellTracking(object):
                 self.unique_labels_T, self.max_label
             )
 
+            print(correspondance)
             self.unique_labels_T = new_labels
 
             self.unique_labels_T_batch = [
@@ -887,6 +889,7 @@ class CellTracking(object):
             import time
             start = time.time()
             print("pre substitute labels")
+            print(self.new_label_correspondance_T)
             substitute_labels(
                 self.batch_times_list_global[-1] + 1,
                 self.batch_totalsize,
