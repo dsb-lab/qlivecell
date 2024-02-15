@@ -646,7 +646,7 @@ def list_unique(lst):
     return lst_unique
 
 
-@njit
+# @njit
 def extract_jitcells_from_label_stack_part1(labels_stack):
     unique_labels_T, order = extract_unique_labels_T(labels_stack, len(labels_stack))
     new_order = np.argsort(order)
@@ -659,7 +659,7 @@ def extract_jitcells_from_label_stack_part1(labels_stack):
     return unique_labels, unique_labels_T
 
 
-@njit(parallel=False)
+@njit(parallel=True)
 def extract_unique_labels_T(labels, times):
     labs_t = List()
     order = List()

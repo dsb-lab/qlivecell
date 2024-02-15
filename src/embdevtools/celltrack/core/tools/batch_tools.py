@@ -205,7 +205,7 @@ def update_blocked_cells(blocked_cells, lab_change):
         if blabel == lab_change[0][0]:
             blocked_cells[blid] = lab_change[1]
 
-@njit(parallel=False)
+@njit(parallel=True)
 def extract_unique_labels_T(labels, start, times):
     labs_t = List()
     order = List()

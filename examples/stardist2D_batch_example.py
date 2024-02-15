@@ -92,7 +92,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size': 15,
+    'batch_size': 20,
     'batch_overlap':1,
     'name_format':"{}",
     'extension':".tif",
@@ -112,17 +112,17 @@ if __name__ == "__main__":
         channels=[0]
     )
 
-    CTB.run()
+    CTB.load()
 
-# plot_args = {
-#     'plot_layout': (1,1),
-#     'plot_overlap': 1,
-#     'masks_cmap': 'tab10',
-#     'plot_stack_dims': (512, 512), 
-#     'plot_centers':[True, True], # [Plot center as a dot, plot label on 3D center]
-#     'channels':[0]
-# }
-# CTB.plot_tracking(plot_args=plot_args)
+    plot_args = {
+        'plot_layout': (1,1),
+        'plot_overlap': 1,
+        'masks_cmap': 'tab10',
+        'plot_stack_dims': (512, 512), 
+        'plot_centers':[True, True], # [Plot center as a dot, plot label on 3D center]
+        'channels':[0]
+    }
+    CTB.plot_tracking(plot_args=plot_args)
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###

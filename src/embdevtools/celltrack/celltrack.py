@@ -848,9 +848,12 @@ class CellTracking(object):
                 save_info=False,
             )
             print("in update labels pre after saving")
+            
+            print("pre remove static labels")
             self.new_label_correspondance_T = remove_static_labels_label_correspondance(
                 0, self.batch_totalsize, self.new_label_correspondance_T
             )
+            print("posrt remove static labels")
 
             for apo_ev in self.apoptotic_events:
                 if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]]:
@@ -872,19 +875,26 @@ class CellTracking(object):
                         ]
                         mito_cell[0] = new_lab
 
+            print("pre get unique lab changes")
             unique_lab_changes = get_unique_lab_changes(self.new_label_correspondance_T)
-
+            print("post get unique lab changes")
+            
             for blid, blabel in enumerate(self.blocked_cells):
                 if blabel in unique_lab_changes[:, 0]:
                     post_label_id = np.where(unique_lab_changes[:, 0] == blabel)[0][0]
                     self.blocked_cells[blid] = unique_lab_changes[post_label_id, 1]
 
+            import time
+            start = time.time()
+            print("pre substitute labels")
             substitute_labels(
                 self.batch_times_list_global[-1] + 1,
                 self.batch_totalsize,
                 self.path_to_save,
                 self.new_label_correspondance_T,
             )
+            end = time.time()
+            print("elapsed substitute labels", end - start)
             self.label_correspondance_T = List(
                 [
                     np.empty((0, 2), dtype="uint16")
