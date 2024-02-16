@@ -212,14 +212,16 @@ def extract_unique_labels_T(labels, start, times):
     for t in prange(times-start):
         ids = t+start
         stack = labels[ids]
-        labs_t.append(List(np.unique(stack)))
+        new_labs_t = np.unique(stack)[1:] - np.uint16(1)
+        new_labs_t = List(new_labs_t)
+        labs_t.append(new_labs_t)
         order.append(np.int64(t))
     return labs_t, order
 
 @njit
-def combine_lists(list1, list2, id_start):
+def combine_lists(list1, list2):
     for l in list2:
-        list1.append(l[id_start:])
+        list1.append(l)
 
 @njit
 def reorder_list(lst, order):

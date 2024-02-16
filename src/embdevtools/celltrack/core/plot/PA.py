@@ -19,7 +19,9 @@ def get_axis_PACP(PACP, event):
             PACP.current_subplot = id
             PACP.ax_sel = ax
             PACP.z = PACP.zs[id]
-
+            return True
+        else:
+            return False
 
 def get_point_PACP(dim_change, event):
     x = np.rint(event.xdata).astype(np.uint16)
@@ -222,6 +224,7 @@ class PlotAction:
                 if t - 1 in self.batch_all_rounds_times[bn]:
                     self.bn = bn
                     break
+            self.reset_state()
             self.set_batch(batch_number=self.bn, update_labels=True)
             self.t = 0
             self.tg = self.global_times_list[self.t]
@@ -250,10 +253,32 @@ class PlotAction:
         self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
         self.update()
 
+    def reset_state(self):
+        if self.current_state !=None:
+            del self.list_of_cells[:]
+            del self.CTlist_of_cells[:]
+            del self.CTmito_cells[:]
+
+            try:
+                self.CP.stopit()
+                delattr(self, "CP")
+            except AttributeError:
+                pass
+                
+            self.current_subplot = None
+            self.past_state = self.current_state
+            self.current_state = None
+            self.ax_sel = None
+            self.z = None
+            self.visualization()
+            
     def batch_scroll(self, event):
+
         if self.current_state == "SCL":
             return
 
+        self.reset_state()
+            
         self.current_state = "SCL"
         if event.button == "up":
             self.bn = self.bn + 1
@@ -262,7 +287,7 @@ class PlotAction:
 
         self.bn = max(self.bn, 0)
         self.bn = min(self.bn, self.batch_rounds - 1)
-
+        
         self.set_batch(batch_number=self.bn, update_labels=True)
 
         self.t = 0
@@ -345,7 +370,9 @@ class PlotAction:
 
     def update(self):
         pass
-
+    
+    def visualization(self):
+        pass
 
 class PlotActionCT(PlotAction):
     def __init__(self, *args, **kwargs):
@@ -690,6 +717,7 @@ class PlotActionCT(PlotAction):
             super().onscroll(event)
 
     def update(self):
+
         if self.current_state in ["apo", "Com", "mit", "Sep", "blo"]:
             if self.current_state in ["Com", "Sep"]:
                 cells_to_plot = self.CTlist_of_cells
@@ -720,6 +748,7 @@ class PlotActionCT(PlotAction):
             zs = [x[1] for x in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
 
+
         s = "\n".join(cells_string)
         self.get_size()
         if self.figheight < self.figwidth:
@@ -734,6 +763,7 @@ class PlotActionCT(PlotAction):
         labs_z_to_plot = [
             [x[0], zs[xid], ts[xid]] for xid, x in enumerate(cells_to_plot)
         ]
+
 
         for i, lab_z_t in enumerate(labs_z_to_plot):
             jitcell = self._CTget_cell(label=lab_z_t[0])
@@ -907,7 +937,8 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.block_cells_callback)
 
     def block_cells_callback(self, event):
-        get_axis_PACP(self, event)
+        inaxis  = get_axis_PACP(self, event)
+        if not inaxis: return
         lab, z = get_cell_PACP(self, event, block=False)
         if lab is None:
             return
@@ -982,8 +1013,12 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.delete_cells_callback)
 
     def delete_cells_callback(self, event):
-        get_axis_PACP(self, event)
+
+        inaxis  = get_axis_PACP(self, event)
+
+        if not inaxis: return
         lab, z = get_cell_PACP(self, event)
+
         if lab is None:
             return
         cell = [lab, z, self.t]
@@ -1026,7 +1061,8 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.delete_cells_in_batch_callback)
 
     def delete_cells_in_batch_callback(self, event):
-        get_axis_PACP(self, event)
+        inaxis  = get_axis_PACP(self, event)
+        if not inaxis: return
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
@@ -1047,7 +1083,8 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.join_cells_callback)
 
     def join_cells_callback(self, event):
-        get_axis_PACP(self, event)
+        inaxis  = get_axis_PACP(self, event)
+        if not inaxis: return
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
@@ -1082,7 +1119,8 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.combine_cells_z_callback)
 
     def combine_cells_z_callback(self, event):
-        get_axis_PACP(self, event)
+        inaxis  = get_axis_PACP(self, event)
+        if not inaxis: return
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
@@ -1136,7 +1174,8 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.combine_cells_t_callback)
 
     def combine_cells_t_callback(self, event):
-        get_axis_PACP(self, event)
+        inaxis  = get_axis_PACP(self, event)
+        if not inaxis: return
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
@@ -1166,7 +1205,8 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.separate_cells_t_callback)
 
     def separate_cells_t_callback(self, event):
-        get_axis_PACP(self, event)
+        inaxis  = get_axis_PACP(self, event)
+        if not inaxis: return
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
@@ -1206,7 +1246,8 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.mitosis_callback)
 
     def mitosis_callback(self, event):
-        get_axis_PACP(self, event)
+        inaxis  = get_axis_PACP(self, event)
+        if not inaxis: return
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
@@ -1250,7 +1291,8 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.apoptosis_callback)
 
     def apoptosis_callback(self, event):
-        get_axis_PACP(self, event)
+        inaxis  = get_axis_PACP(self, event)
+        if not inaxis: return
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
@@ -1282,7 +1324,8 @@ class PlotActionCT(PlotAction):
         self.CP = CellPicker(self.fig.canvas, self.pick_cells_callback)
 
     def pick_cells_callback(self, event):
-        get_axis_PACP(self, event)
+        inaxis  = get_axis_PACP(self, event)
+        if not inaxis: return
         lab, z = get_cell_PACP(self, event)
         if lab is None:
             return
@@ -1297,12 +1340,11 @@ class PlotActionCT(PlotAction):
 
     def visualization(self):
         self.update()
-        self.reploting()
         self.title.set(text="VISUALIZATION MODE", ha="left", x=0.01)
         self.instructions.set(text="Chose one of the actions to change mode")
         self.fig.patch.set_facecolor((1.0, 1.0, 1.0, 1.0))
         self.instructions.set_backgroundcolor((0.0, 0.0, 0.0, 0.1))
-
+        self.reploting()
 
 class PlotActionCellPicker(PlotAction):
     def __init__(self, *args, **kwargs):

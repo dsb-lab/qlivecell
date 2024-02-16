@@ -113,13 +113,11 @@ def save_cells_to_json(cells, CT_info, path=None):
 def save_labels_stack(
     labels_stack, pthsave, times, filename=None, split_times=False, string_format="{}"
 ):
-    print("let's save the things")
     if split_times:
         if not os.path.isdir(pthsave):
             os.mkdir(pthsave)
 
         for tid, t in enumerate(times):
-            print(correct_path(pthsave) + string_format.format(str(t)))
             np.save(
                 correct_path(pthsave) + string_format.format(str(t)),
                 labels_stack[tid],
@@ -465,17 +463,12 @@ def read_split_times(
     elif extension == ".npy":
         return np.array(IMGS)
 
-import time
 def substitute_labels(post_range_start, post_range_end, path_to_save, lcT):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
         labs_stack = np.load(path_to_save + "{:d}.npy".format(postt))
         new_labs_stack = labs_stack.copy()
-        start = time.time()
         new_labs_stack = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
-        end = time.time()
-        print("elapsed _sub_labs", end - start)
-        start = time.time()
         save_labels_stack(
             new_labs_stack,
             path_to_save,
@@ -484,8 +477,6 @@ def substitute_labels(post_range_start, post_range_end, path_to_save, lcT):
             split_times=False,
             string_format="{}",
         )
-        end = time.time()
-        print("elapsed save labs stack", end - start)
 
 @njit(parallel=True)
 def _sub_labs(labs_pre, labs_post, lct):

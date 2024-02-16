@@ -314,12 +314,16 @@ class CellTracking(object):
             start_init = time.time()
             print("{} of {}".format(r+1, self.batch_rounds))
             
+            # Set batch to extract batch times and unique labels
             start = time.time()
             self.set_batch(batch_number=r, plotting=False, init_cells=False)
             end = time.time()
             print("elapsed 1", end - start)
             
+            # Save batch times
             self.batch_all_rounds_times.append(self.batch_times_list_global)
+            
+            # Load label array to extract unique labels
             start = time.time()
             labels = read_split_times(
                 self.path_to_save,
@@ -330,37 +334,47 @@ class CellTracking(object):
             end = time.time()
             print("elapsed 2", end - start)
             
+            # If first round, keep the unique labels for all times,
+            # else, remove the first elements depending on the batch overlap to avoid duplidicity
             start = time.time()
             if r == 0:
                 start_id = 0
             else: 
                 start_id = self.batch_overlap
+            
+            # Extract unique labels, this already removes the 0 and substract 1 to each value
             unique_labels_T_step, order = extract_unique_labels_T(labels, start_id, labels.shape[0])
             print("order =", order)
             end = time.time()
             print("elapsed 3", end - start)
             
+            # Since the above function is runned in parallel, times have to be reordered
             start = time.time()
             new_order = np.argsort(order)
             unique_labels_T_step = reorder_list(unique_labels_T_step, new_order)
             end = time.time()
             print("elapsed 4", end - start)
-            
             start = time.time()
+            
+            # Combine values for current batch to the previus ones
             if r == 0:
                 unique_labels_T = unique_labels_T_step
             else:
-                # need to remove first elements in sublist because is 0, which is the value for background
-                combine_lists(unique_labels_T, unique_labels_T_step, 1)
+                combine_lists(unique_labels_T, unique_labels_T_step)
             
             end = time.time()
             print("elapsed 5", end - start)
             printclear()
             end_final = time.time()
             print("elapsed total", end_final - start_init)
+        
+        # Make sure unique_labels_T is a numba List (Should revisit this to make it a matrix)
         self.unique_labels_T = List(unique_labels_T)
+        
+        # Compute max label
         self.max_label = np.max([np.max(sublist) for sublist in self.unique_labels_T])
 
+        # Currentcellid will be deprecated soon
         self.currentcellid = self.max_label
 
         # This attribute should store any label changes that should be propagated to further times
@@ -368,6 +382,7 @@ class CellTracking(object):
             [np.empty((0, 2), dtype="uint16") for t in range(len(self.unique_labels_T))]
         )
 
+        # Set initial batch as 0
         self.set_batch(batch_number=0)
 
     def set_batch(self, batch_change=0, batch_number=None, update_labels=False, plotting=True, init_cells=True):
@@ -811,7 +826,6 @@ class CellTracking(object):
                 self.unique_labels_T, self.max_label
             )
 
-            print(correspondance)
             self.unique_labels_T = new_labels
 
             self.unique_labels_T_batch = [
@@ -855,7 +869,7 @@ class CellTracking(object):
             self.new_label_correspondance_T = remove_static_labels_label_correspondance(
                 0, self.batch_totalsize, self.new_label_correspondance_T
             )
-            print("posrt remove static labels")
+            print("post remove static labels")
 
             for apo_ev in self.apoptotic_events:
                 if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]]:
@@ -889,7 +903,6 @@ class CellTracking(object):
             import time
             start = time.time()
             print("pre substitute labels")
-            print(self.new_label_correspondance_T)
             substitute_labels(
                 self.batch_times_list_global[-1] + 1,
                 self.batch_totalsize,
