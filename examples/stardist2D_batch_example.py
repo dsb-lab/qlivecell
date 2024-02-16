@@ -17,37 +17,6 @@ except:
     os.mkdir(path_save)
 
 import os
-# _files = get_file_names(path_data)
-# import os
-
-# files = [] 
-# for file in _files:
-#     if ".tif" in file:
-#         files.append(file)
-        
-# IMGS, metadata = tif_reader_5D(path_data + files[0])
-
-# for t, T in enumerate(files):
-#     print(t)
-#     filename = files[t]
-#     IMGS, metadata = tif_reader_5D(path_data + filename)
-#     print(IMGS.shape)
-#     IMGS = IMGS[:, 19:, :, :750, :750]
-#     metadata["slices"] = IMGS.shape[1]
-#     metadata["images"] = IMGS.shape[0]*IMGS.shape[1]*IMGS.shape[2]
-#     zres = metadata.pop("Zresolution")
-#     xyres = metadata.pop("XYresolution")
-#     _ = metadata.pop("ResolutionUnit")
-#     import tifffile
-#     mdata = {"axes": "TZCYX", "spacing": zres, "unit": "um"}
-#     tifffile.imwrite(
-#         path_data+filename,
-#         IMGS,
-#         imagej=True,
-#         resolution=(1 / xyres, 1 / xyres),
-#         metadata=mdata,
-#     )
-
 
 ### LOAD STARDIST MODEL ###
 from stardist.models import StarDist2D

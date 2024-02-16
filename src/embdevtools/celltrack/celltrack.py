@@ -310,15 +310,16 @@ class CellTracking(object):
         self.batch_number = -1
         self.batch_all_rounds_times = []
         import time
+        printfancy()
         for r in range(self.batch_rounds):
             start_init = time.time()
-            print("{} of {}".format(r+1, self.batch_rounds))
+            printfancy("batch {} of {}".format(r+1, self.batch_rounds))
             
             # Set batch to extract batch times and unique labels
             start = time.time()
             self.set_batch(batch_number=r, plotting=False, init_cells=False)
             end = time.time()
-            print("elapsed 1", end - start)
+            # print("elapsed 1", end - start)
             
             # Save batch times
             self.batch_all_rounds_times.append(self.batch_times_list_global)
@@ -332,28 +333,28 @@ class CellTracking(object):
                 extension=".npy",
             )
             end = time.time()
-            print("elapsed 2", end - start)
+            # print("elapsed 2", end - start)
             
             # If first round, keep the unique labels for all times,
             # else, remove the first elements depending on the batch overlap to avoid duplidicity
             start = time.time()
             if r == 0:
+                printclear()
                 start_id = 0
             else: 
                 start_id = self.batch_overlap
             
             # Extract unique labels, this already removes the 0 and substract 1 to each value
             unique_labels_T_step, order = extract_unique_labels_T(labels, start_id, labels.shape[0])
-            print("order =", order)
             end = time.time()
-            print("elapsed 3", end - start)
+            # print("elapsed 3", end - start)
             
             # Since the above function is runned in parallel, times have to be reordered
             start = time.time()
             new_order = np.argsort(order)
             unique_labels_T_step = reorder_list(unique_labels_T_step, new_order)
             end = time.time()
-            print("elapsed 4", end - start)
+            # print("elapsed 4", end - start)
             start = time.time()
             
             # Combine values for current batch to the previus ones
@@ -363,10 +364,12 @@ class CellTracking(object):
                 combine_lists(unique_labels_T, unique_labels_T_step)
             
             end = time.time()
-            print("elapsed 5", end - start)
+            # print("elapsed 5", end - start)
             printclear()
             end_final = time.time()
-            print("elapsed total", end_final - start_init)
+            # print("elapsed total", end_final - start_init)
+        
+        printclear()
         
         # Make sure unique_labels_T is a numba List (Should revisit this to make it a matrix)
         self.unique_labels_T = List(unique_labels_T)
@@ -386,6 +389,7 @@ class CellTracking(object):
         self.set_batch(batch_number=0)
 
     def set_batch(self, batch_change=0, batch_number=None, update_labels=False, plotting=True, init_cells=True):
+
         if update_labels:
             self.update_labels()
 
@@ -398,6 +402,9 @@ class CellTracking(object):
             self.batch_number = max(self.batch_number + batch_change, 0)
             self.batch_number = min(self.batch_number, self.batch_rounds - 1)
 
+
+        printfancy()
+        printfancy("setting batch to batch number {}".format(self.batch_number+1))
         first = (self.batch_size * self.batch_number) - (
             self.batch_overlap * self.batch_number
         )
@@ -440,7 +447,13 @@ class CellTracking(object):
             
         if update_labels:
             self.update_labels()
-
+        
+        printfancy("batch number {} set".format(self.batch_number+1), clear_prev=1)
+        printclear(2)
+        printfancy()
+        printclear()
+        return
+                
     def init_batch_cells(self):
         labels = read_split_times(
             self.path_to_save,
@@ -452,7 +465,7 @@ class CellTracking(object):
         start = time.time()
         self.jitcells = extract_jitcells_from_label_stack(labels)
         end = time.time()
-        print("elapsed extract_jitcells", end - start)
+        # print("elapsed extract_jitcells", end - start)
         stack = self.hyperstack[
                 :,
                 :,
@@ -507,6 +520,7 @@ class CellTracking(object):
 
         printfancy("", clear_prev=1)
         print("###############   LABELS UPDATED & CELLS INITIALISED  ################")
+        printfancy
 
     def cell_segmentation(self):
         print()
@@ -852,7 +866,6 @@ class CellTracking(object):
                 self.new_label_correspondance_T,
             )
 
-            print("in update labels pre")
             save_cells_to_labels_stack(
                 self.jitcells,
                 self.CT_info,
@@ -863,13 +876,10 @@ class CellTracking(object):
                 string_format="{}",
                 save_info=False,
             )
-            print("in update labels pre after saving")
             
-            print("pre remove static labels")
             self.new_label_correspondance_T = remove_static_labels_label_correspondance(
                 0, self.batch_totalsize, self.new_label_correspondance_T
             )
-            print("post remove static labels")
 
             for apo_ev in self.apoptotic_events:
                 if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]]:
@@ -891,9 +901,7 @@ class CellTracking(object):
                         ]
                         mito_cell[0] = new_lab
 
-            print("pre get unique lab changes")
             unique_lab_changes = get_unique_lab_changes(self.new_label_correspondance_T)
-            print("post get unique lab changes")
             
             for blid, blabel in enumerate(self.blocked_cells):
                 if blabel in unique_lab_changes[:, 0]:
@@ -902,7 +910,6 @@ class CellTracking(object):
 
             import time
             start = time.time()
-            print("pre substitute labels")
             substitute_labels(
                 self.batch_times_list_global[-1] + 1,
                 self.batch_totalsize,
@@ -910,7 +917,7 @@ class CellTracking(object):
                 self.new_label_correspondance_T,
             )
             end = time.time()
-            print("elapsed substitute labels", end - start)
+            # print("elapsed substitute labels", end - start)
             self.label_correspondance_T = List(
                 [
                     np.empty((0, 2), dtype="uint16")
@@ -1993,6 +2000,7 @@ class CellTracking(object):
         cell_picker=False,
         mode=None,
     ):
+        printfancy()
         if plot_args is None:
             plot_args = self._plot_args
 
