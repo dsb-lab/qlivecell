@@ -3,6 +3,9 @@ from .celltrack.celltrack import (CellTracking, compute_labels_stack,
                                   get_file_name, get_file_names,
                                   isotropize_hyperstack, load_cells,
                                   norm_stack_per_z, save_3Dstack, save_4Dstack,
-                                  save_4Dstack_labels, tif_reader_5D)
+                                  save_4Dstack_labels, tif_reader_5D, remove_small_cells,
+                                  plot_cell_sizes, quantify_channels,
+                                  plot_channel_quantification_bar,
+                                  plot_channel_quantification_hist)
 from .cytodonut.cytodonut import ERKKTR, load_donuts, plot_donuts
 from .embseg.embseg import EmbryoSegmentation, load_ES, save_ES

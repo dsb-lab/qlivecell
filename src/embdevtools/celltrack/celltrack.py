@@ -84,6 +84,8 @@ from .core.tracking.tracking_tools import (
     _reinit_update_CT_cell_attributes, _update_CT_cell_attributes,
     get_labels_centers, prepare_labels_stack_for_tracking,
     replace_labels_in_place, replace_labels_t)
+from .core.analysis.debris_removal import remove_small_cells, plot_cell_sizes
+from .core.analysis.quantification import quantify_channels, plot_channel_quantification_bar, plot_channel_quantification_hist
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -119,7 +121,10 @@ class CellTracking(object):
         print("###############           INIT ON BATCH MODE          ################")
         printfancy("")
         # Basic arguments
-        self.batch = True
+        if ".tif" in pthtodata:
+            self.batch = False
+        else:
+            self.batch = True
 
         self.channels = np.sort(channels)
         self.channels_order = np.array(channels)
@@ -386,16 +391,18 @@ class CellTracking(object):
         )
 
         # Set initial batch as 0
-        self.set_batch(batch_number=0)
+        self.set_batch(batch_number=0, plotting=False, force=(not self.batch))
+        self.init_masks_outlines_stacks()
 
-    def set_batch(self, batch_change=0, batch_number=None, update_labels=False, plotting=True, init_cells=True):
-
+    def set_batch(self, batch_change=0, batch_number=None, update_labels=False, plotting=True, init_cells=True, force=False):
+        
         if update_labels:
             self.update_labels()
-
+        
         if batch_number is not None:
             if self.batch_number == batch_number:
-                return
+                if not force:
+                    return
             self.batch_number = batch_number
 
         else:
@@ -426,23 +433,9 @@ class CellTracking(object):
         )
         # If the stack is RGB, pick the channel to segment
         if plotting:
-            self.plot_stacks = check_stacks_for_plotting(
-                None,
-                self.hyperstack,
-                self._plot_args,
-                self.times,
-                self.slices,
-                self.metadata["XYresolution"],
-            )
-            t = self.times
-            z = self.slices
-            x, y = self._plot_args["plot_stack_dims"][0:2]
-
-            self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
-            self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
+            self.init_masks_outlines_stacks()
         
         if init_cells:
-
             self.init_batch_cells()
             
         if update_labels:
@@ -453,7 +446,23 @@ class CellTracking(object):
         printfancy()
         printclear()
         return
-                
+              
+    def init_masks_outlines_stacks(self):
+        self.plot_stacks = check_stacks_for_plotting(
+            None,
+            self.hyperstack,
+            self._plot_args,
+            self.times,
+            self.slices,
+            self.metadata["XYresolution"],
+        )
+        t = self.times
+        z = self.slices
+        x, y = self._plot_args["plot_stack_dims"][0:2]
+
+        self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
+        self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
+        
     def init_batch_cells(self):
         labels = read_split_times(
             self.path_to_save,
@@ -489,14 +498,15 @@ class CellTracking(object):
 
         printclear(2)
         print("###############           TRACKING FINISHED           ################")
-
+        printfancy()
         self.CT_info = self.init_CT_info()
 
         self.load(load_ct_info=False)
 
     def load(self, load_ct_info=True, batch_args=None):
         print("###############        LOADING AND INITIALIZING       ################")
-        printfancy("")
+        printfancy()
+        printfancy()
         if load_ct_info:
             self.CT_info = load_CT_info(self.path_to_save)
             self.apoptotic_events = self.CT_info.apo_cells
@@ -605,7 +615,7 @@ class CellTracking(object):
             label_correspondance.append(lc)
 
             printfancy("Segmentation and corrections completed.", clear_prev=2)
-            printfancy("Creating cells and saving results...")
+            printfancy("Creating cells and saving results...", clear_prev=1)
             printfancy("")
 
             self.init_cells(TLabels, Labels, Outlines, Masks, label_correspondance)
@@ -704,7 +714,7 @@ class CellTracking(object):
                 self.path_to_save,
                 times,
                 split_times=True,
-                string_format="{}",
+                name_format=self._batch_args["name_format"],
             )
 
     def init_cells(
@@ -873,7 +883,7 @@ class CellTracking(object):
                 path=self.path_to_save,
                 filename=None,
                 split_times=True,
-                string_format="{}",
+                name_format=self._batch_args["name_format"],
                 save_info=False,
             )
             
@@ -915,6 +925,7 @@ class CellTracking(object):
                 self.batch_totalsize,
                 self.path_to_save,
                 self.new_label_correspondance_T,
+                self._batch_args,
             )
             end = time.time()
             # print("elapsed substitute labels", end - start)
@@ -1448,11 +1459,12 @@ class CellTracking(object):
                         self.channels_order[0],
                         :,
                         :,
-                    ],
+                    ]
             for zid, z in enumerate(zs_cell2):
                 cell1.zs[tid_cell1].append(z)
                 cell1.outlines[tid_cell1].append(outlines_cell2[zid])
                 cell1.masks[tid_cell1].append(masks_cell2[zid])
+            
             update_jitcell(
                 cell1,
                 stack,
@@ -1469,6 +1481,7 @@ class CellTracking(object):
             if cell2._rem:
                 self._del_cell(cell2.label, t=t_rem)
 
+        print("labels_combined normally")
         self.update_label_attributes()
 
         compute_point_stack(
@@ -1595,7 +1608,7 @@ class CellTracking(object):
                     self.channels_order[0],
                     :,
                     :,
-                ],
+                ]
             update_jitcell(
                 cell1,
                 stack,
@@ -1659,7 +1672,7 @@ class CellTracking(object):
                     self.channels_order[0],
                     :,
                     :,
-                ],
+                ]
         update_jitcell(
             cell,
             stack, 
@@ -1999,6 +2012,7 @@ class CellTracking(object):
         plot_args=None,
         cell_picker=False,
         mode=None,
+        update_labels=True,
     ):
         printfancy()
         if plot_args is None:
@@ -2023,7 +2037,10 @@ class CellTracking(object):
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
-        self.update_labels()
+        
+        if update_labels:
+            self.update_labels()
+            
         self._imshows = []
         self._imshows_masks = []
         self._imshows_outlines = []

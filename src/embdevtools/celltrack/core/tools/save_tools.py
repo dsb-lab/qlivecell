@@ -111,7 +111,7 @@ def save_cells_to_json(cells, CT_info, path=None):
 
 
 def save_labels_stack(
-    labels_stack, pthsave, times, filename=None, split_times=False, string_format="{}"
+    labels_stack, pthsave, times, filename=None, split_times=False, name_format="{}"
 ):
     if split_times:
         if not os.path.isdir(pthsave):
@@ -119,7 +119,7 @@ def save_labels_stack(
 
         for tid, t in enumerate(times):
             np.save(
-                correct_path(pthsave) + string_format.format(str(t)),
+                correct_path(pthsave) + name_format.format(str(t)),
                 labels_stack[tid],
                 allow_pickle=False,
             )
@@ -146,7 +146,7 @@ def save_cells_to_labels_stack(
     path=None,
     filename=None,
     split_times=False,
-    string_format="{}",
+    name_format="{}",
     save_info=False,
 ):
     """save cell objects obtained with celltrack.py
@@ -175,7 +175,7 @@ def save_cells_to_labels_stack(
         times,
         filename=filename,
         split_times=split_times,
-        string_format=string_format,
+        name_format=name_format,
     )
 
     if save_info:
@@ -463,7 +463,7 @@ def read_split_times(
     elif extension == ".npy":
         return np.array(IMGS)
 
-def substitute_labels(post_range_start, post_range_end, path_to_save, lcT):
+def substitute_labels(post_range_start, post_range_end, path_to_save, lcT, batch_args):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
         labs_stack = np.load(path_to_save + "{:d}.npy".format(postt))
@@ -475,7 +475,7 @@ def substitute_labels(post_range_start, post_range_end, path_to_save, lcT):
             [postt],
             filename=postt,
             split_times=False,
-            string_format="{}",
+            name_format=batch_args["name_format"],
         )
 
 @njit(parallel=True)

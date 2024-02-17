@@ -262,7 +262,6 @@ def extract_jitcell_centers(cell: jitCell, stacks):
         centersjt = np.zeros(len(cell.zs[tid]), dtype="float32")
         centers_allt = List()
         centers_all_weightt = np.zeros(len(cell.zs[tid]), dtype="float32")
-
         for zid in range(len(cell.zs[tid])):
             z = cell.zs[tid][zid]
             mask = cell.masks[tid][zid]
@@ -459,26 +458,6 @@ def update_jitcells(jitcells, stacks):
     for j in prange(len(jitcells)):
         jj = int64(j)
         update_jitcell(jitcells[jj], stacks)
-
-
-def remove_small_cells(cells, area_th, callback_del, callback_update):
-    labs_to_remove = []
-    areas = []
-    for cell in cells:
-        zc = int(cell.centers[0][0])
-        zcid = cell.zs[0].index(zc)
-
-        msk = cell.masks[0][zcid]
-        area = len(msk)
-        areas.append(area)
-        if area < area_th:
-            labs_to_remove.append(cell.label)
-
-    for lab in labs_to_remove:
-        callback_del(lab)
-
-    callback_update(backup=False)
-
 
 def remove_small_planes_at_boders(
     cells, area_th, callback_del, callback_update, stacks
