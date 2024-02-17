@@ -5,8 +5,8 @@ from numba.typed import List
 from embdevtools.celltrack.core.dataclasses import jitCell
 
 from ..dataclasses import Cell, jitCell
-from .ct_tools import nb_unique
 from .batch_tools import reorder_list
+from .ct_tools import nb_unique
 from .tools import (checkConsecutive, compute_distance_xy,
                     compute_distance_xyz, whereNotConsecutive)
 
@@ -459,6 +459,7 @@ def update_jitcells(jitcells, stacks):
         jj = int64(j)
         update_jitcell(jitcells[jj], stacks)
 
+
 def remove_small_planes_at_boders(
     cells, area_th, callback_del, callback_update, stacks
 ):
@@ -630,9 +631,9 @@ def extract_jitcells_from_label_stack_part1(labels_stack):
     unique_labels_T, order = extract_unique_labels_T(labels_stack, len(labels_stack))
     new_order = np.argsort(order)
     unique_labels_T = reorder_list(unique_labels_T, new_order)
-    
+
     total_labs = extract_all_elements(unique_labels_T)
-    
+
     unique_labels = list_unique(total_labs)
 
     return unique_labels, unique_labels_T

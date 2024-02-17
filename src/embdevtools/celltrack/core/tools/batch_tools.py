@@ -205,12 +205,13 @@ def update_blocked_cells(blocked_cells, lab_change):
         if blabel == lab_change[0][0]:
             blocked_cells[blid] = lab_change[1]
 
+
 @njit(parallel=True)
 def extract_unique_labels_T(labels, start, times):
     labs_t = List()
     order = List()
-    for t in prange(times-start):
-        ids = t+start
+    for t in prange(times - start):
+        ids = t + start
         stack = labels[ids]
         new_labs_t = np.unique(stack)[1:] - np.uint16(1)
         new_labs_t = List(new_labs_t)
@@ -218,15 +219,17 @@ def extract_unique_labels_T(labels, start, times):
         order.append(np.int64(t))
     return labs_t, order
 
+
 @njit
 def combine_lists(list1, list2):
     for l in list2:
         list1.append(l)
 
+
 @njit
 def reorder_list(lst, order):
     new_list = List()
     for o in order:
-        new_list.append(lst[o])    
+        new_list.append(lst[o])
 
     return new_list

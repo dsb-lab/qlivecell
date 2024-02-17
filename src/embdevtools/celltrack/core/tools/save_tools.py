@@ -446,7 +446,6 @@ def read_split_times(
         IMGS = IMGS[times_ids].astype("uint8")
     else:
         for t in times:
-            
             path_to_file = correct_path(path_data) + name_format.format(t) + extension
 
             if extension == ".tif":
@@ -463,6 +462,7 @@ def read_split_times(
     elif extension == ".npy":
         return np.array(IMGS)
 
+
 def substitute_labels(post_range_start, post_range_end, path_to_save, lcT, batch_args):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
@@ -477,6 +477,7 @@ def substitute_labels(post_range_start, post_range_end, path_to_save, lcT, batch
             split_times=False,
             name_format=batch_args["name_format"],
         )
+
 
 @njit(parallel=True)
 def _sub_labs(labs_pre, labs_post, lct):
