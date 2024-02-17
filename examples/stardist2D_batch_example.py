@@ -84,7 +84,7 @@ if __name__ == "__main__":
         'plot_overlap': 1,
         'masks_cmap': 'tab10',
         'plot_stack_dims': (512, 512), 
-        'plot_centers':[True, True], # [Plot center as a dot, plot label on 3D center]
+        'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
         'channels':[0]
     }
     CTB.plot_tracking(plot_args=plot_args)

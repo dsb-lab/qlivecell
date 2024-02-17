@@ -1481,7 +1481,6 @@ class CellTracking(object):
             if cell2._rem:
                 self._del_cell(cell2.label, t=t_rem)
 
-        print("labels_combined normally")
         self.update_label_attributes()
 
         compute_point_stack(
@@ -1910,9 +1909,10 @@ class CellTracking(object):
             "- ESC : visualization",
             "- a : add cell",
             "- d : delete cell",
-            "- D : delete cell in batch" "- j : join cells",
-            "- c : combine cells - z",
-            "- C : combine cells - t",
+            "- D : delete cell in batch",
+            "- j : join cells",
+            "- c : connect cells - z",
+            "- C : connect cells - t",
             "- S : separate cells - t",
             "- A : apoptotic event",
             "- M : mitotic events",
@@ -1920,9 +1920,9 @@ class CellTracking(object):
             "- Z : undo all actions",
             "- o : show/hide outlines",
             "- m : show/hide masks",
-            "- u : update and save cells",
+            "- u : update labels and save cells",
             "- q : quit plot",
-            "- scroll : xhange z-plane",
+            "- scroll : change z-plane",
             "- ctrl + scroll : change time",
             "- shift + ctrl + scroll : change batch"
         ]
