@@ -9,7 +9,7 @@ path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/P
 
 
 ### GET FULL FILE NAME AND FILE CODE ###
-file, files = get_file_name(path_data, 0, returnfiles=True)
+file, files = get_file_name(path_data, 0, return_files=True)
 
 
 ### LOAD HYPERSTACKS ###

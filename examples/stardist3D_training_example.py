@@ -28,11 +28,11 @@ file = get_file_name(path_data, 0)
 for file in files:
     if ".tif" in file:
         if "labels" in file:
-            file, files = get_file_name(path_data, file, returnfiles=True)
+            file, files = get_file_name(path_data, file, return_files=True)
             IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
             Y.append(IMGS[0])
         else:
-            file, files = get_file_name(path_data, file, returnfiles=True)
+            file, files = get_file_name(path_data, file, return_files=True)
             IMGS, xyres, zres = read_img_with_resolution(path_data+file, stack=True, channel=None)
             # X.append(normalize(IMGS[0]))
             X.append(IMGS[0])

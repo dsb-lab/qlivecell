@@ -38,14 +38,15 @@ def check_and_fill_batch_args(batch_args):
         "name_format": "{}",
         "extension": ".tif",
     }
-    if batch_args["batch_size"] <= batch_args["batch_overlap"]:
-        raise Exception("batch size has to be bigger than batch overlap")
     for sarg in batch_args.keys():
         try:
             new_batch_args[sarg] = batch_args[sarg]
         except KeyError:
             raise Exception("key %s is not a correct batch argument" % sarg)
-
+        
+    if new_batch_args["batch_size"] <= new_batch_args["batch_overlap"]:
+        raise Exception("batch size has to be bigger than batch overlap")
+    
     return new_batch_args
 
 

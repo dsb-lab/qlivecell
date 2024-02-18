@@ -9,7 +9,7 @@ def get_file_names(path_data):
     return files
 
 
-def get_file_name(path_data, f, allow_file_fragment=False, returnfiles=False):
+def get_file_name(path_data, f, allow_file_fragment=False, return_files=False, return_name=False):
     """
     Parameters
     ----------
@@ -80,9 +80,18 @@ def get_file_name(path_data, f, allow_file_fragment=False, returnfiles=False):
         raise Exception("given file index is greater than number of files")
 
     file = files[fid]
-    if returnfiles:
-        return file, files
-    return file
+    if return_files:
+        if return_name:
+            fname = file.split(".")[0]
+            return file, files, fname
+        else:
+            return file, files
+
+    if return_name:
+        fname = file.split(".")[0]
+        return file, fname
+    else:
+        return file
 
 
 # Need a image reader that can automatically detect wheter the image has time, or channels and so on.

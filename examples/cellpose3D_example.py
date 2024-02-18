@@ -10,8 +10,8 @@ path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_M
 
 
 ### GET FULL FILE NAME AND FILE CODE ###
-file, files = get_file_name(path_data, 10, returnfiles=True)
-file, files = get_file_name(path_data, 'Lineage_2hr_082119_p1.tif', returnfiles=True)
+file, files = get_file_name(path_data, 10, return_files=True)
+file, files = get_file_name(path_data, 'Lineage_2hr_082119_p1.tif', return_files=True)
 
 
 ### LOAD HYPERSTACKS ###

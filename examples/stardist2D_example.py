@@ -15,7 +15,7 @@ except:
 ### GET FULL FILE NAME AND FILE CODE ###
 files = get_file_names(path_data)
 
-file = get_file_name(path_data, '8bit.tif', allow_file_fragment=True, returnfiles=False)
+file = get_file_name(path_data, '8bit.tif', allow_file_fragment=True, return_files=False)
 
 hyperstack, imagej_metadata = tif_reader_5D(path_data+file)
 

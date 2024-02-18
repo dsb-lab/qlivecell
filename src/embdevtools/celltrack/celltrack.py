@@ -216,13 +216,17 @@ class CellTracking(object):
         self.stack_dims = np.shape(self.hyperstack)[3:]
 
         # check if the segmentation is directly in 3D or it needs concatenation
-        self.segment3D = check3Dmethod(self._seg_args["method"])
-        if not self.segment3D:
-            # check and fill 3D concatenation arguments
-            self._conc3D_args = check_and_fill_concatenation3D_args(
-                concatenation3D_args
-            )
+        if self._seg_args["method"] is not None:
+            self.segment3D = check3Dmethod(self._seg_args["method"])
+            if not self.segment3D:
+                # check and fill 3D concatenation arguments
+                self._conc3D_args = check_and_fill_concatenation3D_args(
+                    concatenation3D_args
+                )
+            else:
+                self._conc3D_args = {}
         else:
+            self.segment3D = None
             self._conc3D_args = {}
 
         # check and fill plot arguments
@@ -290,10 +294,24 @@ class CellTracking(object):
 
     def init_batch(self):
         files = get_file_names(self.path_to_save)
+        files_to_remove = []
         for file in files:
             if ".npy" not in file:
-                files.remove(file)
-        file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
+                files_to_remove.append(file)
+            else:
+                if self._batch_args["name_format"].format('') not in file:
+                    if file in files:
+                        files_to_remove.append(file)
+        
+        for file in files_to_remove:
+            files.remove(file)
+        
+        file_sort_idxs = []
+        for file in files:
+            file_code = file.split(".")[0]
+            number_code = file_code[len(self._batch_args["name_format"].format('')):]
+            file_sort_idxs.append(int(number_code))
+        file_sort_idxs = np.argsort(file_sort_idxs)
         files = [files[i] for i in file_sort_idxs]
 
         self.batch_files = files
@@ -383,7 +401,10 @@ class CellTracking(object):
         self.unique_labels_T = List(unique_labels_T)
 
         # Compute max label
-        self.max_label = np.max([np.max(sublist) for sublist in self.unique_labels_T])
+        maxlabs = []
+        for sublist in self.unique_labels_T:
+            maxlabs.append(np.max(sublist))
+        self.max_label = np.max(maxlabs)
 
         # Currentcellid will be deprecated soon
         self.currentcellid = self.max_label
@@ -543,6 +564,9 @@ class CellTracking(object):
         printfancy
 
     def cell_segmentation(self):
+        if self._seg_args["method"] is None:
+            raise Exception("no segmentation method provided")
+
         print()
         print("###############          BEGIN SEGMENTATIONS          ################")
         printfancy("")
@@ -636,6 +660,7 @@ class CellTracking(object):
                 List([t]),
                 path=self.path_to_save,
                 filename=t,
+                name_format=self._batch_args["name_format"],
                 split_times=False,
                 save_info=False,
             )
@@ -651,10 +676,24 @@ class CellTracking(object):
 
     def cell_tracking(self):
         files = get_file_names(self.path_to_save)
+        files_to_remove = []
         for file in files:
             if ".npy" not in file:
-                files.remove(file)
-        file_sort_idxs = np.argsort([int(file.split(".")[0]) for file in files])
+                files_to_remove.append(file)
+            else:
+                if self._batch_args["name_format"].format('') not in file:
+                    if file in files:
+                        files_to_remove.append(file)
+        
+        for file in files_to_remove:
+            files.remove(file)
+            
+        file_sort_idxs = []
+        for file in files:
+            file_code = file.split(".")[0]
+            number_code = file_code[len(self._batch_args["name_format"].format('')):]
+            file_sort_idxs.append(int(number_code))
+        file_sort_idxs = np.argsort(file_sort_idxs)
         files = [files[i] for i in file_sort_idxs]
 
         totalsize = len(files)
@@ -668,7 +707,7 @@ class CellTracking(object):
             last = min(last, totalsize)
 
             times = range(first, last)
-
+            print(times)
             if len(times) <= boverlap:
                 continue
 

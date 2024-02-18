@@ -1,3 +1,4 @@
+
 def plot_cell_sizes(CT, **kwargs):
     import matplotlib.pyplot as plt
     import numpy as np
@@ -21,15 +22,28 @@ def plot_cell_sizes(CT, **kwargs):
     modelo_kde.fit(X=areas.reshape(-1, 1))
     densidad_pred = np.exp(modelo_kde.score_samples(x.reshape((-1, 1))))
     local_minima = argrelextrema(densidad_pred, np.less)[0]
-    x_th = np.ones(len(x)) * x[local_minima[0]]
-    y_th = np.linspace(0, np.max(densidad_pred), num=len(x))
     fig, ax = plt.subplots()
-    ax.plot(x_th, y_th, c="k", ls="--", label="th = {}".format(x[local_minima[0]]))
+    try:
+        x_th = np.ones(len(x)) * x[local_minima[0]]
+        y_th = np.linspace(0, np.max(densidad_pred), num=len(x))
+        ax.plot(x_th, y_th, c="k", ls="--", label="th = {}".format(x[local_minima[0]]))
+    except:
+        pass
     ax.hist(areas, bins=kwargs["bins"], density=True, label="hist")
     ax.plot(x, densidad_pred, lw=5, label="kde")
     ax.legend()
     ax.set_xlabel("area (µm²)")
     ax.set_yticks([])
+    
+    if "xlim" in kwargs.keys():
+        ax.set_xlim(kwargs["xlim"])
+    
+    if "ylim" in kwargs.keys():
+        ax.set_ylim(kwargs["ylim"])
+        
+    if "path_save" in kwargs.keys():
+        pth = kwargs["path_save"]
+        plt.savefig(pth)
     plt.show()
 
 

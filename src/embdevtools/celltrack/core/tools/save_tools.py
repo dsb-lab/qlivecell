@@ -113,6 +113,7 @@ def save_cells_to_json(cells, CT_info, path=None):
 def save_labels_stack(
     labels_stack, pthsave, times, filename=None, split_times=False, name_format="{}"
 ):
+    
     if split_times:
         if not os.path.isdir(pthsave):
             os.mkdir(pthsave)
@@ -127,7 +128,7 @@ def save_labels_stack(
         if filename is None:
             filename = "labels"
         if not isinstance(filename, str):
-            filename = str(filename)
+            filename =  name_format.format(str(filename))
 
         if len(labels_stack.shape) == 4:
             if labels_stack.shape[0] == 1:

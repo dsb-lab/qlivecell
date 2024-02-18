@@ -6,6 +6,7 @@ from ..tools.tools import (get_default_args, get_outlines_masks_labels,
                            increase_point_resolution, mask_from_outline,
                            printclear, printfancy, progressbar)
 from .segmentation_tools import check3Dmethod
+import numpy as np
 
 logging.disable(logging.WARNING)
 
@@ -146,6 +147,10 @@ def cell_segmentation3D_from2D(
             if len(ptsin) == 0:
                 idxtoremove.append(cell)
 
+            elif np.sum(stack[z, :, :][ptsin[:, 1], ptsin[:, 0]]) < (0.05*np.max(stack[z, :, :])):
+                idxtoremove.append(cell)
+                
+                
             # Store the mask otherwise
             else:
                 Masks[z].append(ptsin)
@@ -314,18 +319,29 @@ def check_segmentation_args(
     segmentation_args,
     available_segmentation=["cellpose2D", "cellpose3D", "stardist2D", "stardist3D"],
 ):
-    if "method" not in segmentation_args.keys():
-        raise Exception("no segmentation method provided")
-    if "model" not in segmentation_args.keys():
-        raise Exception("no model provided")
-    if segmentation_args["method"] not in available_segmentation:
-        raise Exception("invalid segmentation method")
+    if "method" not in segmentation_args.keys() or segmentation_args["method"] is None:
+        segmentation_args["method"] = None
+    else:
+        if "model" not in segmentation_args.keys():
+            raise Exception("no model provided")
+
+        if segmentation_args["method"] not in available_segmentation:
+            raise Exception("invalid segmentation method")
     return
 
 
 def fill_segmentation_args(segmentation_args):
     segmentation_method = segmentation_args["method"]
 
+    new_segmentation_args = {
+            "method": None,
+            "model": None,
+            "blur": None,
+            "make_isotropic": [False, 1.0],
+        }
+    if segmentation_method is None: 
+        return new_segmentation_args, dict()
+    
     if "cellpose" in segmentation_method:
         new_segmentation_args = {
             "method": None,
