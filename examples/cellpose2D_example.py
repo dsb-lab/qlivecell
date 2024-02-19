@@ -101,7 +101,7 @@ CT.run()
 
 ### PLOTTING ###
 CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
-save_4Dstack(path_save, "masks", CT._masks_stack, xyres, zres)
+Dstack(path_save, "masks", CT._masks_stack, xyres, zres)
 
 import numpy as np
 mean_intensity = [np.mean(img) for img in IMGS[0]]
