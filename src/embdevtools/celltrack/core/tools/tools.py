@@ -93,7 +93,7 @@ def check_and_fill_error_correction_args(error_correction_args):
 
 
 def increase_point_resolution(outline, min_outline_length):
-    rounds = np.ceil(np.log2(min_outline_length / len(outline))).astype("int16")
+    rounds = np.ceil(np.log2(min_outline_length / len(outline))).astype("uint16")
     if rounds <= 0:
         newoutline_new = np.copy(outline)
     for r in range(rounds):

@@ -18,7 +18,8 @@ from tifffile import imwrite
 from .core.analysis.debris_removal import plot_cell_sizes, remove_small_cells
 from .core.analysis.quantification import (plot_channel_quantification_bar,
                                            plot_channel_quantification_hist,
-                                           quantify_channels)
+                                           quantify_channels, correct_drift,
+                                           extract_fluoro,)
 from .core.dataclasses import (CellTracking_info, backup_CellTrack,
                                construct_Cell_from_jitCell,
                                construct_jitCell_from_Cell, jitCell)
@@ -1013,6 +1014,7 @@ class CellTracking(object):
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
+            min_length=self._plot_args["min_outline_length"]
         )
 
     def _get_cellids_celllabels(self):
@@ -1065,6 +1067,7 @@ class CellTracking(object):
             labels=[*self.blocked_cells, *unblocked_cells],
             alpha=1,
             mode="outlines",
+            min_length=self._plot_args["min_outline_length"]
         )
 
         self.nactions += 1
@@ -1189,6 +1192,7 @@ class CellTracking(object):
             alpha=1,
             labels=[self.jitcells_selected[-1].label],
             mode="outlines",
+            min_length=self._plot_args["min_outline_length"]
         )
 
         self.nactions += 1
@@ -1239,6 +1243,7 @@ class CellTracking(object):
             labels=cells,
             mode="outlines",
             rem=True,
+            min_length=self._plot_args["min_outline_length"]
         )
 
         labs_to_replot = []
@@ -1376,6 +1381,7 @@ class CellTracking(object):
             labels=[*new_labs, *labs_to_replot],
             alpha=1,
             mode="outlines",
+            min_length=self._plot_args["min_outline_length"]
         )
 
     def delete_cell_in_batch(self, PACP, count_action=True):
@@ -1414,6 +1420,7 @@ class CellTracking(object):
             labels=cells,
             mode="outlines",
             rem=True,
+            min_length=self._plot_args["min_outline_length"]
         )
 
         for lab in cells:
@@ -1480,6 +1487,7 @@ class CellTracking(object):
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
+            min_length=self._plot_args["min_outline_length"]
         )
 
     def combine_cells_z(self, PACP):
@@ -1554,6 +1562,7 @@ class CellTracking(object):
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
+            min_length=self._plot_args["min_outline_length"]
         )
 
     def combine_cells_t(self):
@@ -1606,6 +1615,7 @@ class CellTracking(object):
                     blocked_cells=self.blocked_cells,
                     alpha=1,
                     mode="outlines",
+            min_length=self._plot_args["min_outline_length"]
                 )
 
                 return
@@ -1641,6 +1651,7 @@ class CellTracking(object):
                     blocked_cells=self.blocked_cells,
                     alpha=1,
                     mode="outlines",
+                    min_length=self._plot_args["min_outline_length"]
                 )
 
                 return
@@ -1691,6 +1702,7 @@ class CellTracking(object):
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
+            min_length=self._plot_args["min_outline_length"]
         )
 
         self.nactions += 1
@@ -1789,6 +1801,7 @@ class CellTracking(object):
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
+            min_length=self._plot_args["min_outline_length"]
         )
 
         self.nactions += 1
@@ -1894,6 +1907,7 @@ class CellTracking(object):
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
+            min_length=self._plot_args["min_outline_length"]
         )
 
     def _get_cell(self, label=None, cellid=None):
@@ -2086,7 +2100,7 @@ class CellTracking(object):
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
-
+        
         if update_labels:
             self.update_labels()
 

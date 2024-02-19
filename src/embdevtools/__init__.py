@@ -7,6 +7,7 @@ from .celltrack.celltrack import (CellTracking, compute_labels_stack,
                                   plot_channel_quantification_hist,
                                   quantify_channels, remove_small_cells,
                                   save_3Dstack, save_4Dstack,
-                                  save_4Dstack_labels, tif_reader_5D)
+                                  save_4Dstack_labels, tif_reader_5D,
+                                  correct_drift, extract_fluoro)
 from .cytodonut.cytodonut import ERKKTR, load_donuts, plot_donuts
 from .embseg.embseg import EmbryoSegmentation, load_ES, save_ES

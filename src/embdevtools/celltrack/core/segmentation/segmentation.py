@@ -160,6 +160,9 @@ def cell_segmentation3D_from2D(
             outlines.pop(idrem)
 
         # Keep the outline for the current z-level
+        for o, outline in enumerate(outlines):
+            if len(outline) < segmentation_args["min_outline_length"]:
+                outlines[o] = increase_point_resolution(outline, segmentation_args["min_outline_length"])
         Outlines.append(outlines)
     return Outlines, Masks, None
 
@@ -338,6 +341,7 @@ def fill_segmentation_args(segmentation_args):
             "model": None,
             "blur": None,
             "make_isotropic": [False, 1.0],
+            "min_outline_length": 1
         }
     if segmentation_method is None: 
         return new_segmentation_args, dict()
@@ -348,6 +352,7 @@ def fill_segmentation_args(segmentation_args):
             "model": None,
             "blur": None,
             "make_isotropic": [False, 1.0],
+            "min_outline_length": 1
         }
         model = segmentation_args["model"]
         if model is None:
@@ -361,6 +366,7 @@ def fill_segmentation_args(segmentation_args):
             "model": None,
             "blur": None,
             "make_isotropic": [False, 1.0],
+            "min_outline_length": 1
         }
         model = segmentation_args["model"]
         if model is None:

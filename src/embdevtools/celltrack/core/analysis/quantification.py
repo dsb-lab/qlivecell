@@ -1,3 +1,99 @@
+import numpy as np
+from scipy.interpolate import splrep, BSpline
+from scipy.signal import butter, lfilter
+
+# From https://stackoverflow.com/a/12233959
+def butter_bandpass(lowcut, highcut, fs, order=5):
+    return butter(order, [lowcut, highcut], fs=fs, btype='band')
+
+# From https://stackoverflow.com/a/12233959
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+    b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+    y = lfilter(b, a, data)
+    return y
+
+def extract_fluoro(CT):
+    results = {}
+    results["centers"] = []
+    results["labels"] = []
+    results["centers_px"] = []
+    results["slices"] = CT.hyperstack.shape[1]
+    results["masks"] = []
+    results["zres"] = CT.metadata["Zresolution"]
+    _ch = []
+    for ch in range(CT.hyperstack.shape[2]):
+        results["channel_{}".format(ch)] = []
+        _ch.append([])
+    for cell in CT.jitcells:
+        for zid, z in enumerate(cell.zs[0]):
+            mask = cell.masks[0][zid]
+            
+            if z == cell.centers[0][0]:
+                results["masks"].append(mask)
+            
+            for ch in range(CT.hyperstack.shape[2]):
+                img = CT.hyperstack[0, z, ch]
+                _ch[ch].append(np.mean(img[mask[:,1], mask[:,0]]))
+
+        for ch in range(CT.hyperstack.shape[2]):
+            results["channel_{}".format(ch)].append(np.mean(_ch[ch]))
+            del _ch[ch][:]
+
+        zres = CT.metadata["Zresolution"]
+        xyres = CT.metadata["XYresolution"]
+        results["centers_px"].append(cell.centers[0])
+        results["centers"].append(cell.centers[0]*[zres, xyres, xyres])
+        results["labels"].append(cell.label + 1)
+
+    for i, j in results.items():
+        results[i] = np.array(j)
+  
+    return results
+
+def correct_drift(results, ch=0, plotting=False):
+
+    data = results["channel_{}".format(ch)]
+
+    z_order = np.argsort(results["centers_px"][:, 0])
+    centers_ordered = np.array(results["centers_px"])[z_order]
+    data = np.array(data)[z_order]
+
+    data_z = []
+    zs = []
+    for z in range(int(max(centers_ordered[:,0]))):
+        ids = np.where(centers_ordered[:,0] == z)
+        d = data[ids]
+        if len(d) == 0: continue
+        zs.append(z)
+        data_z.append(np.mean(d))
+
+    data_z_filled = []
+    for z in range(results["slices"]):
+        if z in zs:
+            zid = zs.index(z)
+            data_z_filled.append(data_z[zid])
+        else:
+            if z == 0:
+               data_z_filled.append(data_z[0])  
+            if (z + 1 in zs):
+                zid = zs.index(z+1)
+                data_z_filled.append(np.mean([data_z[zid], data_z_filled[-1]])) 
+            else: 
+                data_z_filled.append(data_z_filled[-1])
+    
+    drift_correction = butter_bandpass_filter(data_z_filled, 0.1*results["zres"], results["zres"]/2.01, results["zres"], order=6)
+    drift_correction += np.mean(data_z)
+
+    if plotting:
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        ax.plot(data_z)
+        ax.plot(drift_correction)
+        plt.show()
+    
+    correct_factor = drift_correction - data_z_filled
+    return correct_factor, data_z
+
 def quantify_channels(CT):
     import numpy as np
 

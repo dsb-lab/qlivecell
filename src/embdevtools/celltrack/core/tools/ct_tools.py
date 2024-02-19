@@ -3,7 +3,7 @@ import numpy as np
 from numba import jit, njit, types
 from numba.core.errors import TypingError
 from numba.extending import overload, register_jitable
-
+from .tools import increase_point_resolution
 
 @overload(np.all)
 def np_all(x, axis=None):
@@ -174,6 +174,7 @@ def compute_point_stack(
     labels=None,
     mode=None,
     rem=False,
+    min_length=1
 ):
     if labels is None:
         for t in times:
@@ -193,6 +194,10 @@ def compute_point_stack(
         color = np.rint(color * 255).astype("uint8")
         if mode == "outlines":
             points = jitcell.outlines
+            for t in range(len(points)):
+                for z, outline in enumerate(points[t]):
+                    if len(outline) < min_length:
+                        points[t][z] = increase_point_resolution(outline, min_length)
         elif mode == "masks":
             points = jitcell.masks
 
