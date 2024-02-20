@@ -56,7 +56,10 @@ from .core.tools.batch_tools import (add_lab_change, check_and_fill_batch_args,
                                      reorder_list, update_apo_cells,
                                      update_blocked_cells, update_mito_cells,
                                      update_new_label_correspondance,
-                                     update_unique_labels_T)
+                                     update_unique_labels_T,
+                                     check_and_remove_if_cell_mitotic,
+                                     check_and_remove_if_cell_apoptotic)
+
 from .core.tools.cell_tools import (_predefine_jitcell_inputs, create_cell,
                                     extract_jitcells_from_label_stack,
                                     find_t_discontinuities_jit,
@@ -96,6 +99,7 @@ plt.rcParams["keymap.save"].remove("s")
 plt.rcParams["keymap.yscale"].remove("l")
 plt.rcParams["keymap.pan"].remove("p")
 plt.rcParams["keymap.zoom"][0] = ","
+plt.rcParams["keymap.back"].remove("c")
 
 PLTLINESTYLES = list(lineStyles.keys())
 PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X", "p", "^"]
@@ -242,9 +246,22 @@ class CellTracking(object):
         self.max_label = 0
 
         ##  Mito and Apo events
-        self.apoptotic_events = []
-        self.mitotic_events = []
-        self.blocked_cells = []
+        self.apoptotic_events = List([
+            List([0, 0])
+            ])
+        _ = self.apoptotic_events.pop(0)
+
+        self.mitotic_events = List([
+            List([
+                List([0, 0]), 
+                List([0, 0]), 
+                List([0, 0])
+                ])
+            ])
+        _ = self.mitotic_events.pop(0)
+
+        self.blocked_cells = List([0])
+        _ = self.blocked_cells.pop(0)
 
         # count number of actions done during manual curation
         # this is not reset after training
@@ -266,6 +283,8 @@ class CellTracking(object):
             "segment3D": self.segment3D,
         }
 
+        mito_evs = [[list(mitocell) for mitocell in mitoev] for mitoev in self.mitotic_events]
+        apo_evs = [list(apoev) for apoev in self.apoptotic_events]
         CT_info = CellTracking_info(
             self.metadata["XYresolution"],
             self.metadata["Zresolution"],
@@ -273,9 +292,9 @@ class CellTracking(object):
             self.slices,
             self.stack_dims,
             self._track_args["time_step"],
-            self.apoptotic_events,
-            self.mitotic_events,
-            self.blocked_cells,
+            apo_evs,
+            mito_evs,
+            list(self.blocked_cells),
             self.nactions,
             args,
         )
@@ -288,9 +307,11 @@ class CellTracking(object):
         self.CT_info.slices = self.slices
         self.CT_info.stack_dims = self.stack_dims
         self.CT_info.time_step = self._track_args["time_step"]
-        self.CT_info.apo_cells = self.apoptotic_events
-        self.CT_info.mito_cells = self.mitotic_events
-        self.CT_info.blocked_cells = self.blocked_cells
+        mito_evs = [[list(mitocell) for mitocell in mitoev] for mitoev in self.mitotic_events]
+        apo_evs = [list(apoev) for apoev in self.apoptotic_events]
+        self.CT_info.apo_cells = apo_evs
+        self.CT_info.mito_cells = mito_evs
+        self.CT_info.blocked_cells = list(self.blocked_cells)
         self.CT_info.nactions = self.nactions
 
     def init_batch(self):
@@ -541,9 +562,11 @@ class CellTracking(object):
         printfancy()
         if load_ct_info:
             self.CT_info = load_CT_info(self.path_to_save)
-            self.apoptotic_events = self.CT_info.apo_cells
-            self.mitotic_events = self.CT_info.mito_cells
-            self.blocked_cells = self.CT_info.blocked_cells
+            mito_evs = List([List([List(mitocell) for mitocell in mitoev]) for mitoev in self.CT_info.mito_cells])
+            apo_evs = List([List(apoev) for apoev in self.CT_info.apo_cells])
+            self.apoptotic_events = apo_evs
+            self.mitotic_events = mito_evs
+            self.blocked_cells = List(self.CT_info.blocked_cells)
 
         if batch_args is None:
             batch_args = self._batch_args
@@ -708,7 +731,6 @@ class CellTracking(object):
             last = min(last, totalsize)
 
             times = range(first, last)
-            print(times)
             if len(times) <= boverlap:
                 continue
 
@@ -1265,9 +1287,17 @@ class CellTracking(object):
                 stack,
             )
 
+            # If the current time has been completely removed from the cell, 
+            # check if it was mitotic or apoptosis at this time
+            if t not in cell.times:
+                check_and_remove_if_cell_mitotic(lab, t, self.mitotic_events)
+            if t not in cell.times:
+                check_and_remove_if_cell_apoptotic(lab, t, self.apoptotic_events)
+
             if cell._rem:
                 idrem = cell.id
                 cellids.remove(idrem)
+                
                 self._del_cell(lab, t=t)
 
                 if lab in labs_to_replot:
@@ -1282,36 +1312,37 @@ class CellTracking(object):
             t = Ts[i]
             cell = self._get_cell(cellid=cellid)
             new_labs.append(cell.label)
-            try:
-                new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities_jit(
-                    cell,
-                    stack,
-                    self.max_label,
-                    self.currentcellid,
-                    t,
-                )
+            # try:
+            new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities_jit(
+                cell,
+                stack,
+                self.max_label,
+                self.currentcellid,
+                t,
+            )
+
+            update_jitcell(
+                cell,
+                stack,
+            )
+
+            if new_maxlabel is not None:
+                new_jitcell = construct_jitCell_from_Cell(new_cell)
+                new_labs.append(new_jitcell.label)
+                self.max_label = new_maxlabel
+                self.currentcellid = new_currentcellid
 
                 update_jitcell(
-                    cell,
+                    new_jitcell,
                     stack,
                 )
-                if new_maxlabel is not None:
-                    new_jitcell = construct_jitCell_from_Cell(new_cell)
-                    new_labs.append(new_jitcell.label)
-                    self.max_label = new_maxlabel
-                    self.currentcellid = new_currentcellid
+                jitcellslen = len(self.jitcells_selected)
+                self.jitcells.append(new_jitcell)
+                if jitcellslen < len(self.jitcells_selected):
+                    self.jitcells_selected.append(self.jitcells[-1])
 
-                    update_jitcell(
-                        new_jitcell,
-                        stack,
-                    )
-                    jitcellslen = len(self.jitcells_selected)
-                    self.jitcells.append(new_jitcell)
-                    if jitcellslen < len(self.jitcells_selected):
-                        self.jitcells_selected.append(self.jitcells[-1])
-
-            except ValueError:
-                pass
+            # except ValueError:
+            #     pass
 
             new_maxlabel, new_currentcellid, new_cell = find_t_discontinuities_jit(
                 cell,
@@ -1319,6 +1350,7 @@ class CellTracking(object):
                 self.max_label,
                 self.currentcellid,
             )
+
             update_jitcell(
                 cell,
                 stack,
@@ -1409,6 +1441,7 @@ class CellTracking(object):
             mode="masks",
             rem=True,
         )
+
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
@@ -1424,8 +1457,17 @@ class CellTracking(object):
         )
 
         for lab in cells:
+            cell = self._get_cell(lab)
+            for t in self.batch_times_list:
+                # If the current time has been completely removed from the cell, 
+                # check if it was mitotic or apoptosis at this time
+                if t not in cell.times:
+                    check_and_remove_if_cell_mitotic(lab, t, self.mitotic_events)
+                if t not in cell.times:
+                    check_and_remove_if_cell_apoptotic(lab, t, self.apoptotic_events)
             self._del_cell(lab)
         self.update_label_attributes()
+
 
     def join_cells(self, PACP):
         labels, Zs, Ts = list(zip(*PACP.list_of_cells))
@@ -1529,6 +1571,12 @@ class CellTracking(object):
             )
 
             t_rem = cell2.times.pop(tid_cell2)
+             # If the current time has been completely removed from the cell, 
+            # check if it was mitotic or apoptosis at this time
+            if t not in cell2.times:
+                check_and_remove_if_cell_mitotic(cell2.label, t_rem, self.mitotic_events)
+            if t not in cell2.times:
+                check_and_remove_if_cell_apoptotic(cell2.label, t_rem, self.apoptotic_events)
             cell2.zs.pop(tid_cell2)
             cell2.outlines.pop(tid_cell2)
             cell2.masks.pop(tid_cell2)
@@ -1675,6 +1723,13 @@ class CellTracking(object):
             )
 
             lab_change = np.array([[cell2.label, cell1.label]]).astype("uint16")
+            for t in self.batch_times_list:
+                # If the current time has been completely removed from the cell, 
+                # check if it was mitotic or apoptosis at this time
+                if t not in cell2.times:
+                    check_and_remove_if_cell_mitotic(cell2.label, t, self.mitotic_events)
+                if t not in cell2.times:
+                    check_and_remove_if_cell_apoptotic(cell2.label, t, self.apoptotic_events)
             self._del_cell(cell2.label, lab_change=lab_change, t=cell2.times[0])
 
             cells = [cell for cell in cells if cell != cell2.label]
@@ -1813,7 +1868,7 @@ class CellTracking(object):
     def apoptosis(self, list_of_cells):
         for cell_att in list_of_cells:
             lab, z, t = cell_att
-            attributes = [lab, t]
+            attributes = List([lab, t])
             if attributes not in self.apoptotic_events:
                 self.apoptotic_events.append(attributes)
             else:
@@ -1826,7 +1881,7 @@ class CellTracking(object):
         # any event, if so remove event
         if len(self.mito_cells) != 3:
             cell = self._get_cell(label=self.mito_cells[0][0])
-            mito = [cell.label, self.mito_cells[0][2]]
+            mito = List([cell.label, self.mito_cells[0][2]])
             for mito_ev in self.mitotic_events:
                 if mito in mito_ev:
                     self.mitotic_events.remove(mito_ev)
@@ -1835,11 +1890,11 @@ class CellTracking(object):
 
         # Extract cells from self.mito_cells
         cell = self._get_cell(label=self.mito_cells[0][0])
-        mito0 = [cell.label, self.mito_cells[0][2]]
+        mito0 = List([cell.label, self.mito_cells[0][2]])
         cell = self._get_cell(label=self.mito_cells[1][0])
-        mito1 = [cell.label, self.mito_cells[1][2]]
+        mito1 = List([cell.label, self.mito_cells[1][2]])
         cell = self._get_cell(label=self.mito_cells[2][0])
-        mito2 = [cell.label, self.mito_cells[2][2]]
+        mito2 = List([cell.label, self.mito_cells[2][2]])
 
         # Times of the two daughters must be equal
         if self.mito_cells[1][2] != self.mito_cells[2][2]:
@@ -1847,21 +1902,21 @@ class CellTracking(object):
 
         # If one cell has been selected as mother and daughther, separate it in time.
         if mito0[0] == mito1[0]:
-            self.list_of_cells.append([mito0[0], 0, mito0[2]])
-            self.list_of_cells.append([mito1[0], 0, mito1[2]])
+            self.list_of_cells.append([mito0[0], 0, mito0[1]])
+            self.list_of_cells.append([mito1[0], 0, mito1[1]])
             new_label = self.separate_cells_t(return_new_label=True)
             del self.list_of_cells[:]
             mito1[0] = new_label
 
         elif mito0[0] == mito2[0]:
-            self.list_of_cells.append([mito0[0], 0, mito0[2]])
-            self.list_of_cells.append([mito2[0], 0, mito2[2]])
+            self.list_of_cells.append([mito0[0], 0, mito0[1]])
+            self.list_of_cells.append([mito2[0], 0, mito2[1]])
             self.separate_cells_t(return_new_label=True)
             del self.list_of_cells[:]
             mito2[0] = new_label
 
         # Create mitotic event and add or remove
-        mito_ev = [mito0, mito1, mito2]
+        mito_ev = List([mito0, mito1, mito2])
         if mito_ev in self.mitotic_events:
             self.mitotic_events.remove(mito_ev)
         else:
@@ -1951,7 +2006,9 @@ class CellTracking(object):
         update_mito_cells(
             self.mitotic_events, self.batch_times_list_global[0], lab_change
         )
+        print("here")
         update_blocked_cells(self.blocked_cells, lab_change)
+        print("and here")
 
         first_future_time = self.batch_times_list_global[-1] + 1
         add_lab_change(

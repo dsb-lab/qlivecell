@@ -111,7 +111,7 @@ def nb_get_max_nest_list(nested2Dlist):
     return max_val
 
 
-@njit(parallel=True)
+# @njit(parallel=True)
 def update_unique_labels_T(
     post_range_start, post_range_end, label_correspondance_T, unique_labels_T
 ):
@@ -185,14 +185,14 @@ def get_unique_lab_changes(label_correspondance_T):
 
     return nb_unique(lc_flatten, axis=0)
 
-
+@njit()
 def update_apo_cells(apoptotic_events, t, lab_change):
     for apo_ev in apoptotic_events:
         if apo_ev[1] >= t:
             if apo_ev[0] == lab_change[0][0]:
                 apo_ev[0] = lab_change[0][1]
 
-
+@njit()
 def update_mito_cells(mitotic_events, t, lab_change):
     for mito_ev in mitotic_events:
         for mito_cell in mito_ev:
@@ -200,11 +200,49 @@ def update_mito_cells(mitotic_events, t, lab_change):
                 if mito_cell[0] == lab_change[0][0]:
                     mito_cell[0] = lab_change[0][1]
 
-
+@njit()
 def update_blocked_cells(blocked_cells, lab_change):
     for blid, blabel in enumerate(blocked_cells):
         if blabel == lab_change[0][0]:
             blocked_cells[blid] = lab_change[1]
+
+
+# @njit()
+def check_and_remove_if_cell_mitotic(lab, t, mitotic_events):
+    mevs_remove = get_mito_cells_to_remove(lab, t, mitotic_events)
+    for ev in reversed(mevs_remove):
+        _ = mitotic_events.pop(ev)
+    return 
+
+
+# @njit(parallel=True)
+def get_mito_cells_to_remove(lab, t, mitotic_events):
+    mcell = List([lab,t])
+    mevs_remove = List([])
+    for ev in prange(len(mitotic_events)):
+        mitoev = mitotic_events[ev]
+        if mcell in mitoev:
+            mevs_remove.append(ev)
+    return mevs_remove
+
+
+# @njit()
+def check_and_remove_if_cell_apoptotic(lab, t, apoptotic_events):
+    aevs_remove = get_mito_cells_to_remove(lab, t, apoptotic_events)
+    for ev in reversed(aevs_remove):
+        _ = apoptotic_events.pop(ev)
+    return 
+
+
+# @njit(parallel=True)
+def get_apo_cells_to_remove(lab, t, apoptotic_events):
+    acell = List([lab,t])
+    aevs_remove = List([])
+    for ev in prange(len(apoptotic_events)):
+        apoev = apoptotic_events[ev]
+        if acell in apoev:
+            aevs_remove.append(ev)
+    return aevs_remove
 
 
 @njit(parallel=True)
