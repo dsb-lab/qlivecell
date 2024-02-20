@@ -53,7 +53,7 @@ plot_args = {
 
 error_correction_args = {
     'backup_steps': 10,
-    'line_builder_mode': 'lasso',
+    'line_builder_mode': 'points',
 }
 
 batch_args = {

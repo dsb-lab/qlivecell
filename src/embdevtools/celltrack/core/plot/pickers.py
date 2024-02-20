@@ -30,15 +30,20 @@ class LineBuilder_points:
         self.yss = [list(lines[i].get_ydata()) for i in range(len(lines))]
         self.cid = self.lines[z].figure.canvas.mpl_connect("button_press_event", self)
 
+        self.z = z
+
+    def reset_z(self, z):
+        self.z = z
+
     def __call__(self, event):
-        if event.inaxes != self.line.axes:
+        if event.inaxes != self.lines[self.z].axes:
             return
         if event.button == 3:
-            if self.line.figure.canvas.toolbar.mode != "":
-                self.line.figure.canvas.mpl_disconnect(
-                    self.line.figure.canvas.toolbar._zoom_info.cid
+            if self.lines[self.z].figure.canvas.toolbar.mode != "":
+                self.lines[self.z].figure.canvas.mpl_disconnect(
+                    self.lines[self.z].figure.canvas.toolbar._zoom_info.cid
                 )
-                self.line.figure.canvas.toolbar.zoom()
+                self.lines[self.z].figure.canvas.toolbar.zoom()
             self.xss[self.z].append(event.xdata)
             self.yss[self.z].append(event.ydata)
             self.lines[self.z].set_data(self.xss[self.z], self.yss[self.z])
@@ -72,7 +77,6 @@ class LineBuilder_lasso:
         self.z = z
 
     def reset_z(self, z):
-        print("z reseted")
         self.z = z
 
     def onselect(self, verts):

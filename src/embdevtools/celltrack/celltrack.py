@@ -1094,7 +1094,7 @@ class CellTracking(object):
     def unblock_cells(self):
         del self.blocked_cells[:]
 
-    def append_cell_from_outline(self, outlines, zs, t, sort=True):
+    def append_cell_from_outlines(self, outlines, zs, t, sort=True):
         if sort:
             new_outlines = []
             for outline in outlines:
@@ -1158,10 +1158,13 @@ class CellTracking(object):
 
     def add_cell(self, PACP):
         if self._err_corr_args["line_builder_mode"] == "points":
-            (line,) = self.PACP.ax_sel.plot(
-                [], [], linestyle="none", marker="o", color="r", markersize=2
-            )
-            PACP.linebuilder = LineBuilder_points(line)
+            lines = []
+            for z in range(self.slices):
+                (line,) = self.PACP.ax_sel.plot(
+                    [], [], linestyle="none", marker="o", color="r", markersize=2
+                )
+                lines.append(line)
+            PACP.linebuilder = LineBuilder_points(lines, PACP.z)
         else:
             PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel, PACP.z, self.slices)
 
@@ -1200,9 +1203,9 @@ class CellTracking(object):
 
             # Check in drawn points are in consecutive zs
             outlines_length = [len(out) for out in PACP.linebuilder.outlines]
-            print(outlines_length)
+
             zs = [z for z in range(self.slices) if outlines_length[z]!=0]
-            print(zs)
+
             if len(zs)==0:
                 printfancy("ERROR: no outlines drawn")
             
@@ -1221,7 +1224,7 @@ class CellTracking(object):
                 new_outline = new_outline.astype("uint16")
                 new_outlines.append(new_outline)
         
-        self.append_cell_from_outlines(new_outlines, zs, PACP.t, mask=None)            
+        self.append_cell_from_outlines(new_outlines, zs, PACP.t)            
         self.update_label_attributes()
 
         compute_point_stack(
