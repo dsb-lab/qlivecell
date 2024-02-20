@@ -906,16 +906,13 @@ class CellTracking(object):
         # iterate over future times and update manually unique_labels_T
         # I think we should assume that there is no going to be conflict
         # on label substitution, but we have to be careful in the future
-        try:
-            update_unique_labels_T(
-                self.batch_times_list_global[-1] + 1,
-                self.batch_totalsize,
-                self.label_correspondance_T,
-                self.unique_labels_T,
-            )
-        except:
-            print(self.batch_times_list_global[-1] + 1)
-            print(self.label_correspondance_T)
+        update_unique_labels_T(
+            self.batch_times_list_global[-1] + 1,
+            self.batch_totalsize,
+            self.label_correspondance_T,
+            self.unique_labels_T,
+        )
+
         # Once unique labels are updated, we can safely run label ordering
         if self.jitcells:
             old_labels, new_labels, correspondance = _order_labels_t(
@@ -1312,7 +1309,7 @@ class CellTracking(object):
             t = Ts[i]
             cell = self._get_cell(cellid=cellid)
             new_labs.append(cell.label)
-            # try:
+
             new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities_jit(
                 cell,
                 stack,
@@ -1340,9 +1337,6 @@ class CellTracking(object):
                 self.jitcells.append(new_jitcell)
                 if jitcellslen < len(self.jitcells_selected):
                     self.jitcells_selected.append(self.jitcells[-1])
-
-            # except ValueError:
-            #     pass
 
             new_maxlabel, new_currentcellid, new_cell = find_t_discontinuities_jit(
                 cell,
@@ -2006,9 +2000,7 @@ class CellTracking(object):
         update_mito_cells(
             self.mitotic_events, self.batch_times_list_global[0], lab_change
         )
-        print("here")
         update_blocked_cells(self.blocked_cells, lab_change)
-        print("and here")
 
         first_future_time = self.batch_times_list_global[-1] + 1
         add_lab_change(

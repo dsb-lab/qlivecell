@@ -367,6 +367,8 @@ def sort_over_t_jit(cell: jitCell):
 
 # @njit
 def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, t):
+    if t not in cell.times:
+        return None, None, None
     tid = cell.times.index(t)
     if not checkConsecutive(cell.zs[tid]):
         discontinuities = whereNotConsecutive(cell.zs[tid])
