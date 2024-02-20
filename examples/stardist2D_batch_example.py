@@ -89,12 +89,3 @@ if __name__ == "__main__":
     }
     CTB.plot_tracking(plot_args=plot_args)
 
-
-# ### SAVE RESULTS AS MASKS HYPERSTACK ###
-# save_4Dstack(path_save, "masks", CTB._masks_stack, CTB.metadata["XYresolution"], CTB.metadata["Zresolution"])
-
-
-# ### SAVE RESULTS AS LABELS HYPERSTACK ###
-# save_4Dstack_labels(path_save, "labels", CTB.jitcells, CTB.CT_info, imagejformat="TZYX")
-
-

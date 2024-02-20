@@ -713,7 +713,11 @@ class PlotActionCT(PlotAction):
 
     def onscroll(self, event):
         if self.current_state == "add":
-            return
+            self.ctrl_is_held = False
+            self.ctrl_shift_is_held = False
+            super().onscroll(event)
+            #### THIS SHOULD BE CHANGED IF WE GO BACK TO MULTIPANEL PLOTS
+            self.linebuilder.reset_z(self.cr)
         else:
             super().onscroll(event)
 

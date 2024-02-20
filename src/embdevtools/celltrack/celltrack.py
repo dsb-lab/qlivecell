@@ -1094,25 +1094,28 @@ class CellTracking(object):
     def unblock_cells(self):
         del self.blocked_cells[:]
 
-    def append_cell_from_outline(self, outline, z, t, mask=None, sort=True):
+    def append_cell_from_outline(self, outlines, zs, t, sort=True):
         if sort:
-            new_outline_sorted, _ = sort_point_sequence(
-                outline, self._nearest_neighs, self.PACP.visualization
+            new_outlines = []
+            for outline in outlines:
+                new_outline_sorted, _ = sort_point_sequence(
+                    outline, self._nearest_neighs, self.PACP.visualization
+                )
+                if new_outline_sorted is None:
+                    return
+                else:
+                    new_outlines.append(new_outline_sorted)
+        else:
+            new_outlines.append(new_outline_sorted)
+
+        final_outlines = []
+        masks = []
+        for new_outline_sorted in new_outlines:
+            new_outline_sorted_highres = increase_point_resolution(
+                new_outline_sorted, self._min_outline_length
             )
-            if new_outline_sorted is None:
-                return
-        else:
-            new_outline_sorted = outline
-
-        new_outline_sorted_highres = increase_point_resolution(
-            new_outline_sorted, self._min_outline_length
-        )
-        outlines = [[new_outline_sorted_highres]]
-
-        if mask is None:
-            masks = [[mask_from_outline(new_outline_sorted_highres)]]
-        else:
-            masks = [[mask]]
+            final_outlines.append(new_outline_sorted_highres)
+            masks.append(mask_from_outline(new_outline_sorted_highres))
 
         self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(
             self.ctattr.Labels
@@ -1120,10 +1123,10 @@ class CellTracking(object):
         new_cell = create_cell(
             self.currentcellid + 1,
             self.max_label + 1,
-            [[z]],
+            [zs],
             [t],
-            outlines,
-            masks,
+            [final_outlines],
+            [masks],
             self.hyperstack[
                 :,
                 :,
@@ -1160,32 +1163,65 @@ class CellTracking(object):
             )
             PACP.linebuilder = LineBuilder_points(line)
         else:
-            PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel)
+            PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel, PACP.z, self.slices)
 
     def complete_add_cell(self, PACP):
+        new_outlines = []
+
         if self._err_corr_args["line_builder_mode"] == "points":
-            if len(PACP.linebuilder.xs) < 3:
-                return
 
-            new_outline = np.dstack((PACP.linebuilder.xs, PACP.linebuilder.ys))[0]
-            new_outline = np.rint(new_outline / self._plot_args["dim_change"]).astype(
-                "uint16"
-            )
+            # Check in drawn points are in consecutive zs
+            outlines_length = [len(out) for out in PACP.linebuilder.xss]
+            zs = [z for z in range(self.slices) if outlines_length[z]!=0]
+            print(zs)
+            if len(zs)==0:
+                printfancy("ERROR: no outlines drawn")
+            
+            if len(zs)>1:
+                if not (np.diff(zs)==1).all():
+                    printfancy("ERROR: drawn outlines are not in consecutive planes")
+                    return
 
-            if np.max(new_outline) > self.stack_dims[0]:
-                printfancy("ERROR: drawing out of image")
-                return
+            for zid, z in enumerate(zs):
+                if len(PACP.linebuilder.xss[z]) < 3:
+                    printfancy("ERROR: some of the drawn outlines have too few points (< 3)")
+                    return
+                new_outline = np.dstack((PACP.linebuilder.xss[z], PACP.linebuilder.yss[z]))[0]
+                new_outline = np.rint(new_outline / self._plot_args["dim_change"]).astype(
+                    "uint16"
+                )
+                new_outlines.append(new_outline)
+
+                if np.max(new_outline) > self.stack_dims[0]:
+                    printfancy("ERROR: drawing out of image")
+                    return
 
         elif self._err_corr_args["line_builder_mode"] == "lasso":
-            if len(PACP.linebuilder.outline) < 3:
-                return
-            new_outline = np.floor(
-                PACP.linebuilder.outline / self._plot_args["dim_change"]
-            )
-            new_outline = new_outline.astype("uint16")
 
-        self.append_cell_from_outline(new_outline, PACP.z, PACP.t, mask=None)
+            # Check in drawn points are in consecutive zs
+            outlines_length = [len(out) for out in PACP.linebuilder.outlines]
+            print(outlines_length)
+            zs = [z for z in range(self.slices) if outlines_length[z]!=0]
+            print(zs)
+            if len(zs)==0:
+                printfancy("ERROR: no outlines drawn")
+            
+            if len(zs)>1:
+                if not (np.diff(zs)==1).all():
+                    printfancy("ERROR: drawn outlines are not in consecutive planes")
+                    return
 
+            for zid, z in enumerate(zs):
+                if len(PACP.linebuilder.outlines[z]) < 3:
+                    printfancy("ERROR: some of the drawn outlines have too few points (< 3)")
+                    return
+                new_outline = np.floor(
+                    PACP.linebuilder.outlines[z] / self._plot_args["dim_change"]
+                )
+                new_outline = new_outline.astype("uint16")
+                new_outlines.append(new_outline)
+        
+        self.append_cell_from_outlines(new_outlines, zs, PACP.t, mask=None)            
         self.update_label_attributes()
 
         compute_point_stack(
@@ -1498,7 +1534,7 @@ class CellTracking(object):
         hull = ConvexHull(pre_outline)
         outline = pre_outline[hull.vertices]
 
-        self.append_cell_from_outline(outline, z, t, sort=False)
+        self.append_cell_from_outlines([outline], [z], t, sort=False)
 
         self.update_label_attributes()
 
