@@ -1176,7 +1176,7 @@ class CellTracking(object):
             # Check in drawn points are in consecutive zs
             outlines_length = [len(out) for out in PACP.linebuilder.xss]
             zs = [z for z in range(self.slices) if outlines_length[z]!=0]
-            print(zs)
+
             if len(zs)==0:
                 printfancy("ERROR: no outlines drawn")
             

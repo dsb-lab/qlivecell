@@ -33,8 +33,10 @@ class LineBuilder_points:
         self.z = z
 
     def reset_z(self, z):
+        self.lines[self.z].set_marker("")
         self.z = z
-
+        self.lines[self.z].set_marker("o")
+        
     def __call__(self, event):
         if event.inaxes != self.lines[self.z].axes:
             return
