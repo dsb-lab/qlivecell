@@ -19,7 +19,7 @@ from .core.analysis.debris_removal import plot_cell_sizes, remove_small_cells
 from .core.analysis.quantification import (plot_channel_quantification_bar,
                                            plot_channel_quantification_hist,
                                            quantify_channels, correct_drift,
-                                           extract_fluoro,)
+                                           extract_fluoro, get_intenity_profile)
 from .core.dataclasses import (CellTracking_info, backup_CellTrack,
                                construct_Cell_from_jitCell,
                                construct_jitCell_from_Cell, jitCell)
@@ -560,13 +560,36 @@ class CellTracking(object):
         print("###############        LOADING AND INITIALIZING       ################")
         printfancy()
         printfancy()
+        
+        
         if load_ct_info:
             self.CT_info = load_CT_info(self.path_to_save)
-            mito_evs = List([List([List(mitocell) for mitocell in mitoev]) for mitoev in self.CT_info.mito_cells])
-            apo_evs = List([List(apoev) for apoev in self.CT_info.apo_cells])
+            if len(self.CT_info.mito_cells) == 0:
+                mito_evs = List([
+                    List([
+                        List([0, 0]), 
+                        List([0, 0]), 
+                        List([0, 0])
+                        ])
+                    ])
+                _ = mito_evs.pop(0)
+            else:
+                mito_evs = List([List([List(mitocell) for mitocell in mitoev]) for mitoev in self.CT_info.mito_cells])
+            if len(self.CT_info.mito_cells) == 0:
+                apo_evs = List([
+                    List([0, 0])
+                    ])
+                apo_evs.pop(0)
+            else:
+                apo_evs = List([List(apoev) for apoev in self.CT_info.apo_cells])
+                
             self.apoptotic_events = apo_evs
             self.mitotic_events = mito_evs
-            self.blocked_cells = List(self.CT_info.blocked_cells)
+            if len(self.CT_info.blocked_cells) == 0:
+                self.blocked_cells = List([0])
+                _ = self.blocked_cells.pop(0)
+            else:
+                self.blocked_cells = List(self.CT_info.blocked_cells)
 
         if batch_args is None:
             batch_args = self._batch_args

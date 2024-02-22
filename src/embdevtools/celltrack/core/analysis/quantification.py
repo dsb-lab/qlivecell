@@ -50,6 +50,72 @@ def extract_fluoro(CT):
   
     return results
 
+
+import numpy as np
+from scipy.optimize import curve_fit
+
+def linear_decay(z, slope, intercept):
+    return slope * z + intercept
+
+def get_intenity_profile(CT, ch):
+
+    image_stack = CT.hyperstack[0,:,ch]
+
+    intensity_per_z = np.zeros(CT.slices)
+    intensity_per_z_n = np.zeros(CT.slices)
+
+    for cell in CT.jitcells:
+        zc = int(cell.centers[0][0])
+        zcid = cell.zs[0].index(zc)
+
+        msk = cell.masks[0][zcid]
+        img = image_stack[zc]
+        intensity = np.mean(img[msk[:, 1], msk[:, 0]])
+        
+        intensity_per_z_n[zc] += 1
+        intensity_per_z[zc] += intensity
+
+
+    zs = np.where(intensity_per_z_n!=0)[0]
+    data_z = intensity_per_z[zs] / intensity_per_z_n[zs]
+    data_z_filled = []
+    zs_filled = []
+    for z in range(zs[0], zs[-1]+1):
+        if z in zs:
+            zid = np.where(zs==z)[0][0]
+            data_z_filled.append(data_z[zid])
+            zs_filled.append(z)
+        else:
+            if (z + 1 in zs):
+                zid = np.where(zs==z+1)[0][0]
+                data_z_filled.append(np.mean([data_z[zid], data_z_filled[-1]])) 
+                zs_filled.append(z)
+            else: 
+                data_z_filled.append(data_z_filled[-1])
+                zs_filled.append(z)
+    # Measure intensity profile along the z-axis
+    intensity_profile = np.array(data_z_filled)
+
+    # Define z-axis positions
+    z_positions = np.array(zs_filled)
+
+    # Fit linear decay to intensity profile
+    popt, _ = curve_fit(linear_decay, z_positions, intensity_profile)
+    slope, intercept = popt
+
+    # Correct intensity
+    image_stack = image_stack.astype("float32")
+    correction_function = []
+    for i in range(image_stack.shape[0]):
+        if i not in zs:
+            correct_val = linear_decay(i, slope, intercept)
+        else:
+            zid = np.where(z_positions==i)[0][0]
+            correct_val = intensity_profile[zid]
+        correction_function.append(correct_val)
+    
+    return correction_function, intensity_profile, z_positions
+
 def correct_drift(results, ch=0, plotting=False):
 
     data = results["channel_{}".format(ch)]
