@@ -84,7 +84,8 @@ if __name__ == "__main__":
         'masks_cmap': 'tab10',
         'plot_stack_dims': (512, 512), 
         'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-        'channels':[1]
+        'channels':[1],
+        'min_outline_length':75
     }
     CTB.plot_tracking(plot_args=plot_args)
 
