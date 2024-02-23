@@ -68,7 +68,7 @@ from .core.tools.cell_tools import (_predefine_jitcell_inputs, create_cell,
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack)
 from .core.tools.input_tools import (get_file_name, get_file_names,
-                                     tif_reader_5D)
+                                     tif_reader_5D, separate_times_hyperstack)
 from .core.tools.save_tools import (load_cells, load_CT_info, read_split_times,
                                     save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels, save_cells,

@@ -9,6 +9,6 @@ from .celltrack.celltrack import (CellTracking, compute_labels_stack,
                                   save_3Dstack, save_4Dstack,
                                   save_4Dstack_labels, tif_reader_5D,
                                   correct_drift, extract_fluoro,
-                                  get_intenity_profile,)
+                                  get_intenity_profile, separate_times_hyperstack)
 from .cytodonut.cytodonut import ERKKTR, load_donuts, plot_donuts
 from .embseg.embseg import EmbryoSegmentation, load_ES, save_ES

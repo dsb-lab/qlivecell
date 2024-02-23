@@ -241,3 +241,31 @@ def tif_reader_5D(path_to_file):
     imagej_metadata["Zresolution"] = zres
     imagej_metadata["ResolutionUnit"] = res_unit
     return hyperstack, imagej_metadata
+
+import tifffile
+def separate_times_hyperstack(path_data, file, name_format="{}", folder_name=None):
+    if folder_name is None:
+        folder_name = file.split(".")[0]
+    
+    path_data_file = "{}{}/".format(path_data, folder_name)
+    try: 
+        files = get_file_names(path_data_file)
+    except: 
+        import os
+        os.mkdir(path_data_file)
+
+    hyperstack, metadata = tif_reader_5D(path_data+file)
+
+    mdata = {"axes": "ZCYX", "spacing": metadata["Zresolution"], "unit": "um"}
+
+    for t in range(hyperstack.shape[0]):
+        stack = hyperstack[t]
+        name = name_format.format(t)
+        tifffile.imwrite(
+            "{}{}.tif".format(path_data_file, name),
+            stack.astype("uint8"),
+            imagej=True,
+            resolution=(1 /  metadata["XYresolution"], 1 /  metadata["XYresolution"]),
+            metadata=mdata,
+        )   
+    
