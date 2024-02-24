@@ -337,11 +337,10 @@ class CellTracking(object):
         files = [files[i] for i in file_sort_idxs]
 
         self.batch_files = files
-        self.batch_totalsize = len(files)
         self.batch_size = self._batch_args["batch_size"]
         self.batch_overlap = self._batch_args["batch_overlap"]
         self.batch_rounds = np.int32(
-            np.ceil((self.batch_totalsize) / (self.batch_size - self.batch_overlap))
+            np.ceil((self.total_times) / (self.batch_size - self.batch_overlap))
         )
         self.batch_max = self.batch_rounds - 1
 
@@ -354,6 +353,14 @@ class CellTracking(object):
 
         self.batch_number = -1
         self.batch_all_rounds_times = []
+        
+        # This attribute should store any label changes that should be propagated to further times
+        self.label_correspondance_T = List(
+            [np.empty((0, 2), dtype="uint16") for t in range(self.total_times)]
+        )
+        self.label_correspondance_T_subs = List(
+            [np.empty((0, 2), dtype="uint16") for t in range(self.total_times)]
+        )
         import time
 
         printfancy()
@@ -431,11 +438,6 @@ class CellTracking(object):
         # Currentcellid will be deprecated soon
         self.currentcellid = self.max_label
 
-        # This attribute should store any label changes that should be propagated to further times
-        self.label_correspondance_T = List(
-            [np.empty((0, 2), dtype="uint16") for t in range(len(self.unique_labels_T))]
-        )
-
         # Set initial batch as 0
         self.set_batch(batch_number=0, plotting=False, force=(not self.batch))
         self.init_masks_outlines_stacks()
@@ -468,14 +470,27 @@ class CellTracking(object):
             self.batch_overlap * self.batch_number
         )
         last = first + self.batch_size
-        last = min(last, self.batch_totalsize)
+        last = min(last, self.total_times)
 
         times = [t for t in range(first, last)]
 
         self.batch_times_list = range(len(times))
         self.batch_times_list_global = times
         self.times = len(times)
-
+        
+        # Update labels on new batch
+        substitute_labels(
+                self.batch_times_list_global[0],
+                self.batch_times_list_global[-1] + 1,
+                self.path_to_save,
+                self.label_correspondance_T,
+                self._batch_args,
+            )
+        
+        # Reset label substitution for current batch
+        for t in range(self.batch_times_list_global[0], self.batch_times_list_global[-1] + 1):
+                self.label_correspondance_T[t] = np.empty((0, 2), dtype="uint16")
+                
         self.hyperstack, self.metadata = read_split_times(
             self.path_to_data,
             self.batch_times_list_global,
@@ -919,9 +934,10 @@ class CellTracking(object):
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)
 
-        if hasattr(self, "PACP"):
-            self.PACP.reinit(self)
-
+        # if hasattr(self, "PACP"):
+        #     self.PACP.reinit(self)
+            
+            
     def update_label_pre(self):
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
@@ -931,7 +947,7 @@ class CellTracking(object):
         # on label substitution, but we have to be careful in the future
         update_unique_labels_T(
             self.batch_times_list_global[-1] + 1,
-            self.batch_totalsize,
+            self.total_times,
             self.label_correspondance_T,
             self.unique_labels_T,
         )
@@ -963,7 +979,7 @@ class CellTracking(object):
 
             update_new_label_correspondance(
                 self.batch_times_list_global[0],
-                self.batch_totalsize,
+                self.total_times,
                 self.label_correspondance_T,
                 self.new_label_correspondance_T,
             )
@@ -979,54 +995,42 @@ class CellTracking(object):
                 save_info=False,
             )
 
-            self.new_label_correspondance_T = remove_static_labels_label_correspondance(
-                0, self.batch_totalsize, self.new_label_correspondance_T
+            self.label_correspondance_T = remove_static_labels_label_correspondance(
+                0, self.total_times, self.label_correspondance_T
             )
 
             for apo_ev in self.apoptotic_events:
-                if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]]:
+                if apo_ev[0] in self.label_correspondance_T[apo_ev[1]]:
                     idx = np.where(
-                        self.new_label_correspondance_T[apo_ev[1]][:, 0] == apo_ev[0]
+                        self.label_correspondance_T[apo_ev[1]][:, 0] == apo_ev[0]
                     )
-                    new_lab = self.new_label_correspondance_T[apo_ev[1]][idx[0][0], 1]
+                    new_lab = self.label_correspondance_T[apo_ev[1]][idx[0][0], 1]
                     apo_ev[0] = new_lab
 
             for mito_ev in self.mitotic_events:
                 for mito_cell in mito_ev:
-                    if mito_cell[0] in self.new_label_correspondance_T[mito_cell[1]]:
+                    if mito_cell[0] in self.label_correspondance_T[mito_cell[1]]:
                         idx = np.where(
-                            self.new_label_correspondance_T[mito_cell[1]][:, 0]
+                            self.label_correspondance_T[mito_cell[1]][:, 0]
                             == mito_cell[0]
                         )
-                        new_lab = self.new_label_correspondance_T[mito_cell[1]][
+                        new_lab = self.label_correspondance_T[mito_cell[1]][
                             idx[0][0], 1
                         ]
                         mito_cell[0] = new_lab
 
-            unique_lab_changes = get_unique_lab_changes(self.new_label_correspondance_T)
+            unique_lab_changes = get_unique_lab_changes(self.label_correspondance_T)
 
             for blid, blabel in enumerate(self.blocked_cells):
                 if blabel in unique_lab_changes[:, 0]:
                     post_label_id = np.where(unique_lab_changes[:, 0] == blabel)[0][0]
                     self.blocked_cells[blid] = unique_lab_changes[post_label_id, 1]
-
-            import time
-
-            start = time.time()
-            substitute_labels(
-                self.batch_times_list_global[-1] + 1,
-                self.batch_totalsize,
-                self.path_to_save,
-                self.new_label_correspondance_T,
-                self._batch_args,
-            )
-            end = time.time()
-            # print("elapsed substitute labels", end - start)
+            
+            print(self.label_correspondance_T)
+            # Re-init label_correspondance only for the current and prior batches.
+                        
             self.label_correspondance_T = List(
-                [
-                    np.empty((0, 2), dtype="uint16")
-                    for t in range(len(self.unique_labels_T))
-                ]
+                [np.empty((0, 2), dtype="uint16") for t in range(self.total_times)]
             )
             # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))
 
@@ -2230,6 +2234,8 @@ class CellTracking(object):
             round=0,
         )
         fig, ax = plt.subplots(counter.layout[0], counter.layout[1], figsize=(10, 10))
+        fig.canvas.mpl_connect('close_event', self.on_close_plot_tracking)
+
         if not hasattr(ax, "__iter__"):
             ax = np.array([ax])
         ax = ax.flatten()
@@ -2237,7 +2243,7 @@ class CellTracking(object):
         # Make a horizontal slider to control the time.
         axslide = fig.add_axes([0.10, 0.01, 0.75, 0.03])
 
-        sliderstr1 = "/%d" % (self.batch_totalsize)
+        sliderstr1 = "/%d" % (self.total_times)
         sliderstr2 = "/%d)" % (self.times)
         valfmt = "%d" + sliderstr1 + " ; (%d" + sliderstr2
 
@@ -2246,7 +2252,7 @@ class CellTracking(object):
             label="time",
             initcolor="r",
             valmin=1,
-            valmax=self.batch_totalsize,
+            valmax=self.total_times,
             valinit=(1, 1),
             valstep=1,
             valfmt=valfmt,
@@ -2445,3 +2451,13 @@ class CellTracking(object):
                             self._pos_scatters.append(sc)
 
         plt.subplots_adjust(bottom=0.075)
+
+    def on_close_plot_tracking(self):
+        substitute_labels(
+                0,
+                self.total_times,
+                self.path_to_save,
+                self.new_label_correspondance_T,
+                self._batch_args,
+            )
+        

@@ -117,9 +117,11 @@ def update_unique_labels_T(
 ):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
+        print(postt)
         for lab_change in label_correspondance_T[postt]:
             pre_label = lab_change[0]
             post_label = lab_change[1]
+            print("pre_label =", pre_label)
             id_change = unique_labels_T[postt].index(pre_label)
             unique_labels_T[postt][id_change] = post_label
 

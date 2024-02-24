@@ -103,7 +103,7 @@ class PlotAction:
             self.batch_rounds = CT.batch_rounds
             self.global_times_list = CT.batch_times_list_global
             self.batch_all_rounds_times = CT.batch_all_rounds_times
-            self.total_times = CT.batch_totalsize
+            self.total_times = CT.total_times
             self._split_times = True
         else:
             self.times = CT.times
