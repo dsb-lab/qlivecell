@@ -56,7 +56,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size': 2,
+    'batch_size': 3,
     'batch_overlap':1,
     'name_format':"{}",
     'extension':".tif",
