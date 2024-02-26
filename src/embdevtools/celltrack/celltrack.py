@@ -944,6 +944,7 @@ class CellTracking(object):
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
+        print()
         # iterate over future times and update manually unique_labels_T
         # I think we should assume that there is no going to be conflict
         # on label substitution, but we have to be careful in the future
@@ -953,11 +954,10 @@ class CellTracking(object):
             self.label_correspondance_T,
             self.unique_labels_T,
         )
-
         # Once unique labels are updated, we can safely run label ordering
         # if there are cells, continue
         if self.jitcells:
-
+            
             # Reorder labels on time
             old_labels, new_labels, correspondance = _order_labels_t(
                 self.unique_labels_T, self.max_label
@@ -995,6 +995,7 @@ class CellTracking(object):
                 self.new_label_correspondance_T,
             )
 
+
             # Update subs labels label correspondance T
             # Save current labels into the npy stacks
             save_cells_to_labels_stack(
@@ -1012,6 +1013,7 @@ class CellTracking(object):
             self.new_label_correspondance_T = remove_static_labels_label_correspondance(
                 0, self.total_times, self.new_label_correspondance_T
             )
+
 
             # Update labels on mitotic, apoptotic and blocked cells
             for apo_ev in self.apoptotic_events:
@@ -1043,21 +1045,18 @@ class CellTracking(object):
             
             # Re-init label_correspondance only for the current and prior batches.
             
-            fill_label_correspondance_T_subs(
-                self.label_correspondance_T_subs, 
-                self.new_label_correspondance_T
-            )
-            
             update_label_correspondance_subs(
                 self.batch_times_list_global[0],
                 self.total_times,
                 self.label_correspondance_T_subs,
                 self.new_label_correspondance_T,
             )
-
-            print("new lc =", self.new_label_correspondance_T)
-            print("subs lc =", self.label_correspondance_T_subs)
             
+            # fill_label_correspondance_T_subs(   
+            #     self.label_correspondance_T_subs, 
+            #     self.new_label_correspondance_T
+            # )
+
             self.label_correspondance_T = List(
                 [np.empty((0, 2), dtype="uint16") for t in range(self.total_times)]
             )
@@ -2485,11 +2484,17 @@ class CellTracking(object):
         plt.subplots_adjust(bottom=0.075)
 
     def on_close_plot_tracking(self, event):
+        printfancy("substituting labels on non-loaded batches")
         substitute_labels(
                 0,
                 self.total_times,
                 self.path_to_save,
-                self.new_label_correspondance_T,
+                self.label_correspondance_T_subs,
                 self._batch_args,
             )
-        
+        self.label_correspondance_T_subs = List(
+            [np.empty((0, 2), dtype="uint16") for t in range(self.total_times)]
+        )
+        printfancy("", clear_prev=1)
+        printfancy("Error correction finished")
+

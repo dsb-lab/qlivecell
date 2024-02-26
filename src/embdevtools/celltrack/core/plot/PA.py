@@ -1043,10 +1043,13 @@ class PlotActionCT(PlotAction):
             for jj, _cell in enumerate(self.list_of_cells):
                 _lab = _cell[0]
                 _z = _cell[1]
+                _t = _cell[2]
                 if _lab == lab:
                     if _z in zs:
-                        add_all = False
-                        idxtopop.append(jj)
+                        if _t == self.t:
+                            add_all = False
+                            idxtopop.append(jj)
+                            
             idxtopop.sort(reverse=True)
             for jj in idxtopop:
                 self.list_of_cells.pop(jj)
