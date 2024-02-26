@@ -117,11 +117,9 @@ def update_unique_labels_T(
 ):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
-        print(postt)
         for lab_change in label_correspondance_T[postt]:
             pre_label = lab_change[0]
             post_label = lab_change[1]
-            print("pre_label =", pre_label)
             id_change = unique_labels_T[postt].index(pre_label)
             unique_labels_T[postt][id_change] = post_label
 
@@ -139,6 +137,45 @@ def update_new_label_correspondance(
             post_label = lab_change[1]
             idx = np.where(new_label_correspondance_T[postt][:, 0] == post_label)
             new_label_correspondance_T[postt][idx[0][0], 0] = pre_label
+
+
+
+# Check if the pre_label of a new label change is in the subs label change post
+# If it is there the substitution will be done later, if it is not there, it 
+# will be added. 
+@njit(parallel=False)
+def fill_label_correspondance_T_subs(
+    label_correspondance_T_subs, new_label_correspondance_T
+):
+    
+    for postt in prange(len(label_correspondance_T_subs)):
+        lab_corr_range = prange(len(new_label_correspondance_T[postt]))
+        for lcid in lab_corr_range:
+            lab_change = new_label_correspondance_T[postt][lcid]
+            pre_label = lab_change[0]
+            post_label = lab_change[1]
+            lab_change = np.array([[pre_label, post_label]], dtype="uint16")
+            if pre_label not in label_correspondance_T_subs[postt][:, 1]:
+                label_correspondance_T_subs[postt] = nb_add_row(
+                    label_correspondance_T_subs[postt], lab_change
+                )
+
+
+@njit(parallel=False)
+def update_label_correspondance_subs(
+    post_range_start, post_range_end, label_correspondance_T_subs, new_label_correspondance_T
+):
+    post_range = prange(post_range_start, post_range_end)
+    for postt in post_range:
+        lab_corr_range = prange(len(new_label_correspondance_T[postt]))
+        for lcid in lab_corr_range:
+            lab_change = new_label_correspondance_T[postt][lcid]
+            pre_label = lab_change[0]
+            post_label = lab_change[1]
+            if pre_label in label_correspondance_T_subs[postt][:, 1]:
+                idx = np.where(label_correspondance_T_subs[postt][:, 1] == pre_label)
+                label_correspondance_T_subs[postt][idx[0][0], 1] = post_label
+    return
 
 
 @njit(parallel=True)
