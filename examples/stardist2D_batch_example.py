@@ -76,7 +76,7 @@ if __name__ == "__main__":
         channels=[1, 0]
     )
 
-    CTB.load(load_ct_info=False)
+    CTB.load(load_ct_info=True)
 
     plot_args = {
         'plot_layout': (1,1),

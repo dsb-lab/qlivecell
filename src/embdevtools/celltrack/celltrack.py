@@ -341,9 +341,12 @@ class CellTracking(object):
         self.batch_files = files
         self.batch_size = self._batch_args["batch_size"]
         self.batch_overlap = self._batch_args["batch_overlap"]
+
         self.batch_rounds = np.int32(
             np.ceil((self.total_times) / (self.batch_size - self.batch_overlap))
         )
+        if self.batch_size - self.batch_overlap == 1:
+            self.batch_rounds -= 1
         self.batch_max = self.batch_rounds - 1
 
         # loop over all rounds to confirm all can be loaded and compute the absolute max_label and cellid
@@ -944,7 +947,6 @@ class CellTracking(object):
         self.jitcells_selected = self.jitcells
         self.update_label_attributes()
 
-        print()
         # iterate over future times and update manually unique_labels_T
         # I think we should assume that there is no going to be conflict
         # on label substitution, but we have to be careful in the future
@@ -2485,6 +2487,7 @@ class CellTracking(object):
 
     def on_close_plot_tracking(self, event):
         printfancy("substituting labels on non-loaded batches")
+        self.update_labels()
         substitute_labels(
                 0,
                 self.total_times,
@@ -2495,6 +2498,6 @@ class CellTracking(object):
         self.label_correspondance_T_subs = List(
             [np.empty((0, 2), dtype="uint16") for t in range(self.total_times)]
         )
-        printfancy("", clear_prev=1)
-        printfancy("Error correction finished")
+        printfancy("")
+        printfancy("Error correction finished", clear_prev=2)
 
