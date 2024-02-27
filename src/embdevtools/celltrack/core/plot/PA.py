@@ -483,6 +483,8 @@ class PlotActionCT(PlotAction):
             elif event.key == "m":
                 self._reset_CP()
                 self.switch_masks(masks=None)
+            elif event.key == "v":
+                self.show_conflict_cells()
             elif event.key == "l":
                 self.switch_centers(point=True)
             elif event.key == "L":
@@ -742,7 +744,9 @@ class PlotActionCT(PlotAction):
 
         elif self.current_state in ["Del", "pic", None]:
             cells_to_plot = self.sort_list_of_cells()
-            cells_string = ["cell=" + str(x[0]) for x in cells_to_plot]
+            labs = [x[0] for x in cells_to_plot]
+            labs = np.unique(labs)
+            cells_string = ["cell=" + str(l) for l in labs]
             zs = [x[1] for x in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
         else:
@@ -912,53 +916,62 @@ class PlotActionCT(PlotAction):
         if lab is None:
             return
         cell = [lab, z, self.t]
-        if cell not in self.list_of_cells:
-            self.list_of_cells.append(cell)
-        else:
-            self.list_of_cells.remove(cell)
 
         lcells = np.array(self.list_of_cells)
         if self.ctrl_is_held:
-            if lab in lcells[:,0]:
-                idxtopop=[]
-                for jj, _cell in enumerate(self.list_of_cells):
-                    if _cell[0] == lab:
-                        idxtopop.append(jj)
-                idxtopop.sort(reverse=True)
-                for jj in idxtopop:
-                    self.list_of_cells.pop(jj)
+            if len(lcells)>0:
+                if lab in lcells[:,0]:
+                    idxtopop=[]
+                    for jj, _cell in enumerate(self.list_of_cells):
+                        if _cell[0] == lab:
+                            idxtopop.append(jj)
+                    idxtopop.sort(reverse=True)
+                    for jj in idxtopop:
+                        self.list_of_cells.pop(jj)
+                else:
+                    jitcell = CT_cell = _get_cell(self.jitcells_selected, label=lab)
+                    for tid, t in enumerate(jitcell.times):
+                        for zid, z in enumerate(jitcell.zs[tid]):
+                            self.list_of_cells.append([lab, z, t])
             else:
                 jitcell = CT_cell = _get_cell(self.jitcells_selected, label=lab)
                 for tid, t in enumerate(jitcell.times):
                     for zid, z in enumerate(jitcell.zs[tid]):
                         self.list_of_cells.append([lab, z, t])
-        
-        elif event.dblclick == True:
-            self.update()
-            self.reploting()
-            for id_cell, CT_cell in enumerate(self.jitcells_selected):
-                if lab == CT_cell.label:
-                    idx_lab = id_cell
-            tcell = self.jitcells_selected[idx_lab].times.index(self.t)
-            zs = self.jitcells_selected[idx_lab].zs[tcell]
-            add_all = True
-            idxtopop = []
-            for jj, _cell in enumerate(self.list_of_cells):
-                _lab = _cell[0]
-                _z = _cell[1]
-                _t = _cell[2]
-                if _lab == lab:
-                    if _z in zs:
-                        if _t == self.t:
-                            add_all = False
-                            idxtopop.append(jj)
-                            
-            idxtopop.sort(reverse=True)
-            for jj in idxtopop:
-                self.list_of_cells.pop(jj)
-            if add_all:
-                for zz in zs:
-                    self.list_of_cells.append([lab, zz, self.t])
+
+        else:
+            if cell not in self.list_of_cells:
+                self.list_of_cells.append(cell)
+            else:
+                self.list_of_cells.remove(cell)
+
+            if event.dblclick == True:
+                self.update()
+                self.reploting()
+                for id_cell, CT_cell in enumerate(self.jitcells_selected):
+                    if lab == CT_cell.label:
+                        idx_lab = id_cell
+                tcell = self.jitcells_selected[idx_lab].times.index(self.t)
+                zs = self.jitcells_selected[idx_lab].zs[tcell]
+                add_all = True
+                idxtopop = []
+                for jj, _cell in enumerate(self.list_of_cells):
+                    _lab = _cell[0]
+                    _z = _cell[1]
+                    _t = _cell[2]
+                    if _lab == lab:
+                        if _z in zs:
+                            if _t == self.t:
+                                add_all = False
+                                idxtopop.append(jj)
+                                
+                idxtopop.sort(reverse=True)
+                for jj in idxtopop:
+                    self.list_of_cells.pop(jj)
+                if add_all:
+                    for zz in zs:
+                        self.list_of_cells.append([lab, zz, self.t])
+
         self.update()
         self.reploting()
 
@@ -997,6 +1010,9 @@ class PlotActionCT(PlotAction):
         if number:
             self.CTplot_args["plot_centers"][1] = not self.CTplot_args["plot_centers"][1]
         self.visualization()
+
+    def show_conflict_cells():
+        pass
 
     def block_cells(self):
         self.title.set(text="BLOCK CELLS", ha="left", x=0.01)

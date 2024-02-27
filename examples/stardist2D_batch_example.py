@@ -56,7 +56,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size': 2,
+    'batch_size': 5,
     'batch_overlap':1,
     'name_format':"{}",
     'extension':".tif",
@@ -88,4 +88,3 @@ if __name__ == "__main__":
         'min_outline_length':75
     }
     CTB.plot_tracking(plot_args=plot_args)
-

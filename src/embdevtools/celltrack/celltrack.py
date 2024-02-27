@@ -102,6 +102,7 @@ plt.rcParams["keymap.yscale"].remove("l")
 plt.rcParams["keymap.pan"].remove("p")
 plt.rcParams["keymap.zoom"][0] = ","
 plt.rcParams["keymap.back"].remove("c")
+plt.rcParams["keymap.xscale"].remove("L")
 
 PLTLINESTYLES = list(lineStyles.keys())
 PLTMARKERS = ["", ".", "o", "d", "s", "P", "*", "X", "p", "^"]
@@ -580,7 +581,6 @@ class CellTracking(object):
         print("###############        LOADING AND INITIALIZING       ################")
         printfancy()
         printfancy()
-        
         
         if load_ct_info:
             self.CT_info = load_CT_info(self.path_to_save)
@@ -1349,6 +1349,7 @@ class CellTracking(object):
             mode="masks",
             rem=True,
         )
+
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
@@ -2131,6 +2132,7 @@ class CellTracking(object):
             "- L : show/hide cell label",
             "- o : show/hide outlines",
             "- m : show/hide masks",
+            "- v : show conflicting cells",
             "- u : update labels and save cells",
             "- q : quit plot",
             "- scroll : change z-plane",
