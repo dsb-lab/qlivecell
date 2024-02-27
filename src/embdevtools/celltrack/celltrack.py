@@ -634,7 +634,6 @@ class CellTracking(object):
         if self._seg_args["method"] is None:
             raise Exception("no segmentation method provided")
 
-        print()
         print("###############          BEGIN SEGMENTATIONS          ################")
         printfancy("")
         printfancy("")
@@ -2127,8 +2126,9 @@ class CellTracking(object):
             "- S : separate cells - t",
             "- A : apoptotic event",
             "- M : mitotic events",
-            "- z : undo previous action",
-            "- Z : undo all actions",
+            "- b : block cells",
+            "- l : show/hide cell centers",
+            "- L : show/hide cell label",
             "- o : show/hide outlines",
             "- m : show/hide masks",
             "- u : update labels and save cells",

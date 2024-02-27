@@ -219,7 +219,7 @@ checks necessary arguments.
 
 def check_tracking_args(tracking_arguments, available_tracking=["greedy", "hungarian"]):
     if "method" not in tracking_arguments.keys():
-        printfancy("No tracking method provided. Using greedy algorithm")
+        printfancy("No tracking method provided. Using greedy algorithm (if needed)")
         printfancy()
         tracking_arguments["method"] = "greedy"
 

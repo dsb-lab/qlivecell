@@ -260,11 +260,7 @@ class PlotAction:
             del self.CTlist_of_cells[:]
             del self.CTmito_cells[:]
 
-            try:
-                self.CP.stopit()
-                delattr(self, "CP")
-            except AttributeError:
-                pass
+            self._reset_CP()
 
             self.current_subplot = None
             self.past_state = self.current_state
@@ -433,46 +429,49 @@ class PlotActionCT(PlotAction):
         if self.current_state == None:
             if event.key == "d":
                 # self.CTone_step_copy(self.t)
+                self._reset_CP()
                 self.current_state = "del"
                 self.switch_masks(masks=False)
                 self.delete_cells()
             if event.key == "D":
                 # self.CTone_step_copy(self.t)
+                self._reset_CP()
                 self.current_state = "Del"
                 self.switch_masks(masks=False)
                 self.delete_cells_in_batch()
             elif event.key == "C":
                 # self.CTone_step_copy(self.t)
+                self._reset_CP()
                 self.current_state = "Com"
                 self.switch_masks(masks=False)
                 self.combine_cells_t()
             elif event.key == "c":
                 # self.CTone_step_copy(self.t)
+                self._reset_CP()
                 self.current_state = "com"
                 self.switch_masks(masks=False)
                 self.combine_cells_z()
             elif event.key == "j":
                 # self.CTone_step_copy(self.t)
+                self._reset_CP()
                 self.current_state = "joi"
                 self.switch_masks(masks=False)
                 self.join_cells()
             elif event.key == "M":
                 # self.CTone_step_copy(self.t)
+                self._reset_CP()
                 self.current_state = "mit"
                 self.switch_masks(masks=False)
                 self.mitosis()
             if event.key == "a":
                 # self.CTone_step_copy()
+                self._reset_CP()
                 self.current_state = "add"
                 self.switch_masks(masks=False)
                 self.add_cells()
-            if event.key == "p":
-                self.CTupdate_labels()
-                self.current_state = "pic"
-                self.switch_masks(masks=False)
-                self.pick_cells()
             elif event.key == "A":
                 # self.CTone_step_copy(self.t)
+                self._reset_CP()
                 self.current_state = "apo"
                 self.switch_masks(masks=False)
                 self.apoptosis()
@@ -482,28 +481,36 @@ class PlotActionCT(PlotAction):
                 self.plot_outlines = not self.plot_outlines
                 self.visualization()
             elif event.key == "m":
+                self._reset_CP()
                 self.switch_masks(masks=None)
             elif event.key == "l":
-                self.switch_centers()
+                self.switch_centers(point=True)
+            elif event.key == "L":
+                self.switch_centers(number=True)
             elif event.key == "b":
+                self._reset_CP()
                 self.current_state = "blo"
                 self.switch_masks(masks=False)
                 self.block_cells()
             elif event.key == "S":
                 # self.CTone_step_copy(self.t)
+                self._reset_CP()
                 self.current_state = "Sep"
                 self.switch_masks(masks=False)
                 self.separate_cells_t()
             elif event.key == "u":
+                self._reset_CP()
                 self.CTupdate_labels()
                 self.visualization()
                 self.update()
             elif event.key == "z":
                 # self.CTundo_corrections(all=False)
+                self._reset_CP()
                 self.visualization()
                 self.update()
             elif event.key == "Z":
                 # self.CTundo_corrections(all=True)
+                self._reset_CP()
                 self.visualization()
                 self.update()
             elif event.key == "s":
@@ -529,11 +536,8 @@ class PlotActionCT(PlotAction):
                     if hasattr(self, "linebuilder"):
                         self.linebuilder.stopit()
                         delattr(self, "linebuilder")
-                try:
-                    self.CP.stopit()
-                    delattr(self, "CP")
-                except AttributeError:
-                    pass
+                
+                self._reset_CP()
 
                 del self.list_of_cells[:]
                 del self.CTlist_of_cells[:]
@@ -736,7 +740,7 @@ class PlotActionCT(PlotAction):
             zs = [-1 for _ in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
 
-        elif self.current_state in ["Del", "pic"]:
+        elif self.current_state in ["Del", "pic", None]:
             cells_to_plot = self.sort_list_of_cells()
             cells_string = ["cell=" + str(x[0]) for x in cells_to_plot]
             zs = [x[1] for x in cells_to_plot]
@@ -896,6 +900,68 @@ class PlotActionCT(PlotAction):
 
             return final_cells
 
+    def cell_picking(self):
+        self.CP = CellPicker(self.fig.canvas, self.cell_picking_callback)
+
+    def cell_picking_callback(self, event):
+        inaxis = get_axis_PACP(self, event)
+        if not inaxis:
+            return
+        lab, z = get_cell_PACP(self, event)
+
+        if lab is None:
+            return
+        cell = [lab, z, self.t]
+        if cell not in self.list_of_cells:
+            self.list_of_cells.append(cell)
+        else:
+            self.list_of_cells.remove(cell)
+
+        lcells = np.array(self.list_of_cells)
+        if self.ctrl_is_held:
+            if lab in lcells[:,0]:
+                idxtopop=[]
+                for jj, _cell in enumerate(self.list_of_cells):
+                    if _cell[0] == lab:
+                        idxtopop.append(jj)
+                idxtopop.sort(reverse=True)
+                for jj in idxtopop:
+                    self.list_of_cells.pop(jj)
+            else:
+                jitcell = CT_cell = _get_cell(self.jitcells_selected, label=lab)
+                for tid, t in enumerate(jitcell.times):
+                    for zid, z in enumerate(jitcell.zs[tid]):
+                        self.list_of_cells.append([lab, z, t])
+        
+        elif event.dblclick == True:
+            self.update()
+            self.reploting()
+            for id_cell, CT_cell in enumerate(self.jitcells_selected):
+                if lab == CT_cell.label:
+                    idx_lab = id_cell
+            tcell = self.jitcells_selected[idx_lab].times.index(self.t)
+            zs = self.jitcells_selected[idx_lab].zs[tcell]
+            add_all = True
+            idxtopop = []
+            for jj, _cell in enumerate(self.list_of_cells):
+                _lab = _cell[0]
+                _z = _cell[1]
+                _t = _cell[2]
+                if _lab == lab:
+                    if _z in zs:
+                        if _t == self.t:
+                            add_all = False
+                            idxtopop.append(jj)
+                            
+            idxtopop.sort(reverse=True)
+            for jj in idxtopop:
+                self.list_of_cells.pop(jj)
+            if add_all:
+                for zz in zs:
+                    self.list_of_cells.append([lab, zz, self.t])
+        self.update()
+        self.reploting()
+
     def switch_masks(self, masks=None):
         if masks is None:
             if self.CTplot_masks is None:
@@ -925,10 +991,11 @@ class PlotActionCT(PlotAction):
             )
         self.visualization()
 
-    def switch_centers(self):
-        self.CTplot_args["plot_centers"] = [
-            not i for i in self.CTplot_args["plot_centers"]
-        ]
+    def switch_centers(self, point=False, number=False):
+        if point:
+            self.CTplot_args["plot_centers"][0] = not self.CTplot_args["plot_centers"][0]
+        if number:
+            self.CTplot_args["plot_centers"][1] = not self.CTplot_args["plot_centers"][1]
         self.visualization()
 
     def block_cells(self):
@@ -1353,13 +1420,22 @@ class PlotActionCT(PlotAction):
         self.reploting()
 
     def visualization(self):
+        self._reset_CP()
         self.update()
         self.title.set(text="VISUALIZATION MODE", ha="left", x=0.01)
         self.instructions.set(text="Chose one of the actions to change mode")
         self.fig.patch.set_facecolor((1.0, 1.0, 1.0, 1.0))
         self.instructions.set_backgroundcolor((0.0, 0.0, 0.0, 0.1))
+        self.cell_picking()
         self.reploting()
 
+    def _reset_CP(self):
+        del self.list_of_cells[:]
+        try:
+            self.CP.stopit()
+            delattr(self, "CP")
+        except AttributeError:
+            pass
 
 class PlotActionCellPicker(PlotAction):
     def __init__(self, *args, **kwargs):
