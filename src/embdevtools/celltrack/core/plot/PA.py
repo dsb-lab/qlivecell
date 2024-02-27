@@ -107,6 +107,7 @@ class PlotAction:
             self._split_times = True
         else:
             self.times = CT.times
+            self.total_times = CT.times
             self.global_times_list = range(self.times)
             self._split_times = False
 

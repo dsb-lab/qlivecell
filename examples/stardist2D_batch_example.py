@@ -88,3 +88,13 @@ if __name__ == "__main__":
         'min_outline_length':75
     }
     CTB.plot_tracking(plot_args=plot_args)
+
+
+# import napari
+
+# xyres = CTB.metadata["XYresolution"]
+# zres = CTB.metadata["Zresolution"]
+
+# img = CTB._masks_stack.astype(float)
+# viewer = napari.view_image(img/255.0, name='masks', scale=(zres, xyres, xyres), rgb=True)
+# viewer.dims.ndisplay = 3

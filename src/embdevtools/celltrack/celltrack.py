@@ -893,7 +893,7 @@ class CellTracking(object):
 
     def _get_number_of_conflicts(self):
         # TODO need to compute conflict number per time
-        total_hints = np.sum([len(h) for hh in self.hints for h in hh])
+        total_hints = np.sum([len(h) for hh in self.hints for h in hh], dtype="int32")
         total_marked_apo = len(self.apoptotic_events)
         total_marked_mito = len(self.mitotic_events) * 3
         total_marked = total_marked_apo + total_marked_mito
@@ -2387,7 +2387,7 @@ class CellTracking(object):
                             self._annotations.append(ano)
 
         plt.subplots_adjust(bottom=0.075)
-        plt.show()
+        plt.show(block=True)
 
     def replot_axis(self, img, z, t, imid, plot_outlines=True):
         self._imshows[imid].set_array(img)
