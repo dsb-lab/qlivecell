@@ -816,8 +816,8 @@ class PlotActionCT(PlotAction):
                 times_to_plot,
                 zs_to_plot,
             )
-
-            color_napari = color[:3] * color[-1]
+            color_napari = color[:3] * (color[-1]/255)
+            color_napari = color_napari.astype("uint8")
             set_cell_color(
                 self._napari_masks_stack,
                 jitcell.masks,
@@ -867,7 +867,8 @@ class PlotActionCT(PlotAction):
                 zs_to_plot,
             )
 
-            color_napari = color[:3] * color[-1]
+            color_napari = color[:3] * (color[-1]/255)
+            color_napari = color_napari.astype("uint8")
             set_cell_color(
                 self._napari_masks_stack,
                 jitcell.masks,
@@ -1041,7 +1042,8 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 -1,
             )
-            color_napari = color[:3] * color[-1]
+            color_napari = color[:3] * (color[-1]/255)
+            color_napari = color_napari.astype("uint8")
             set_cell_color(
                 self._napari_masks_stack,
                 jitcell.masks,
@@ -1539,11 +1541,6 @@ class PlotActionCT(PlotAction):
         except AttributeError:
             pass
 
-from numba import njit
-@njit(fastmath=True)
-def numba_mult(array1, array2):
-    array3 = array1*array2
-    return array3
 
 class PlotActionCellPicker(PlotAction):
     def __init__(self, *args, **kwargs):
