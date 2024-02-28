@@ -2134,6 +2134,7 @@ class CellTracking(object):
             "- m : show/hide masks",
             "- v : show conflicting cells",
             "- u : update labels and save cells",
+            "- 3 : show 3D napari rendering", 
             "- q : quit plot",
             "- scroll : change z-plane",
             "- ctrl + scroll : change time",
@@ -2387,7 +2388,7 @@ class CellTracking(object):
                             self._annotations.append(ano)
 
         plt.subplots_adjust(bottom=0.075)
-        plt.show(block=True)
+        plt.show(block=False)
 
     def replot_axis(self, img, z, t, imid, plot_outlines=True):
         self._imshows[imid].set_array(img)

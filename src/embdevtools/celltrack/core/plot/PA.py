@@ -4,7 +4,8 @@ from copy import copy
 import matplotlib as mtp
 import numpy as np
 from numba.typed import List
-
+import napari
+import gc
 from ..dataclasses import construct_Cell_from_jitCell
 from ..tools.ct_tools import get_cell_color, set_cell_color
 from ..tools.save_tools import save_cells
@@ -95,6 +96,10 @@ class PlotAction:
         self._plot_args = CT._plot_args
 
         self._masks_stack = CT._masks_stack
+        self._napari_masks_stack = self._masks_stack[:,:,:,:,:3].copy()
+        self._plot_stack = CT.plot_stacks
+
+        self._3d_on = False
         self.scl = fig.canvas.mpl_connect("scroll_event", self.onscroll)
         self.batch = CT.batch
         if self.batch:
@@ -173,6 +178,8 @@ class PlotAction:
         self.jitcells = CT.jitcells
         self.jitcells_selected = CT.jitcells_selected
         self._masks_stack = CT._masks_stack
+        self._napari_masks_stack = self._masks_stack[:,:,:,:,:3].copy()
+        self._plot_stack = CT.plot_stacks
 
         self.CTlist_of_cells = CT.list_of_cells
         self.CTmito_cells = CT.mito_cells
@@ -430,13 +437,10 @@ class PlotActionCT(PlotAction):
         if self.current_state == None:
             if event.key == "d":
                 # self.CTone_step_copy(self.t)
-                print()
-                print("ENTERING DELETE CELLS")
                 self._reset_CP()
                 self.current_state = "del"
                 self.switch_masks(masks=False)
                 self.delete_cells()
-                print("post delete_cells call")
             if event.key == "D":
                 # self.CTone_step_copy(self.t)
                 self._reset_CP()
@@ -509,6 +513,11 @@ class PlotActionCT(PlotAction):
                 self.CTupdate_labels()
                 self.visualization()
                 self.update()
+            elif event.key =="3":
+                self._reset_CP()
+                self.viewer3D()
+                self.visualization()
+                self.update()
             elif event.key == "z":
                 # self.CTundo_corrections(all=False)
                 self._reset_CP()
@@ -531,7 +540,7 @@ class PlotActionCT(PlotAction):
                     save_info=True,
                 )
             self.update()
-            print("after update on key handling")
+
         else:
             if event.key == "escape":
                 if self.current_state == "add":
@@ -808,6 +817,18 @@ class PlotActionCT(PlotAction):
                 zs_to_plot,
             )
 
+            color_napari = color[:3] * color[-1]
+            set_cell_color(
+                self._napari_masks_stack,
+                jitcell.masks,
+                jitcell.times,
+                jitcell.zs,
+                color_napari,
+                self._plot_args["dim_change"],
+                times_to_plot,
+                zs_to_plot,
+            )
+
         labs_z_to_remove = [
             lab_z_t
             for lab_z_t in self._pre_labs_z_to_plot
@@ -846,6 +867,18 @@ class PlotActionCT(PlotAction):
                 zs_to_plot,
             )
 
+            color_napari = color[:3] * color[-1]
+            set_cell_color(
+                self._napari_masks_stack,
+                jitcell.masks,
+                jitcell.times,
+                jitcell.zs,
+                color_napari,
+                self._plot_args["dim_change"],
+                times_to_plot,
+                zs_to_plot,
+            )
+
         self._pre_labs_z_to_plot = labs_z_to_plot
 
         self.selected_cells.set(fontsize=width_or_height / scale1)
@@ -870,6 +903,8 @@ class PlotActionCT(PlotAction):
                 fontsize=width_or_height / scale2,
             )
 
+        if self._3d_on:
+            self.update_3Dviewer3D()
         self.past_state = None
         self.title.set(fontsize=width_or_height / scale2)
         self.fig.subplots_adjust(top=0.9, left=0.1)
@@ -909,11 +944,9 @@ class PlotActionCT(PlotAction):
             return final_cells
 
     def cell_picking(self):
-        print("holi")
         self.CP = CellPicker(self.fig.canvas, self.cell_picking_callback)
 
     def cell_picking_callback(self, event):
-        print("should not be here hehe")
         inaxis = get_axis_PACP(self, event)
         if not inaxis:
             return
@@ -1004,6 +1037,17 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color,
+                self._plot_args["dim_change"],
+                jitcell.times,
+                -1,
+            )
+            color_napari = color[:3] * color[-1]
+            set_cell_color(
+                self._napari_masks_stack,
+                jitcell.masks,
+                jitcell.times,
+                jitcell.zs,
+                color_napari,
                 self._plot_args["dim_change"],
                 jitcell.times,
                 -1,
@@ -1105,9 +1149,7 @@ class PlotActionCT(PlotAction):
         )
         self.instructions.set_backgroundcolor((1.0, 0.0, 0.0, 0.4))
         self.fig.patch.set_facecolor((1.0, 0.0, 0.0, 0.1))
-        print("pre cell picker definition")
         self.CP = CellPicker(self.fig.canvas, self.delete_cells_callback)
-        print("defined cell picker")
         
     def delete_cells_callback(self, event):
         inaxis = get_axis_PACP(self, event)
@@ -1115,8 +1157,6 @@ class PlotActionCT(PlotAction):
         if not inaxis:
             return
         lab, z = get_cell_PACP(self, event)
-        print(self.list_of_cells)
-        print(lab)
         if lab is None:
             return
         cell = [lab, z, self.t]
@@ -1454,6 +1494,33 @@ class PlotActionCT(PlotAction):
         self.update()
         self.reploting()
 
+    def viewer3D(self):        
+        self._3d_on = True
+        xyres = self.CT_info.xyresolution
+        zres = self.CT_info.zresolution
+
+        img_stack = self._plot_stack
+
+        self.napari_viewer = napari.view_image(img_stack, name='hyperstack', scale=(zres, xyres, xyres), rgb=False, ndisplay=3)
+        self.napari_viewer.add_image(self._napari_masks_stack, name='masks', scale=(zres, xyres, xyres), channel_axis=-1, colormap=['red', 'green', 'blue'], rendering='iso')
+        
+        self.update_3Dviewer3D()
+
+    def update_3Dviewer3D(self):
+        if napari.current_viewer() == None:
+            self._3d_on = False
+            return
+
+        l = 0
+        for layer in self.napari_viewer.layers:
+            if "masks" in layer.name:
+                layer.data = self._napari_masks_stack[:,:,:,:,l]
+                layer.rendering="iso"
+                layer.opacity = 0.3        
+                layer.contrast_limits = [0 , 255]
+                layer.iso_threshold = 0.0
+                l+=1
+
     def visualization(self):
         self._reset_CP()
         self.update()
@@ -1467,11 +1534,16 @@ class PlotActionCT(PlotAction):
     def _reset_CP(self):
         del self.list_of_cells[:]
         try:
-            print("resetting")
             self.CP.stopit()
             delattr(self, "CP")
         except AttributeError:
-            print("DA FAAAAK")
+            pass
+
+from numba import njit
+@njit(fastmath=True)
+def numba_mult(array1, array2):
+    array3 = array1*array2
+    return array3
 
 class PlotActionCellPicker(PlotAction):
     def __init__(self, *args, **kwargs):
