@@ -430,10 +430,13 @@ class PlotActionCT(PlotAction):
         if self.current_state == None:
             if event.key == "d":
                 # self.CTone_step_copy(self.t)
+                print()
+                print("ENTERING DELETE CELLS")
                 self._reset_CP()
                 self.current_state = "del"
                 self.switch_masks(masks=False)
                 self.delete_cells()
+                print("post delete_cells call")
             if event.key == "D":
                 # self.CTone_step_copy(self.t)
                 self._reset_CP()
@@ -528,7 +531,7 @@ class PlotActionCT(PlotAction):
                     save_info=True,
                 )
             self.update()
-
+            print("after update on key handling")
         else:
             if event.key == "escape":
                 if self.current_state == "add":
@@ -906,9 +909,11 @@ class PlotActionCT(PlotAction):
             return final_cells
 
     def cell_picking(self):
+        print("holi")
         self.CP = CellPicker(self.fig.canvas, self.cell_picking_callback)
 
     def cell_picking_callback(self, event):
+        print("should not be here hehe")
         inaxis = get_axis_PACP(self, event)
         if not inaxis:
             return
@@ -1016,6 +1021,7 @@ class PlotActionCT(PlotAction):
         pass
 
     def block_cells(self):
+        self._reset_CP()
         self.title.set(text="BLOCK CELLS", ha="left", x=0.01)
         self.instructions.set(text="Right-click to select cells to block")
         self.instructions.set_backgroundcolor((0.26, 0.16, 0.055, 0.4))
@@ -1050,6 +1056,7 @@ class PlotActionCT(PlotAction):
         self.reploting()
 
     def add_cells(self):
+        self._reset_CP()
         self.title.set(text="ADD CELL MODE", ha="left", x=0.01)
         if hasattr(self, "CP"):
             self.current_subplot = self.CP.current_subplot
@@ -1091,21 +1098,25 @@ class PlotActionCT(PlotAction):
             self.CTadd_cell(self)
 
     def delete_cells(self):
+        self._reset_CP()
         self.title.set(text="DELETE CELL", ha="left", x=0.01)
         self.instructions.set(
             text="Right-click to delete cell on a plane\nDouble right-click to delete on all planes"
         )
         self.instructions.set_backgroundcolor((1.0, 0.0, 0.0, 0.4))
         self.fig.patch.set_facecolor((1.0, 0.0, 0.0, 0.1))
+        print("pre cell picker definition")
         self.CP = CellPicker(self.fig.canvas, self.delete_cells_callback)
-
+        print("defined cell picker")
+        
     def delete_cells_callback(self, event):
         inaxis = get_axis_PACP(self, event)
 
         if not inaxis:
             return
         lab, z = get_cell_PACP(self, event)
-
+        print(self.list_of_cells)
+        print(lab)
         if lab is None:
             return
         cell = [lab, z, self.t]
@@ -1144,6 +1155,7 @@ class PlotActionCT(PlotAction):
         self.reploting()
 
     def delete_cells_in_batch(self):
+        self._reset_CP()
         self.title.set(text="DELETE CELL (all times)", ha="left", x=0.01)
         self.instructions.set(text="Right-click to select cell to delete")
         self.instructions.set_backgroundcolor((1.0, 0.0, 0.0, 0.4))
@@ -1167,6 +1179,7 @@ class PlotActionCT(PlotAction):
         self.reploting()
 
     def join_cells(self):
+        self._reset_CP()
         self.title.set(text="JOIN CELLS", ha="left", x=0.01)
         self.instructions.set(text="Rigth-click to select cells to be combined")
         self.instructions.set_backgroundcolor((0.5, 0.5, 1.0, 0.4))
@@ -1204,6 +1217,7 @@ class PlotActionCT(PlotAction):
         self.reploting()
 
     def combine_cells_z(self):
+        self._reset_CP()
         self.title.set(text="COMBINE CELLS MODE - z", ha="left", x=0.01)
         self.instructions.set(text="Rigth-click to select cells to be combined")
         self.instructions.set_backgroundcolor((0.0, 0.0, 1.0, 0.4))
@@ -1260,6 +1274,7 @@ class PlotActionCT(PlotAction):
         self.reploting()
 
     def combine_cells_t(self):
+        self._reset_CP()
         self.title.set(text="COMBINE CELLS MODE - t", ha="left", x=0.01)
         self.instructions.set(text="Rigth-click to select cells to be combined")
         self.instructions.set_backgroundcolor((1.0, 0.0, 1.0, 0.4))
@@ -1292,6 +1307,7 @@ class PlotActionCT(PlotAction):
         self.reploting()
 
     def separate_cells_t(self):
+        self._reset_CP()
         self.title.set(text="SEPARATE CELLS - t", ha="left", x=0.01)
         self.instructions.set(text="Rigth-click to select cells to be separated")
         self.instructions.set_backgroundcolor((1.0, 1.0, 0.0, 0.4))
@@ -1332,6 +1348,7 @@ class PlotActionCT(PlotAction):
         self.reploting()
 
     def mitosis(self):
+        self._reset_CP()
         self.title.set(text="DETECT MITOSIS", ha="left", x=0.01)
         self.instructions.set(
             text="Right-click to SELECT THE MOTHER (1) AND DAUGHTER (2) CELLS"
@@ -1380,6 +1397,7 @@ class PlotActionCT(PlotAction):
         self.reploting()
 
     def apoptosis(self):
+        self._reset_CP()
         self.title.set(text="DETECT APOPTOSIS", ha="left", x=0.01)
         self.instructions.set(text="Right-click to select apoptotic cells")
         self.instructions.set_backgroundcolor((0.0, 0.0, 0.0, 0.4))
@@ -1449,10 +1467,11 @@ class PlotActionCT(PlotAction):
     def _reset_CP(self):
         del self.list_of_cells[:]
         try:
+            print("resetting")
             self.CP.stopit()
             delattr(self, "CP")
         except AttributeError:
-            pass
+            print("DA FAAAAK")
 
 class PlotActionCellPicker(PlotAction):
     def __init__(self, *args, **kwargs):
