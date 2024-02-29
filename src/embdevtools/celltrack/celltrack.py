@@ -378,7 +378,7 @@ class CellTracking(object):
             start = time.time()
             self.set_batch(batch_number=r, plotting=False, init_cells=False)
             end = time.time()
-            # print("elapsed 1", end - start)
+            print("elapsed 1", end - start)
 
             # Save batch times
             self.batch_all_rounds_times.append(self.batch_times_list_global)
@@ -392,7 +392,7 @@ class CellTracking(object):
                 extension=".npy",
             )
             end = time.time()
-            # print("elapsed 2", end - start)
+            print("elapsed 2", end - start)
 
             # If first round, keep the unique labels for all times,
             # else, remove the first elements depending on the batch overlap to avoid duplidicity
@@ -408,14 +408,14 @@ class CellTracking(object):
                 labels, start_id, labels.shape[0]
             )
             end = time.time()
-            # print("elapsed 3", end - start)
+            print("elapsed 3", end - start)
 
             # Since the above function is runned in parallel, times have to be reordered
             start = time.time()
             new_order = np.argsort(order)
             unique_labels_T_step = reorder_list(unique_labels_T_step, new_order)
             end = time.time()
-            # print("elapsed 4", end - start)
+            print("elapsed 4", end - start)
             start = time.time()
 
             # Combine values for current batch to the previus ones
@@ -425,10 +425,10 @@ class CellTracking(object):
                 combine_lists(unique_labels_T, unique_labels_T_step)
 
             end = time.time()
-            # print("elapsed 5", end - start)
+            print("elapsed 5", end - start)
             printclear()
             end_final = time.time()
-            # print("elapsed total", end_final - start_init)
+            print("elapsed total", end_final - start_init)
 
         printclear()
 
@@ -514,6 +514,11 @@ class CellTracking(object):
         if update_labels:
             self.update_labels()
 
+        if hasattr(self, "PACP"):
+            self.PACP.reinit(self)
+            if self.PACP._3d_on:
+                self.PACP.update_3Dviewer3D(update_plot_stacks=True)
+        
         printfancy("batch number {} set".format(self.batch_number + 1), clear_prev=1)
         printclear(2)
         printfancy()

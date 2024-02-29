@@ -234,7 +234,12 @@ class PlotAction:
                     self.bn = bn
                     break
             self.reset_state()
+            import time
+            print()
+            start = time.time()
             self.set_batch(batch_number=self.bn, update_labels=True)
+            end = time.time()
+            print("BATCH SETTED ", end - start)
             self.t = 0
             self.tg = self.global_times_list[self.t]
             if self.batch:
@@ -292,8 +297,12 @@ class PlotAction:
         self.bn = max(self.bn, 0)
         self.bn = min(self.bn, self.batch_rounds - 1)
 
+        import time
+        print()
+        start = time.time()
         self.set_batch(batch_number=self.bn, update_labels=True)
-
+        end = time.time()
+        print("BATCH SETTED ", end - start)
         self.t = 0
         self.tg = self.global_times_list[self.t]
         if self.batch:
@@ -1500,15 +1509,13 @@ class PlotActionCT(PlotAction):
         self._3d_on = True
         xyres = self.CT_info.xyresolution
         zres = self.CT_info.zresolution
-
-        img_stack = self._plot_stack
-
-        self.napari_viewer = napari.view_image(img_stack, name='hyperstack', scale=(zres, xyres, xyres), rgb=False, ndisplay=3)
+        
+        self.napari_viewer = napari.view_image(self._plot_stack, name='hyperstack', scale=(zres, xyres, xyres), rgb=False, ndisplay=3)
         self.napari_viewer.add_image(self._napari_masks_stack, name='masks', scale=(zres, xyres, xyres), channel_axis=-1, colormap=['red', 'green', 'blue'], rendering='iso')
         
         self.update_3Dviewer3D()
 
-    def update_3Dviewer3D(self):
+    def update_3Dviewer3D(self, update_plot_stacks=False):
         if napari.current_viewer() == None:
             self._3d_on = False
             return
@@ -1522,6 +1529,10 @@ class PlotActionCT(PlotAction):
                 layer.contrast_limits = [0 , 255]
                 layer.iso_threshold = 0.0
                 l+=1
+            
+            if update_plot_stacks:
+                if "hyperstack" in layer.name:
+                    layer.data = self._plot_stack
 
     def visualization(self):
         self._reset_CP()

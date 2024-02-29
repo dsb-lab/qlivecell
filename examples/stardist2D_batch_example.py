@@ -62,7 +62,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size': 10,
+    'batch_size': 30,
     'batch_overlap':1,
     'name_format':"{}",
     'extension':".tif",
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         channels=[0]
     )
 
-    CTB.load(load_ct_info=False)
+    CTB.load()
 
     plot_args = {
         'plot_layout': (1,1),

@@ -164,7 +164,7 @@ def update_label_correspondance_subs(
 # Check if the pre_label of a new label change is in the subs label change post
 # If it is there the substitution will be done later, if it is not there, it 
 # will be added. 
-@njit(parallel=False)
+@njit(parallel=True)
 def fill_label_correspondance_T_subs(
     label_correspondance_T_subs, new_label_correspondance_T
 ):
