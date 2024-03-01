@@ -169,7 +169,7 @@ class PlotAction:
         self.CTapoptosis = CT.apoptosis
         self.CTselect_jitcells = CT.select_jitcells
         self.CTupdate_labels = CT.update_labels
-
+        self.CTupdate_labels_batches = CT.update_labels_batches
         self._CTget_cell = CT._get_cell
 
     def reinit(self, CT):
@@ -519,7 +519,16 @@ class PlotActionCT(PlotAction):
                 self.separate_cells_t()
             elif event.key == "u":
                 self._reset_CP()
+                import time
+                start = time.time()
                 self.CTupdate_labels()
+                end = time.time()
+                print("Update labels time =", end - start)
+                self.visualization()
+                self.update()
+            elif event.key == "U":
+                self._reset_CP()
+                self.CTupdate_labels_batches()
                 self.visualization()
                 self.update()
             elif event.key =="3":

@@ -34,6 +34,25 @@ def check_and_fill_plot_args(plot_args, stack_dims):
     plot_args["labels_colors"] = CyclicList(_cmap.colors)
     plot_args["plot_masks"] = True
     return plot_args
+        
+        
+def update_plot_stack(pstackdims, channels, img_for_plotting, plot_stack):
+    if len(pstackdims) == 3:
+        for ch_id, ch in enumerate(channels):
+            plot_stack_ch = resize(
+                img_for_plotting[ch, :, :],
+                pstackdims[0:2],
+            )
+            norm_factor = np.max(plot_stack_ch)
+            if norm_factor < 0.01:
+                norm_factor = 1.0
+            norm_factor = 1.0
+            plot_stack[:, :, ch_id] = np.rint((plot_stack_ch / norm_factor) * 255).astype("uint8")
+    else:
+        plot_stack_resized = resize(
+            img_for_plotting, pstackdims
+        )
+        plot_stack = plot_stack_resized
 
 
 def check_stacks_for_plotting(
@@ -56,28 +75,12 @@ def check_stacks_for_plotting(
     if plot_args["dim_change"] != 1:
         plot_stacks = np.zeros(
             (times, slices, *plot_args["plot_stack_dims"]), dtype="uint8"
-        )
-        plot_stack = np.zeros_like(plot_stacks[0, 0], dtype="float16")
+        )        
+        pstackdims = plot_args["plot_stack_dims"]
         for t in range(times):
             for z in range(slices):
-                if len(plot_args["plot_stack_dims"]) == 3:
-                    for ch_id, ch in enumerate(channels):
-                        plot_stack_ch = resize(
-                            stacks_for_plotting[t, z, ch, :, :],
-                            plot_args["plot_stack_dims"][0:2],
-                        )
-
-                        norm_factor = np.max(plot_stacks[t, z, :, :, ch_id])
-                        if norm_factor < 0.01:
-                            norm_factor = 1.0
-                        plot_stack[:, :, ch_id] = plot_stack_ch / norm_factor
-
-                else:
-                    plot_stack = resize(
-                        stacks_for_plotting[t, z], plot_args["plot_stack_dims"]
-                    )
-                plot_stacks[t, z] = np.rint(plot_stack * 255).astype("uint8")
-
+                img_for_plotting = stacks_for_plotting[t, z]
+                update_plot_stack(pstackdims, channels, img_for_plotting, plot_stacks[t, z])
     else:
         if len(plot_args["plot_stack_dims"]) == 3:
             plot_stacks = np.zeros(
