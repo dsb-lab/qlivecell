@@ -601,6 +601,7 @@ class CellTracking(object):
         update_jitcells(
             self.jitcells,
             stack,
+            self._seg_args['compute_center_method'],
         )
         self.jitcells_selected = self.jitcells
 
@@ -716,7 +717,10 @@ class CellTracking(object):
                 stack_seg = pre_stack_seg
 
             if "stardist" in self._seg_args["method"]:
-                stack_seg = stack_seg[:, self.channels_order[0], :, :]
+                stack_seg = stack_seg[:, self.channels_order[0]:self.channels_order[0]+1, :, :]
+            
+            print(self._seg_args["method"])
+            print(stack_seg.shape)
             outlines, masks, labels = cell_segmentation3D(
                 stack_seg, self._seg_args, self._seg_method_args
             )
@@ -916,6 +920,7 @@ class CellTracking(object):
             update_jitcells(
                 self.jitcells,
                 stack,
+                self._seg_args['compute_center_method'],
             )
             self.jitcells.append(jitcell)
         self.jitcells_selected = self.jitcells
@@ -1208,7 +1213,7 @@ class CellTracking(object):
                 else:
                     new_outlines.append(new_outline_sorted)
         else:
-            new_outlines.append(new_outline_sorted)
+            new_outlines = outlines
 
         final_outlines = []
         masks = []
@@ -1250,6 +1255,7 @@ class CellTracking(object):
         update_jitcell(
             new_jitcell,
             stack,
+            self._seg_args['compute_center_method']
         )
         jitcellslen = len(self.jitcells_selected)
         self.jitcells.append(new_jitcell)
@@ -1424,6 +1430,7 @@ class CellTracking(object):
             update_jitcell(
                 cell,
                 stack,
+                self._seg_args['compute_center_method']
             )
 
             # If the current time has been completely removed from the cell, 
@@ -1463,6 +1470,7 @@ class CellTracking(object):
             update_jitcell(
                 cell,
                 stack,
+                self._seg_args['compute_center_method']
             )
 
             if new_maxlabel is not None:
@@ -1474,6 +1482,7 @@ class CellTracking(object):
                 update_jitcell(
                     new_jitcell,
                     stack,
+                self._seg_args['compute_center_method']
                 )
                 
 
@@ -1488,11 +1497,13 @@ class CellTracking(object):
                 stack,
                 self.max_label,
                 self.currentcellid,
+                self._seg_args['compute_center_method'],
             )
 
             update_jitcell(
                 cell,
                 stack,
+                self._seg_args['compute_center_method']
             )
             if new_maxlabel is not None:
                 new_jitcell = construct_jitCell_from_Cell(new_cell)
@@ -1522,6 +1533,7 @@ class CellTracking(object):
                 update_jitcell(
                     new_jitcell,
                     stack,
+                    self._seg_args['compute_center_method']
                 )
                 jitcellslen = len(self.jitcells_selected)
                 self.jitcells.append(new_jitcell)
@@ -1707,6 +1719,7 @@ class CellTracking(object):
             update_jitcell(
                 cell1,
                 stack,
+                self._seg_args['compute_center_method']
             )
 
             t_rem = cell2.times.pop(tid_cell2)
@@ -1722,6 +1735,7 @@ class CellTracking(object):
             update_jitcell(
                 cell2,
                 stack,
+                self._seg_args['compute_center_method']
             )
             if cell2._rem:
                 self._del_cell(cell2.label, t=t_rem)
@@ -1859,6 +1873,7 @@ class CellTracking(object):
             update_jitcell(
                 cell1,
                 stack,
+                self._seg_args['compute_center_method']
             )
 
             lab_change = np.array([[cell2.label, cell1.label]]).astype("uint16")
@@ -1931,6 +1946,7 @@ class CellTracking(object):
         update_jitcell(
             cell,
             stack,
+            self._seg_args['compute_center_method']
         )
 
         new_cell.zs = new_cell.zs[border:]
@@ -1949,6 +1965,7 @@ class CellTracking(object):
         update_jitcell(
             new_cell,
             stack,
+            self._seg_args['compute_center_method']
         )
         self.jitcells.append(new_cell)
         jitcellslen = len(self.jitcells_selected)

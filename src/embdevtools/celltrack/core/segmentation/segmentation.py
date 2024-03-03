@@ -106,14 +106,22 @@ def cell_segmentation3D_from2D(
 
     if "cellpose" in segmentation_args["method"]:
         segmentation_function = cell_segmentation2D_cellpose
+        main_ch = segmentation_method_args["channels"][0]
 
     elif "stardist" in segmentation_args["method"]:
         segmentation_function = cell_segmentation2D_stardist
-
+        main_ch = 0
+    
     for z in range(slices):
         progressbar(z + 1, slices)
         # Current xy plane
-        img = stack[z, :, :]
+        
+        if "cellpose" in segmentation_args["method"]:
+            img = stack[z]
+
+        elif "stardist" in segmentation_args["method"]:
+            img = stack[z, main_ch]
+        
         if blur_args is not None:
             img = skimage.filters.gaussian(
                 img, sigma=blur_args[0], truncate=blur_args[1]
@@ -147,7 +155,7 @@ def cell_segmentation3D_from2D(
             if len(ptsin) == 0:
                 idxtoremove.append(cell)
 
-            elif np.sum(stack[z, :, :][ptsin[:, 1], ptsin[:, 0]]) < (0.05*np.max(stack[z, :, :])):
+            elif np.sum(stack[z, main_ch, :, :][ptsin[:, 1], ptsin[:, 0]]) < (0.05*np.max(stack[z, main_ch,:, :])):
                 idxtoremove.append(cell)
                 
                 
@@ -341,7 +349,8 @@ def fill_segmentation_args(segmentation_args):
             "model": None,
             "blur": None,
             "make_isotropic": [False, 1.0],
-            "min_outline_length": 1
+            "min_outline_length": 1,
+            "compute_center_method": "weighted_centroid"
         }
     if segmentation_method is None: 
         return new_segmentation_args, dict()
@@ -352,7 +361,8 @@ def fill_segmentation_args(segmentation_args):
             "model": None,
             "blur": None,
             "make_isotropic": [False, 1.0],
-            "min_outline_length": 1
+            "min_outline_length": 1,
+            "compute_center_method": "weighted_centroid"
         }
         model = segmentation_args["model"]
         if model is None:
@@ -366,7 +376,8 @@ def fill_segmentation_args(segmentation_args):
             "model": None,
             "blur": None,
             "make_isotropic": [False, 1.0],
-            "min_outline_length": 1
+            "min_outline_length": 1,
+            "compute_center_method": "weighted_centroid"
         }
         model = segmentation_args["model"]
         if model is None:
@@ -384,7 +395,9 @@ def fill_segmentation_args(segmentation_args):
                 "key %s is not a correct argument for the selected segmentation method"
                 % sarg
             )
-
+            
+    assert new_segmentation_args["compute_center_method"] in ["centroid", "weighted_centroid"], "compute_center_method selected not among the options [centroid, weighted_centroid]"
+    
     if "3D" not in new_segmentation_args["method"]:
         new_segmentation_args["make_isotropic"][0] = False
 

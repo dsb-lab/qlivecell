@@ -244,7 +244,7 @@ def nb_weighted_average(data, weights):
 
 
 @njit
-def extract_jitcell_centers(cell: jitCell, stacks):
+def extract_jitcell_centers(cell: jitCell, stacks, method):
     # Function for extracting the cell centers for the masks of a given embryo.
     # It is extracted computing the positional centroid weighted with the intensisty of each point.
     # It returns list of similar shape as Outlines and Masks.
@@ -271,11 +271,12 @@ def extract_jitcell_centers(cell: jitCell, stacks):
             # x and y coordinates of the centroid.
             maskx = mask[:, 1]
             masky = mask[:, 0]
-            img_mask = np.zeros(len(maskx), dtype="float32")
+            img_mask = np.ones(len(maskx), dtype="float32")
 
-            for i in range(len(maskx)):
-                img_mask[i] = img[maskx[i], masky[i]]
-
+            if method == "weighted_centroid":
+                for i in range(len(maskx)):
+                    img_mask[i] = img[maskx[i], masky[i]]
+            
             xs = nb_weighted_average(maskx, img_mask)
             ys = nb_weighted_average(masky, img_mask)
 
@@ -401,7 +402,7 @@ def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, 
 
 
 # @njit
-def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid):
+def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, center_method):
     consecutive = checkConsecutive(cell.times)
     if not consecutive:
         discontinuities = whereNotConsecutive(cell.times)
@@ -419,7 +420,7 @@ def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid):
             new_cell.times = new_cell.times[disc:nextdisc]
             new_cell.id = currentcellid + 1
             new_cell.label = max_label + 1
-            update_jitcell(new_cell, stacks)
+            update_jitcell(new_cell, stacks, center_method)
             currentcellid += 1
             max_label += 1
 
@@ -433,7 +434,7 @@ def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid):
 
 
 @njit
-def update_jitcell(cell: jitCell, stacks):
+def update_jitcell(cell: jitCell, stacks, method):
     remt = List()
     for tid in range(len(cell.times)):
         t = cell.times[tid]
@@ -452,14 +453,14 @@ def update_jitcell(cell: jitCell, stacks):
 
     sort_over_z_jit(cell)
     sort_over_t_jit(cell)
-    extract_jitcell_centers(cell, stacks)
+    extract_jitcell_centers(cell, stacks, method)
 
 
 @njit(parallel=True)
-def update_jitcells(jitcells, stacks):
+def update_jitcells(jitcells, stacks, method):
     for j in prange(len(jitcells)):
         jj = int64(j)
-        update_jitcell(jitcells[jj], stacks)
+        update_jitcell(jitcells[jj], stacks, method)
 
 
 def remove_small_planes_at_boders(

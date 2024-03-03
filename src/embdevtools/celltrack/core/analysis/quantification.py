@@ -170,7 +170,7 @@ def quantify_channels(CT):
 
         mask = cell.masks[0][zcid]
         mask[mask < 0] = 0
-        mask[:, 0][mask[:, 0] >= CT.hyperstack.shape[-2]] = CT.hyperstack.shape[2] - 1
+        mask[:, 0][mask[:, 0] >= CT.hyperstack.shape[-2]] = CT.hyperstack.shape[-2] - 1
         mask[:, 1][mask[:, 1] >= CT.hyperstack.shape[-1]] = CT.hyperstack.shape[-1] - 1
         for ch_id, ch in enumerate(CT.channels):
             stack = CT.hyperstack[0, zc, ch, :, :]
