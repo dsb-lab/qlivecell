@@ -95,6 +95,3 @@ if __name__ == "__main__":
     }
     CTB.plot_tracking(plot_args=plot_args)
 
-
-# for cell in CTB.jitcells:
-#     print(cell.label)
