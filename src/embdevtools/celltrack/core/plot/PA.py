@@ -235,11 +235,11 @@ class PlotAction:
                     break
             self.reset_state()
             import time
-            print()
+            # print()
             start = time.time()
             self.set_batch(batch_number=self.bn, update_labels=True)
             end = time.time()
-            print("BATCH SETTED ", end - start)
+            # print("BATCH SETTED ", end - start)
             self.t = 0
             self.tg = self.global_times_list[self.t]
             if self.batch:
@@ -298,11 +298,11 @@ class PlotAction:
         self.bn = min(self.bn, self.batch_rounds - 1)
 
         import time
-        print()
+        # print()
         start = time.time()
         self.set_batch(batch_number=self.bn, update_labels=True)
         end = time.time()
-        print("BATCH SETTED ", end - start)
+        # print("BATCH SETTED ", end - start)
         self.t = 0
         self.tg = self.global_times_list[self.t]
         if self.batch:
@@ -523,7 +523,7 @@ class PlotActionCT(PlotAction):
                 start = time.time()
                 self.CTupdate_labels()
                 end = time.time()
-                print("Update labels time =", end - start)
+                # print("Update labels time =", end - start)
                 self.visualization()
                 self.update()
             elif event.key == "U":

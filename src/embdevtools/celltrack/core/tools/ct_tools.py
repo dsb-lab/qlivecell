@@ -224,8 +224,8 @@ def get_cell(cells, label=None, cellid=None):
             if cell.label == label:
                 return cell
 
-    print("LABEL NOT FOUND")
-    print(label)
+    # print("LABEL NOT FOUND")
+    # print(label)
     return None
 
 

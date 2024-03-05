@@ -378,7 +378,7 @@ class CellTracking(object):
             start = time.time()
             self.set_batch(batch_number=r, plotting=False, init_cells=False)
             end = time.time()
-            print("elapsed 1", end - start)
+            # print("elapsed 1", end - start)
 
             # Save batch times
             self.batch_all_rounds_times.append(self.batch_times_list_global)
@@ -392,7 +392,7 @@ class CellTracking(object):
                 extension=".npy",
             )
             end = time.time()
-            print("elapsed 2", end - start)
+            # print("elapsed 2", end - start)
 
             # If first round, keep the unique labels for all times,
             # else, remove the first elements depending on the batch overlap to avoid duplidicity
@@ -408,14 +408,14 @@ class CellTracking(object):
                 labels, start_id, labels.shape[0]
             )
             end = time.time()
-            print("elapsed 3", end - start)
+            # print("elapsed 3", end - start)
 
             # Since the above function is runned in parallel, times have to be reordered
             start = time.time()
             new_order = np.argsort(order)
             unique_labels_T_step = reorder_list(unique_labels_T_step, new_order)
             end = time.time()
-            print("elapsed 4", end - start)
+            # print("elapsed 4", end - start)
             start = time.time()
 
             # Combine values for current batch to the previus ones
@@ -425,10 +425,10 @@ class CellTracking(object):
                 combine_lists(unique_labels_T, unique_labels_T_step)
 
             end = time.time()
-            print("elapsed 5", end - start)
+            # print("elapsed 5", end - start)
             printclear()
             end_final = time.time()
-            print("elapsed total", end_final - start_init)
+            # print("elapsed total", end_final - start_init)
 
         printclear()
 
@@ -463,7 +463,7 @@ class CellTracking(object):
             self.update_labels()
         end1 = time.time()
         elapsed1 = end1 - start1
-        print("update labels inside set batch", elapsed1)
+        # print("update labels inside set batch", elapsed1)
         
         if batch_number is not None:
             if self.batch_number == batch_number:
@@ -500,7 +500,7 @@ class CellTracking(object):
             )
         end2 = time.time()
         elapsed2 = end2 - start2
-        print("subs labels in set batch", elapsed2)
+        # print("subs labels in set batch", elapsed2)
         
         start6 = time.time()
         # Reset label substitution for current batch
@@ -508,7 +508,7 @@ class CellTracking(object):
                 self.label_correspondance_T_subs[t] = np.empty((0, 2), dtype="uint16")
         end6 = time.time()
         elapsed6 = end6 - start6
-        print("reinit label correspondance", elapsed6)
+        # print("reinit label correspondance", elapsed6)
         
         start3 = time.time()
         self.hyperstack, self.metadata = read_split_times(
@@ -520,7 +520,7 @@ class CellTracking(object):
         )
         end3 = time.time()
         elapsed3 = end3 - start3
-        print("read stacks batch", elapsed3)
+        # print("read stacks batch", elapsed3)
         
         start4 = time.time()
         # If the stack is RGB, pick the channel to segment
@@ -528,21 +528,21 @@ class CellTracking(object):
             self.init_masks_outlines_stacks()
         end4 = time.time()
         elapsed4 = end4 - start4
-        print("init masks outlines", elapsed4)
+        # print("init masks outlines", elapsed4)
         
         start5 = time.time()
         if init_cells:
             self.init_batch_cells()
         end5 = time.time()
         elapsed5 = end5 - start5
-        print("init cells", elapsed5)
+        # print("init cells", elapsed5)
         
         start7 = time.time()
         if update_labels:
             self.update_labels()
         end7 = time.time()
         elapsed7 = end7 - start7
-        print("update_labels end set batch", elapsed7)
+        # print("update_labels end set batch", elapsed7)
         
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)
@@ -555,7 +555,7 @@ class CellTracking(object):
         printfancy()
         printclear()
         elapsed = elapsed1 + elapsed2 + elapsed3 + elapsed4 + elapsed5 + elapsed6 + elapsed7
-        print("ELAPSED TOTAL", elapsed)
+        # print("ELAPSED TOTAL", elapsed)
         return
 
     def init_masks_outlines_stacks(self):
@@ -570,7 +570,7 @@ class CellTracking(object):
             self.metadata["XYresolution"],
         )
         end = time.time()
-        print("check plot stacks", end - start)
+        # print("check plot stacks", end - start)
         t = self.times
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
@@ -590,7 +590,7 @@ class CellTracking(object):
         start = time.time()
         self.jitcells = extract_jitcells_from_label_stack(labels)
         end = time.time()
-        print("elapsed extract_jitcells", end - start)
+        # print("elapsed extract_jitcells", end - start)
         stack = self.hyperstack[
             :,
             :,
@@ -719,8 +719,8 @@ class CellTracking(object):
             if "stardist" in self._seg_args["method"]:
                 stack_seg = stack_seg[:, self.channels_order[0]:self.channels_order[0]+1, :, :]
             
-            print(self._seg_args["method"])
-            print(stack_seg.shape)
+            # print(self._seg_args["method"])
+            # print(stack_seg.shape)
             outlines, masks, labels = cell_segmentation3D(
                 stack_seg, self._seg_args, self._seg_method_args
             )
