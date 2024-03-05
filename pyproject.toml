@@ -21,7 +21,7 @@ dependencies = [
     "cellpose>=2",
     "stardist==0.8.3",
     "matplotlib",
-    "tensorflow==2.12.0",
+    "tensorflow<=2.13.0",
     "numpy>=1.22",
     "scikit-learn",
     "scipy",
