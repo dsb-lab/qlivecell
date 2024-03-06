@@ -1045,16 +1045,16 @@ class CellTracking(object):
 
             # Update subs labels label correspondance T
             # Save current labels into the npy stacks
-            # save_cells_to_labels_stack(
-            #     self.jitcells,
-            #     self.CT_info,
-            #     self.batch_times_list_global,
-            #     path=self.path_to_save,
-            #     filename=None,
-            #     split_times=True,
-            #     name_format=self._batch_args["name_format"],
-            #     save_info=False,
-            # )
+            save_cells_to_labels_stack(
+                self.jitcells,
+                self.CT_info,
+                self.batch_times_list_global,
+                path=self.path_to_save,
+                filename=None,
+                split_times=True,
+                name_format=self._batch_args["name_format"],
+                save_info=False,
+            )
 
             # Remove labels that does not change
             self.new_label_correspondance_T = remove_static_labels_label_correspondance(
@@ -2274,7 +2274,9 @@ class CellTracking(object):
         printfancy(None)
 
     def plot_axis(self, _ax, img, z, t):
-        im = _ax.imshow(img, vmin=0, vmax=255)
+
+        im = _ax.imshow(img)
+        # im = _ax.imshow(img, vmin=0, vmax=255)
         im_masks = _ax.imshow(self._masks_stack[t][z])
         im_outlines = _ax.imshow(self._outlines_stack[t][z])
         self._imshows.append(im)
@@ -2570,6 +2572,5 @@ class CellTracking(object):
         printfancy("Error correction finished", clear_prev=2)
     
     def on_close_plot_tracking(self, event):
-        return
         self.update_labels_batches()
 
