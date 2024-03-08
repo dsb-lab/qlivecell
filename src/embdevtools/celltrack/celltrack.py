@@ -2292,8 +2292,7 @@ class CellTracking(object):
 
     def plot_axis(self, _ax, img, z, t):
 
-        im = _ax.imshow(img)
-        # im = _ax.imshow(img, vmin=0, vmax=255)
+        im = _ax.imshow(img, vmin=0, vmax=255)
         im_masks = _ax.imshow(self._masks_stack[t][z])
         im_outlines = _ax.imshow(self._outlines_stack[t][z])
         self._imshows.append(im)
