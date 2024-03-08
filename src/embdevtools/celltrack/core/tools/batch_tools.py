@@ -103,7 +103,7 @@ def fill_label_correspondance_T(
 
 @njit(parallel=True)
 def nb_get_max_nest_list(nested2Dlist):
-    max_val = 0
+    max_val = -1
     for sublist in nested2Dlist:
         if len(sublist) == 0:
             continue

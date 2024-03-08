@@ -246,7 +246,7 @@ class CellTracking(object):
         self._batch_args = check_and_fill_batch_args(batch_args)
 
         # pre-define max label
-        self.max_label = 0
+        self.max_label = -1
 
         ##  Mito and Apo events
         self.apoptotic_events = List([
@@ -438,14 +438,16 @@ class CellTracking(object):
         # Compute max label
         maxlabs = []
         for sublist in self.unique_labels_T:
-            maxlabs.append(np.max(sublist))
+            if len(sublist)==0:
+                maxlabs.append(-1)
+            else:
+                maxlabs.append(np.max(sublist))
         self.max_label = np.max(maxlabs)
-
         # Currentcellid will be deprecated soon
         self.currentcellid = self.max_label
 
         # Set initial batch as 0
-        self.set_batch(batch_number=0, plotting=False, force=(not self.batch))
+        self.set_batch(batch_number=0, plotting=False, force=True)
         self.init_masks_outlines_stacks()
 
     def set_batch(
@@ -884,7 +886,7 @@ class CellTracking(object):
         self.unique_labels = np.unique(np.hstack(FinalLabels))
 
         if len(self.unique_labels) == 0:
-            self.max_label = 0
+            self.max_label = -1
         else:
             self.max_label = int(max(self.unique_labels))
 
@@ -961,11 +963,14 @@ class CellTracking(object):
             self.ctattr.Labels, self.times
         )
         for tid, t in enumerate(self.batch_times_list_global):
-            self.unique_labels_T[t] = self.unique_labels_T_batch[tid]
+            if len(self.unique_labels_T_batch[tid])==0:
+                del self.unique_labels_T[t][:]
+            else:
+                self.unique_labels_T[t] = self.unique_labels_T_batch[tid]
 
         self.unique_labels = self.unique_labels_batch
         self.max_label_T = [
-            np.max(sublist) if len(sublist) != 0 else 0
+            np.max(sublist) if len(sublist) != 0 else -1
             for sublist in self.unique_labels_T
         ]
         self.max_label = np.max(self.max_label_T)
@@ -1111,6 +1116,18 @@ class CellTracking(object):
             for t in range(self.batch_times_list_global[0], self.batch_times_list_global[-1] + 1):
                 self.label_correspondance_T_subs[t] = np.empty((0, 2), dtype="uint16")
             # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))
+        
+        else: 
+            save_cells_to_labels_stack(
+                self.jitcells,
+                self.CT_info,
+                self.batch_times_list_global,
+                path=self.path_to_save,
+                filename=None,
+                split_times=True,
+                name_format=self._batch_args["name_format"],
+                save_info=False,
+            )
 
         self.jitcells_selected = self.jitcells
         # update cell labels
