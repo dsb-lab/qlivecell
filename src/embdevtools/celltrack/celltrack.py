@@ -73,7 +73,7 @@ from .core.tools.input_tools import (get_file_name, get_file_names,
                                      tif_reader_5D, separate_times_hyperstack)
 from .core.tools.save_tools import (load_cells, load_CT_info, read_split_times,
                                     save_3Dstack, save_4Dstack,
-                                    save_4Dstack_labels, save_cells,
+                                    save_4Dstack_labels,
                                     save_cells_to_labels_stack, save_CT_info,
                                     save_labels_stack, substitute_labels)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
@@ -128,11 +128,7 @@ class CellTracking(object):
     ):
         print("###############           INIT ON BATCH MODE          ################")
         printfancy("")
-        # Basic arguments
-        if ".tif" in pthtodata:
-            self.batch = False
-        else:
-            self.batch = True
+        # Basic arguments 
 
         self.channels = np.sort(channels)
         self.channels_order = np.array(channels)
@@ -205,6 +201,7 @@ class CellTracking(object):
         # First and last time of the first batch
         self.total_times = extract_total_times_from_files(self.path_to_data)
 
+        
         # check and fill error correction arguments
         self._err_corr_args = check_and_fill_error_correction_args(
             error_correction_args
@@ -212,6 +209,14 @@ class CellTracking(object):
 
         self._batch_args = check_and_fill_batch_args(batch_args)
 
+        if ".tif" in self.path_to_data:
+            if self.total_times <= self._batch_args["batch_size"]:
+                self.batch = False
+            else:
+                self.batch = True
+        else:
+            self.batch = True
+        
         # Read the stacks
         self.hyperstack, self.metadata = read_split_times(
             self.path_to_data,
@@ -220,6 +225,7 @@ class CellTracking(object):
             extension=self._batch_args["extension"],
             channels=self.channels,
         )
+        print(self.hyperstack.shape)
         self.slices = self.hyperstack.shape[1]
         self.stack_dims = np.shape(self.hyperstack)[3:]
 

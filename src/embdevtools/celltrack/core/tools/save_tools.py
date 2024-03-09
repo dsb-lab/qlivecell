@@ -201,9 +201,6 @@ def load_CT_info(path):
     return cellinfo_dict
 
 
-save_cells = save_cells_to_labels_stack
-
-
 def load_cells_from_json(path=None):
     """load cell objects obtained with celltrack.py
 

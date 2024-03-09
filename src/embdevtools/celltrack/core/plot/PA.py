@@ -8,7 +8,7 @@ import napari
 import gc
 from ..dataclasses import construct_Cell_from_jitCell
 from ..tools.ct_tools import get_cell_color, set_cell_color
-from ..tools.save_tools import save_cells
+from ..tools.save_tools import save_cells_to_labels_stack
 from ..tools.tools import printfancy
 from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
@@ -109,12 +109,10 @@ class PlotAction:
             self.global_times_list = CT.batch_times_list_global
             self.batch_all_rounds_times = CT.batch_all_rounds_times
             self.total_times = CT.total_times
-            self._split_times = True
         else:
             self.times = CT.times
             self.total_times = CT.times
             self.global_times_list = range(self.times)
-            self._split_times = False
 
         self._tstep = CT._track_args["time_step"]
 
@@ -155,7 +153,6 @@ class PlotAction:
         # self.CTone_step_copy = CT.one_step_copy
         # self.CTundo_corrections = CT.undo_corrections
         self.CTreplot_tracking = CT.replot_tracking
-        self.CTsave_cells = save_cells
 
         self.CTadd_cell = CT.add_cell
         self.CTcomplete_add_cell = CT.complete_add_cell
@@ -546,17 +543,6 @@ class PlotActionCT(PlotAction):
                 self._reset_CP()
                 self.visualization()
                 self.update()
-            elif event.key == "s":
-                self.CT_info.apo_cells = self.CTapoptotic_events
-                self.CT_info.mito_cells = self.CTmitotic_events
-                self.CTsave_cells(
-                    self.jitcells,
-                    self.CT_info,
-                    self.global_times_list,
-                    self.path_to_save,
-                    split_times=self._split_times,
-                    save_info=True,
-                )
             self.update()
 
         else:

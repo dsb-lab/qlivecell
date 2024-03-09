@@ -5,6 +5,7 @@
 - Change of software name
 - Add backups
 - Functionality with non-squared images 
+- 2D functionality
 
 ## Bug fixes
 -
@@ -15,8 +16,7 @@
 - Add contrast control both in the arguments and as sliders in the GUI. For multichannel, needs to be possible to control individual channels
 - Show confict per times, not only total conflicts
 - Visualize conflicting cells. Available as an action from the GUI
-- Combine over Z, check continuitity from cell information, not only from current plane. 
-
+- Combine over Z, check continuitity all cell planes, not only from current plane. 
 
 ### Segmentation
 - Add segmentation method from 
@@ -24,7 +24,7 @@
 - Add segmentation for 16 and 32 bit images
 
 ### Mitosis detection
-- Atuomatic mitosis detection using 3D-unet
+- Automatic mitosis detection using 3D-unet
 
 ### Analysis
 - Cell movement
