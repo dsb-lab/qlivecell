@@ -5,7 +5,7 @@
 - Change of software name
 - Add backups
 - Functionality with non-squared images 
-- 2D functionality
+- Functionality with 16 and 32 bit images
 
 ## Bug fixes
 -
@@ -19,9 +19,7 @@
 - Combine over Z, check continuitity all cell planes, not only from current plane. 
 
 ### Segmentation
-- Add segmentation method from 
 - Arg-request: Min fluorescence on mask for it to be kept
-- Add segmentation for 16 and 32 bit images
 
 ### Mitosis detection
 - Automatic mitosis detection using 3D-unet

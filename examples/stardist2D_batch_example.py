@@ -95,3 +95,43 @@ if __name__ == "__main__":
     }
     CTB.plot_tracking(plot_args=plot_args)
 
+
+def napari_tracks(cells):
+    napari_tracks_data = []
+    for cell in cells:
+        for tid, t in enumerate(cell.times):
+            center = cell.centers[tid]
+            track = [cell.label, t, center[0], center[2], center[1]]
+            napari_tracks_data.append(track)
+    
+    return napari_tracks_data
+
+napari_tracks_data = napari_tracks(CTB.jitcells)
+
+
+import logging
+from copy import copy
+
+import napari
+import numpy as np
+
+graph = {}
+for mito_ev in CTB.mitotic_events:
+    cell0 = mito_ev[0]
+    cell1 = mito_ev[1]
+    cell2 = mito_ev[2]
+    graph[cell1[0]] = [cell0[0]]
+    graph[cell2[0]] = [cell0[0]]
+    
+# for cell in CTB.jitcells:
+#     if cell.label not in graph.keys():
+#         graph[cell.label] = cell.label
+
+import napari
+import numpy as np
+viewer = napari.view_image(CTB.plot_stacks, name='hyperstack', scale=(CTB.metadata["Zresolution"], CTB.metadata["XYresolution"], CTB.metadata["XYresolution"]), rgb=False, ndisplay=3)
+
+viewer.add_tracks(np.array(napari_tracks_data), scale=(CTB.metadata["Zresolution"], CTB.metadata["XYresolution"], CTB.metadata["XYresolution"]), properties=properties, graph=graph)
+_, widget = viewer.window.add_plugin_dock_widget(
+    plugin_name="napari-arboretum", widget_name="Arboretum"
+)

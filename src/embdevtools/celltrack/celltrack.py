@@ -1072,7 +1072,6 @@ class CellTracking(object):
                 0, self.total_times, self.new_label_correspondance_T
             )
 
-
             # Update labels on mitotic, apoptotic and blocked cells
             for apo_ev in self.apoptotic_events:
                 if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]]:
@@ -1086,7 +1085,7 @@ class CellTracking(object):
                 for mito_cell in mito_ev:
                     if mito_cell[0] in self.new_label_correspondance_T[mito_cell[1]]:
                         idx = np.where(
-                            self.label_correspondance_T[mito_cell[1]][:, 0]
+                            self.new_label_correspondance_T[mito_cell[1]][:, 0]
                             == mito_cell[0]
                         )
                         new_lab = self.new_label_correspondance_T[mito_cell[1]][
