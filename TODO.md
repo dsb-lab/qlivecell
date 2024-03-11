@@ -17,7 +17,6 @@
 - Show confict per times, not only total conflicts
 - Visualize conflicting cells. Available as an action from the GUI
 - Combine over Z, check continuitity all cell planes, not only from current plane. 
-- Double click on visualization mode selects a cell and it's daughters. 
 - Add properties to cells for napari plots (Arboretum and normal 3D viewer)
 
 ### Segmentation

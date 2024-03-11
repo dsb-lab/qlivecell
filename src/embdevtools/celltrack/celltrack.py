@@ -2204,6 +2204,13 @@ class CellTracking(object):
     def print_actions(self, event):
         actions = [
             "- ESC : visualization",
+            "while on visualization:",
+            "    * right click to select cell plane",
+            "    * double right click to select all cell planes",
+            "    * right click to select cell plane",
+            "    * ctrl + right click to select cell on all times",
+            "    * ctrl + double right click to select all cells on a lineage",
+            "",
             "- a : add cell",
             "- d : delete cell",
             "- D : delete cell in batch",
