@@ -17,6 +17,8 @@
 - Show confict per times, not only total conflicts
 - Visualize conflicting cells. Available as an action from the GUI
 - Combine over Z, check continuitity all cell planes, not only from current plane. 
+- Double click on visualization mode selects a cell and it's daughters. 
+- Add properties to cells for napari plots (Arboretum and normal 3D viewer)
 
 ### Segmentation
 - Arg-request: Min fluorescence on mask for it to be kept
@@ -40,6 +42,8 @@
 
 ## Performance
 - Update labels in slower after set batch.
+- 2D visualization is slower than the napari basic visualization (e.g. switching planes and times)
+- Most of the things are probably not optimal and even the multithreded functions should be optimized
 
 ## Image registration 
 -  Check posibility of using mid time or last time as reference to reduce blurring 

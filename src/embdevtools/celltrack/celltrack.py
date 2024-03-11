@@ -32,6 +32,7 @@ from .core.plot.plot_extraclasses import Slider_t, Slider_t_batch, Slider_z
 from .core.plot.plot_iters import plotRound
 from .core.plot.plotting import (check_and_fill_plot_args,
                                  check_stacks_for_plotting, norm_stack_per_z)
+from .core.plot.napari_tools import arboretum_napari
 from .core.segmentation.segmentation import (
     cell_segmentation2D_cellpose, cell_segmentation2D_stardist,
     cell_segmentation3D, check_and_fill_concatenation3D_args,
