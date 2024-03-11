@@ -39,7 +39,7 @@
 - Need to explore full integration with Napari
 
 ## Performance
-- Update labels in slower after set batch.
+- Update labels is slower after set batch.
 - 2D visualization is slower than the napari basic visualization (e.g. switching planes and times)
 - Most of the things are probably not optimal and even the multithreded functions should be optimized
 

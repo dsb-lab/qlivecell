@@ -1300,6 +1300,22 @@ class PlotActionCT(PlotAction):
                 printfancy("ERROR: cells must be selected on same time")
                 return
 
+            # check if cells have any overlap in their zs
+            labs = [x[0] for x in self.list_of_cells]
+            labs.append(lab)
+            ZS = []
+            ZS_first_last = []
+            t = self.t
+            for l in labs:
+                c = self._CTget_cell(l)
+                tid = c.times.index(t)
+                ZS = ZS + list(c.zs[tid])
+                ZS_first_last.append[[c.zs[tid][0],c.zs[tid][-1]]]
+            
+            if len(ZS) != len(set(ZS)):
+                printfancy("ERROR: cells overlap in z")
+                return
+
             # check that planes selected are contiguous over z
             Zs = [x[1] for x in self.list_of_cells]
             Zs.append(z)
@@ -1307,20 +1323,6 @@ class PlotActionCT(PlotAction):
 
             if any((Zs[i + 1] - Zs[i]) != 1 for i in range(len(Zs) - 1)):
                 printfancy("ERROR: cells must be contiguous over z")
-                return
-
-            # check if cells have any overlap in their zs
-            labs = [x[0] for x in self.list_of_cells]
-            labs.append(lab)
-            ZS = []
-            t = self.t
-            for l in labs:
-                c = self._CTget_cell(l)
-                tid = c.times.index(t)
-                ZS = ZS + list(c.zs[tid])
-
-            if len(ZS) != len(set(ZS)):
-                printfancy("ERROR: cells overlap in z")
                 return
 
         # proceed with the selection
