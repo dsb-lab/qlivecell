@@ -29,7 +29,6 @@
 ### Analysis
 - Cell movement
 - Cell volume/size
-- Lineage tree (Napari?)
 - Cell mixing
 - Mito and Apo rates
 - Embryo size dynamics

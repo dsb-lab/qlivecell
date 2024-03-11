@@ -13,6 +13,7 @@ from ..tools.tools import printfancy
 from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
 
+from .napari_tools import get_whole_lineage
 
 def get_axis_PACP(PACP, event):
     for id, ax in enumerate(PACP.ax):
@@ -973,15 +974,23 @@ class PlotActionCT(PlotAction):
                     for jj in idxtopop:
                         self.list_of_cells.pop(jj)
                 else:
-                    jitcell = CT_cell = _get_cell(self.jitcells_selected, label=lab)
+                    jitcell = _get_cell(self.jitcells_selected, label=lab)
                     for tid, t in enumerate(jitcell.times):
                         for zid, z in enumerate(jitcell.zs[tid]):
                             self.list_of_cells.append([lab, z, t])
             else:
-                jitcell = CT_cell = _get_cell(self.jitcells_selected, label=lab)
+                jitcell = _get_cell(self.jitcells_selected, label=lab)
                 for tid, t in enumerate(jitcell.times):
                     for zid, z in enumerate(jitcell.zs[tid]):
                         self.list_of_cells.append([lab, z, t])
+
+            if event.dblclick == True:
+                labels = get_whole_lineage(self.CTmitotic_events, lab)
+                for _lab in labels:
+                    jitcell = _get_cell(self.jitcells_selected, label=_lab)
+                    for tid, t in enumerate(jitcell.times):
+                        for zid, z in enumerate(jitcell.zs[tid]):
+                            self.list_of_cells.append([_lab, z, t])
 
         else:
             if cell not in self.list_of_cells:

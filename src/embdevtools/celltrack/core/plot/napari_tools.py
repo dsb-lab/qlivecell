@@ -12,23 +12,58 @@ def napari_tracks(cells):
     
     return np.array(napari_tracks_data)
 
-def get_lineage_graph(CTB):
+def get_lineage_graph(mitotic_events):
     graph = {}
-    for mito_ev in CTB.mitotic_events:
+    for mito_ev in mitotic_events:
         cell0 = mito_ev[0]
         cell1 = mito_ev[1]
         cell2 = mito_ev[2]
-        graph[cell1[0]] = [cell0[0]]
-        graph[cell2[0]] = [cell0[0]]
+        graph[cell1[0]] = cell0[0]
+        graph[cell2[0]] = cell0[0]
+    print(graph)
     return graph
 
+def get_lineage_root(graph, label):
+    # Check if this label is the root of the lineage
+    root = False
+    lab = label
+    # If it's in the keys, this is not the root so look for the root
+    while not root:
+        if lab in list(graph.keys()):
+            lab = graph[lab]
+        else:
+            root = True
+    return lab
+
+def get_daughters(labels, graph, lab):
+    vals = np.array(list(graph.values()))
+    keys = np.array(list(graph.keys()))
+
+    idxs = np.where(vals == lab)[0]
+    last=False
+    while not last:
+        if len(idxs)==0:
+            last = True
+        else:
+            for idx in idxs:
+                labels.append(keys[idx])
+                get_daughters(labels, graph, labels[-1])
+            last = True
+    return labels
+
+def get_whole_lineage(mitotic_events, label):
+    graph = get_lineage_graph(mitotic_events)
+    root = get_lineage_root(graph, label)
+    labels = [root]
+    lab = root
+    labels = get_daughters(labels, graph, lab)
+    return labels
+
 def arboretum_napari(CTB):
-
-
     controls, colors = CTB._plot_args["labels_colors"].get_map()
     custom_cmap = vispy.color.Colormap(colors, controls)
 
-    graph = get_lineage_graph(CTB)
+    graph = get_lineage_graph(CTB.mitotic_events)
 
     napari_tracks_data = napari_tracks(CTB.jitcells)
     colors = [CTB._plot_args["labels_colors"].get_control(label) for label in napari_tracks_data[:,0]]
