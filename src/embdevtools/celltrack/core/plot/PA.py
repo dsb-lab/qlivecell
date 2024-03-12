@@ -1310,18 +1310,17 @@ class PlotActionCT(PlotAction):
                 c = self._CTget_cell(l)
                 tid = c.times.index(t)
                 ZS = ZS + list(c.zs[tid])
-                ZS_first_last.append[[c.zs[tid][0],c.zs[tid][-1]]]
+                ZS_first_last.append([c.zs[tid][0],c.zs[tid][-1]])
             
             if len(ZS) != len(set(ZS)):
                 printfancy("ERROR: cells overlap in z")
                 return
 
             # check that planes selected are contiguous over z
-            Zs = [x[1] for x in self.list_of_cells]
-            Zs.append(z)
-            Zs.sort()
-
-            if any((Zs[i + 1] - Zs[i]) != 1 for i in range(len(Zs) - 1)):
+            ZS_first_last = np.array(ZS_first_last)
+            Zdiff = ZS_first_last[1:, 0] - ZS_first_last[:-1, 1]
+            
+            if not (Zdiff == 1).all():
                 printfancy("ERROR: cells must be contiguous over z")
                 return
 
