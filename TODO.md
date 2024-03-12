@@ -16,7 +16,6 @@
 - Add contrast control both in the arguments and as sliders in the GUI. For multichannel, needs to be possible to control individual channels
 - Show confict per times, not only total conflicts
 - Visualize conflicting cells. Available as an action from the GUI
-- Combine over Z, check continuitity all cell planes, not only from current plane. 
 - Add properties to cells for napari plots (Arboretum and normal 3D viewer)
 
 ### Segmentation
