@@ -444,7 +444,7 @@ def prepare_labels_stack_for_tracking(labels_stack):
     return Labels, Outlines, Masks
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def replace_labels_t(labels, lab_corr):
     labels_t_copy = labels.copy()
     for lab_init, lab_final in lab_corr:
@@ -459,7 +459,7 @@ def replace_labels_t(labels, lab_corr):
     return labels_t_copy
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def replace_labels_in_place(labels, label_correspondance):
     labels_copy = np.zeros_like(labels, dtype="uint16")
     for t in prange(len(label_correspondance)):

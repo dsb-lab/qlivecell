@@ -87,7 +87,7 @@ def nb_add_row(arr, r):
     return arr
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def fill_label_correspondance_T(
     new_label_correspondance_T, unique_labels_T, correspondance
 ):
@@ -101,7 +101,7 @@ def fill_label_correspondance_T(
             )
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def nb_get_max_nest_list(nested2Dlist):
     max_val = -1
     for sublist in nested2Dlist:
@@ -111,7 +111,7 @@ def nb_get_max_nest_list(nested2Dlist):
     return max_val
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def update_unique_labels_T(
     post_range_start, post_range_end, label_correspondance_T, unique_labels_T
 ):
@@ -124,7 +124,7 @@ def update_unique_labels_T(
             unique_labels_T[postt][id_change] = post_label
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def update_new_label_correspondance(
     post_range_start, post_range_end, label_correspondance_T, new_label_correspondance_T
 ):
@@ -139,7 +139,7 @@ def update_new_label_correspondance(
             new_label_correspondance_T[postt][idx[0][0], 0] = pre_label
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def update_label_correspondance_subs(
     post_range_start, post_range_end, label_correspondance_T_subs, new_label_correspondance_T
 ):
@@ -164,7 +164,7 @@ def update_label_correspondance_subs(
 # Check if the pre_label of a new label change is in the subs label change post
 # If it is there the substitution will be done later, if it is not there, it 
 # will be added. 
-@njit(parallel=True)
+@njit(parallel=False)
 def fill_label_correspondance_T_subs(
     label_correspondance_T_subs, new_label_correspondance_T
 ):
@@ -183,7 +183,7 @@ def fill_label_correspondance_T_subs(
                 )
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def remove_static_labels_label_correspondance(
     post_range_start, post_range_end, label_correspondance_T
 ):
@@ -291,7 +291,7 @@ def get_apo_cells_to_remove(lab, t, apoptotic_events):
     return aevs_remove[1:]
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def extract_unique_labels_T(labels, start, times):
     labs_t = List()
     order = List()

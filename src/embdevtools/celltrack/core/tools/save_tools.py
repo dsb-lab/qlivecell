@@ -478,7 +478,7 @@ def substitute_labels(post_range_start, post_range_end, path_to_save, lcT, batch
         )
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def _sub_labs(labs_pre, labs_post, lct):
     for lab_change in lct:
         pre_label = lab_change[0] + 1
