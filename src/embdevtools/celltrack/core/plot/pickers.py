@@ -24,37 +24,51 @@ class SubplotPicker_add:
 
 
 class LineBuilder_points:
-    def __init__(self, lines, z):
+    def __init__(self, lines, z, t):
         self.lines = lines
-        self.xss = [list(lines[i].get_xdata()) for i in range(len(lines))]
-        self.yss = [list(lines[i].get_ydata()) for i in range(len(lines))]
-        self.cid = self.lines[z].figure.canvas.mpl_connect("button_press_event", self)
+        print(len(self.lines))
+        print(len(self.lines[t]))
+        self.xss = []
+        self.yss = []
+        for _t in range(len(lines)):
+            for _z in range(len(lines[_t])):
+                self.xss.append(list(lines[_t][_z].get_xdata()))
+                self.yss.append(list(lines[_t][_z].get_ydata()))
+        self.cid = self.lines[t][z].figure.canvas.mpl_connect("button_press_event", self)
 
+        self.t = t
         self.z = z
 
-    def reset_z(self, z):
-        self.lines[self.z].set_marker("")
+    def reset(self, z, t):
+        self.lines[self.t][self.z].set_marker("")
         self.z = z
-        self.lines[self.z].set_marker("o")
-        
+        self.t = t
+        self.lines[self.t][self.z].set_marker("o")
+    
     def __call__(self, event):
-        if event.inaxes != self.lines[self.z].axes:
+        if event.inaxes != self.lines[self.t][self.z].axes:
             return
         if event.button == 3:
-            if self.lines[self.z].figure.canvas.toolbar.mode != "":
-                self.lines[self.z].figure.canvas.mpl_disconnect(
-                    self.lines[self.z].figure.canvas.toolbar._zoom_info.cid
+            print()
+            print(len(self.lines))
+            print(len(self.lines[self.t]))
+            print(self.t)
+            print(self.z)
+            print()
+            if self.lines[self.t][self.z].figure.canvas.toolbar.mode != "":
+                self.lines[self.t][self.z].figure.canvas.mpl_disconnect(
+                    self.lines[self.t][self.z].figure.canvas.toolbar._zoom_info.cid
                 )
-                self.lines[self.z].figure.canvas.toolbar.zoom()
-            self.xss[self.z].append(event.xdata)
-            self.yss[self.z].append(event.ydata)
-            self.lines[self.z].set_data(self.xss[self.z], self.yss[self.z])
-            self.lines[self.z].figure.canvas.draw()
+                self.lines[self.t][self.z].figure.canvas.toolbar.zoom()
+            self.xss[self.t][self.z].append(event.xdata)
+            self.yss[self.t][self.z].append(event.ydata)
+            self.lines[self.t][self.z].set_data(self.xss[self.t][self.z], self.yss[self.t][self.z])
+            self.lines[self.t][self.z].figure.canvas.draw()
         else:
             return
 
     def stopit(self):
-        self.lines[self.z].figure.canvas.mpl_disconnect(self.cid)
+        self.lines[self.t][self.z].figure.canvas.mpl_disconnect(self.cid)
         for line in self.lines:
             line.remove()
 
@@ -72,23 +86,27 @@ class LineBuilder_lasso:
         Axes to interact with.
     """
 
-    def __init__(self, ax, z, slices):
+    def __init__(self, ax, z, t, slices, times):
         self.canvas = ax.figure.canvas
         self.lasso = CustomLassoSelector(ax, onselect=self.onselect, button=3)
-        self.outlines = [[] for s in range(slices)]
+        for t in range(times):
+            outlines = [[] for s in range(slices)]
+            self.outlines.append(outlines)
         self.z = z
-
-    def reset_z(self, z):
+        self.t = t
+        
+    def reset_z(self, z, t):
         self.z = z
-
+        self.t = t
+    
     def onselect(self, verts):
-        self.outlines[self.z] = np.rint([[x[0], x[1]] for x in verts]).astype("uint16")
-        self.outlines[self.z] = np.unique(self.outlines[self.z], axis=0)
+        self.outlines[self.t][self.z] = np.rint([[x[0], x[1]] for x in verts]).astype("uint16")
+        self.outlines[self.t][self.z] = np.unique(self.outlines[self.t][self.z], axis=0)
 
         fl = 100
         ol = len(self.outlines)
         step = np.ceil(ol / fl).astype("uint16")
-        self.outlines[self.z] = self.outlines[self.z][::step]
+        self.outlines[self.t][self.z] = self.outlines[self.t][self.z][::step]
 
     def stopit(self):
         self.lasso.disconnect_events()

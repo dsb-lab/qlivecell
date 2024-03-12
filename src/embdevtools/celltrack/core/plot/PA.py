@@ -741,7 +741,7 @@ class PlotActionCT(PlotAction):
             self.ctrl_shift_is_held = False
             super().onscroll(event)
             #### THIS SHOULD BE CHANGED IF WE GO BACK TO MULTIPANEL PLOTS
-            self.linebuilder.reset_z(self.cr)
+            self.linebuilder.reset(self.cr, self.t)
         else:
             super().onscroll(event)
 

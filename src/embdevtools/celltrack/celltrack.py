@@ -647,14 +647,14 @@ class CellTracking(object):
                 _ = mito_evs.pop(0)
             else:
                 mito_evs = List([List([List(mitocell) for mitocell in mitoev]) for mitoev in self.CT_info.mito_cells])
-            if len(self.CT_info.mito_cells) == 0:
+            if len(self.CT_info.apo_cells) == 0:
                 apo_evs = List([
                     List([0, 0])
                     ])
                 apo_evs.pop(0)
             else:
                 apo_evs = List([List(apoev) for apoev in self.CT_info.apo_cells])
-                
+            
             self.apoptotic_events = apo_evs
             self.mitotic_events = mito_evs
             if len(self.CT_info.blocked_cells) == 0:
@@ -1224,7 +1224,7 @@ class CellTracking(object):
     def unblock_cells(self):
         del self.blocked_cells[:]
 
-    def append_cell_from_outlines(self, outlines, zs, t, sort=True):
+    def append_cell_from_outlines_t(self, outlines, zs, t, sort=True):
         if sort:
             new_outlines = []
             for outline in outlines:
@@ -1287,73 +1287,176 @@ class CellTracking(object):
         if jitcellslen == len(self.jitcells_selected):
             self.jitcells_selected.append(self.jitcells[-1])
 
+
+    def append_cell_from_outlines(self, outlines, zs, ts, sort=True):
+        if sort:
+            new_outlines = []
+            for t in range(len(outlines)):
+                new_outlines.append([])
+                for outline in outlines[t]:
+                    new_outline_sorted, _ = sort_point_sequence(
+                        outline, self._nearest_neighs, self.PACP.visualization
+                    )
+                    if new_outline_sorted is None:
+                        return
+                    else:
+                        new_outlines[-1].append(new_outline_sorted)
+        else:
+            new_outlines = outlines
+
+        final_outlines = []
+        masks = []
+        for t in range(len(new_outlines)):
+            final_outlines.append([])
+            masks.append([])
+            for new_outline_sorted in new_outlines[t]:
+                new_outline_sorted_highres = increase_point_resolution(
+                    new_outline_sorted, self._min_outline_length
+                )
+                final_outlines[-1].append(new_outline_sorted_highres)
+                masks[-1].append(mask_from_outline(new_outline_sorted_highres))
+
+        self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(
+            self.ctattr.Labels
+        )
+        new_cell = create_cell(
+            self.currentcellid + 1,
+            self.max_label + 1,
+            zs,
+            ts,
+            final_outlines,
+            masks,
+            self.hyperstack[
+                :,
+                :,
+                self.channels_order[0],
+                :,
+                :,
+            ],
+        )
+        self.max_label += 1
+        self.currentcellid += 1
+        new_jitcell = construct_jitCell_from_Cell(new_cell)
+        stack = self.hyperstack[
+            :,
+            :,
+            self.channels_order[0],
+            :,
+            :,
+        ]
+        update_jitcell(
+            new_jitcell,
+            stack,
+            self._seg_args['compute_center_method']
+        )
+        jitcellslen = len(self.jitcells_selected)
+        self.jitcells.append(new_jitcell)
+
+        # If len is still the same, add the cell because jitcells is not a copy of the selection
+        if jitcellslen == len(self.jitcells_selected):
+            self.jitcells_selected.append(self.jitcells[-1])
+            
     def add_cell(self, PACP):
         if self._err_corr_args["line_builder_mode"] == "points":
             lines = []
-            for z in range(self.slices):
-                (line,) = self.PACP.ax_sel.plot(
-                    [], [], linestyle="none", marker="o", color="r", markersize=2
-                )
-                lines.append(line)
-            PACP.linebuilder = LineBuilder_points(lines, PACP.z)
+            for t in range(self.times):
+                lines.append([])
+                for z in range(self.slices):
+                    (line,) = self.PACP.ax_sel.plot(
+                        [], [], linestyle="none", marker="o", color="r", markersize=2
+                    ) 
+                    lines[-1].append(line)
+            print(len(lines))
+            PACP.linebuilder = LineBuilder_points(lines, PACP.z, PACP.t)
         else:
-            PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel, PACP.z, self.slices)
+            PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel, PACP.z, PACP.t, self.slices, self.times)
 
     def complete_add_cell(self, PACP):
         new_outlines = []
 
         if self._err_corr_args["line_builder_mode"] == "points":
+            
+            zs = []
+            for t in range(self.times):  
+                outlines_length = [len(out) for out in PACP.linebuilder.xss]
+                _zs = [z for z in range(self.slices) if outlines_length[z]!=0]
+                zs.append(_zs)
 
-            # Check in drawn points are in consecutive zs
-            outlines_length = [len(out) for out in PACP.linebuilder.xss]
-            zs = [z for z in range(self.slices) if outlines_length[z]!=0]
-
-            if len(zs)==0:
+                # Check if drawn points are in consecutive planes
+                if len(_zs)>1:
+                    if not (np.diff(_zs)==1).all():
+                        printfancy("ERROR: drawn outlines are not in consecutive planes")
+                        return
+            
+            ts = [t for t in range(self.times) if len(zs[t] !=0)]
+            # check if drawn points are in consecutive times
+            if len(ts)>1:
+                if not (np.diff(ts)==1).all():
+                    printfancy("ERROR: drawn outlines are not in consecutive times")
+                    return
+            
+            if len(ts)==0:
                 printfancy("ERROR: no outlines drawn")
             
-            if len(zs)>1:
-                if not (np.diff(zs)==1).all():
-                    printfancy("ERROR: drawn outlines are not in consecutive planes")
-                    return
-
-            for zid, z in enumerate(zs):
-                if len(PACP.linebuilder.xss[z]) < 3:
-                    printfancy("ERROR: some of the drawn outlines have too few points (< 3)")
-                    return
-                new_outline = np.dstack((PACP.linebuilder.xss[z], PACP.linebuilder.yss[z]))[0]
-                new_outline = np.rint(new_outline / self._plot_args["dim_change"]).astype(
-                    "uint16"
-                )
-                new_outlines.append(new_outline)
-
-                if np.max(new_outline) > self.stack_dims[0]:
-                    printfancy("ERROR: drawing out of image")
-                    return
+            for tid, t in enumerate(ts):
+                new_outlines.append([])
+                for zid, z in enumerate(zs[t]):
+                    if len(PACP.linebuilder.xss[t][z]) < 3:
+                        printfancy("ERROR: some of the drawn outlines have too few points (< 3)")
+                        return
+                    new_outline = np.dstack((PACP.linebuilder.xss[t][z], PACP.linebuilder.yss[t][z]))[0]
+                    new_outline = np.rint(new_outline / self._plot_args["dim_change"]).astype(
+                        "uint16"
+                    )
+                    if np.max(new_outline) > self.stack_dims[0]:
+                        printfancy("ERROR: drawing out of image")
+                        return
+                    
+                    new_outlines[-1].append(new_outline)
+                
+                if len(new_outlines[-1]) == 0:
+                    new_outlines.pop(-1)
 
         elif self._err_corr_args["line_builder_mode"] == "lasso":
 
-            # Check in drawn points are in consecutive zs
-            outlines_length = [len(out) for out in PACP.linebuilder.outlines]
+            zs = []
+            for t in range(self.times):  
+                outlines_length = [len(out) for out in PACP.linebuilder.outlines[t]]
+                _zs = [z for z in range(self.slices) if outlines_length[z]!=0]
+                zs.append(_zs)
 
-            zs = [z for z in range(self.slices) if outlines_length[z]!=0]
-
-            if len(zs)==0:
-                printfancy("ERROR: no outlines drawn")
+                # Check if drawn points are in consecutive planes
+                if len(_zs)>1:
+                    if not (np.diff(_zs)==1).all():
+                        printfancy("ERROR: drawn outlines are not in consecutive planes")
+                        return
             
-            if len(zs)>1:
-                if not (np.diff(zs)==1).all():
-                    printfancy("ERROR: drawn outlines are not in consecutive planes")
+            ts = [t for t in range(self.times) if len(zs[t] !=0)]
+            # check if drawn points are in consecutive times
+            if len(ts)>1:
+                if not (np.diff(ts)==1).all():
+                    printfancy("ERROR: drawn outlines are not in consecutive times")
                     return
+            
+            if len(ts)==0:
+                printfancy("ERROR: no outlines drawn")
+                
 
-            for zid, z in enumerate(zs):
-                if len(PACP.linebuilder.outlines[z]) < 3:
-                    printfancy("ERROR: some of the drawn outlines have too few points (< 3)")
-                    return
-                new_outline = np.floor(
-                    PACP.linebuilder.outlines[z] / self._plot_args["dim_change"]
-                )
-                new_outline = new_outline.astype("uint16")
-                new_outlines.append(new_outline)
+            for tid, t in enumerate(ts):
+                new_outlines.append([])
+                for zid, z in enumerate(zs[t]):
+                    if len(PACP.linebuilder.outlines[t][z]) < 3:
+                        printfancy("ERROR: some of the drawn outlines have too few points (< 3)")
+                        return
+                    new_outline = np.floor(
+                        PACP.linebuilder.outlines[t][z] / self._plot_args["dim_change"]
+                    )
+                    new_outline = new_outline.astype("uint16")
+                    
+                    new_outlines[-1].append(new_outline)
+                
+                if len(new_outlines[-1]) == 0:
+                    new_outlines.pop(-1)
         
         self.append_cell_from_outlines(new_outlines, zs, PACP.t)            
         self.update_label_attributes()
@@ -1678,7 +1781,7 @@ class CellTracking(object):
         hull = ConvexHull(pre_outline)
         outline = pre_outline[hull.vertices]
 
-        self.append_cell_from_outlines([outline], [z], t, sort=False)
+        self.append_cell_from_outlines_t([outline], [z], t, sort=False)
 
         self.update_label_attributes()
 
@@ -2079,18 +2182,23 @@ class CellTracking(object):
         if self.mito_cells[1][2] != self.mito_cells[2][2]:
             return
 
+        print(mito0)
+        print(mito1)
+        print(mito2)
         # If one cell has been selected as mother and daughther, separate it in time.
         if mito0[0] == mito1[0]:
-            self.list_of_cells.append([mito0[0], 0, mito0[1]])
-            self.list_of_cells.append([mito1[0], 0, mito1[1]])
+            self.list_of_cells.append([mito0[0], 0, mito0[1] - self.batch_times_list_global[0]])
+            self.list_of_cells.append([mito1[0], 0, mito1[1] - self.batch_times_list_global[0]])
+            print(self.list_of_cells)
             new_label = self.separate_cells_t(return_new_label=True)
             del self.list_of_cells[:]
             mito1[0] = new_label
 
         elif mito0[0] == mito2[0]:
-            self.list_of_cells.append([mito0[0], 0, mito0[1]])
-            self.list_of_cells.append([mito2[0], 0, mito2[1]])
-            self.separate_cells_t(return_new_label=True)
+            self.list_of_cells.append([mito0[0], 0, mito0[1] - self.batch_times_list_global[0]])
+            self.list_of_cells.append([mito2[0], 0, mito2[1] - self.batch_times_list_global[0]])
+            print(self.list_of_cells)
+            new_label = self.separate_cells_t(return_new_label=True)
             del self.list_of_cells[:]
             mito2[0] = new_label
 
