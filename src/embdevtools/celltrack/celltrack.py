@@ -946,6 +946,7 @@ class CellTracking(object):
         self.hints.append([])
         self.hints[0].append(np.array([]))
         for tg in range(self.total_times-1):
+            print(tg)
             self.hints.append([])
             
             # Get cells that disappear
@@ -961,7 +962,7 @@ class CellTracking(object):
             labs = labs_mito + labs_apo
             
             # Create a boolean mask for elements of disappeared that are in labs
-            mask = np.isin(labs, disappeared)
+            mask = np.isin(disappeared, labs)
 
             # Get indices of True values in the mask
             indices = np.where(mask)[0]
@@ -975,18 +976,19 @@ class CellTracking(object):
             
             # Get cells that appeared
             appeared = np.setdiff1d(self.unique_labels_T[tg + 1], self.unique_labels_T[tg])
-
+            print(appeared)
             # Get labels of daughter cells in current time
             labs = [mito_daughters_labs[i] for i, t in enumerate(mito_daughters_ts) if t == tg+1]
-            
-            # Create a boolean mask for elements of disappeared that are in labs
-            mask = np.isin(labs, appeared)
-
+            print(labs)
+            # Create a boolean mask for elements of appeared that are in labs
+            mask = np.isin(appeared, labs)
+            print(mask)
             # Get indices of True values in the mask
             indices = np.where(mask)[0]
-            
+            print(indices)
             # Delete disappeared cells that are marked as mothers
             appeared = np.delete(appeared, indices)
+            print(appeared)
             self.hints[tg+1].append(
                 appeared
             )
