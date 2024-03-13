@@ -26,8 +26,6 @@ class SubplotPicker_add:
 class LineBuilder_points:
     def __init__(self, lines, z, t):
         self.lines = lines
-        print(len(self.lines))
-        print(len(self.lines[t]))
         self.xss = []
         self.yss = []
         for _t in range(len(lines)):
@@ -86,17 +84,26 @@ class LineBuilder_lasso:
     def __init__(self, ax, z, t, slices, times):
         self.canvas = ax.figure.canvas
         self.lasso = CustomLassoSelector(ax, onselect=self.onselect, button=3)
+        self.outlines = []
         for t in range(times):
             outlines = [[] for s in range(slices)]
             self.outlines.append(outlines)
         self.z = z
         self.t = t
-        
-    def reset_z(self, z, t):
+        self.sc = ax.scatter([], [], marker="o", color="r", s=2)
+        self.sc.set_visible(False)
+
+    def reset(self, z, t):
         self.z = z
         self.t = t
-    
+        if len(self.outlines[self.t][self.z])!=0:
+            self.sc.set_visible(True)
+            self.sc.set_offsets(self.outlines[self.t][self.z])
+        else:
+            self.sc.set_visible(False)
+
     def onselect(self, verts):
+        self.sc.set_visible(True)
         self.outlines[self.t][self.z] = np.rint([[x[0], x[1]] for x in verts]).astype("uint16")
         self.outlines[self.t][self.z] = np.unique(self.outlines[self.t][self.z], axis=0)
 
@@ -104,10 +111,13 @@ class LineBuilder_lasso:
         ol = len(self.outlines)
         step = np.ceil(ol / fl).astype("uint16")
         self.outlines[self.t][self.z] = self.outlines[self.t][self.z][::step]
+        self.sc.set_offsets(self.outlines[self.t][self.z])
+        self.canvas.draw_idle()
 
     def stopit(self):
         self.lasso.disconnect_events()
         self.canvas.draw_idle()
+        self.sc.remove()
 
 
 class CellPicker:

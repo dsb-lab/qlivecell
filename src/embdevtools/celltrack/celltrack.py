@@ -226,7 +226,7 @@ class CellTracking(object):
             extension=self._batch_args["extension"],
             channels=self.channels,
         )
-        print(self.hyperstack.shape)
+
         self.slices = self.hyperstack.shape[1]
         self.stack_dims = np.shape(self.hyperstack)[3:]
 
@@ -2184,14 +2184,10 @@ class CellTracking(object):
         if self.mito_cells[1][2] != self.mito_cells[2][2]:
             return
 
-        print(mito0)
-        print(mito1)
-        print(mito2)
         # If one cell has been selected as mother and daughther, separate it in time.
         if mito0[0] == mito1[0]:
             self.list_of_cells.append([mito0[0], 0, mito0[1] - self.batch_times_list_global[0]])
             self.list_of_cells.append([mito1[0], 0, mito1[1] - self.batch_times_list_global[0]])
-            print(self.list_of_cells)
             new_label = self.separate_cells_t(return_new_label=True)
             del self.list_of_cells[:]
             mito1[0] = new_label
@@ -2199,7 +2195,6 @@ class CellTracking(object):
         elif mito0[0] == mito2[0]:
             self.list_of_cells.append([mito0[0], 0, mito0[1] - self.batch_times_list_global[0]])
             self.list_of_cells.append([mito2[0], 0, mito2[1] - self.batch_times_list_global[0]])
-            print(self.list_of_cells)
             new_label = self.separate_cells_t(return_new_label=True)
             del self.list_of_cells[:]
             mito2[0] = new_label
