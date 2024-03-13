@@ -1378,8 +1378,9 @@ class CellTracking(object):
             
             zs = []
             for t in range(self.times):  
-                outlines_length = [len(out) for out in PACP.linebuilder.xss]
+                outlines_length = [len(out) for out in PACP.linebuilder.xss[t]]
                 _zs = [z for z in range(self.slices) if outlines_length[z]!=0]
+                
                 zs.append(_zs)
 
                 # Check if drawn points are in consecutive planes
@@ -1388,7 +1389,7 @@ class CellTracking(object):
                         printfancy("ERROR: drawn outlines are not in consecutive planes")
                         return
             
-            ts = [t for t in range(self.times) if len(zs[t] !=0)]
+            ts = [t for t in range(self.times) if len(zs[t]) !=0]
             # check if drawn points are in consecutive times
             if len(ts)>1:
                 if not (np.diff(ts)==1).all():
@@ -1397,7 +1398,7 @@ class CellTracking(object):
             
             if len(ts)==0:
                 printfancy("ERROR: no outlines drawn")
-            
+        
             for tid, t in enumerate(ts):
                 new_outlines.append([])
                 for zid, z in enumerate(zs[t]):
@@ -1431,7 +1432,7 @@ class CellTracking(object):
                         printfancy("ERROR: drawn outlines are not in consecutive planes")
                         return
             
-            ts = [t for t in range(self.times) if len(zs[t] !=0)]
+            ts = [t for t in range(self.times) if len(zs[t]) !=0]
             # check if drawn points are in consecutive times
             if len(ts)>1:
                 if not (np.diff(ts)==1).all():
@@ -1458,13 +1459,14 @@ class CellTracking(object):
                 if len(new_outlines[-1]) == 0:
                     new_outlines.pop(-1)
         
-        self.append_cell_from_outlines(new_outlines, zs, PACP.t)            
+        zs = [_zs for _zs in zs if len(_zs)!=0]
+        self.append_cell_from_outlines(new_outlines, zs, ts)            
         self.update_label_attributes()
 
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
-            List([PACP.t]),
+            List(ts),
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -1476,7 +1478,7 @@ class CellTracking(object):
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
-            List([PACP.t]),
+            List(ts),
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],

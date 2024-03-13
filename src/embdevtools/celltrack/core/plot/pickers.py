@@ -31,9 +31,11 @@ class LineBuilder_points:
         self.xss = []
         self.yss = []
         for _t in range(len(lines)):
+            self.xss.append([])
+            self.yss.append([])
             for _z in range(len(lines[_t])):
-                self.xss.append(list(lines[_t][_z].get_xdata()))
-                self.yss.append(list(lines[_t][_z].get_ydata()))
+                self.xss[-1].append(list(lines[_t][_z].get_xdata()))
+                self.yss[-1].append(list(lines[_t][_z].get_ydata()))
         self.cid = self.lines[t][z].figure.canvas.mpl_connect("button_press_event", self)
 
         self.t = t
@@ -49,12 +51,6 @@ class LineBuilder_points:
         if event.inaxes != self.lines[self.t][self.z].axes:
             return
         if event.button == 3:
-            print()
-            print(len(self.lines))
-            print(len(self.lines[self.t]))
-            print(self.t)
-            print(self.z)
-            print()
             if self.lines[self.t][self.z].figure.canvas.toolbar.mode != "":
                 self.lines[self.t][self.z].figure.canvas.mpl_disconnect(
                     self.lines[self.t][self.z].figure.canvas.toolbar._zoom_info.cid
@@ -69,8 +65,9 @@ class LineBuilder_points:
 
     def stopit(self):
         self.lines[self.t][self.z].figure.canvas.mpl_disconnect(self.cid)
-        for line in self.lines:
-            line.remove()
+        for lines in self.lines:
+            for line in lines:
+                line.remove()
 
 
 from .plot_extraclasses import CustomLassoSelector
