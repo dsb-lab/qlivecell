@@ -61,7 +61,8 @@ from .core.tools.batch_tools import (add_lab_change, check_and_fill_batch_args,
                                      check_and_remove_if_cell_mitotic,
                                      check_and_remove_if_cell_apoptotic,
                                      fill_label_correspondance_T_subs,
-                                     update_label_correspondance_subs)
+                                     update_label_correspondance_subs,
+                                     get_mito_info, get_apo_info)
 
 from .core.tools.cell_tools import (_predefine_jitcell_inputs, create_cell,
                                     extract_jitcells_from_label_stack,
@@ -936,25 +937,77 @@ class CellTracking(object):
         self.currentcellid = len(self.unique_labels) - 1
 
     def _get_hints(self):
+        # get hints of conflicts in current batch
         del self.hints[:]
-        for t in range(self.times - 1):
+        
+        mito_mothers_labs, mito_mothers_ts, mito_daughters_labs, mito_daughters_ts = get_mito_info(self.mitotic_events)
+        apo_labs, apo_ts = get_apo_info(self.apoptotic_events)
+
+        self.hints.append([])
+        self.hints[0].append(np.array([]))
+        for tg in range(self.total_times-1):
             self.hints.append([])
-            tg = self.batch_times_list_global[t]
-            self.hints[t].append(
-                np.setdiff1d(self.unique_labels_T[tg], self.unique_labels_T[tg + 1])
-            )
-            self.hints[t].append(
-                np.setdiff1d(self.unique_labels_T[tg + 1], self.unique_labels_T[tg])
-            )
+            
+            # Get cells that disappear
+            disappeared = np.setdiff1d(self.unique_labels_T[tg], self.unique_labels_T[tg + 1])
+          
+            # Get labels of mother cells in current time
+            labs_mito = [mito_mothers_labs[i] for i, t in enumerate(mito_mothers_ts) if t == tg]
 
+            # Get labels of apoptotic cells in current time
+            labs_apo = [apo_labs[i] for i, t in enumerate(apo_ts) if t == tg]
+
+            # Merge both lists
+            labs = labs_mito + labs_apo
+            
+            # Create a boolean mask for elements of disappeared that are in labs
+            mask = np.isin(labs, disappeared)
+
+            # Get indices of True values in the mask
+            indices = np.where(mask)[0]
+            
+            # Delete disappeared cells that are marked as mothers
+            disappeared = np.delete(disappeared, indices)
+
+            self.hints[tg].append(
+                disappeared
+            )
+            
+            # Get cells that appeared
+            appeared = np.setdiff1d(self.unique_labels_T[tg + 1], self.unique_labels_T[tg])
+
+            # Get labels of daughter cells in current time
+            labs = [mito_daughters_labs[i] for i, t in enumerate(mito_daughters_ts) if t == tg+1]
+            
+            # Create a boolean mask for elements of disappeared that are in labs
+            mask = np.isin(labs, appeared)
+
+            # Get indices of True values in the mask
+            indices = np.where(mask)[0]
+            
+            # Delete disappeared cells that are marked as mothers
+            appeared = np.delete(appeared, indices)
+            self.hints[tg+1].append(
+                appeared
+            )
+        self.hints[-1].append(np.array([]))
+                
+        
     def _get_number_of_conflicts(self):
-        # TODO need to compute conflict number per time
+        # compute conflicts per time in current batch
+        self.conflicts_t = []
+        for t in range(self.times):
+            
+            # compute base conflicts based on cell appearance and disappearance
+            conflits = len(self.hints[t][0]) + len(self.hints[t][1])
+            
+            # add conflicts to current time
+            self.conflicts_t.append(conflits)
+            
+        # compute total conflicts in whole dataset
         total_hints = np.sum([len(h) for hh in self.hints for h in hh], dtype="int32")
-        total_marked_apo = len(self.apoptotic_events)
-        total_marked_mito = len(self.mitotic_events) * 3
-        total_marked = total_marked_apo + total_marked_mito
-        self.conflicts = total_hints - total_marked
-
+        self.total_conflicts = total_hints
+    
     def update_label_attributes(self):
         _reinit_update_CT_cell_attributes(
             self.jitcells, self.slices, self.times, self.ctattr
@@ -2369,15 +2422,12 @@ class CellTracking(object):
                         marked_mito.append(cell.label)
 
         disappeared_cells = []
-
-        if self.PACP.t != self.times - 1:
-            for item_id, item in enumerate(self.hints[self.PACP.t][0]):
-                disappeared_cells.append(item)
+        for item_id, item in enumerate(self.hints[self.PACP.t][1]):
+            disappeared_cells.append(item)
 
         appeared_cells = []
-        if self.PACP.t != 0:
-            for item_id, item in enumerate(self.hints[self.PACP.t - 1][1]):
-                appeared_cells.append(item)
+        for item_id, item in enumerate(self.hints[self.PACP.t][0]):
+            appeared_cells.append(item)
 
         printfancy("")
         printfancy(
@@ -2394,17 +2444,19 @@ class CellTracking(object):
             printfancy("{:d}".format(lab))
         printfancy("")
 
-        printfancy("apo cells: ")
+        printfancy("APO cells: ")
         for lab in marked_apo:
             printfancy("{:d}".format(lab))
         printfancy("")
 
-        printfancy("mito cells: ")
+        printfancy("MITO cells: ")
         for lab in marked_mito:
             printfancy("{:d}".format(lab))
         printfancy("")
 
-        printfancy("CONFLICTS = {:d}".format(self.conflicts))
+        printfancy("CONFLICTS at current time = {:d}".format(self.conflicts_t[self.PACP.t]))
+        printfancy("total CONFLICTS = {:d}".format(self.total_conflicts))
+
         printfancy("")
         printfancy(None)
 

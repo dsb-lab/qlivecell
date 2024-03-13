@@ -318,3 +318,29 @@ def reorder_list(lst, order):
         new_list.append(lst[o])
 
     return new_list
+
+@njit
+def get_mito_info(mitotic_events):
+    mito_mothers_ts = []
+    mito_mothers_labs = []
+    mito_daughters_ts = []
+    mito_daughters_labs = []
+    for mito_ev in mitotic_events:
+        mito_mothers_labs.append(mito_ev[0][0])
+        mito_mothers_ts.append(mito_ev[0][1])
+        mito_daughters_labs.append(mito_ev[1][0])
+        mito_daughters_ts.append(mito_ev[1][1])
+        mito_daughters_labs.append(mito_ev[2][0])
+        mito_daughters_ts.append(mito_ev[2][1])
+        
+    return mito_mothers_labs, mito_mothers_ts, mito_daughters_labs, mito_daughters_ts
+
+@njit
+def get_apo_info(apoptotic_event):
+    apo_ts = []
+    apo_labs = []
+    for apo_cell in apoptotic_event:
+        apo_labs.append(apo_cell[0])
+        apo_ts.append(apo_cell[1])
+       
+    return apo_labs, apo_ts

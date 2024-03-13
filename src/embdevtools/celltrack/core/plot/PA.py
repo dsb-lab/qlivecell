@@ -123,7 +123,7 @@ class PlotAction:
         self.CTapoptotic_events = CT.apoptotic_events
         self.CTmitotic_events = CT.mitotic_events
         self.CThints = CT.hints
-        self.CTconflicts = CT.conflicts
+        self.CTconflicts = CT.total_conflicts
         self.CTplot_masks = self._plot_args["plot_masks"]
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
@@ -187,7 +187,7 @@ class PlotAction:
         self.CTmitotic_events = CT.mitotic_events
 
         self.CThints = CT.hints
-        self.CTconflicts = CT.conflicts
+        self.CTconflicts = CT.total_conflicts
         self.CTplot_masks = self._plot_args["plot_masks"]
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
