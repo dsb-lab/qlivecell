@@ -130,7 +130,7 @@ def update_new_label_correspondance(
 ):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
-        lab_corr_range = prange(len(label_correspondance_T[postt]))
+        lab_corr_range = range(len(label_correspondance_T[postt]))
         for lcid in lab_corr_range:
             lab_change = label_correspondance_T[postt][lcid]
             pre_label = lab_change[0]
@@ -145,7 +145,7 @@ def update_label_correspondance_subs(
 ):
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
-        lab_corr_range = prange(len(new_label_correspondance_T[postt]))
+        lab_corr_range = range(len(new_label_correspondance_T[postt]))
         for lcid in lab_corr_range:
             lab_change = new_label_correspondance_T[postt][lcid]
             pre_label = lab_change[0]
@@ -171,7 +171,7 @@ def fill_label_correspondance_T_subs(
     
     for _postt in prange(len(label_correspondance_T_subs)):
         postt = np.int64(_postt)
-        lab_corr_range = prange(len(new_label_correspondance_T[postt]))
+        lab_corr_range = range(len(new_label_correspondance_T[postt]))
         for lcid in lab_corr_range:
             lab_change = new_label_correspondance_T[postt][lcid]
             pre_label = lab_change[0]
@@ -190,7 +190,7 @@ def remove_static_labels_label_correspondance(
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
         lc_remove = List()
-        for lc in prange(len(label_correspondance_T[postt])):
+        for lc in range(len(label_correspondance_T[postt])):
             lab_change = label_correspondance_T[postt][lc]
             if lab_change[0] == lab_change[1]:
                 lc_remove.append(lc)
@@ -222,7 +222,7 @@ def add_lab_change(
 def get_unique_lab_changes(label_correspondance_T):
     lc_flatten = np.empty((0, 2), dtype="uint16")
     for t in prange(len(label_correspondance_T)):
-        for lcid in prange(len(label_correspondance_T[t])):
+        for lcid in range(len(label_correspondance_T[t])):
             lc_flatten = nb_add_row(
                 lc_flatten, label_correspondance_T[t][lcid : lcid + 1]
             )
@@ -344,3 +344,105 @@ def get_apo_info(apoptotic_event):
         apo_ts.append(apo_cell[1])
        
     return apo_labs, apo_ts
+
+
+def _init_hints():
+    hints = List([List([np.array([0], dtype="uint16")])])
+    del hints[:]
+    return hints
+
+@njit(parallel=False)
+def get_hints(hints, mitotic_events, apoptotic_events, unique_labels_T):
+    # get hints of conflicts in current batch
+    del hints[:]
+    
+    mito_mothers_labs, mito_mothers_ts, mito_daughters_labs, mito_daughters_ts = get_mito_info(mitotic_events)
+    apo_labs, apo_ts = get_apo_info(apoptotic_events)
+
+    new_list = List([np.array([0], dtype="uint16")])
+    del new_list[:]
+    hints.append(new_list)
+    hints[0].append(np.empty((0,), dtype="uint16"))
+    
+    for tg in prange(len(unique_labels_T)-1):
+        new_list = List([np.array([0], dtype="uint16")])
+        del new_list[:]
+        hints.append(new_list)
+        
+        # Get cells that disappear
+        disappeared = setdiff1d_nb(unique_labels_T[tg], unique_labels_T[tg + 1])
+        
+        # Get labels of mother cells in current time
+        labs_mito = [mito_mothers_labs[i] for i, t in enumerate(mito_mothers_ts) if t == tg]
+
+        # Get labels of apoptotic cells in current time
+        labs_apo = [apo_labs[i] for i, t in enumerate(apo_ts) if t == tg]
+
+        # Merge both lists
+        labs = np.asarray(labs_mito + labs_apo)
+        
+        # Create a boolean mask for elements of disappeared that are in labs
+        mask = in1d_nb(disappeared, labs)
+
+        # Get indices of True values in the mask
+        indices = np.where(mask)[0]
+        
+        # Delete disappeared cells that are marked as mothers
+        disappeared = np.delete(disappeared, indices)
+
+        hints[tg].append(
+            disappeared.astype("uint16")
+        )
+        
+        # Get cells that appeared
+        appeared = setdiff1d_nb(unique_labels_T[tg + 1], unique_labels_T[tg])
+
+        # Get labels of daughter cells in current time
+        labs = np.asarray([mito_daughters_labs[i] for i, t in enumerate(mito_daughters_ts) if t == tg+1])
+
+        # Create a boolean mask for elements of appeared that are in labs
+        mask = in1d_nb(appeared, labs)
+
+        # Get indices of True values in the mask
+        indices = np.where(mask)[0]
+
+        # Delete disappeared cells that are marked as mothers
+        appeared = np.delete(appeared, indices)
+
+        hints[tg+1].append(
+            appeared.astype("uint16")
+        )
+    hints[-1].append(np.empty((0,), dtype="uint16"))
+    return
+
+
+@nb.njit('uint16[:](ListType(uint16), ListType(uint16))')
+def setdiff1d_nb(arr1, arr2):
+    delta = set(arr2)
+
+    # : build the result
+    result = np.empty(len(arr1), dtype=np.uint16)
+    j = 0
+    for i in prange(len(arr1)):
+        if arr1[i] not in delta:
+            result[j] = arr1[i]
+            j += 1
+    return result[:j]
+
+
+import numpy as np
+import numba as nb
+
+@njit(parallel=False)
+def in1d_nb(matrix, index_to_remove):
+
+  out=np.empty(matrix.shape[0],dtype=nb.boolean)
+  index_to_remove_set=set(index_to_remove)
+
+  for i in nb.prange(matrix.shape[0]):
+    if matrix[i] in index_to_remove_set:
+      out[i]=True
+    else:
+      out[i]=False
+
+  return out

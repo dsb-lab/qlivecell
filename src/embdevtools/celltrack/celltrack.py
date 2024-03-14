@@ -2,7 +2,7 @@ import warnings
 from collections import deque
 from copy import copy, deepcopy
 from datetime import datetime
-
+import time 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
@@ -62,7 +62,8 @@ from .core.tools.batch_tools import (add_lab_change, check_and_fill_batch_args,
                                      check_and_remove_if_cell_apoptotic,
                                      fill_label_correspondance_T_subs,
                                      update_label_correspondance_subs,
-                                     get_mito_info, get_apo_info)
+                                     get_mito_info, get_apo_info, get_hints,
+                                     _init_hints)
 
 from .core.tools.cell_tools import (_predefine_jitcell_inputs, create_cell,
                                     extract_jitcells_from_label_stack,
@@ -673,8 +674,10 @@ class CellTracking(object):
 
         printfancy("cells initialised. updating labels...", clear_prev=1)
 
-        self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
+        self.ctattr = _init_CT_cell_attributes(self.jitcells)
 
+        self.hints = _init_hints()
+        
         self.update_labels(backup=False)
 
         printfancy("labels updated", clear_prev=1)
@@ -946,7 +949,6 @@ class CellTracking(object):
         self.hints.append([])
         self.hints[0].append(np.array([]))
         for tg in range(self.total_times-1):
-            print(tg)
             self.hints.append([])
             
             # Get cells that disappear
@@ -976,19 +978,19 @@ class CellTracking(object):
             
             # Get cells that appeared
             appeared = np.setdiff1d(self.unique_labels_T[tg + 1], self.unique_labels_T[tg])
-            print(appeared)
+
             # Get labels of daughter cells in current time
             labs = [mito_daughters_labs[i] for i, t in enumerate(mito_daughters_ts) if t == tg+1]
-            print(labs)
+
             # Create a boolean mask for elements of appeared that are in labs
             mask = np.isin(appeared, labs)
-            print(mask)
+
             # Get indices of True values in the mask
             indices = np.where(mask)[0]
-            print(indices)
+
             # Delete disappeared cells that are marked as mothers
             appeared = np.delete(appeared, indices)
-            print(appeared)
+
             self.hints[tg+1].append(
                 appeared
             )
@@ -1039,7 +1041,7 @@ class CellTracking(object):
         max_lab = nb_get_max_nest_list(self.label_correspondance_T)
         self.max_label = np.maximum(self.max_label, max_lab)
 
-        self._get_hints()
+        get_hints(self.hints, self.mitotic_events, self.apoptotic_events, self.unique_labels_T)
         self._get_number_of_conflicts()
         self._get_cellids_celllabels()
 
@@ -1057,33 +1059,44 @@ class CellTracking(object):
             
             
     def update_label_pre(self):
+        print()
         self.jitcells_selected = self.jitcells
+        start1=time.time()
         self.update_label_attributes()
-
+        end1=time.time()
+        print("update attr", end1-start1)
         # iterate over future times and update manually unique_labels_T
         # I think we should assume that there is no going to be conflict
         # on label substitution, but we have to be careful in the future
+        start2 = time.time()
         update_unique_labels_T(
             self.batch_times_list_global[-1] + 1,
             self.total_times,
             self.label_correspondance_T,
             self.unique_labels_T,
         )
+        end2=time.time()
+        print("update unique labels T", end2-start2)
         # Once unique labels are updated, we can safely run label ordering
         # if there are cells, continue
         if self.jitcells:
             
+            start3 = time.time()
             # Reorder labels on time
             old_labels, new_labels, correspondance = _order_labels_t(
                 self.unique_labels_T, self.max_label
             )
 
+            end3=time.time()
+            print("oder labels t", end3-start3)
             self.unique_labels_T = new_labels
 
+            start4 = time.time()
             self.unique_labels_T_batch = [
                 self.unique_labels_T[t] for t in self.batch_times_list_global
             ]
-
+            end4=time.time()
+            print("unique labels t batch", end4-start4)
             # update cell labels
             for cell in self.jitcells:
                 cell.label = correspondance[cell.label]
@@ -1096,22 +1109,29 @@ class CellTracking(object):
                     for t in range(len(self.unique_labels_T))
                 ]
             )
-
+            
             # Fill with the results from the ordering
+            start5=time.time()
             fill_label_correspondance_T(
                 self.new_label_correspondance_T, self.unique_labels_T, correspondance
             )
-
+            end5=time.time()
+            print("fill label corr T", end5-start5)
+            
             # update the previous values with the manual changes
+            start6=time.time()
             update_new_label_correspondance(
                 self.batch_times_list_global[0],
                 self.total_times,
                 self.label_correspondance_T,
                 self.new_label_correspondance_T,
             )
-
+            end6=time.time()
+            print("update new lab corr", end6-start6)
             # Update subs labels label correspondance T
             # Save current labels into the npy stacks
+            
+            start7=time.time()
             save_cells_to_labels_stack(
                 self.jitcells,
                 self.CT_info,
@@ -1123,12 +1143,19 @@ class CellTracking(object):
                 save_info=False,
             )
 
+            end7=time.time()
+            print("save cells", end7-start7)
+            
+            start8=time.time()
             # Remove labels that does not change
             self.new_label_correspondance_T = remove_static_labels_label_correspondance(
                 0, self.total_times, self.new_label_correspondance_T
             )
-
+            end8=time.time()
+            print("remove static labels", end8-start8)
             # Update labels on mitotic, apoptotic and blocked cells
+            
+            start9=time.time()
             for apo_ev in self.apoptotic_events:
                 if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]]:
                     idx = np.where(
@@ -1148,23 +1175,33 @@ class CellTracking(object):
                             idx[0][0], 1
                         ]
                         mito_cell[0] = new_lab
-
+            end9=time.time()
+            print("apo mito subs", end9-start9)
+            
+            start10=time.time()
             unique_lab_changes = get_unique_lab_changes(self.new_label_correspondance_T)
-
+            end10=time.time()
+            print("get unique lab changes", end10-start10)
+            
+            start11=time.time()
             for blid, blabel in enumerate(self.blocked_cells):
                 if blabel in unique_lab_changes[:, 0]:
                     post_label_id = np.where(unique_lab_changes[:, 0] == blabel)[0][0]
                     self.blocked_cells[blid] = unique_lab_changes[post_label_id, 1]
             
-            # Re-init label_correspondance only for the current and prior batches.
+            end11=time.time()
+            print("block cells subs", end11-start11)
             
+            # Re-init label_correspondance only for the current and prior batches.
+            start12 = time.time()
             update_label_correspondance_subs(
                 self.batch_times_list_global[-1]+1,
                 self.total_times,
                 self.label_correspondance_T_subs,
                 self.new_label_correspondance_T,
             )
-            
+            end12=time.time()
+            print("update lab corr subs", end12-start12)
             # fill_label_correspondance_T_subs(   
             #     self.label_correspondance_T_subs, 
             #     self.new_label_correspondance_T
@@ -1193,6 +1230,7 @@ class CellTracking(object):
         self.jitcells_selected = self.jitcells
         # update cell labels
 
+        start13 = time.time()
         self.update_label_attributes()
 
         compute_point_stack(
@@ -1220,7 +1258,10 @@ class CellTracking(object):
             mode="outlines",
             min_length=self._plot_args["min_outline_length"]
         )
-
+        end13=time.time()
+            
+        print("compute point stacks", end13-start13)
+        
     def _get_cellids_celllabels(self):
         del self._labels[:]
         del self._ids[:]
@@ -1421,7 +1462,7 @@ class CellTracking(object):
                         [], [], linestyle="none", marker="o", color="r", markersize=2
                     ) 
                     lines[-1].append(line)
-            print(len(lines))
+
             PACP.linebuilder = LineBuilder_points(lines, PACP.z, PACP.t)
         else:
             PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel, PACP.z, PACP.t, self.slices, self.times)

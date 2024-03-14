@@ -20,7 +20,7 @@ def get_lineage_graph(mitotic_events):
         cell2 = mito_ev[2]
         graph[cell1[0]] = cell0[0]
         graph[cell2[0]] = cell0[0]
-    print(graph)
+
     return graph
 
 def get_lineage_root(graph, label):

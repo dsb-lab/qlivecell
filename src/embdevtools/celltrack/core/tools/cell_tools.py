@@ -629,10 +629,10 @@ def list_unique(lst):
     return lst_unique
 
 
-# @njit
+@njit
 def extract_jitcells_from_label_stack_part1(labels_stack):
     unique_labels_T, order = extract_unique_labels_T(labels_stack, len(labels_stack))
-    new_order = np.argsort(order)
+    new_order = np.argsort(np.asarray(order))
     unique_labels_T = reorder_list(unique_labels_T, new_order)
 
     total_labs = extract_all_elements(unique_labels_T)
@@ -653,7 +653,6 @@ def extract_unique_labels_T(labels, times):
     return labs_t, order
 
 
-# is there a way to make this parallel?
 @njit(parallel=False)
 def extract_all_elements(lst):
     total_labs = List()
@@ -686,7 +685,7 @@ def get_nested_list_full_size(lst):
     return sizes
 
 
-@njit(parallel=False)
+@njit(parallel=True)
 def extract_jitcells_from_label_stack_part2(
     labels_stack, unique_labels, unique_labels_T
 ):
