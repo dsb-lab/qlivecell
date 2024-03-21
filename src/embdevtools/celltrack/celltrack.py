@@ -105,6 +105,7 @@ plt.rcParams["keymap.yscale"].remove("l")
 plt.rcParams["keymap.pan"].remove("p")
 plt.rcParams["keymap.zoom"][0] = ","
 plt.rcParams["keymap.back"].remove("c")
+plt.rcParams["keymap.forward"].remove("v")
 plt.rcParams["keymap.xscale"].remove("L")
 
 PLTLINESTYLES = list(lineStyles.keys())
@@ -1288,7 +1289,9 @@ class CellTracking(object):
                 unblocked_cells.append(lab)
             else:
                 self.blocked_cells.append(lab)
-
+        
+        _labs = [*self.blocked_cells, *unblocked_cells]
+        labs = [lab for lab in _labs if lab in self.unique_labels_batch]
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
@@ -1297,7 +1300,7 @@ class CellTracking(object):
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
             blocked_cells=self.blocked_cells,
-            labels=[*self.blocked_cells, *unblocked_cells],
+            labels=labs,
             alpha=0,
             mode="masks",
         )
@@ -1309,7 +1312,7 @@ class CellTracking(object):
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
             blocked_cells=self.blocked_cells,
-            labels=[*self.blocked_cells, *unblocked_cells],
+            labels=labs,
             alpha=1,
             mode="outlines",
             min_length=self._plot_args["min_outline_length"]
@@ -1343,9 +1346,12 @@ class CellTracking(object):
             final_outlines.append(new_outline_sorted_highres)
             masks.append(mask_from_outline(new_outline_sorted_highres))
 
-        self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(
-            self.ctattr.Labels
-        )
+        self.max_label_T = [
+            np.max(sublist) if len(sublist) != 0 else -1
+            for sublist in self.unique_labels_T
+        ]
+        self.max_label = np.max(self.max_label_T)
+        
         new_cell = create_cell(
             self.currentcellid + 1,
             self.max_label + 1,
@@ -1412,9 +1418,12 @@ class CellTracking(object):
                 final_outlines[-1].append(new_outline_sorted_highres)
                 masks[-1].append(mask_from_outline(new_outline_sorted_highres))
 
-        self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(
-            self.ctattr.Labels
-        )
+        self.max_label_T = [
+            np.max(sublist) if len(sublist) != 0 else -1
+            for sublist in self.unique_labels_T
+        ]
+        self.max_label = np.max(self.max_label_T)
+        
         new_cell = create_cell(
             self.currentcellid + 1,
             self.max_label + 1,
@@ -2178,9 +2187,11 @@ class CellTracking(object):
         new_cell.outlines = new_cell.outlines[border:]
         new_cell.masks = new_cell.masks[border:]
 
-        self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(
-            self.ctattr.Labels
-        )
+        self.max_label_T = [
+            np.max(sublist) if len(sublist) != 0 else -1
+            for sublist in self.unique_labels_T
+        ]
+        self.max_label = np.max(self.max_label_T)
 
         new_cell.label = self.max_label + 1
         new_cell.id = self.currentcellid + 1
@@ -2450,7 +2461,7 @@ class CellTracking(object):
             if event[1] == self.PACP.tg:
                 cell = self._get_cell(label=event[0])
                 if cell is None:
-                    self.apoptotic_events.remove(event)
+                    printfancy("ERROR: apo cell not found")
                 else:
                     marked_apo.append(cell.label)
 
@@ -2460,16 +2471,16 @@ class CellTracking(object):
                 if mitocell[1] == self.PACP.tg:
                     cell = self._get_cell(label=mitocell[0])
                     if cell is None:
-                        self.mitotic_events.remove(event)
+                        printfancy("ERROR: mito cell not found")
                     else:
                         marked_mito.append(cell.label)
 
         disappeared_cells = []
-        for item_id, item in enumerate(self.hints[self.PACP.t][1]):
+        for item_id, item in enumerate(self.hints[self.PACP.tg][1]):
             disappeared_cells.append(item)
 
         appeared_cells = []
-        for item_id, item in enumerate(self.hints[self.PACP.t][0]):
+        for item_id, item in enumerate(self.hints[self.PACP.tg][0]):
             appeared_cells.append(item)
 
         printfancy("")
