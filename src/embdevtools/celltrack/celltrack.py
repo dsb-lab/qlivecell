@@ -502,6 +502,11 @@ class CellTracking(object):
         self.times = len(times)
         
         # Update labels on new batch
+        print()
+        print("SUB LABS SET BATCH")
+        for t in range(len(self.label_correspondance_T_subs)):
+            print(self.label_correspondance_T_subs[t])
+
         start2 = time.time()
         substitute_labels(
                 self.batch_times_list_global[0],
@@ -1101,6 +1106,9 @@ class CellTracking(object):
             # update cell labels
             for cell in self.jitcells:
                 cell.label = correspondance[cell.label]
+            
+            for bid, blabel in enumerate(self.blocked_cells):
+                self.blocked_cells[bid] = correspondance[blabel]
                 
             # Create new label correspondance that is going to take into account the manual changes
             # and the changes derived from the ordering
@@ -1179,28 +1187,23 @@ class CellTracking(object):
             end9=time.time()
             print("apo mito subs", end9-start9)
             
-            start10=time.time()
-            unique_lab_changes = get_unique_lab_changes(self.new_label_correspondance_T)
-            end10=time.time()
-            print("get unique lab changes", end10-start10)
-            
-            start11=time.time()
-            for blid, blabel in enumerate(self.blocked_cells):
-                if blabel in unique_lab_changes[:, 0]:
-                    post_label_id = np.where(unique_lab_changes[:, 0] == blabel)[0][0]
-                    self.blocked_cells[blid] = unique_lab_changes[post_label_id, 1]
-            
-            end11=time.time()
-            print("block cells subs", end11-start11)
-            
             # Re-init label_correspondance only for the current and prior batches.
             start12 = time.time()
+            
+            # for t in range(len(self.new_label_correspondance_T)):
+            #     print(self.new_label_correspondance_T[t])
+            
+            # ISSUE WITH THIS FUNCTION
             update_label_correspondance_subs(
                 self.batch_times_list_global[-1]+1,
                 self.total_times,
                 self.label_correspondance_T_subs,
                 self.new_label_correspondance_T,
             )
+            # print()
+            # for t in range(len(self.label_correspondance_T_subs)):
+            #     print(self.label_correspondance_T_subs[t])            
+
             end12=time.time()
             print("update lab corr subs", end12-start12)
             # fill_label_correspondance_T_subs(   

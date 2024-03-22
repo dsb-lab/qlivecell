@@ -120,8 +120,9 @@ def update_unique_labels_T(
         for lab_change in label_correspondance_T[postt]:
             pre_label = lab_change[0]
             post_label = lab_change[1]
-            id_change = unique_labels_T[postt].index(pre_label)
-            unique_labels_T[postt][id_change] = post_label
+            if pre_label in unique_labels_T[postt]:
+                id_change = unique_labels_T[postt].index(pre_label)
+                unique_labels_T[postt][id_change] = post_label
 
 
 @njit(parallel=False)
@@ -139,7 +140,7 @@ def update_new_label_correspondance(
             new_label_correspondance_T[postt][idx[0][0], 0] = pre_label
 
 
-@njit(parallel=False)
+# @njit(parallel=False)
 def update_label_correspondance_subs(
     post_range_start, post_range_end, label_correspondance_T_subs, new_label_correspondance_T
 ):
@@ -152,8 +153,9 @@ def update_label_correspondance_subs(
             post_label = lab_change[1]
             
             if pre_label in label_correspondance_T_subs[postt][:, 1]:
-                idx = np.where(label_correspondance_T_subs[postt][:, 1] == pre_label)
-                label_correspondance_T_subs[postt][idx[0][0], 1] = post_label
+                if not any((new_label_correspondance_T[postt][:]==lab_change).all(1)):
+                    idx = np.where(label_correspondance_T_subs[postt][:, 1] == pre_label)
+                    label_correspondance_T_subs[postt][idx[0][0], 1] = post_label
             else:
                 lab_change = np.array([[pre_label, post_label]], dtype="uint16")
                 label_correspondance_T_subs[postt] = nb_add_row(
