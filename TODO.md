@@ -1,7 +1,6 @@
 # TODO list for embdevtools repository
 
 ## TODO 
-
 - Change of software name
 - Add backups
 - Functionality with non-squared images 
@@ -12,12 +11,9 @@
 
 ## Feature requirements
 ### GUI
-- Add multichannel visualization, not only RGB (3 channels). Maybe possible to switch off channels from the GUI?
-- Add contrast control both in the arguments and as sliders in the GUI. For multichannel, needs to be possible to control individual channels
-- Show confict per times, not only total conflicts
-- Visualize conflicting cells. Available as an action from the GUI
 - Add properties to cells for napari plots (Arboretum and normal 3D viewer)
-- Add cell on different times
+- (?) Add multichannel visualization, not only RGB (3 channels). Maybe possible to switch off channels from the GUI? 
+- (?) Add contrast control both in the arguments and as sliders in the GUI. For multichannel, needs to be possible to control individual channels 
 
 ### Segmentation
 - Arg-request: Min fluorescence on mask for it to be kept

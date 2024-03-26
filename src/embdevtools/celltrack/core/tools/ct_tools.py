@@ -160,6 +160,7 @@ def get_cell_color(jitcell, labels_colors, alpha, blocked_cells):
         return np.array([1.0, 1.0, 1.0, alpha])
     return np.append(labels_colors[jitcell.label], alpha)
 
+import time
 
 # @njit
 def compute_point_stack(
@@ -184,6 +185,7 @@ def compute_point_stack(
         _labels = np.unique(labels)
 
     for lab in _labels:
+        start1=time.time()
         jitcell = get_cell(jitcells, lab)
 
         if rem:
@@ -194,13 +196,12 @@ def compute_point_stack(
         color = np.rint(color * 255).astype("uint8")
         if mode == "outlines":
             points = jitcell.outlines
-            for t in range(len(points)):
-                for z, outline in enumerate(points[t]):
-                    if len(outline) < min_length:
-                        points[t][z] = increase_point_resolution(outline, min_length)
         elif mode == "masks":
             points = jitcell.masks
 
+        end1=time.time()
+        # print("elapsed1", end1-start1)
+        start2=time.time()
         set_cell_color(
             point_stack,
             points,
@@ -211,8 +212,9 @@ def compute_point_stack(
             times,
             -1,
         )
+        end2=time.time()
+        # print("elapsed2", end2-start2)
     return point_stack
-
 
 def get_cell(cells, label=None, cellid=None):
     if label == None:

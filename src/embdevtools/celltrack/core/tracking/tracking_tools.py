@@ -163,7 +163,6 @@ def create_toy_cell():
 
 
 def _init_CT_cell_attributes(jitcells: ListType(jitCell)):  # type: ignore
-    hints = []
     if len(jitcells) == 0:
         cell = create_toy_cell()
         jitcell = construct_jitCell_from_Cell(cell)
@@ -176,7 +175,7 @@ def _init_CT_cell_attributes(jitcells: ListType(jitCell)):  # type: ignore
     Centersi = List.empty_list(ListType(ListType(typeof(jitcell.centersi[0][0]))))
     Centersj = List.empty_list(ListType(ListType(typeof(jitcell.centersj[0][0]))))
     ctattr = CTattributes(Labels, Outlines, Masks, Centersi, Centersj)
-    return hints, ctattr
+    return ctattr
 
 
 def _reinit_update_CT_cell_attributes(
