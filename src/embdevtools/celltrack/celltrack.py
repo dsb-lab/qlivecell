@@ -504,10 +504,10 @@ class CellTracking(object):
         self.times = len(times)
         
         # Update labels on new batch
-        print()
-        print("SUB LABS SET BATCH")
-        for t in range(len(self.label_correspondance_T_subs)):
-            print(self.label_correspondance_T_subs[t])
+        # print()
+        # print("SUB LABS SET BATCH")
+        # for t in range(len(self.label_correspondance_T_subs)):
+        #     print(self.label_correspondance_T_subs[t])
 
         start2 = time.time()
         substitute_labels(
@@ -1931,7 +1931,7 @@ class CellTracking(object):
         Zs = [x[1] for x in PACP.list_of_cells]
         self.nactions += 1
         # for z in Zs: self._tz_actions.append([t, z])
-
+        
         cell1 = self._get_cell(cells[0])
         tid_cell1 = cell1.times.index(t)
         for lab in cells[1:]:

@@ -1378,7 +1378,7 @@ class PlotActionCT(PlotAction):
             ZS_first_last = np.array(ZS_first_last)
             Zdiff = ZS_first_last[1:, 0] - ZS_first_last[:-1, 1]
             
-            if not (Zdiff == 1).all():
+            if not (np.abs(Zdiff) == 1).all():
                 printfancy("ERROR: cells must be contiguous over z")
                 return
 
@@ -1573,8 +1573,8 @@ class PlotActionCT(PlotAction):
         xyres = self.CT_info.xyresolution
         zres = self.CT_info.zresolution
         
-        self.napari_viewer = napari.view_image(self._plot_stack, name='hyperstack', scale=(zres, xyres, xyres), rgb=False, ndisplay=3)
-        self.napari_viewer.add_image(self._napari_masks_stack, name='masks', scale=(zres, xyres, xyres), channel_axis=-1, colormap=['red', 'green', 'blue'], rendering='iso')
+        self.napari_viewer = napari.view_image(self._plot_stack, name='hyperstack', scale=(zres*self._plot_args["dim_change"], xyres, xyres), rgb=False, ndisplay=3)
+        self.napari_viewer.add_image(self._napari_masks_stack, name='masks', scale=(zres*self._plot_args["dim_change"], xyres, xyres), channel_axis=-1, colormap=['red', 'green', 'blue'], rendering='iso')
         
         self.update_3Dviewer3D()
 
