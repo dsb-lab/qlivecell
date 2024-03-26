@@ -142,6 +142,8 @@ class CellTracking(object):
         check_or_create_dir(self.path_to_data)
         check_or_create_dir(self.path_to_save)
 
+        self.path_to_save = correct_path(self.path_to_save)
+        
         printfancy("path to data = {}".format(self.path_to_data))
         printfancy("path to save = {}".format(self.path_to_save))
         printfancy("")
