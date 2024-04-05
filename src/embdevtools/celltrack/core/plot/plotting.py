@@ -107,6 +107,19 @@ def norm_stack_per_z(IMGS, saturation=0.7):
     return IMGS_norm
 
 
+def adjust_contrast(image, min_contrast, max_contrast):
+    # Normalize pixel values to the range [0, 1]
+    normalized_image = image / 255.0
+    
+    # Apply contrast adjustment
+    adjusted_image = np.clip((normalized_image - min_contrast) / (max_contrast - min_contrast), 0, 1)
+    
+    # Convert back to uint8
+    adjusted_image = (adjusted_image * 255).astype(np.uint8)
+    
+    return adjusted_image
+
+
 # TODO need to make the label color iterator numba compatible
 # def switch_masks(self, masks=None):
 

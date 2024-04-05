@@ -10,6 +10,7 @@ LINE_CLEAR = "\x1b[2K"
 
 
 def printclear(n=1):
+    return
     LINE_UP = "\033[1A"
     LINE_CLEAR = "\x1b[2K"
     for i in range(n):
@@ -92,8 +93,9 @@ def check_and_fill_error_correction_args(error_correction_args):
     return new_error_correction_args
 
 
+# @njit()
 def increase_point_resolution(outline, min_outline_length):
-    rounds = np.ceil(np.log2(min_outline_length / len(outline))).astype("uint16")
+    rounds = int(np.ceil(np.log2(min_outline_length / len(outline))))
     if rounds <= 0:
         newoutline_new = np.copy(outline)
     for r in range(rounds):

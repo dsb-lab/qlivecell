@@ -2,7 +2,7 @@ import warnings
 from collections import deque
 from copy import copy, deepcopy
 from datetime import datetime
-
+import time 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
@@ -32,6 +32,7 @@ from .core.plot.plot_extraclasses import Slider_t, Slider_t_batch, Slider_z
 from .core.plot.plot_iters import plotRound
 from .core.plot.plotting import (check_and_fill_plot_args,
                                  check_stacks_for_plotting, norm_stack_per_z)
+from .core.plot.napari_tools import arboretum_napari
 from .core.segmentation.segmentation import (
     cell_segmentation2D_cellpose, cell_segmentation2D_stardist,
     cell_segmentation3D, check_and_fill_concatenation3D_args,
@@ -60,7 +61,9 @@ from .core.tools.batch_tools import (add_lab_change, check_and_fill_batch_args,
                                      check_and_remove_if_cell_mitotic,
                                      check_and_remove_if_cell_apoptotic,
                                      fill_label_correspondance_T_subs,
-                                     update_label_correspondance_subs)
+                                     update_label_correspondance_subs,
+                                     get_mito_info, get_apo_info, get_hints,
+                                     _init_hints)
 
 from .core.tools.cell_tools import (_predefine_jitcell_inputs, create_cell,
                                     extract_jitcells_from_label_stack,
@@ -73,7 +76,7 @@ from .core.tools.input_tools import (get_file_name, get_file_names,
                                      tif_reader_5D, separate_times_hyperstack)
 from .core.tools.save_tools import (load_cells, load_CT_info, read_split_times,
                                     save_3Dstack, save_4Dstack,
-                                    save_4Dstack_labels, save_cells,
+                                    save_4Dstack_labels,
                                     save_cells_to_labels_stack, save_CT_info,
                                     save_labels_stack, substitute_labels)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
@@ -102,6 +105,7 @@ plt.rcParams["keymap.yscale"].remove("l")
 plt.rcParams["keymap.pan"].remove("p")
 plt.rcParams["keymap.zoom"][0] = ","
 plt.rcParams["keymap.back"].remove("c")
+plt.rcParams["keymap.forward"].remove("v")
 plt.rcParams["keymap.xscale"].remove("L")
 
 PLTLINESTYLES = list(lineStyles.keys())
@@ -128,11 +132,7 @@ class CellTracking(object):
     ):
         print("###############           INIT ON BATCH MODE          ################")
         printfancy("")
-        # Basic arguments
-        if ".tif" in pthtodata:
-            self.batch = False
-        else:
-            self.batch = True
+        # Basic arguments 
 
         self.channels = np.sort(channels)
         self.channels_order = np.array(channels)
@@ -145,6 +145,8 @@ class CellTracking(object):
         check_or_create_dir(self.path_to_data)
         check_or_create_dir(self.path_to_save)
 
+        self.path_to_save = correct_path(self.path_to_save)
+        
         printfancy("path to data = {}".format(self.path_to_data))
         printfancy("path to save = {}".format(self.path_to_save))
         printfancy("")
@@ -205,6 +207,7 @@ class CellTracking(object):
         # First and last time of the first batch
         self.total_times = extract_total_times_from_files(self.path_to_data)
 
+        
         # check and fill error correction arguments
         self._err_corr_args = check_and_fill_error_correction_args(
             error_correction_args
@@ -212,6 +215,14 @@ class CellTracking(object):
 
         self._batch_args = check_and_fill_batch_args(batch_args)
 
+        if ".tif" in self.path_to_data:
+            if self.total_times <= self._batch_args["batch_size"]:
+                self.batch = False
+            else:
+                self.batch = True
+        else:
+            self.batch = True
+        
         # Read the stacks
         self.hyperstack, self.metadata = read_split_times(
             self.path_to_data,
@@ -220,6 +231,7 @@ class CellTracking(object):
             extension=self._batch_args["extension"],
             channels=self.channels,
         )
+
         self.slices = self.hyperstack.shape[1]
         self.stack_dims = np.shape(self.hyperstack)[3:]
 
@@ -246,7 +258,7 @@ class CellTracking(object):
         self._batch_args = check_and_fill_batch_args(batch_args)
 
         # pre-define max label
-        self.max_label = 0
+        self.max_label = -1
 
         ##  Mito and Apo events
         self.apoptotic_events = List([
@@ -438,14 +450,16 @@ class CellTracking(object):
         # Compute max label
         maxlabs = []
         for sublist in self.unique_labels_T:
-            maxlabs.append(np.max(sublist))
+            if len(sublist)==0:
+                maxlabs.append(-1)
+            else:
+                maxlabs.append(np.max(sublist))
         self.max_label = np.max(maxlabs)
-
         # Currentcellid will be deprecated soon
         self.currentcellid = self.max_label
 
         # Set initial batch as 0
-        self.set_batch(batch_number=0, plotting=False, force=(not self.batch))
+        self.set_batch(batch_number=0, plotting=False, force=True)
         self.init_masks_outlines_stacks()
 
     def set_batch(
@@ -490,6 +504,11 @@ class CellTracking(object):
         self.times = len(times)
         
         # Update labels on new batch
+        # print()
+        # print("SUB LABS SET BATCH")
+        # for t in range(len(self.label_correspondance_T_subs)):
+        #     print(self.label_correspondance_T_subs[t])
+
         start2 = time.time()
         substitute_labels(
                 self.batch_times_list_global[0],
@@ -500,7 +519,7 @@ class CellTracking(object):
             )
         end2 = time.time()
         elapsed2 = end2 - start2
-        # print("subs labels in set batch", elapsed2)
+        print("subs labels in set batch", elapsed2)
         
         start6 = time.time()
         # Reset label substitution for current batch
@@ -508,7 +527,7 @@ class CellTracking(object):
                 self.label_correspondance_T_subs[t] = np.empty((0, 2), dtype="uint16")
         end6 = time.time()
         elapsed6 = end6 - start6
-        # print("reinit label correspondance", elapsed6)
+        print("reinit label correspondance", elapsed6)
         
         start3 = time.time()
         self.hyperstack, self.metadata = read_split_times(
@@ -520,7 +539,7 @@ class CellTracking(object):
         )
         end3 = time.time()
         elapsed3 = end3 - start3
-        # print("read stacks batch", elapsed3)
+        print("read stacks batch", elapsed3)
         
         start4 = time.time()
         # If the stack is RGB, pick the channel to segment
@@ -528,21 +547,21 @@ class CellTracking(object):
             self.init_masks_outlines_stacks()
         end4 = time.time()
         elapsed4 = end4 - start4
-        # print("init masks outlines", elapsed4)
+        print("init masks outlines", elapsed4)
         
         start5 = time.time()
         if init_cells:
             self.init_batch_cells()
         end5 = time.time()
         elapsed5 = end5 - start5
-        # print("init cells", elapsed5)
+        print("init cells", elapsed5)
         
         start7 = time.time()
         if update_labels:
             self.update_labels()
         end7 = time.time()
         elapsed7 = end7 - start7
-        # print("update_labels end set batch", elapsed7)
+        print("update_labels end set batch", elapsed7)
         
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)
@@ -555,7 +574,7 @@ class CellTracking(object):
         printfancy()
         printclear()
         elapsed = elapsed1 + elapsed2 + elapsed3 + elapsed4 + elapsed5 + elapsed6 + elapsed7
-        # print("ELAPSED TOTAL", elapsed)
+        print("ELAPSED TOTAL", elapsed)
         return
 
     def init_masks_outlines_stacks(self):
@@ -590,7 +609,7 @@ class CellTracking(object):
         start = time.time()
         self.jitcells = extract_jitcells_from_label_stack(labels)
         end = time.time()
-        # print("elapsed extract_jitcells", end - start)
+        print("elapsed extract_jitcells", end - start)
         stack = self.hyperstack[
             :,
             :,
@@ -638,14 +657,14 @@ class CellTracking(object):
                 _ = mito_evs.pop(0)
             else:
                 mito_evs = List([List([List(mitocell) for mitocell in mitoev]) for mitoev in self.CT_info.mito_cells])
-            if len(self.CT_info.mito_cells) == 0:
+            if len(self.CT_info.apo_cells) == 0:
                 apo_evs = List([
                     List([0, 0])
                     ])
                 apo_evs.pop(0)
             else:
                 apo_evs = List([List(apoev) for apoev in self.CT_info.apo_cells])
-                
+            
             self.apoptotic_events = apo_evs
             self.mitotic_events = mito_evs
             if len(self.CT_info.blocked_cells) == 0:
@@ -663,8 +682,10 @@ class CellTracking(object):
 
         printfancy("cells initialised. updating labels...", clear_prev=1)
 
-        self.hints, self.ctattr = _init_CT_cell_attributes(self.jitcells)
+        self.ctattr = _init_CT_cell_attributes(self.jitcells)
 
+        self.hints = _init_hints()
+        
         self.update_labels(backup=False)
 
         printfancy("labels updated", clear_prev=1)
@@ -884,7 +905,7 @@ class CellTracking(object):
         self.unique_labels = np.unique(np.hstack(FinalLabels))
 
         if len(self.unique_labels) == 0:
-            self.max_label = 0
+            self.max_label = -1
         else:
             self.max_label = int(max(self.unique_labels))
 
@@ -927,25 +948,78 @@ class CellTracking(object):
         self.currentcellid = len(self.unique_labels) - 1
 
     def _get_hints(self):
+        # get hints of conflicts in current batch
         del self.hints[:]
-        for t in range(self.times - 1):
+        
+        mito_mothers_labs, mito_mothers_ts, mito_daughters_labs, mito_daughters_ts = get_mito_info(self.mitotic_events)
+        apo_labs, apo_ts = get_apo_info(self.apoptotic_events)
+
+        self.hints.append([])
+        self.hints[0].append(np.array([]))
+        for tg in range(self.total_times-1):
             self.hints.append([])
-            tg = self.batch_times_list_global[t]
-            self.hints[t].append(
-                np.setdiff1d(self.unique_labels_T[tg], self.unique_labels_T[tg + 1])
-            )
-            self.hints[t].append(
-                np.setdiff1d(self.unique_labels_T[tg + 1], self.unique_labels_T[tg])
-            )
+            
+            # Get cells that disappear
+            disappeared = np.setdiff1d(self.unique_labels_T[tg], self.unique_labels_T[tg + 1])
+          
+            # Get labels of mother cells in current time
+            labs_mito = [mito_mothers_labs[i] for i, t in enumerate(mito_mothers_ts) if t == tg]
 
+            # Get labels of apoptotic cells in current time
+            labs_apo = [apo_labs[i] for i, t in enumerate(apo_ts) if t == tg]
+
+            # Merge both lists
+            labs = labs_mito + labs_apo
+            
+            # Create a boolean mask for elements of disappeared that are in labs
+            mask = np.isin(disappeared, labs)
+
+            # Get indices of True values in the mask
+            indices = np.where(mask)[0]
+            
+            # Delete disappeared cells that are marked as mothers
+            disappeared = np.delete(disappeared, indices)
+
+            self.hints[tg].append(
+                disappeared
+            )
+            
+            # Get cells that appeared
+            appeared = np.setdiff1d(self.unique_labels_T[tg + 1], self.unique_labels_T[tg])
+
+            # Get labels of daughter cells in current time
+            labs = [mito_daughters_labs[i] for i, t in enumerate(mito_daughters_ts) if t == tg+1]
+
+            # Create a boolean mask for elements of appeared that are in labs
+            mask = np.isin(appeared, labs)
+
+            # Get indices of True values in the mask
+            indices = np.where(mask)[0]
+
+            # Delete disappeared cells that are marked as mothers
+            appeared = np.delete(appeared, indices)
+
+            self.hints[tg+1].append(
+                appeared
+            )
+        self.hints[-1].append(np.array([]))
+                
+        
     def _get_number_of_conflicts(self):
-        # TODO need to compute conflict number per time
+        # compute conflicts per time in current batch
+        self.conflicts_t = []
+        for t in range(self.times):
+            
+            # compute base conflicts based on cell appearance and disappearance
+            conflits = len(self.hints[t][0]) + len(self.hints[t][1])
+            
+            # add conflicts to current time
+            self.conflicts_t.append(conflits)
+            
+        # compute total conflicts in whole dataset
         total_hints = np.sum([len(h) for hh in self.hints for h in hh], dtype="int32")
-        total_marked_apo = len(self.apoptotic_events)
-        total_marked_mito = len(self.mitotic_events) * 3
-        total_marked = total_marked_apo + total_marked_mito
-        self.conflicts = total_hints - total_marked
-
+        self.total_conflicts = total_hints
+    
     def update_label_attributes(self):
         _reinit_update_CT_cell_attributes(
             self.jitcells, self.slices, self.times, self.ctattr
@@ -961,18 +1035,21 @@ class CellTracking(object):
             self.ctattr.Labels, self.times
         )
         for tid, t in enumerate(self.batch_times_list_global):
-            self.unique_labels_T[t] = self.unique_labels_T_batch[tid]
+            if len(self.unique_labels_T_batch[tid])==0:
+                del self.unique_labels_T[t][:]
+            else:
+                self.unique_labels_T[t] = self.unique_labels_T_batch[tid]
 
         self.unique_labels = self.unique_labels_batch
         self.max_label_T = [
-            np.max(sublist) if len(sublist) != 0 else 0
+            np.max(sublist) if len(sublist) != 0 else -1
             for sublist in self.unique_labels_T
         ]
         self.max_label = np.max(self.max_label_T)
         max_lab = nb_get_max_nest_list(self.label_correspondance_T)
         self.max_label = np.maximum(self.max_label, max_lab)
 
-        self._get_hints()
+        get_hints(self.hints, self.mitotic_events, self.apoptotic_events, self.unique_labels_T)
         self._get_number_of_conflicts()
         self._get_cellids_celllabels()
 
@@ -990,36 +1067,50 @@ class CellTracking(object):
             
             
     def update_label_pre(self):
+        print()
         self.jitcells_selected = self.jitcells
+        start1=time.time()
         self.update_label_attributes()
-
+        end1=time.time()
+        print("update attr", end1-start1)
         # iterate over future times and update manually unique_labels_T
         # I think we should assume that there is no going to be conflict
         # on label substitution, but we have to be careful in the future
+        start2 = time.time()
         update_unique_labels_T(
             self.batch_times_list_global[-1] + 1,
             self.total_times,
             self.label_correspondance_T,
             self.unique_labels_T,
         )
+        end2=time.time()
+        print("update unique labels T", end2-start2)
         # Once unique labels are updated, we can safely run label ordering
         # if there are cells, continue
         if self.jitcells:
             
+            start3 = time.time()
             # Reorder labels on time
             old_labels, new_labels, correspondance = _order_labels_t(
                 self.unique_labels_T, self.max_label
             )
 
+            end3=time.time()
+            print("oder labels t", end3-start3)
             self.unique_labels_T = new_labels
 
+            start4 = time.time()
             self.unique_labels_T_batch = [
                 self.unique_labels_T[t] for t in self.batch_times_list_global
             ]
-
+            end4=time.time()
+            print("unique labels t batch", end4-start4)
             # update cell labels
             for cell in self.jitcells:
                 cell.label = correspondance[cell.label]
+            
+            for bid, blabel in enumerate(self.blocked_cells):
+                self.blocked_cells[bid] = correspondance[blabel]
                 
             # Create new label correspondance that is going to take into account the manual changes
             # and the changes derived from the ordering
@@ -1029,40 +1120,53 @@ class CellTracking(object):
                     for t in range(len(self.unique_labels_T))
                 ]
             )
-
+            
             # Fill with the results from the ordering
+            start5=time.time()
             fill_label_correspondance_T(
                 self.new_label_correspondance_T, self.unique_labels_T, correspondance
             )
-
+            end5=time.time()
+            print("fill label corr T", end5-start5)
+            
             # update the previous values with the manual changes
+            start6=time.time()
             update_new_label_correspondance(
                 self.batch_times_list_global[0],
                 self.total_times,
                 self.label_correspondance_T,
                 self.new_label_correspondance_T,
             )
-
+            end6=time.time()
+            print("update new lab corr", end6-start6)
             # Update subs labels label correspondance T
             # Save current labels into the npy stacks
-            # save_cells_to_labels_stack(
-            #     self.jitcells,
-            #     self.CT_info,
-            #     self.batch_times_list_global,
-            #     path=self.path_to_save,
-            #     filename=None,
-            #     split_times=True,
-            #     name_format=self._batch_args["name_format"],
-            #     save_info=False,
-            # )
+            
+            start7=time.time()
+            save_cells_to_labels_stack(
+                self.jitcells,
+                self.CT_info,
+                self.batch_times_list_global,
+                path=self.path_to_save,
+                filename=None,
+                split_times=True,
+                name_format=self._batch_args["name_format"],
+                save_info=False,
+            )
 
+            end7=time.time()
+            print("save cells", end7-start7)
+            
+            start8=time.time()
             # Remove labels that does not change
             self.new_label_correspondance_T = remove_static_labels_label_correspondance(
                 0, self.total_times, self.new_label_correspondance_T
             )
-
-
+            end8=time.time()
+            print("remove static labels", end8-start8)
             # Update labels on mitotic, apoptotic and blocked cells
+            
+            start9=time.time()
             for apo_ev in self.apoptotic_events:
                 if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]]:
                     idx = np.where(
@@ -1075,30 +1179,35 @@ class CellTracking(object):
                 for mito_cell in mito_ev:
                     if mito_cell[0] in self.new_label_correspondance_T[mito_cell[1]]:
                         idx = np.where(
-                            self.label_correspondance_T[mito_cell[1]][:, 0]
+                            self.new_label_correspondance_T[mito_cell[1]][:, 0]
                             == mito_cell[0]
                         )
                         new_lab = self.new_label_correspondance_T[mito_cell[1]][
                             idx[0][0], 1
                         ]
                         mito_cell[0] = new_lab
-
-            unique_lab_changes = get_unique_lab_changes(self.new_label_correspondance_T)
-
-            for blid, blabel in enumerate(self.blocked_cells):
-                if blabel in unique_lab_changes[:, 0]:
-                    post_label_id = np.where(unique_lab_changes[:, 0] == blabel)[0][0]
-                    self.blocked_cells[blid] = unique_lab_changes[post_label_id, 1]
+            end9=time.time()
+            print("apo mito subs", end9-start9)
             
             # Re-init label_correspondance only for the current and prior batches.
+            start12 = time.time()
             
+            # for t in range(len(self.new_label_correspondance_T)):
+            #     print(self.new_label_correspondance_T[t])
+            
+            # ISSUE WITH THIS FUNCTION
             update_label_correspondance_subs(
                 self.batch_times_list_global[-1]+1,
                 self.total_times,
                 self.label_correspondance_T_subs,
                 self.new_label_correspondance_T,
             )
-            
+            # print()
+            # for t in range(len(self.label_correspondance_T_subs)):
+            #     print(self.label_correspondance_T_subs[t])            
+
+            end12=time.time()
+            print("update lab corr subs", end12-start12)
             # fill_label_correspondance_T_subs(   
             #     self.label_correspondance_T_subs, 
             #     self.new_label_correspondance_T
@@ -1111,10 +1220,23 @@ class CellTracking(object):
             for t in range(self.batch_times_list_global[0], self.batch_times_list_global[-1] + 1):
                 self.label_correspondance_T_subs[t] = np.empty((0, 2), dtype="uint16")
             # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))
+        
+        else: 
+            save_cells_to_labels_stack(
+                self.jitcells,
+                self.CT_info,
+                self.batch_times_list_global,
+                path=self.path_to_save,
+                filename=None,
+                split_times=True,
+                name_format=self._batch_args["name_format"],
+                save_info=False,
+            )
 
         self.jitcells_selected = self.jitcells
         # update cell labels
 
+        start13 = time.time()
         self.update_label_attributes()
 
         compute_point_stack(
@@ -1142,7 +1264,10 @@ class CellTracking(object):
             mode="outlines",
             min_length=self._plot_args["min_outline_length"]
         )
-
+        end13=time.time()
+            
+        print("compute point stacks", end13-start13)
+        
     def _get_cellids_celllabels(self):
         del self._labels[:]
         del self._ids[:]
@@ -1169,7 +1294,9 @@ class CellTracking(object):
                 unblocked_cells.append(lab)
             else:
                 self.blocked_cells.append(lab)
-
+        
+        _labs = [*self.blocked_cells, *unblocked_cells]
+        labs = [lab for lab in _labs if lab in self.unique_labels_batch]
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
@@ -1178,7 +1305,7 @@ class CellTracking(object):
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
             blocked_cells=self.blocked_cells,
-            labels=[*self.blocked_cells, *unblocked_cells],
+            labels=labs,
             alpha=0,
             mode="masks",
         )
@@ -1190,7 +1317,7 @@ class CellTracking(object):
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
             blocked_cells=self.blocked_cells,
-            labels=[*self.blocked_cells, *unblocked_cells],
+            labels=labs,
             alpha=1,
             mode="outlines",
             min_length=self._plot_args["min_outline_length"]
@@ -1201,7 +1328,7 @@ class CellTracking(object):
     def unblock_cells(self):
         del self.blocked_cells[:]
 
-    def append_cell_from_outlines(self, outlines, zs, t, sort=True):
+    def append_cell_from_outlines_t(self, outlines, zs, t, sort=True):
         if sort:
             new_outlines = []
             for outline in outlines:
@@ -1224,9 +1351,12 @@ class CellTracking(object):
             final_outlines.append(new_outline_sorted_highres)
             masks.append(mask_from_outline(new_outline_sorted_highres))
 
-        self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(
-            self.ctattr.Labels
-        )
+        self.max_label_T = [
+            np.max(sublist) if len(sublist) != 0 else -1
+            for sublist in self.unique_labels_T
+        ]
+        self.max_label = np.max(self.max_label_T)
+        
         new_cell = create_cell(
             self.currentcellid + 1,
             self.max_label + 1,
@@ -1264,81 +1394,189 @@ class CellTracking(object):
         if jitcellslen == len(self.jitcells_selected):
             self.jitcells_selected.append(self.jitcells[-1])
 
+
+    def append_cell_from_outlines(self, outlines, zs, ts, sort=True):
+        if sort:
+            new_outlines = []
+            for t in range(len(outlines)):
+                new_outlines.append([])
+                for outline in outlines[t]:
+                    new_outline_sorted, _ = sort_point_sequence(
+                        outline, self._nearest_neighs, self.PACP.visualization
+                    )
+                    if new_outline_sorted is None:
+                        return
+                    else:
+                        new_outlines[-1].append(new_outline_sorted)
+        else:
+            new_outlines = outlines
+
+        final_outlines = []
+        masks = []
+        for t in range(len(new_outlines)):
+            final_outlines.append([])
+            masks.append([])
+            for new_outline_sorted in new_outlines[t]:
+                new_outline_sorted_highres = increase_point_resolution(
+                    new_outline_sorted, self._min_outline_length
+                )
+                final_outlines[-1].append(new_outline_sorted_highres)
+                masks[-1].append(mask_from_outline(new_outline_sorted_highres))
+
+        self.max_label_T = [
+            np.max(sublist) if len(sublist) != 0 else -1
+            for sublist in self.unique_labels_T
+        ]
+        self.max_label = np.max(self.max_label_T)
+        
+        new_cell = create_cell(
+            self.currentcellid + 1,
+            self.max_label + 1,
+            zs,
+            ts,
+            final_outlines,
+            masks,
+            self.hyperstack[
+                :,
+                :,
+                self.channels_order[0],
+                :,
+                :,
+            ],
+        )
+        self.max_label += 1
+        self.currentcellid += 1
+        new_jitcell = construct_jitCell_from_Cell(new_cell)
+        stack = self.hyperstack[
+            :,
+            :,
+            self.channels_order[0],
+            :,
+            :,
+        ]
+        update_jitcell(
+            new_jitcell,
+            stack,
+            self._seg_args['compute_center_method']
+        )
+        jitcellslen = len(self.jitcells_selected)
+        self.jitcells.append(new_jitcell)
+
+        # If len is still the same, add the cell because jitcells is not a copy of the selection
+        if jitcellslen == len(self.jitcells_selected):
+            self.jitcells_selected.append(self.jitcells[-1])
+            
     def add_cell(self, PACP):
         if self._err_corr_args["line_builder_mode"] == "points":
             lines = []
-            for z in range(self.slices):
-                (line,) = self.PACP.ax_sel.plot(
-                    [], [], linestyle="none", marker="o", color="r", markersize=2
-                )
-                lines.append(line)
-            PACP.linebuilder = LineBuilder_points(lines, PACP.z)
+            for t in range(self.times):
+                lines.append([])
+                for z in range(self.slices):
+                    (line,) = self.PACP.ax_sel.plot(
+                        [], [], linestyle="none", marker="o", color="r", markersize=2
+                    ) 
+                    lines[-1].append(line)
+
+            PACP.linebuilder = LineBuilder_points(lines, PACP.z, PACP.t)
         else:
-            PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel, PACP.z, self.slices)
+            PACP.linebuilder = LineBuilder_lasso(self.PACP.ax_sel, PACP.z, PACP.t, self.slices, self.times)
 
     def complete_add_cell(self, PACP):
         new_outlines = []
 
         if self._err_corr_args["line_builder_mode"] == "points":
-
-            # Check in drawn points are in consecutive zs
-            outlines_length = [len(out) for out in PACP.linebuilder.xss]
-            zs = [z for z in range(self.slices) if outlines_length[z]!=0]
-
-            if len(zs)==0:
-                printfancy("ERROR: no outlines drawn")
             
-            if len(zs)>1:
-                if not (np.diff(zs)==1).all():
-                    printfancy("ERROR: drawn outlines are not in consecutive planes")
-                    return
+            zs = []
+            for t in range(self.times):  
+                outlines_length = [len(out) for out in PACP.linebuilder.xss[t]]
+                _zs = [z for z in range(self.slices) if outlines_length[z]!=0]
+                
+                zs.append(_zs)
 
-            for zid, z in enumerate(zs):
-                if len(PACP.linebuilder.xss[z]) < 3:
-                    printfancy("ERROR: some of the drawn outlines have too few points (< 3)")
+                # Check if drawn points are in consecutive planes
+                if len(_zs)>1:
+                    if not (np.diff(_zs)==1).all():
+                        printfancy("ERROR: drawn outlines are not in consecutive planes")
+                        return
+            
+            ts = [t for t in range(self.times) if len(zs[t]) !=0]
+            # check if drawn points are in consecutive times
+            if len(ts)>1:
+                if not (np.diff(ts)==1).all():
+                    printfancy("ERROR: drawn outlines are not in consecutive times")
                     return
-                new_outline = np.dstack((PACP.linebuilder.xss[z], PACP.linebuilder.yss[z]))[0]
-                new_outline = np.rint(new_outline / self._plot_args["dim_change"]).astype(
-                    "uint16"
-                )
-                new_outlines.append(new_outline)
-
-                if np.max(new_outline) > self.stack_dims[0]:
-                    printfancy("ERROR: drawing out of image")
-                    return
+            
+            if len(ts)==0:
+                printfancy("ERROR: no outlines drawn")
+        
+            for tid, t in enumerate(ts):
+                new_outlines.append([])
+                for zid, z in enumerate(zs[t]):
+                    if len(PACP.linebuilder.xss[t][z]) < 3:
+                        printfancy("ERROR: some of the drawn outlines have too few points (< 3)")
+                        return
+                    new_outline = np.dstack((PACP.linebuilder.xss[t][z], PACP.linebuilder.yss[t][z]))[0]
+                    new_outline = np.rint(new_outline / self._plot_args["dim_change"]).astype(
+                        "uint16"
+                    )
+                    if np.max(new_outline) > self.stack_dims[0]:
+                        printfancy("ERROR: drawing out of image")
+                        return
+                    
+                    new_outlines[-1].append(new_outline)
+                
+                if len(new_outlines[-1]) == 0:
+                    new_outlines.pop(-1)
 
         elif self._err_corr_args["line_builder_mode"] == "lasso":
 
-            # Check in drawn points are in consecutive zs
-            outlines_length = [len(out) for out in PACP.linebuilder.outlines]
+            zs = []
+            for t in range(self.times):  
+                outlines_length = [len(out) for out in PACP.linebuilder.outlines[t]]
+                _zs = [z for z in range(self.slices) if outlines_length[z]!=0]
+                zs.append(_zs)
 
-            zs = [z for z in range(self.slices) if outlines_length[z]!=0]
-
-            if len(zs)==0:
-                printfancy("ERROR: no outlines drawn")
+                # Check if drawn points are in consecutive planes
+                if len(_zs)>1:
+                    if not (np.diff(_zs)==1).all():
+                        printfancy("ERROR: drawn outlines are not in consecutive planes")
+                        return
             
-            if len(zs)>1:
-                if not (np.diff(zs)==1).all():
-                    printfancy("ERROR: drawn outlines are not in consecutive planes")
+            ts = [t for t in range(self.times) if len(zs[t]) !=0]
+            # check if drawn points are in consecutive times
+            if len(ts)>1:
+                if not (np.diff(ts)==1).all():
+                    printfancy("ERROR: drawn outlines are not in consecutive times")
                     return
+            
+            if len(ts)==0:
+                printfancy("ERROR: no outlines drawn")
+                
 
-            for zid, z in enumerate(zs):
-                if len(PACP.linebuilder.outlines[z]) < 3:
-                    printfancy("ERROR: some of the drawn outlines have too few points (< 3)")
-                    return
-                new_outline = np.floor(
-                    PACP.linebuilder.outlines[z] / self._plot_args["dim_change"]
-                )
-                new_outline = new_outline.astype("uint16")
-                new_outlines.append(new_outline)
+            for tid, t in enumerate(ts):
+                new_outlines.append([])
+                for zid, z in enumerate(zs[t]):
+                    if len(PACP.linebuilder.outlines[t][z]) < 3:
+                        printfancy("ERROR: some of the drawn outlines have too few points (< 3)")
+                        return
+                    new_outline = np.floor(
+                        PACP.linebuilder.outlines[t][z] / self._plot_args["dim_change"]
+                    )
+                    new_outline = new_outline.astype("uint16")
+                    
+                    new_outlines[-1].append(new_outline)
+                
+                if len(new_outlines[-1]) == 0:
+                    new_outlines.pop(-1)
         
-        self.append_cell_from_outlines(new_outlines, zs, PACP.t)            
+        zs = [_zs for _zs in zs if len(_zs)!=0]
+        self.append_cell_from_outlines(new_outlines, zs, ts)            
         self.update_label_attributes()
 
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
-            List([PACP.t]),
+            List(ts),
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -1350,7 +1588,7 @@ class CellTracking(object):
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
-            List([PACP.t]),
+            List(ts),
             self.unique_labels,
             self._plot_args["dim_change"],
             self._plot_args["labels_colors"],
@@ -1655,7 +1893,7 @@ class CellTracking(object):
         hull = ConvexHull(pre_outline)
         outline = pre_outline[hull.vertices]
 
-        self.append_cell_from_outlines([outline], [z], t, sort=False)
+        self.append_cell_from_outlines_t([outline], [z], t, sort=False)
 
         self.update_label_attributes()
 
@@ -1693,7 +1931,7 @@ class CellTracking(object):
         Zs = [x[1] for x in PACP.list_of_cells]
         self.nactions += 1
         # for z in Zs: self._tz_actions.append([t, z])
-
+        
         cell1 = self._get_cell(cells[0])
         tid_cell1 = cell1.times.index(t)
         for lab in cells[1:]:
@@ -1954,9 +2192,11 @@ class CellTracking(object):
         new_cell.outlines = new_cell.outlines[border:]
         new_cell.masks = new_cell.masks[border:]
 
-        self.unique_labels, self.max_label = _extract_unique_labels_and_max_label(
-            self.ctattr.Labels
-        )
+        self.max_label_T = [
+            np.max(sublist) if len(sublist) != 0 else -1
+            for sublist in self.unique_labels_T
+        ]
+        self.max_label = np.max(self.max_label_T)
 
         new_cell.label = self.max_label + 1
         new_cell.id = self.currentcellid + 1
@@ -2058,16 +2298,16 @@ class CellTracking(object):
 
         # If one cell has been selected as mother and daughther, separate it in time.
         if mito0[0] == mito1[0]:
-            self.list_of_cells.append([mito0[0], 0, mito0[1]])
-            self.list_of_cells.append([mito1[0], 0, mito1[1]])
+            self.list_of_cells.append([mito0[0], 0, mito0[1] - self.batch_times_list_global[0]])
+            self.list_of_cells.append([mito1[0], 0, mito1[1] - self.batch_times_list_global[0]])
             new_label = self.separate_cells_t(return_new_label=True)
             del self.list_of_cells[:]
             mito1[0] = new_label
 
         elif mito0[0] == mito2[0]:
-            self.list_of_cells.append([mito0[0], 0, mito0[1]])
-            self.list_of_cells.append([mito2[0], 0, mito2[1]])
-            self.separate_cells_t(return_new_label=True)
+            self.list_of_cells.append([mito0[0], 0, mito0[1] - self.batch_times_list_global[0]])
+            self.list_of_cells.append([mito2[0], 0, mito2[1] - self.batch_times_list_global[0]])
+            new_label = self.separate_cells_t(return_new_label=True)
             del self.list_of_cells[:]
             mito2[0] = new_label
 
@@ -2181,6 +2421,13 @@ class CellTracking(object):
     def print_actions(self, event):
         actions = [
             "- ESC : visualization",
+            "while on visualization:",
+            "    * right click to select cell plane",
+            "    * double right click to select all cell planes",
+            "    * right click to select cell plane",
+            "    * ctrl + right click to select cell on all times",
+            "    * ctrl + double right click to select all cells on a lineage",
+            "",
             "- a : add cell",
             "- d : delete cell",
             "- D : delete cell in batch",
@@ -2219,7 +2466,7 @@ class CellTracking(object):
             if event[1] == self.PACP.tg:
                 cell = self._get_cell(label=event[0])
                 if cell is None:
-                    self.apoptotic_events.remove(event)
+                    printfancy("ERROR: apo cell not found")
                 else:
                     marked_apo.append(cell.label)
 
@@ -2229,20 +2476,17 @@ class CellTracking(object):
                 if mitocell[1] == self.PACP.tg:
                     cell = self._get_cell(label=mitocell[0])
                     if cell is None:
-                        self.mitotic_events.remove(event)
+                        printfancy("ERROR: mito cell not found")
                     else:
                         marked_mito.append(cell.label)
 
         disappeared_cells = []
-
-        if self.PACP.t != self.times - 1:
-            for item_id, item in enumerate(self.hints[self.PACP.t][0]):
-                disappeared_cells.append(item)
+        for item_id, item in enumerate(self.hints[self.PACP.tg][1]):
+            disappeared_cells.append(item)
 
         appeared_cells = []
-        if self.PACP.t != 0:
-            for item_id, item in enumerate(self.hints[self.PACP.t - 1][1]):
-                appeared_cells.append(item)
+        for item_id, item in enumerate(self.hints[self.PACP.tg][0]):
+            appeared_cells.append(item)
 
         printfancy("")
         printfancy(
@@ -2259,21 +2503,24 @@ class CellTracking(object):
             printfancy("{:d}".format(lab))
         printfancy("")
 
-        printfancy("apo cells: ")
+        printfancy("APO cells: ")
         for lab in marked_apo:
             printfancy("{:d}".format(lab))
         printfancy("")
 
-        printfancy("mito cells: ")
+        printfancy("MITO cells: ")
         for lab in marked_mito:
             printfancy("{:d}".format(lab))
         printfancy("")
 
-        printfancy("CONFLICTS = {:d}".format(self.conflicts))
+        printfancy("CONFLICTS at current time = {:d}".format(self.conflicts_t[self.PACP.t]))
+        printfancy("total CONFLICTS = {:d}".format(self.total_conflicts))
+
         printfancy("")
         printfancy(None)
 
     def plot_axis(self, _ax, img, z, t):
+
         im = _ax.imshow(img, vmin=0, vmax=255)
         im_masks = _ax.imshow(self._masks_stack[t][z])
         im_outlines = _ax.imshow(self._outlines_stack[t][z])
@@ -2570,6 +2817,5 @@ class CellTracking(object):
         printfancy("Error correction finished", clear_prev=2)
     
     def on_close_plot_tracking(self, event):
-        return
         self.update_labels_batches()
 

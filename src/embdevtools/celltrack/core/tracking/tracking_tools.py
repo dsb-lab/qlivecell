@@ -163,7 +163,6 @@ def create_toy_cell():
 
 
 def _init_CT_cell_attributes(jitcells: ListType(jitCell)):  # type: ignore
-    hints = []
     if len(jitcells) == 0:
         cell = create_toy_cell()
         jitcell = construct_jitCell_from_Cell(cell)
@@ -176,7 +175,7 @@ def _init_CT_cell_attributes(jitcells: ListType(jitCell)):  # type: ignore
     Centersi = List.empty_list(ListType(ListType(typeof(jitcell.centersi[0][0]))))
     Centersj = List.empty_list(ListType(ListType(typeof(jitcell.centersj[0][0]))))
     ctattr = CTattributes(Labels, Outlines, Masks, Centersi, Centersj)
-    return hints, ctattr
+    return ctattr
 
 
 def _reinit_update_CT_cell_attributes(
@@ -444,7 +443,7 @@ def prepare_labels_stack_for_tracking(labels_stack):
     return Labels, Outlines, Masks
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def replace_labels_t(labels, lab_corr):
     labels_t_copy = labels.copy()
     for lab_init, lab_final in lab_corr:
@@ -459,7 +458,7 @@ def replace_labels_t(labels, lab_corr):
     return labels_t_copy
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def replace_labels_in_place(labels, label_correspondance):
     labels_copy = np.zeros_like(labels, dtype="uint16")
     for t in prange(len(label_correspondance)):

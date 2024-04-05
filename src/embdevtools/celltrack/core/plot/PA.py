@@ -8,11 +8,12 @@ import napari
 import gc
 from ..dataclasses import construct_Cell_from_jitCell
 from ..tools.ct_tools import get_cell_color, set_cell_color
-from ..tools.save_tools import save_cells
+from ..tools.save_tools import save_cells_to_labels_stack
 from ..tools.tools import printfancy
 from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
 
+from .napari_tools import get_whole_lineage
 
 def get_axis_PACP(PACP, event):
     for id, ax in enumerate(PACP.ax):
@@ -109,12 +110,10 @@ class PlotAction:
             self.global_times_list = CT.batch_times_list_global
             self.batch_all_rounds_times = CT.batch_all_rounds_times
             self.total_times = CT.total_times
-            self._split_times = True
         else:
             self.times = CT.times
             self.total_times = CT.times
             self.global_times_list = range(self.times)
-            self._split_times = False
 
         self._tstep = CT._track_args["time_step"]
 
@@ -124,14 +123,15 @@ class PlotAction:
         self.CTapoptotic_events = CT.apoptotic_events
         self.CTmitotic_events = CT.mitotic_events
         self.CThints = CT.hints
-        self.CTconflicts = CT.conflicts
+        self.CTconflicts = CT.total_conflicts
         self.CTplot_masks = self._plot_args["plot_masks"]
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
         self.CTplot_args = CT._plot_args
         self.CTblock_cells = CT.block_cells
-
+        self.CThints = CT.hints
+        
         # Point to sliders
         CT._time_slider.on_changed(self.update_slider_t)
         self.set_val_t_slider = CT._time_slider.set_val
@@ -155,7 +155,6 @@ class PlotAction:
         # self.CTone_step_copy = CT.one_step_copy
         # self.CTundo_corrections = CT.undo_corrections
         self.CTreplot_tracking = CT.replot_tracking
-        self.CTsave_cells = save_cells
 
         self.CTadd_cell = CT.add_cell
         self.CTcomplete_add_cell = CT.complete_add_cell
@@ -171,7 +170,8 @@ class PlotAction:
         self.CTupdate_labels = CT.update_labels
         self.CTupdate_labels_batches = CT.update_labels_batches
         self._CTget_cell = CT._get_cell
-
+        self.CTprint_hints = CT.print_hints
+        
     def reinit(self, CT):
         # Point to CT variables
 
@@ -189,12 +189,14 @@ class PlotAction:
         self.CTmitotic_events = CT.mitotic_events
 
         self.CThints = CT.hints
-        self.CTconflicts = CT.conflicts
+        self.CTconflicts = CT.total_conflicts
         self.CTplot_masks = self._plot_args["plot_masks"]
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
         self.CTplot_args = CT._plot_args
+
+        self.CThints = CT.hints
 
         self.times = CT.times
         if self.batch:
@@ -443,14 +445,17 @@ class PlotActionCT(PlotAction):
         self.update()
 
     def __call__(self, event):
-        if self.current_state == None:
+        if self.current_state in ["con-app", "con-dis"]:
+            self.reset_state()
+            
+        if self.current_state==None:
             if event.key == "d":
                 # self.CTone_step_copy(self.t)
                 self._reset_CP()
                 self.current_state = "del"
                 self.switch_masks(masks=False)
                 self.delete_cells()
-            if event.key == "D":
+            elif event.key == "D":
                 # self.CTone_step_copy(self.t)
                 self._reset_CP()
                 self.current_state = "Del"
@@ -480,7 +485,7 @@ class PlotActionCT(PlotAction):
                 self.current_state = "mit"
                 self.switch_masks(masks=False)
                 self.mitosis()
-            if event.key == "a":
+            elif event.key == "a":
                 # self.CTone_step_copy()
                 self._reset_CP()
                 self.current_state = "add"
@@ -501,7 +506,13 @@ class PlotActionCT(PlotAction):
                 self._reset_CP()
                 self.switch_masks(masks=None)
             elif event.key == "v":
-                self.show_conflict_cells()
+                self.switch_masks(masks=False)
+                self.current_state = "con-app"
+                self.show_conflict_cells(appeared=True)
+            elif event.key == "V":
+                self.switch_masks(masks=False)
+                self.current_state = "con-dis"
+                self.show_conflict_cells(disappeared=True)
             elif event.key == "l":
                 self.switch_centers(point=True)
             elif event.key == "L":
@@ -546,17 +557,6 @@ class PlotActionCT(PlotAction):
                 self._reset_CP()
                 self.visualization()
                 self.update()
-            elif event.key == "s":
-                self.CT_info.apo_cells = self.CTapoptotic_events
-                self.CT_info.mito_cells = self.CTmitotic_events
-                self.CTsave_cells(
-                    self.jitcells,
-                    self.CT_info,
-                    self.global_times_list,
-                    self.path_to_save,
-                    split_times=self._split_times,
-                    save_info=True,
-                )
             self.update()
 
         else:
@@ -617,7 +617,7 @@ class PlotActionCT(PlotAction):
                     self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
                     self.visualization()
 
-                if self.current_state == "del":
+                elif self.current_state == "del":
                     self.CP.stopit()
 
                     delattr(self, "CP")
@@ -634,7 +634,7 @@ class PlotActionCT(PlotAction):
 
                     self.visualization()
 
-                if self.current_state == "Del":
+                elif self.current_state == "Del":
                     self.CP.stopit()
 
                     delattr(self, "CP")
@@ -740,6 +740,9 @@ class PlotActionCT(PlotAction):
                     self.visualization()
                     self.switch_masks(True)
 
+                elif "con-" in self.current_state:
+                    self.reset_state
+                
                 else:
                     self.visualization()
 
@@ -754,7 +757,7 @@ class PlotActionCT(PlotAction):
             self.ctrl_shift_is_held = False
             super().onscroll(event)
             #### THIS SHOULD BE CHANGED IF WE GO BACK TO MULTIPANEL PLOTS
-            self.linebuilder.reset_z(self.cr)
+            self.linebuilder.reset(self.cr, self.t)
         else:
             super().onscroll(event)
 
@@ -778,6 +781,13 @@ class PlotActionCT(PlotAction):
             labs = [x[0] for x in cells_to_plot]
             labs = np.unique(labs)
             cells_string = ["cell=" + str(l) for l in labs]
+            zs = [x[1] for x in cells_to_plot]
+            ts = [x[2] for x in cells_to_plot]
+        elif self.current_state in ["con-dis", "con-app"]:
+            cells_to_plot = self.sort_list_of_cells()
+            labs = [x[0] for x in cells_to_plot]
+            labs = np.unique(labs)
+            cells_string = [""]
             zs = [x[1] for x in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
         else:
@@ -987,15 +997,23 @@ class PlotActionCT(PlotAction):
                     for jj in idxtopop:
                         self.list_of_cells.pop(jj)
                 else:
-                    jitcell = CT_cell = _get_cell(self.jitcells_selected, label=lab)
+                    jitcell = _get_cell(self.jitcells_selected, label=lab)
                     for tid, t in enumerate(jitcell.times):
                         for zid, z in enumerate(jitcell.zs[tid]):
                             self.list_of_cells.append([lab, z, t])
             else:
-                jitcell = CT_cell = _get_cell(self.jitcells_selected, label=lab)
+                jitcell = _get_cell(self.jitcells_selected, label=lab)
                 for tid, t in enumerate(jitcell.times):
                     for zid, z in enumerate(jitcell.zs[tid]):
                         self.list_of_cells.append([lab, z, t])
+
+            if event.dblclick == True:
+                labels = get_whole_lineage(self.CTmitotic_events, lab)
+                for _lab in labels:
+                    jitcell = _get_cell(self.jitcells_selected, label=_lab)
+                    for tid, t in enumerate(jitcell.times):
+                        for zid, z in enumerate(jitcell.zs[tid]):
+                            self.list_of_cells.append([_lab, z, t])
 
         else:
             if cell not in self.list_of_cells:
@@ -1081,9 +1099,44 @@ class PlotActionCT(PlotAction):
             self.CTplot_args["plot_centers"][1] = not self.CTplot_args["plot_centers"][1]
         self.visualization()
 
-    def show_conflict_cells():
-        pass
+    def show_conflict_cells(self, appeared=False, disappeared=False):
+        self._reset_CP()
+        self.title.set(text="CONFLICTING CELLS", ha="left", x=0.01)
+        if appeared:
+            self.instructions.set(text="showing cells that APPEARED")
+        if disappeared:
+            self.instructions.set(text="showing cells that DISAPPEARED")
+        
+        self.instructions.set_backgroundcolor((0.26, 0.16, 0.055, 0.4))
+        self.fig.patch.set_facecolor((0.26, 0.16, 0.055, 0.1))
+        self.show_conflict_cells_callback(appeared, disappeared)
+        
+    def show_conflict_cells_callback(self, appeared, disappeared):
+        # Compute hints
+        self.CTprint_hints(0)
 
+        # Add conflicting cells to list_of_cells
+        hints = [hints_t for t, hints_t in enumerate(self.CThints) if t in self.global_times_list]
+        for t, hints_t in enumerate(hints):
+            if appeared:
+                # Appeared cells
+                for lab in hints_t[0]:
+                    jitcell = _get_cell(self.jitcells_selected, label=lab)
+                    tid = jitcell.times.index(t)
+                    for zid, z in enumerate(jitcell.zs[tid]):
+                        self.list_of_cells.append([lab, z, t])
+            
+            if disappeared:
+                # Dissapeared cells
+                for lab in hints_t[1]:
+                    jitcell = _get_cell(self.jitcells_selected, label=lab)
+                    tid = jitcell.times.index(t)
+                    for zid, z in enumerate(jitcell.zs[tid]):
+                        self.list_of_cells.append([lab, z, t])
+
+        self.update()
+        self.reploting()
+        
     def block_cells(self):
         self._reset_CP()
         self.title.set(text="BLOCK CELLS", ha="left", x=0.01)
@@ -1305,27 +1358,28 @@ class PlotActionCT(PlotAction):
                 printfancy("ERROR: cells must be selected on same time")
                 return
 
-            # check that planes selected are contiguous over z
-            Zs = [x[1] for x in self.list_of_cells]
-            Zs.append(z)
-            Zs.sort()
-
-            if any((Zs[i + 1] - Zs[i]) != 1 for i in range(len(Zs) - 1)):
-                printfancy("ERROR: cells must be contiguous over z")
-                return
-
             # check if cells have any overlap in their zs
             labs = [x[0] for x in self.list_of_cells]
             labs.append(lab)
             ZS = []
+            ZS_first_last = []
             t = self.t
             for l in labs:
                 c = self._CTget_cell(l)
                 tid = c.times.index(t)
                 ZS = ZS + list(c.zs[tid])
-
+                ZS_first_last.append([c.zs[tid][0],c.zs[tid][-1]])
+            
             if len(ZS) != len(set(ZS)):
                 printfancy("ERROR: cells overlap in z")
+                return
+
+            # check that planes selected are contiguous over z
+            ZS_first_last = np.array(ZS_first_last)
+            Zdiff = ZS_first_last[1:, 0] - ZS_first_last[:-1, 1]
+            
+            if not (np.abs(Zdiff) == 1).all():
+                printfancy("ERROR: cells must be contiguous over z")
                 return
 
         # proceed with the selection
@@ -1519,8 +1573,8 @@ class PlotActionCT(PlotAction):
         xyres = self.CT_info.xyresolution
         zres = self.CT_info.zresolution
         
-        self.napari_viewer = napari.view_image(self._plot_stack, name='hyperstack', scale=(zres, xyres, xyres), rgb=False, ndisplay=3)
-        self.napari_viewer.add_image(self._napari_masks_stack, name='masks', scale=(zres, xyres, xyres), channel_axis=-1, colormap=['red', 'green', 'blue'], rendering='iso')
+        self.napari_viewer = napari.view_image(self._plot_stack, name='hyperstack', scale=(zres*self._plot_args["dim_change"], xyres, xyres), rgb=False, ndisplay=3)
+        self.napari_viewer.add_image(self._napari_masks_stack, name='masks', scale=(zres*self._plot_args["dim_change"], xyres, xyres), channel_axis=-1, colormap=['red', 'green', 'blue'], rendering='iso')
         
         self.update_3Dviewer3D()
 
