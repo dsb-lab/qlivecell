@@ -153,9 +153,16 @@ def update_label_correspondance_subs(
             post_label = lab_change[1]
             
             if pre_label in label_correspondance_T_subs[postt][:, 1]:
+                print("in update subs", postt, lab_change)
                 if not any((new_label_correspondance_T[postt][:]==lab_change).all(1)):
+                    print("in yeah")
                     idx = np.where(label_correspondance_T_subs[postt][:, 1] == pre_label)
                     label_correspondance_T_subs[postt][idx[0][0], 1] = post_label
+                else: 
+                    lab_change = np.array([[pre_label, post_label]], dtype="uint16")
+                    label_correspondance_T_subs[postt] = nb_add_row(
+                        label_correspondance_T_subs[postt], lab_change
+                    )
             else:
                 lab_change = np.array([[pre_label, post_label]], dtype="uint16")
                 label_correspondance_T_subs[postt] = nb_add_row(

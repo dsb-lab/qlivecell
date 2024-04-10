@@ -1202,6 +1202,12 @@ class CellTracking(object):
                 self.label_correspondance_T_subs,
                 self.new_label_correspondance_T,
             )
+            print("new_label_correspondance_T")
+            for t, lst in enumerate(self.new_label_correspondance_T):
+                print(t, lst)
+            print("label_correspondance_T_subs")
+            for t, lst in enumerate(self.label_correspondance_T_subs):
+                print(t, lst)
             # print()
             # for t in range(len(self.label_correspondance_T_subs)):
             #     print(self.label_correspondance_T_subs[t])            
