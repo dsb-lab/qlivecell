@@ -702,6 +702,10 @@ class CellTracking(object):
         printfancy("")
         printfancy("")
         for t in range(self.total_times):
+            
+            if t < 149:
+                continue
+            
             printfancy(
                 "######   CURRENT TIME = %d/%d   ######" % (t + 1, self.total_times)
             )
@@ -838,7 +842,10 @@ class CellTracking(object):
             first = (bsize * bnumber) - (boverlap * bnumber)
             last = first + bsize
             last = min(last, totalsize)
-
+            
+            if last < 149:
+                continue
+            
             times = range(first, last)
             if len(times) <= boverlap:
                 continue
@@ -1192,32 +1199,15 @@ class CellTracking(object):
             # Re-init label_correspondance only for the current and prior batches.
             start12 = time.time()
             
-            # for t in range(len(self.new_label_correspondance_T)):
-            #     print(self.new_label_correspondance_T[t])
-            
-            # ISSUE WITH THIS FUNCTION
-            update_label_correspondance_subs(
+            self.label_correspondance_T_subs = update_label_correspondance_subs(
                 self.batch_times_list_global[-1]+1,
                 self.total_times,
                 self.label_correspondance_T_subs,
                 self.new_label_correspondance_T,
             )
-            print("new_label_correspondance_T")
-            for t, lst in enumerate(self.new_label_correspondance_T):
-                print(t, lst)
-            print("label_correspondance_T_subs")
-            for t, lst in enumerate(self.label_correspondance_T_subs):
-                print(t, lst)
-            # print()
-            # for t in range(len(self.label_correspondance_T_subs)):
-            #     print(self.label_correspondance_T_subs[t])            
-
+           
             end12=time.time()
             print("update lab corr subs", end12-start12)
-            # fill_label_correspondance_T_subs(   
-            #     self.label_correspondance_T_subs, 
-            #     self.new_label_correspondance_T
-            # )
 
             self.label_correspondance_T = List(
                 [np.empty((0, 2), dtype="uint16") for t in range(self.total_times)]
@@ -1657,6 +1647,12 @@ class CellTracking(object):
             min_length=self._plot_args["min_outline_length"]
         )
 
+        self.max_label_T = [
+            np.max(sublist) if len(sublist) != 0 else -1
+            for sublist in self.unique_labels_T
+        ]
+        self.max_label = np.max(self.max_label_T)
+        
         labs_to_replot = []
         for i, lab in enumerate(cells):
             z = Zs[i]

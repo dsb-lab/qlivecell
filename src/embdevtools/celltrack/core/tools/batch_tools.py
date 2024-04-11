@@ -141,7 +141,7 @@ def update_new_label_correspondance(
 
 
 # @njit(parallel=False)
-def update_label_correspondance_subs(
+def _update_label_correspondance_subs(
     post_range_start, post_range_end, label_correspondance_T_subs, new_label_correspondance_T
 ):
     post_range = prange(post_range_start, post_range_end)
@@ -151,11 +151,10 @@ def update_label_correspondance_subs(
             lab_change = new_label_correspondance_T[postt][lcid]
             pre_label = lab_change[0]
             post_label = lab_change[1]
-            
             if pre_label in label_correspondance_T_subs[postt][:, 1]:
-                print("in update subs", postt, lab_change)
-                if not any((new_label_correspondance_T[postt][:]==lab_change).all(1)):
-                    print("in yeah")
+                idx = np.where(label_correspondance_T_subs[postt][:, 1] == pre_label)
+                lab_change_subs = label_correspondance_T_subs[postt][idx[0][0]] 
+                if not any((new_label_correspondance_T[postt][:]==lab_change_subs).all(1)):
                     idx = np.where(label_correspondance_T_subs[postt][:, 1] == pre_label)
                     label_correspondance_T_subs[postt][idx[0][0], 1] = post_label
                 else: 
@@ -168,6 +167,79 @@ def update_label_correspondance_subs(
                 label_correspondance_T_subs[postt] = nb_add_row(
                     label_correspondance_T_subs[postt], lab_change
                 )
+    return
+
+
+def update_label_correspondance_subs(post_range_start, post_range_end, label_correspondance_T_subs, new_label_correspondance_T):
+    
+    lcts_copy = List(
+        [np.empty((0, 2), dtype="uint16") for _t in range(len(label_correspondance_T_subs))]
+    )
+    
+    post_range = prange(post_range_start, post_range_end)
+    for postt in post_range:
+
+        lab_corr_range = range(len(new_label_correspondance_T[postt]))
+        
+        # First case is, pre_label is not there yet
+        for lcid in lab_corr_range:
+            lab_change = new_label_correspondance_T[postt][lcid:lcid+1]
+            pre_label = lab_change[0][0]
+            post_label = lab_change[0][1]
+            
+            if pre_label not in label_correspondance_T_subs[postt][:, 1]:
+                if not any((lcts_copy[postt][:]==lab_change[0]).all(1)):
+                    # check if lab_change already in there
+                    lcts_copy[postt] = nb_add_row(
+                        lcts_copy[postt], lab_change
+                    )
+
+            # Second case is pre label is there. 
+            else:
+                # Where is pre label in the post labels
+                idx = np.where(label_correspondance_T_subs[postt][:, 1] == pre_label)
+                original_pre_label = label_correspondance_T_subs[postt][idx[0][0], 0]
+                new_lab_change = np.array([[original_pre_label, post_label]], dtype="uint16")
+                lcts_copy[postt] = nb_add_row(
+                    lcts_copy[postt], new_lab_change
+                )  
+                
+    return lcts_copy
+
+
+def _test_update(lcts, nlct):
+    postt = 0
+    lab_corr_range = range(len(nlct[postt]))
+    
+    for lcid in lab_corr_range:
+        lab_change = nlct[postt][lcid]
+        pre_label = lab_change[0]
+        post_label = lab_change[1]
+        
+        # First case is, pre_label is not there yet
+        # In this case we add it and there's no issue
+        if pre_label not in lcts[postt][:, 1]:
+            lab_change = np.array([[pre_label, post_label]], dtype="uint16")
+            lcts[postt] = nb_add_row(
+                lcts[postt], lab_change
+            )
+            
+        # Second case is pre label is there. 
+        # There are two main possibilities
+        
+        # First one is that is there from another update
+        # Second one is that we added it in the current one
+        else:
+            idx = np.where(lcts[postt][:, 1] == pre_label)
+            lab_change_subs = lcts[postt][idx[0][0]] 
+            if not any((nlct[postt][:]==lab_change_subs).all(1)):
+                idx = np.where(lcts[postt][:, 1] == pre_label)
+                lcts[postt][idx[0][0], 1] = post_label
+            else: 
+                lab_change = np.array([[pre_label, post_label]], dtype="uint16")
+                lcts[postt] = nb_add_row(
+                    lcts[postt], lab_change
+                )  
     return
 
 # Check if the pre_label of a new label change is in the subs label change post
