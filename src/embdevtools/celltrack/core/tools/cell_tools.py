@@ -401,6 +401,7 @@ def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, 
         return None, None, None
 
 
+# ISSUE: ONLY WORKS FOR NOW FOR ONE DISCONTINUITY
 # @njit
 def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, center_method):
     consecutive = checkConsecutive(cell.times)

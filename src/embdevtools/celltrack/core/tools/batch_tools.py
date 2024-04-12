@@ -172,8 +172,10 @@ def _update_label_correspondance_subs(
 
 def update_label_correspondance_subs(post_range_start, post_range_end, label_correspondance_T_subs, new_label_correspondance_T):
     
+    post_range = prange(post_range_start, post_range_end)
+    
     lcts_copy = List(
-        [np.empty((0, 2), dtype="uint16") for _t in range(len(label_correspondance_T_subs))]
+        [label_correspondance_T_subs[_t] if _t not in post_range else np.empty((0, 2), dtype="uint16") for _t in range(len(label_correspondance_T_subs))]
     )
     
     post_range = prange(post_range_start, post_range_end)
@@ -203,7 +205,18 @@ def update_label_correspondance_subs(post_range_start, post_range_end, label_cor
                 lcts_copy[postt] = nb_add_row(
                     lcts_copy[postt], new_lab_change
                 )  
-                
+        
+        lab_corr_subs_range = range(len(label_correspondance_T_subs[postt]))
+        for lcid in lab_corr_subs_range:
+            lab_change = label_correspondance_T_subs[postt][lcid:lcid+1]
+            pre_label = lab_change[0][0]
+
+            if pre_label not in lcts_copy[postt][:, 0]:
+                lcts_copy[postt] = nb_add_row(
+                    lcts_copy[postt], lab_change
+                )  
+    
+    
     return lcts_copy
 
 

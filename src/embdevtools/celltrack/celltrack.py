@@ -519,7 +519,7 @@ class CellTracking(object):
             )
         end2 = time.time()
         elapsed2 = end2 - start2
-        print("subs labels in set batch", elapsed2)
+        # print("subs labels in set batch", elapsed2)
         
         start6 = time.time()
         # Reset label substitution for current batch
@@ -527,7 +527,7 @@ class CellTracking(object):
                 self.label_correspondance_T_subs[t] = np.empty((0, 2), dtype="uint16")
         end6 = time.time()
         elapsed6 = end6 - start6
-        print("reinit label correspondance", elapsed6)
+        # print("reinit label correspondance", elapsed6)
         
         start3 = time.time()
         self.hyperstack, self.metadata = read_split_times(
@@ -539,7 +539,7 @@ class CellTracking(object):
         )
         end3 = time.time()
         elapsed3 = end3 - start3
-        print("read stacks batch", elapsed3)
+        # print("read stacks batch", elapsed3)
         
         start4 = time.time()
         # If the stack is RGB, pick the channel to segment
@@ -547,21 +547,21 @@ class CellTracking(object):
             self.init_masks_outlines_stacks()
         end4 = time.time()
         elapsed4 = end4 - start4
-        print("init masks outlines", elapsed4)
+        # print("init masks outlines", elapsed4)
         
         start5 = time.time()
         if init_cells:
             self.init_batch_cells()
         end5 = time.time()
         elapsed5 = end5 - start5
-        print("init cells", elapsed5)
+        # print("init cells", elapsed5)
         
         start7 = time.time()
         if update_labels:
             self.update_labels()
         end7 = time.time()
         elapsed7 = end7 - start7
-        print("update_labels end set batch", elapsed7)
+        # print("update_labels end set batch", elapsed7)
         
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)
@@ -574,7 +574,7 @@ class CellTracking(object):
         printfancy()
         printclear()
         elapsed = elapsed1 + elapsed2 + elapsed3 + elapsed4 + elapsed5 + elapsed6 + elapsed7
-        print("ELAPSED TOTAL", elapsed)
+        # print("ELAPSED TOTAL", elapsed)
         return
 
     def init_masks_outlines_stacks(self):
@@ -609,7 +609,7 @@ class CellTracking(object):
         start = time.time()
         self.jitcells = extract_jitcells_from_label_stack(labels)
         end = time.time()
-        print("elapsed extract_jitcells", end - start)
+        # print("elapsed extract_jitcells", end - start)
         stack = self.hyperstack[
             :,
             :,
@@ -703,7 +703,7 @@ class CellTracking(object):
         printfancy("")
         for t in range(self.total_times):
             
-            if t < 149:
+            if t < 75:
                 continue
             
             printfancy(
@@ -843,7 +843,7 @@ class CellTracking(object):
             last = first + bsize
             last = min(last, totalsize)
             
-            if last < 149:
+            if last < 75:
                 continue
             
             times = range(first, last)
@@ -1074,48 +1074,42 @@ class CellTracking(object):
             
             
     def update_label_pre(self):
-        print()
+
         self.jitcells_selected = self.jitcells
-        start1=time.time()
+
         self.update_label_attributes()
-        end1=time.time()
-        print("update attr", end1-start1)
+
         # iterate over future times and update manually unique_labels_T
         # I think we should assume that there is no going to be conflict
         # on label substitution, but we have to be careful in the future
-        start2 = time.time()
+
         update_unique_labels_T(
             self.batch_times_list_global[-1] + 1,
             self.total_times,
             self.label_correspondance_T,
             self.unique_labels_T,
         )
-        end2=time.time()
-        print("update unique labels T", end2-start2)
+        
         # Once unique labels are updated, we can safely run label ordering
         # if there are cells, continue
         if self.jitcells:
             
-            start3 = time.time()
             # Reorder labels on time
             old_labels, new_labels, correspondance = _order_labels_t(
                 self.unique_labels_T, self.max_label
             )
 
-            end3=time.time()
-            print("oder labels t", end3-start3)
             self.unique_labels_T = new_labels
 
-            start4 = time.time()
             self.unique_labels_T_batch = [
                 self.unique_labels_T[t] for t in self.batch_times_list_global
             ]
-            end4=time.time()
-            print("unique labels t batch", end4-start4)
+
             # update cell labels
             for cell in self.jitcells:
                 cell.label = correspondance[cell.label]
             
+            # Update labels of blocked-cells list
             for bid, blabel in enumerate(self.blocked_cells):
                 self.blocked_cells[bid] = correspondance[blabel]
                 
@@ -1129,53 +1123,28 @@ class CellTracking(object):
             )
             
             # Fill with the results from the ordering
-            start5=time.time()
             fill_label_correspondance_T(
                 self.new_label_correspondance_T, self.unique_labels_T, correspondance
             )
-            end5=time.time()
-            print("fill label corr T", end5-start5)
             
-            # update the previous values with the manual changes
-            start6=time.time()
+            # Update the previous values with the manual changes
             update_new_label_correspondance(
                 self.batch_times_list_global[0],
                 self.total_times,
                 self.label_correspondance_T,
                 self.new_label_correspondance_T,
             )
-            end6=time.time()
-            print("update new lab corr", end6-start6)
             # Update subs labels label correspondance T
-            # Save current labels into the npy stacks
             
-            start7=time.time()
-            save_cells_to_labels_stack(
-                self.jitcells,
-                self.CT_info,
-                self.batch_times_list_global,
-                path=self.path_to_save,
-                filename=None,
-                split_times=True,
-                name_format=self._batch_args["name_format"],
-                save_info=False,
-            )
-
-            end7=time.time()
-            print("save cells", end7-start7)
-            
-            start8=time.time()
             # Remove labels that does not change
             self.new_label_correspondance_T = remove_static_labels_label_correspondance(
                 0, self.total_times, self.new_label_correspondance_T
             )
-            end8=time.time()
-            print("remove static labels", end8-start8)
+
             # Update labels on mitotic, apoptotic and blocked cells
-            
             start9=time.time()
             for apo_ev in self.apoptotic_events:
-                if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]]:
+                if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]][:, 0]:
                     idx = np.where(
                         self.new_label_correspondance_T[apo_ev[1]][:, 0] == apo_ev[0]
                     )
@@ -1184,7 +1153,7 @@ class CellTracking(object):
 
             for mito_ev in self.mitotic_events:
                 for mito_cell in mito_ev:
-                    if mito_cell[0] in self.new_label_correspondance_T[mito_cell[1]]:
+                    if mito_cell[0] in self.new_label_correspondance_T[mito_cell[1]][:, 0]:
                         idx = np.where(
                             self.new_label_correspondance_T[mito_cell[1]][:, 0]
                             == mito_cell[0]
@@ -1193,12 +1162,8 @@ class CellTracking(object):
                             idx[0][0], 1
                         ]
                         mito_cell[0] = new_lab
-            end9=time.time()
-            print("apo mito subs", end9-start9)
             
-            # Re-init label_correspondance only for the current and prior batches.
-            start12 = time.time()
-            
+            # Re-init label_correspondance only for the current and prior batches.            
             self.label_correspondance_T_subs = update_label_correspondance_subs(
                 self.batch_times_list_global[-1]+1,
                 self.total_times,
@@ -1206,33 +1171,28 @@ class CellTracking(object):
                 self.new_label_correspondance_T,
             )
            
-            end12=time.time()
-            print("update lab corr subs", end12-start12)
-
             self.label_correspondance_T = List(
                 [np.empty((0, 2), dtype="uint16") for t in range(self.total_times)]
             )
+            
             # Reset label substitution for current batch
             for t in range(self.batch_times_list_global[0], self.batch_times_list_global[-1] + 1):
                 self.label_correspondance_T_subs[t] = np.empty((0, 2), dtype="uint16")
             # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))
-        
-        else: 
-            save_cells_to_labels_stack(
-                self.jitcells,
-                self.CT_info,
-                self.batch_times_list_global,
-                path=self.path_to_save,
-                filename=None,
-                split_times=True,
-                name_format=self._batch_args["name_format"],
-                save_info=False,
-            )
+            
+        save_cells_to_labels_stack(
+            self.jitcells,
+            self.CT_info,
+            self.batch_times_list_global,
+            path=self.path_to_save,
+            filename=None,
+            split_times=True,
+            name_format=self._batch_args["name_format"],
+            save_info=False,
+        )
 
         self.jitcells_selected = self.jitcells
-        # update cell labels
 
-        start13 = time.time()
         self.update_label_attributes()
 
         compute_point_stack(
@@ -1260,10 +1220,8 @@ class CellTracking(object):
             mode="outlines",
             min_length=self._plot_args["min_outline_length"]
         )
-        end13=time.time()
-            
-        print("compute point stacks", end13-start13)
-        
+
+                    
     def _get_cellids_celllabels(self):
         del self._labels[:]
         del self._ids[:]
@@ -1725,8 +1683,6 @@ class CellTracking(object):
                 self._seg_args['compute_center_method']
                 )
                 
-
-
                 jitcellslen = len(self.jitcells_selected)
                 self.jitcells.append(new_jitcell)
                 if jitcellslen == len(self.jitcells_selected):
@@ -1847,6 +1803,13 @@ class CellTracking(object):
             min_length=self._plot_args["min_outline_length"]
         )
 
+        # Pre compute max label in the whole time-series
+        self.max_label_T = [
+            np.max(sublist) if len(sublist) != 0 else -1
+            for sublist in self.unique_labels_T
+        ]
+        self.max_label = np.max(self.max_label_T)
+        
         for lab in cells:
             cell = self._get_cell(lab)
             for t in self.batch_times_list:
@@ -1857,6 +1820,7 @@ class CellTracking(object):
                 if t not in cell.times:
                     check_and_remove_if_cell_apoptotic(lab, t, self.apoptotic_events)
             self._del_cell(lab)
+            
         self.update_label_attributes()
 
 
