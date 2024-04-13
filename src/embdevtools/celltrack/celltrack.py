@@ -1048,13 +1048,8 @@ class CellTracking(object):
                 self.unique_labels_T[t] = self.unique_labels_T_batch[tid]
 
         self.unique_labels = self.unique_labels_batch
-        self.max_label_T = [
-            np.max(sublist) if len(sublist) != 0 else -1
-            for sublist in self.unique_labels_T
-        ]
-        self.max_label = np.max(self.max_label_T)
-        max_lab = nb_get_max_nest_list(self.label_correspondance_T)
-        self.max_label = np.maximum(self.max_label, max_lab)
+        
+        self._get_max_label()
 
         get_hints(self.hints, self.mitotic_events, self.apoptotic_events, self.unique_labels_T)
         self._get_number_of_conflicts()
@@ -1090,6 +1085,11 @@ class CellTracking(object):
             self.unique_labels_T,
         )
         
+        for t in range(len(self.unique_labels_T)):
+            if len(self.unique_labels_T[t]) != len(np.unique(self.unique_labels_T[t])):
+                print("ERRORRRRRRRRRR element repeated")
+                print("time of repetition", t)
+
         # Once unique labels are updated, we can safely run label ordering
         # if there are cells, continue
         if self.jitcells:
@@ -1142,7 +1142,6 @@ class CellTracking(object):
             )
 
             # Update labels on mitotic, apoptotic and blocked cells
-            start9=time.time()
             for apo_ev in self.apoptotic_events:
                 if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]][:, 0]:
                     idx = np.where(
@@ -1221,6 +1220,16 @@ class CellTracking(object):
             min_length=self._plot_args["min_outline_length"]
         )
 
+    def _get_max_label(self):
+        self.max_label_T = [
+            np.max(sublist) if len(sublist) != 0 else -1
+            for sublist in self.unique_labels_T
+        ]
+        
+        self.max_label = np.max(self.max_label_T)
+        
+        max_lab = nb_get_max_nest_list(self.label_correspondance_T)
+        self.max_label = np.maximum(self.max_label, max_lab)
                     
     def _get_cellids_celllabels(self):
         del self._labels[:]
@@ -1305,11 +1314,7 @@ class CellTracking(object):
             final_outlines.append(new_outline_sorted_highres)
             masks.append(mask_from_outline(new_outline_sorted_highres))
 
-        self.max_label_T = [
-            np.max(sublist) if len(sublist) != 0 else -1
-            for sublist in self.unique_labels_T
-        ]
-        self.max_label = np.max(self.max_label_T)
+        self._get_max_label()
         
         new_cell = create_cell(
             self.currentcellid + 1,
@@ -1377,11 +1382,8 @@ class CellTracking(object):
                 final_outlines[-1].append(new_outline_sorted_highres)
                 masks[-1].append(mask_from_outline(new_outline_sorted_highres))
 
-        self.max_label_T = [
-            np.max(sublist) if len(sublist) != 0 else -1
-            for sublist in self.unique_labels_T
-        ]
-        self.max_label = np.max(self.max_label_T)
+        self._get_max_label()
+
         
         new_cell = create_cell(
             self.currentcellid + 1,
@@ -1605,12 +1607,8 @@ class CellTracking(object):
             min_length=self._plot_args["min_outline_length"]
         )
 
-        self.max_label_T = [
-            np.max(sublist) if len(sublist) != 0 else -1
-            for sublist in self.unique_labels_T
-        ]
-        self.max_label = np.max(self.max_label_T)
-        
+        self._get_max_label()
+
         labs_to_replot = []
         for i, lab in enumerate(cells):
             z = Zs[i]
@@ -1804,11 +1802,7 @@ class CellTracking(object):
         )
 
         # Pre compute max label in the whole time-series
-        self.max_label_T = [
-            np.max(sublist) if len(sublist) != 0 else -1
-            for sublist in self.unique_labels_T
-        ]
-        self.max_label = np.max(self.max_label_T)
+        self._get_max_label()
         
         for lab in cells:
             cell = self._get_cell(lab)
@@ -1820,7 +1814,9 @@ class CellTracking(object):
                 if t not in cell.times:
                     check_and_remove_if_cell_apoptotic(lab, t, self.apoptotic_events)
             self._del_cell(lab)
-            
+        
+        print(self.label_correspondance_T[224])
+
         self.update_label_attributes()
 
 
@@ -1888,6 +1884,7 @@ class CellTracking(object):
         )
 
     def combine_cells_z(self, PACP):
+        
         if len(PACP.list_of_cells) < 2:
             return
         cells = [x[0] for x in PACP.list_of_cells]
@@ -2158,12 +2155,9 @@ class CellTracking(object):
         new_cell.outlines = new_cell.outlines[border:]
         new_cell.masks = new_cell.masks[border:]
 
-        self.max_label_T = [
-            np.max(sublist) if len(sublist) != 0 else -1
-            for sublist in self.unique_labels_T
-        ]
-        self.max_label = np.max(self.max_label_T)
+        self._get_max_label()
 
+        print(self.max_label)
         new_cell.label = self.max_label + 1
         new_cell.id = self.currentcellid + 1
         self.max_label += 1
@@ -2195,6 +2189,12 @@ class CellTracking(object):
             self.unique_labels_T,
         )
 
+        print()
+        print(self.label_correspondance_T[224])
+
+        for t in range(len(self.unique_labels_T)):
+            if new_cell.label in self.unique_labels_T[t]:
+                print("AFTER MITO DEFINITION NEW LABEL {} IS IN TIME {}".format(new_cell.label, t))         
         self.update_label_attributes()
 
         compute_point_stack(
@@ -2266,14 +2266,20 @@ class CellTracking(object):
         if mito0[0] == mito1[0]:
             self.list_of_cells.append([mito0[0], 0, mito0[1] - self.batch_times_list_global[0]])
             self.list_of_cells.append([mito1[0], 0, mito1[1] - self.batch_times_list_global[0]])
+            print()
+            print(self.max_label)
             new_label = self.separate_cells_t(return_new_label=True)
+            print(new_label)   
             del self.list_of_cells[:]
             mito1[0] = new_label
 
         elif mito0[0] == mito2[0]:
             self.list_of_cells.append([mito0[0], 0, mito0[1] - self.batch_times_list_global[0]])
             self.list_of_cells.append([mito2[0], 0, mito2[1] - self.batch_times_list_global[0]])
+            print()
+            print(self.max_label)
             new_label = self.separate_cells_t(return_new_label=True)
+            print(new_label)
             del self.list_of_cells[:]
             mito2[0] = new_label
 

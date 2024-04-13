@@ -818,9 +818,14 @@ class PlotActionCT(PlotAction):
 
         for i, lab_z_t in enumerate(labs_z_to_plot):
             jitcell = self._CTget_cell(label=lab_z_t[0])
-            color = get_cell_color(
-                jitcell, self._plot_args["labels_colors"], 1, self.CTblocked_cells
-            )
+            
+            try:
+                color = get_cell_color(
+                    jitcell, self._plot_args["labels_colors"], 1, self.CTblocked_cells
+                )
+            except AttributeError:
+                print("Attr error get color label {}".format(lab_z_t[0]))
+                
             color = np.rint(color * 255).astype("uint8")
             if self.current_state in ["Del"]:
                 times_to_plot = List([i for i in range(self.times)])
