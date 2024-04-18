@@ -130,6 +130,8 @@ class CellTracking(object):
             0
         ],  # first element is the channel used for computing cell centers and for segmentation on stardist
     ):
+        print()
+        print()
         print("###############           INIT ON BATCH MODE          ################")
         printfancy("")
         # Basic arguments 

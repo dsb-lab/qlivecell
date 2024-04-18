@@ -199,6 +199,7 @@ def segment_embryo(image, binths, seg_embryo_params):
     convimage = convimage[cut:-cut, cut:-cut]
     binimage = (convimage > binths) * 1
 
+    binimage=convimage
     # Morphological ACWE
 
     init_ls = checkerboard_level_set(binimage.shape, checkerboard_size)
@@ -206,6 +207,7 @@ def segment_embryo(image, binths, seg_embryo_params):
         binimage, num_iter=num_inter, init_level_set=init_ls, smoothing=smoothing
     )
 
+    ls = select_biggest_binary_cluster(ls)
     s = image.shape[0]
     idxs = np.array([[y, x] for x in range(s) for y in range(s) if ls[x, y] == 1])
     mask1 = deepcopy(idxs)
@@ -248,3 +250,45 @@ def segment_embryo(image, binths, seg_embryo_params):
         backmask = mask1
         background = img1
     return emb_segment, background, ls, embmask, backmask
+
+
+def find_connected_components(grid):
+    def dfs(i, j):
+        stack = [(i, j)]
+        component = []
+        while stack:
+            x, y = stack.pop()
+            if 0 <= x < len(grid) and 0 <= y < len(grid[0]) and grid[x][y] == 1:
+                grid[x][y] = 0  # Mark as visited
+                component.append((x, y))
+                stack.extend([(x+1, y), (x-1, y), (x, y+1), (x, y-1)])
+        return component
+    
+    components = []
+    for i in range(len(grid)):
+        for j in range(len(grid[0])):
+            if grid[i][j] == 1:
+                components.append(dfs(i, j))
+    
+    return components
+
+
+def select_biggest_binary_cluster(grid):
+    clusters = find_connected_components(grid)
+    new_clusters = []
+    cluster_sizes = []
+    for cluster in clusters:
+        new_cluster = np.asarray(cluster)
+        new_clusters.append(new_cluster)
+        cluster_sizes.append(len(new_cluster))
+        
+    biggest_cluster = np.argmax(cluster_sizes)
+    for cid, cluster in enumerate(new_clusters):
+        if cid != biggest_cluster:
+            for p in cluster:
+                grid[p[0], p[1]] = 0
+        else:
+            for p in cluster:
+                grid[p[0], p[1]] = 1
+
+    return grid

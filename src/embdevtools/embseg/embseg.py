@@ -75,8 +75,8 @@ class EmbryoSegmentation:
             print("t =", t)
             if self._threads is None:
                 results = []
-                for zid, z in enumerate(range(self.slices)):
-                    result = self.compute_emb_masks_z(IMGS[t][z], z, tid, zid)
+                for zid, z in enumerate(self.zrange):
+                    result = compute_emb_masks_z(IMGS[t][z], z, tid, zid, self.binths[z], seg_embryo_params)
                     results.append(result)
             else:
                 TASKS = [

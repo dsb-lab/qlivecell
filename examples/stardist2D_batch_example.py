@@ -3,12 +3,12 @@ from embdevtools import get_file_name, CellTracking, save_3Dstack, save_4Dstack,
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-path_data='/home/pablo/Desktop/PhD/projects/Data/test_Andre_Stephen/data/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/test_Andre_Stephen/ctobjects/'
+# path_data='/home/pablo/Desktop/PhD/projects/Data/test_Andre_Stephen/data/'
+# path_save='/home/pablo/Desktop/PhD/projects/Data/test_Andre_Stephen/ctobjects/'
 
-# ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-# path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/20230607_CAG_H2B_GFP_16_cells_stack2_registered/ITK/'
-# path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
+### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
+path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/20230607_CAG_H2B_GFP_16_cells_stack2_registered/test/'
+path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
 try: 
     files = get_file_names(path_save)
@@ -19,7 +19,7 @@ except:
 import os
 
 files = get_file_names(path_data)
-path_data = path_data+files[2]
+# path_data = path_data+files[2]
 
 ### LOAD STARDIST MODEL ###
 from stardist.models import StarDist2D
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         error_correction_args=error_correction_args,
         plot_args=plot_args,
         batch_args=batch_args,
-        channels=[3,0,1,2]
+        channels=[0]
     )
 
     CTB.load()
@@ -92,7 +92,7 @@ if __name__ == "__main__":
         'masks_cmap': 'tab10',
         'plot_stack_dims': (512, 512), 
         'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-        'channels':[3],
+        'channels':[0],
         'min_outline_length':75
     }
     CTB.plot_tracking(plot_args=plot_args)
