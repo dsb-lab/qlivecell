@@ -705,9 +705,6 @@ class CellTracking(object):
         printfancy("")
         for t in range(self.total_times):
             
-            if t < 75:
-                continue
-            
             printfancy(
                 "######   CURRENT TIME = %d/%d   ######" % (t + 1, self.total_times)
             )
@@ -844,9 +841,6 @@ class CellTracking(object):
             first = (bsize * bnumber) - (boverlap * bnumber)
             last = first + bsize
             last = min(last, totalsize)
-            
-            if last < 75:
-                continue
             
             times = range(first, last)
             if len(times) <= boverlap:
