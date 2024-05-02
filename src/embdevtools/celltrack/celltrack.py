@@ -710,6 +710,7 @@ class CellTracking(object):
             )
             printfancy("")
 
+            if t < 223: continue
             Outlines = []
             Masks = []
             Labels = []
@@ -842,6 +843,8 @@ class CellTracking(object):
             last = first + bsize
             last = min(last, totalsize)
             
+            if first < 222: continue
+
             times = range(first, last)
             if len(times) <= boverlap:
                 continue
@@ -1824,8 +1827,6 @@ class CellTracking(object):
                     check_and_remove_if_cell_apoptotic(lab, t, self.apoptotic_events)
             self._del_cell(lab)
         
-        print(self.label_correspondance_T[224])
-
         self.update_label_attributes()
 
 
@@ -2164,9 +2165,8 @@ class CellTracking(object):
         new_cell.outlines = new_cell.outlines[border:]
         new_cell.masks = new_cell.masks[border:]
 
-        self._get_max_label()
+        self.update_label_attributes()
 
-        print(self.max_label)
         new_cell.label = self.max_label + 1
         new_cell.id = self.currentcellid + 1
         self.max_label += 1
@@ -2197,9 +2197,6 @@ class CellTracking(object):
             self.label_correspondance_T,
             self.unique_labels_T,
         )
-
-        print()
-        print(self.label_correspondance_T[224])
 
         for t in range(len(self.unique_labels_T)):
             if new_cell.label in self.unique_labels_T[t]:
