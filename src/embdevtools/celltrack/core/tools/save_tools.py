@@ -333,7 +333,6 @@ def save_4Dstack(
     xyresolution,
     zresolution,
     imagejformat="TZCYX",
-    masks=True,
 ):
     sh = stack_4D.shape
 
@@ -342,16 +341,14 @@ def save_4Dstack(
 
         for t in range(sh[0]):
             for z in range(sh[1]):
-                new_masks[t, z, 0] = stack_4D[t, z, :, :, 0] * 255
-                new_masks[t, z, 1] = stack_4D[t, z, :, :, 1] * 255
-                new_masks[t, z, 2] = stack_4D[t, z, :, :, 2] * 255
+                new_masks[t, z, 0] = stack_4D[t, z, :, :, 0]
+                new_masks[t, z, 1] = stack_4D[t, z, :, :, 1]
+                new_masks[t, z, 2] = stack_4D[t, z, :, :, 2]
+
     else:
         new_masks = stack_4D
 
-    if masks:
-        fullfilename = path + filename + "_masks.tif"
-    else:
-        fullfilename = path + filename + ".tif"
+    fullfilename = path + filename + ".tif"
 
     imwrite(
         fullfilename,

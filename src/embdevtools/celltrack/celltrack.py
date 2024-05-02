@@ -1417,7 +1417,20 @@ class CellTracking(object):
         # If len is still the same, add the cell because jitcells is not a copy of the selection
         if jitcellslen == len(self.jitcells_selected):
             self.jitcells_selected.append(self.jitcells[-1])
-            
+    
+    def append_cell_from_cell(self, cell):
+        self.update_label_attributes()
+        
+        cell.label = self.max_label+1
+        cell.id = self.currentcellid + 1
+        
+        jitcellslen = len(self.jitcells_selected)
+        self.jitcells.append(cell)
+
+        # If len is still the same, add the cell because jitcells is not a copy of the selection
+        if jitcellslen == len(self.jitcells_selected):
+            self.jitcells_selected.append(self.jitcells[-1])
+
     def add_cell(self, PACP):
         if self._err_corr_args["line_builder_mode"] == "points":
             lines = []
