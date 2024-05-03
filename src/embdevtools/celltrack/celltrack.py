@@ -710,7 +710,7 @@ class CellTracking(object):
             )
             printfancy("")
 
-            if t < 223: continue
+            # if t < 223: continue
             Outlines = []
             Masks = []
             Labels = []
@@ -843,7 +843,7 @@ class CellTracking(object):
             last = first + bsize
             last = min(last, totalsize)
             
-            if first < 222: continue
+            # if first < 222: continue
 
             times = range(first, last)
             if len(times) <= boverlap:
@@ -1313,7 +1313,7 @@ class CellTracking(object):
             final_outlines.append(new_outline_sorted_highres)
             masks.append(mask_from_outline(new_outline_sorted_highres))
 
-        self._get_max_label()
+        self.update_label_attributes()
         
         new_cell = create_cell(
             self.currentcellid + 1,
@@ -1864,7 +1864,7 @@ class CellTracking(object):
 
         hull = ConvexHull(pre_outline)
         outline = pre_outline[hull.vertices]
-
+        
         self.append_cell_from_outlines_t([outline], [z], t, sort=False)
 
         self.update_label_attributes()
@@ -2134,6 +2134,10 @@ class CellTracking(object):
         cells = [x[0] for x in self.list_of_cells]
         Ts = [x[2] for x in self.list_of_cells]
 
+        print("in separate cells")
+        print(cells)
+        print(Ts)
+        print()
         # 2 different times
         if len(np.unique(Ts)) != 2:
             return
