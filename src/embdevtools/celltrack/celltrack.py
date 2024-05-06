@@ -1053,6 +1053,16 @@ class CellTracking(object):
         get_hints(self.hints, self.mitotic_events, self.apoptotic_events, self.unique_labels_T)
         self._get_number_of_conflicts()
         self._get_cellids_celllabels()
+        
+        for cell in self.jitcells:
+            tinc = np.diff(cell.times)
+            if len(tinc) == 0:
+                continue
+            else:
+                if not (tinc==1).all():
+                    print("ALERT!! discontinuity found")
+                    print(cell.label)
+                    print("")
 
     def update_labels(self, backup=False):
         self.update_label_pre()
