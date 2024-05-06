@@ -71,7 +71,8 @@ from .core.tools.cell_tools import (_predefine_jitcell_inputs, create_cell,
                                     find_z_discontinuities_jit, update_cell,
                                     update_jitcell, update_jitcells)
 from .core.tools.ct_tools import (check_and_override_args,
-                                  compute_labels_stack, compute_point_stack)
+                                  compute_labels_stack, compute_point_stack,
+                                  find_discontinuities_unique_labels_T)
 from .core.tools.input_tools import (get_file_name, get_file_names,
                                      tif_reader_5D, separate_times_hyperstack)
 from .core.tools.save_tools import (load_cells, load_CT_info, read_split_times,
@@ -1054,15 +1055,10 @@ class CellTracking(object):
         self._get_number_of_conflicts()
         self._get_cellids_celllabels()
         
-        for cell in self.jitcells:
-            tinc = np.diff(cell.times)
-            if len(tinc) == 0:
-                continue
-            else:
-                if not (tinc==1).all():
-                    print("ALERT!! discontinuity found")
-                    print(cell.label)
-                    print("")
+        discs = find_discontinuities_unique_labels_T(self.unique_labels_T, self.max_label)
+        print()
+        print("discontinuities in labels ", discs)
+        print()
 
     def update_labels(self, backup=False):
         self.update_label_pre()
@@ -1581,6 +1577,8 @@ class CellTracking(object):
         self._tz_actions.append([PACP.t, PACP.z])
 
     def delete_cell(self, PACP, count_action=True):
+        print("inside delete_cell")
+        print("list of cells", PACP.list_of_cells)
         cells = [x[0] for x in PACP.list_of_cells]
         cellids = []
         Zs = [x[1] for x in PACP.list_of_cells]
@@ -1629,8 +1627,8 @@ class CellTracking(object):
             min_length=self._plot_args["min_outline_length"]
         )
 
-        self._get_max_label()
-
+        self.update_label_attributes()
+        print("self.max_label =", self.max_label)
         labs_to_replot = []
         for i, lab in enumerate(cells):
             z = Zs[i]
@@ -1661,9 +1659,9 @@ class CellTracking(object):
             if cell._rem:
                 idrem = cell.id
                 cellids.remove(idrem)
-                
+                print("self.max_label =", self.max_label)
                 self._del_cell(lab, t=t)
-
+                print("self.max_label =", self.max_label)
                 if lab in labs_to_replot:
                     labs_to_replot.remove(lab)
             else:
@@ -1715,7 +1713,7 @@ class CellTracking(object):
                 self.currentcellid,
                 self._seg_args['compute_center_method'],
             )
-
+            
             update_jitcell(
                 cell,
                 stack,
@@ -1782,6 +1780,8 @@ class CellTracking(object):
             mode="outlines",
             min_length=self._plot_args["min_outline_length"]
         )
+
+        print("outside delete_cell")
 
     def delete_cell_in_batch(self, PACP, count_action=True):
         cells = [x[0] for x in PACP.list_of_cells]
@@ -1853,6 +1853,8 @@ class CellTracking(object):
             selected cells are stored in PACP.list_of_cells
         """
         
+        print("inside join cells")
+
         # get labels, planes and times.
         # times and zs should be equal for both cells
         labels, Zs, Ts = list(zip(*PACP.list_of_cells))
@@ -1928,6 +1930,7 @@ class CellTracking(object):
             mode="outlines",
             min_length=self._plot_args["min_outline_length"]
         )
+        print("outside join_cells")
 
     def combine_cells_z(self, PACP):
         """ Combine cells over z
@@ -2406,6 +2409,8 @@ class CellTracking(object):
             return cell
 
     def _del_cell(self, label=None, cellid=None, lab_change=None, t=None):
+        print("inside _del_cell")
+        print("deleting label", label)
         len_selected_jitcells = len(self.jitcells_selected)
         idx1 = None
         if label == None:
@@ -2449,6 +2454,7 @@ class CellTracking(object):
         else:
             pass  # selected jitcells is a copy of jitcells so it was deleted already
         self._get_cellids_celllabels()
+        print("outside _del_cell")
 
     def print_actions(self, event):
         actions = [

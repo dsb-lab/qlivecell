@@ -300,17 +300,24 @@ def remove_static_labels_label_correspondance(
 def add_lab_change(
     first_future_time, lab_change, label_correspondance_T, unique_labels_T
 ):
-    ids = nb_list_where(unique_labels_T[first_future_time:], lab_change[0][0])
-    for _t in ids[0]:
-        t = _t + first_future_time
+    print("in add lab change", lab_change)
+    print("first future time", first_future_time)
+    # ids = nb_list_where(unique_labels_T[first_future_time:], lab_change[0][0])
+    # print(ids)
+    for t in range(first_future_time, len(unique_labels_T)):
         if lab_change[0][0] in label_correspondance_T[t][:, 1]:
+            if 79 in lab_change[0]:
+                print("it's there", label_correspondance_T[t])
             idx = np.where(label_correspondance_T[t][:, 1] == lab_change[0][0])
             label_correspondance_T[t][idx[0][0], 1] = lab_change[0][1]
-        else:
+        elif lab_change[0][0] in unique_labels_T[t]:
+            if 79 in lab_change[0]:
+                print("it's new", label_correspondance_T[t])
             label_correspondance_T[t] = nb_add_row(
                 label_correspondance_T[t], lab_change
             )
-
+        if 79 in lab_change[0]:
+            print(label_correspondance_T[t])
 
 @njit()
 def get_unique_lab_changes(label_correspondance_T):

@@ -102,4 +102,3 @@ if __name__ == "__main__":
     CTB.plot_tracking(plot_args=plot_args)
 
 # arboretum_napari(CTB)
-
