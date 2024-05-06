@@ -1831,11 +1831,28 @@ class CellTracking(object):
 
 
     def join_cells(self, PACP):
+        """ Join selected cells. Only works for cells (> 1) on 1 plane and time
+        
+        If selected cells appear in more planes and/or times, they are separated.
+        Cell sections prior to selected time maintain the label. 
+        Cell sections subsequent to the selected time or z are assigned a new label
+        
+        Parameters
+        ----------
+        PACP : PlotActionCT
+            selected cells are stored in PACP.list_of_cells
+        """
+        
+        # get labels, planes and times.
+        # times and zs should be equal for both cells
         labels, Zs, Ts = list(zip(*PACP.list_of_cells))
+        
+        # sort by label
         sortids = np.argsort(np.asarray(labels))
         labels = np.array(labels)[sortids]
         Zs = np.array(Zs)[sortids]
 
+        # check whether all selected cells are on same z and t
         if len(np.unique(Ts)) != 1:
             return
         if len(np.unique(Zs)) != 1:
@@ -1844,31 +1861,40 @@ class CellTracking(object):
         t = Ts[0]
         z = Zs[1]
 
+        # count action
         self.nactions += 1
         self._tz_actions.append([t, z])
 
+        # extract labels from cells to be sure we can access the cells selected
         cells = [self._get_cell(label=lab) for lab in labels]
 
+        # select the first cell as the base cell
         cell = cells[0]
         tid = cell.times.index(t)
         zid = cell.zs[tid].index(z)
         pre_outline = copy(cells[0].outlines[tid][zid])
 
+        # for each of the other cells, concatenate the outlines
         for i, cell in enumerate(cells[1:]):
             j = i + 1
             tid = cell.times.index(t)
             zid = cell.zs[tid].index(z)
             pre_outline = np.concatenate((pre_outline, cell.outlines[tid][zid]), axis=0)
 
+        # delete all selected cells at z and t
         self.delete_cell(PACP, count_action=False)
 
+        # create the combined outline using the concatenation of outlines
         hull = ConvexHull(pre_outline)
         outline = pre_outline[hull.vertices]
         
+        # create a new cell from the outline
         self.append_cell_from_outlines_t([outline], [z], t, sort=False)
-
+        
+        # update attributes
         self.update_label_attributes()
 
+        # replot every cell but only on time t
         compute_point_stack(
             self._masks_stack,
             self.jitcells_selected,
@@ -1894,17 +1920,31 @@ class CellTracking(object):
         )
 
     def combine_cells_z(self, PACP):
+        """ Combine cells over z
+
+        Cells are combined to the cell with the lower label.
+        Cells must be consecutive in z but not overlap neither in z nor time
         
+        Parameters
+        ----------
+        PACP : PlotActionCT
+            selected cells are stored in PACP.list_of_cells
+        """
+        
+        # check if there are 2 or more cells selected
         if len(PACP.list_of_cells) < 2:
             return
+        
+        # extract selected labels and sort them
         cells = [x[0] for x in PACP.list_of_cells]
         cells.sort()
+        
+        # time of action of the current time on the GUI
         t = PACP.t
 
-        Zs = [x[1] for x in PACP.list_of_cells]
         self.nactions += 1
-        # for z in Zs: self._tz_actions.append([t, z])
         
+        # cell with the smallest label is used 
         cell1 = self._get_cell(cells[0])
         tid_cell1 = cell1.times.index(t)
         for lab in cells[1:]:
@@ -1934,7 +1974,7 @@ class CellTracking(object):
             )
 
             t_rem = cell2.times.pop(tid_cell2)
-             # If the current time has been completely removed from the cell, 
+            # If the current time has been completely removed from the cell, 
             # check if it was mitotic or apoptosis at this time
             if t not in cell2.times:
                 check_and_remove_if_cell_mitotic(cell2.label, t_rem, self.mitotic_events)
