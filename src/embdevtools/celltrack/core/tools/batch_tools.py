@@ -337,6 +337,34 @@ def fill_label_correspondance_T(
 
 @njit(parallel=False)
 def nb_get_max_nest_list(nested2Dlist):
+    """
+    Get the maximum value from a nested 2D list.
+
+    Parameters
+    ----------
+    nested2Dlist : List[List[np.number]]
+        Nested 2D list of integers.
+
+    Returns
+    -------
+    np.int64
+        The maximum value found in the nested list.
+
+    Notes
+    -----
+    This function is compiled with Numba's JIT (just-in-time) compiler for optimization.
+
+    The `nested2Dlist` parameter should be a nested 2D list containing np.number values.
+
+    This function iterates over each sublist in the nested list and finds the maximum value.
+    It returns the maximum value found in the entire nested list.
+
+    Example
+    -------
+    >>> nested_list = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    >>> nb_get_max_nest_list(nested_list)
+    9
+    """
     max_val = -1
     for sublist in nested2Dlist:
         if len(sublist) == 0:
@@ -349,6 +377,51 @@ def nb_get_max_nest_list(nested2Dlist):
 def update_unique_labels_T(
     post_range_start, post_range_end, label_correspondance_T, unique_labels_T
 ):
+    """
+    Update unique labels for each time point based on label correspondences.
+
+    Parameters
+    ----------
+    post_range_start : int
+        The starting index of the range of time points to update.
+    post_range_end : int
+        The ending index (exclusive) of the range of time points to update.
+    label_correspondance_T : List[numpy.ndarray]
+        Numba typed list storing the label changes for each time point.
+        Each element of the list is a 2D ndarray that stores the label changes for that time.
+        Label_correspondance_T is updated in-place.
+    unique_labels_T : List[List[T]]
+        Numba typed list storing a typed list for each time.
+        Each sublist stores the labels for each time.
+        T is the label type.
+
+    Notes
+    -----
+    This function updates the unique labels for each time point based on the provided label correspondences.
+
+    The `post_range_start` parameter specifies the starting index of the range of time points to update.
+    
+    The `post_range_end` parameter specifies the ending index (exclusive) of the range of time points to update.
+    
+    The `label_correspondance_T` parameter is a Numba typed list storing the label changes for each time point.
+    Each element of the list is a 2D ndarray that stores the label changes for that time. Label_correspondance_T is updated in-place.
+    
+    The `unique_labels_T` parameter is a Numba typed list storing a typed list for each time.
+    Each sublist stores the labels for each time. T is the label type.
+
+    For each time point within the specified range, this function iterates over the label correspondences.
+    For each correspondence, it updates the unique labels list if the pre-label is found.
+    
+    This function modifies the unique_labels_T list in place.
+
+    Example
+    -------
+    >>> label_correspondance_T = [np.array([[1, 2], [3, 4]]), np.array([[5, 6]])]
+    >>> unique_labels_T = [[1, 2], [5]]
+    >>> update_unique_labels_T(0, 2, label_correspondance_T, unique_labels_T)
+    >>> unique_labels_T
+    [[2, 4], [6]]
+    """
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
         for lab_change in label_correspondance_T[postt]:
@@ -363,6 +436,49 @@ def update_unique_labels_T(
 def update_new_label_correspondance(
     post_range_start, post_range_end, label_correspondance_T, new_label_correspondance_T
 ):
+    """
+    Update new label correspondences based on existing label correspondences.
+
+    Parameters
+    ----------
+    post_range_start : int
+        The starting index of the range of time points to update.
+    post_range_end : int
+        The ending index (exclusive) of the range of time points to update.
+    label_correspondance_T : List[numpy.ndarray]
+        Numba typed list storing the label changes for each time point.
+        Each element of the list is a 2D ndarray that stores the label changes for that time.
+    new_label_correspondance_T : List[numpy.ndarray]
+        Numba typed list storing the updated label changes for each time point.
+        Each element of the list is a 2D ndarray that stores the updated label changes for that time.
+
+    Notes
+    -----
+    This function updates new label correspondences based on existing label correspondences.
+
+    The `post_range_start` parameter specifies the starting index of the range of time points to update.
+    
+    The `post_range_end` parameter specifies the ending index (exclusive) of the range of time points to update.
+    
+    The `label_correspondance_T` parameter is a Numba typed list storing the label changes for each time point.
+    Each element of the list is a 2D ndarray that stores the label changes for that time.
+    
+    The `new_label_correspondance_T` parameter is a Numba typed list storing the updated label changes for each time point.
+    Each element of the list is a 2D ndarray that stores the updated label changes for that time.
+
+    For each time point within the specified range, this function iterates over the label correspondences.
+    For each correspondence, it updates the new label correspondences if the post-label is found.
+    
+    This function modifies the new_label_correspondance_T list in place.
+
+    Example
+    -------
+    >>> label_correspondance_T = [np.array([[1, 2], [3, 4]]), np.array([[5, 6]])]
+    >>> new_label_correspondance_T = [np.array([[2, 3], [4, 5]]), np.array([[6, 7]])]
+    >>> update_new_label_correspondance(0, 2, label_correspondance_T, new_label_correspondance_T)
+    >>> new_label_correspondance_T
+    [array([[1, 3], [3, 5]]), array([[5, 7]])]
+    """
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
         lab_corr_range = range(len(label_correspondance_T[postt]))
@@ -373,13 +489,55 @@ def update_new_label_correspondance(
             idx = np.where(new_label_correspondance_T[postt][:, 0] == post_label)
             new_label_correspondance_T[postt][idx[0][0], 0] = pre_label
 
-
 def update_label_correspondance_subs(
     post_range_start,
     post_range_end,
     label_correspondance_T_subs,
     new_label_correspondance_T,
 ):
+    """
+    Update label correspondences for a subset of time points based on new label changes.
+
+    Parameters
+    ----------
+    post_range_start : int
+        The starting index of the range of time points to update.
+    post_range_end : int
+        The ending index (exclusive) of the range of time points to update.
+    label_correspondance_T_subs : List[numpy.ndarray]
+        List of label correspondences for each time point.
+    new_label_correspondance_T : List[numpy.ndarray]
+        List of updated label changes for each time point.
+
+    Returns
+    -------
+    List[numpy.ndarray]
+        Updated list of label correspondences.
+
+    Notes
+    -----
+    This function updates label correspondences for a subset of time points based on new label changes. Does the same as update_new_label_correspondance but without assuming that every label is present.
+
+    The `post_range_start` parameter specifies the starting index of the range of time points to update.
+    
+    The `post_range_end` parameter specifies the ending index (exclusive) of the range of time points to update.
+    
+    The `label_correspondance_T_subs` parameter is a list of label correspondences for each time point.
+    
+    The `new_label_correspondance_T` parameter is a list of updated label changes for each time point.
+
+    For each time point within the specified range, this function iterates over the new label correspondences.
+    It updates the label correspondences based on the provided new label changes.
+    
+    This function returns the updated list of label correspondences.
+
+    Example
+    -------
+    >>> label_correspondance_T_subs = [np.array([[1, 2], [3, 4]]), np.array([[5, 6]])]
+    >>> new_label_correspondance_T = [np.array([[2, 3], [4, 5]]), np.array([[6, 7]])]
+    >>> update_label_correspondance_subs(0, 2, label_correspondance_T_subs, new_label_correspondance_T)
+    [array([[1, 3], [3, 5]]), array([[5, 7]])]
+    """
     post_range = prange(post_range_start, post_range_end)
 
     lcts_copy = List(
@@ -434,6 +592,37 @@ def update_label_correspondance_subs(
 def fill_label_correspondance_T_subs(
     label_correspondance_T_subs, new_label_correspondance_T
 ):
+    """
+    Fill label correspondences for a subset of time points with new label changes.
+
+    Parameters
+    ----------
+    label_correspondance_T_subs : List[numpy.ndarray]
+        List of label correspondences for a subset of time points.
+    new_label_correspondance_T : List[numpy.ndarray]
+        List of new label changes for each time point.
+
+    Notes
+    -----
+    This function fills label correspondences for a subset of time points with new label changes.
+
+    The `label_correspondance_T_subs` parameter is a list of label correspondences for a subset of time points.
+    
+    The `new_label_correspondance_T` parameter is a list of new label changes for each time point.
+
+    For each time point in the subset, this function iterates over the new label changes.
+    If the pre-label of a new label change is not already in the label correspondences, it adds the new label change.
+
+    This function modifies the label_correspondance_T_subs list in place.
+
+    Example
+    -------
+    >>> label_correspondance_T_subs = [np.array([[1, 2], [3, 4]]), np.array([[5, 6]])]
+    >>> new_label_correspondance_T = [np.array([[2, 3], [5, 6]]), np.array([[6, 7]])]
+    >>> fill_label_correspondance_T_subs(label_correspondance_T_subs, new_label_correspondance_T)
+    >>> label_correspondance_T_subs
+    [array([[1, 2], [3, 4], [5, 6]]), array([[5, 6]])]
+    """
     for _postt in prange(len(label_correspondance_T_subs)):
         postt = np.int64(_postt)
         lab_corr_range = range(len(new_label_correspondance_T[postt]))
@@ -452,6 +641,45 @@ def fill_label_correspondance_T_subs(
 def remove_static_labels_label_correspondance(
     post_range_start, post_range_end, label_correspondance_T
 ):
+    """
+    Remove static labels from label correspondences for a range of time points.
+
+    Parameters
+    ----------
+    post_range_start : int
+        The starting index of the range of time points to process.
+    post_range_end : int
+        The ending index (exclusive) of the range of time points to process.
+    label_correspondance_T : List[numpy.ndarray]
+        List of label correspondences for each time point.
+
+    Returns
+    -------
+    List[numpy.ndarray]
+        Updated list of label correspondences.
+
+    Notes
+    -----
+    This function removes static labels from label correspondences for a range of time points.
+
+    The `post_range_start` parameter specifies the starting index of the range of time points to process.
+    
+    The `post_range_end` parameter specifies the ending index (exclusive) of the range of time points to process.
+    
+    The `label_correspondance_T` parameter is a list of label correspondences for each time point.
+
+    For each time point within the specified range, this function iterates over the label correspondences.
+    If a label change has the same pre-label and post-label, it is considered static and removed from the list.
+
+    This function modifies the label_correspondance_T list in place.
+
+    Example
+    -------
+    >>> label_correspondance_T = [np.array([[1, 2], [3, 3], [4, 5]]), np.array([[2, 2], [3, 4]])]
+    >>> remove_static_labels_label_correspondance(0, 2, label_correspondance_T)
+    >>> label_correspondance_T
+    [array([[1, 2], [4, 5]]), array([[3, 4]])]
+    """
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
         lc_remove = List()
@@ -599,6 +827,40 @@ def update_apo_cells(apoptotic_events, t, lab_change):
 
 @njit()
 def update_mito_cells(mitotic_events, t, lab_change):
+    """
+    Update mitotic cells based on label changes.
+
+    Parameters
+    ----------
+    mitotic_events : List[List[List[int64]]]
+        List of mitotic events, where each event has the form [[mother], [daughter1], [daughter2]]. And each cell has the form [label, time]
+    t : int
+        The current time.
+    lab_change : numpy.ndarray
+        A label change representing pre-label and post-label.
+
+    Notes
+    -----
+    This function updates mitotic cells based on label changes at the current time.
+
+    The `mitotic_events` parameter is a nested list representing mitotic events.
+    Each event contains a list of mitotic cells, where each cell is represented as [pre_label, post_label].
+
+    The `t` parameter specifies the current time.
+
+    The `lab_change` parameter is a 2D numpy array representing a label change with shape [[pre_label, post_label]].
+
+    For each mitotic event and mitotic cell, if the cell's time is greater than or equal to the current time `t`
+    and its pre-label matches the pre-label in the `lab_change`, the cell's label is updated to the post-label.
+
+    Example
+    -------
+    >>> mitotic_events = [[[0, 0], [1, 1], [2,1]]]
+    >>> lab_change = np.array([[1, 6]])
+    >>> update_mito_cells(mitotic_events, 1, lab_change)
+    >>> mitotic_events
+     [[[0, 0], [6, 1], [2,1]]]
+    """
     for mito_ev in mitotic_events:
         for mito_cell in mito_ev:
             if mito_cell[1] >= t:
@@ -608,22 +870,78 @@ def update_mito_cells(mitotic_events, t, lab_change):
 
 @njit()
 def update_blocked_cells(blocked_cells, lab_change):
+    """
+    Update blocked cells with a new label.
+
+    Parameters
+    ----------
+    blocked_cells : List[int]
+        List of blocked cells represented by their labels.
+    lab_change : numpy.ndarray
+        A label change representing pre-label and post-label.
+
+    Notes
+    -----
+    This function updates blocked cells with a new label.
+
+    The `blocked_cells` parameter is a list of blocked cells represented by their labels.
+
+    The `lab_change` parameter is a 2D numpy array representing a label change with shape [[pre_label, post_label]].
+
+    For each blocked cell in the list, if its label matches the pre-label in the `lab_change`, it updates the label to the post-label.
+
+    Example
+    -------
+    >>> blocked_cells = [1, 2, 3, 4]
+    >>> lab_change = np.array([[3, 6]])
+    >>> update_blocked_cells(blocked_cells, lab_change)
+    >>> blocked_cells
+    [1, 2, 6, 4]
+    """
     for blid, blabel in enumerate(blocked_cells):
         if blabel == lab_change[0][0]:
             blocked_cells[blid] = lab_change[0][1]
 
-
-@njit()
-def check_and_remove_if_cell_mitotic(lab, t, mitotic_events):
-    mevs_remove = get_mito_cells_to_remove(lab, t, mitotic_events)
-    for i in prange(len(mevs_remove), 0, -1):
-        ev = mevs_remove[i]
-        _ = mitotic_events.pop(ev)
-    return
-
-
 @njit(parallel=False)
 def get_mito_cells_to_remove(lab, t, mitotic_events):
+    """
+    Get mitotic events to remove associated with a specific cell label at a given time.
+
+    Parameters
+    ----------
+    lab : int
+        The label of the cell to check for mitotic events.
+    t : int
+        The current time.
+    mitotic_events : List[List[List[int]]]
+        List of mitotic events, where each event contains three cells: mother and two daughters.
+        Each cell is represented as [label, time].
+
+    Returns
+    -------
+    List[int]
+        List of indices of mitotic events to remove.
+
+    Notes
+    -----
+    This function retrieves mitotic events associated with a specific cell label at a given time.
+
+    The `lab` parameter specifies the label of the cell to check for mitotic events.
+
+    The `t` parameter specifies the current time.
+
+    The `mitotic_events` parameter is a nested list representing mitotic events.
+    Each event contains three cells: mother and two daughters.
+    Each cell is represented as [label, time].
+
+    The function iterates over the mitotic events and identifies those associated with the specified cell label and time.
+
+    Example
+    -------
+    >>> mitotic_events = [[[1, 1], [2, 1], [3, 1]], [[4, 2], [5, 2], [6, 2]], [[7, 3], [8, 3], [9, 3]]]
+    >>> get_mito_cells_to_remove(5, 2, mitotic_events)
+    [1]
+    """
     mcell = List([lab, t])
     mevs_remove = List([0])
     for ev in prange(len(mitotic_events)):
@@ -632,18 +950,87 @@ def get_mito_cells_to_remove(lab, t, mitotic_events):
             mevs_remove.append(ev)
     return mevs_remove[1:]
 
-
 @njit()
-def check_and_remove_if_cell_apoptotic(lab, t, apoptotic_events):
-    aevs_remove = get_apo_cells_to_remove(lab, t, apoptotic_events)
-    for i in prange(len(aevs_remove), 0, -1):
-        ev = aevs_remove[i]
-        _ = apoptotic_events.pop(ev)
-    return
+def check_and_remove_if_cell_mitotic(lab, t, mitotic_events):
+    """
+    Check and remove mitotic events associated with a specific cell label at a given time.
 
+    Parameters
+    ----------
+    lab : int
+        The label of the cell to check for mitotic events.
+    t : int
+        The current time.
+    mitotic_events : List[List[List[int]]]
+        List of mitotic events, where each event contains three cells: mother and two daughters.
+        Each cell is represented as [label, time].
+
+    Notes
+    -----
+    This function checks for and removes mitotic events associated with a specific cell label at a given time.
+
+    The `lab` parameter specifies the label of the cell to check for mitotic events.
+
+    The `t` parameter specifies the current time.
+
+    The `mitotic_events` parameter is a nested list representing mitotic events.
+    Each event contains three cells: mother and two daughters.
+    Each cell is represented as [label, time].
+
+    The function iterates over the mitotic events and removes those associated with the specified cell label and time.
+
+    Example
+    -------
+    >>> mitotic_events = [[[1, 1], [2, 1], [3, 1]], [[4, 2], [5, 2], [6, 2]], [[7, 3], [8, 3], [9, 3]]]
+    >>> check_and_remove_if_cell_mitotic(5, 2, mitotic_events)
+    >>> mitotic_events
+    [[[1, 1], [2, 1], [3, 1]], [[7, 3], [8, 3], [9, 3]]]
+    """
+    mevs_remove = get_mito_cells_to_remove(lab, t, mitotic_events)
+    for i in prange(len(mevs_remove), 0, -1):
+        ev = mevs_remove[i]
+        _ = mitotic_events.pop(ev)
+    return
 
 @njit(parallel=False)
 def get_apo_cells_to_remove(lab, t, apoptotic_events):
+    """
+    Get apoptotic events to remove associated with a specific cell label at a given time.
+
+    Parameters
+    ----------
+    lab : int
+        The label of the cell to check for apoptotic events.
+    t : int
+        The current time.
+    apoptotic_events : List[List[int]]
+        List of apoptotic events, where each event contains a list of apoptotic cells.
+        Each cell is represented as [label, time].
+
+    Returns
+    -------
+    List[int]
+        List of indices of apoptotic events to remove.
+
+    Notes
+    -----
+    This function retrieves apoptotic events associated with a specific cell label at a given time.
+
+    The `lab` parameter specifies the label of the cell to check for apoptotic events.
+
+    The `t` parameter specifies the current time.
+
+    The `apoptotic_events` parameter is a nested list representing apoptotic events.
+    Each event contains a list of apoptotic cells, where each cell is represented as [label, time].
+
+    The function iterates over the apoptotic events and identifies those associated with the specified cell label and time.
+
+    Example
+    -------
+    >>> apoptotic_events = [[2, 1], [4, 2], [6, 3]]
+    >>> get_apo_cells_to_remove(4, 2, apoptotic_events)
+    [1]
+    """
     acell = List([lab, t])
     aevs_remove = List([0])
     for ev in prange(len(apoptotic_events)):
@@ -652,9 +1039,93 @@ def get_apo_cells_to_remove(lab, t, apoptotic_events):
             aevs_remove.append(ev)
     return aevs_remove[1:]
 
+@njit()
+def check_and_remove_if_cell_apoptotic(lab, t, apoptotic_events):
+    """
+    Check and remove apoptotic events associated with a specific cell label at a given time.
+
+    Parameters
+    ----------
+    lab : int
+        The label of the cell to check for apoptotic events.
+    t : int
+        The current time.
+    apoptotic_events : List[List[int]]
+        List of apoptotic events, where each event contains a list of apoptotic cells.
+        Each cell is represented as [label, time].
+
+    Notes
+    -----
+    This function checks for and removes apoptotic events associated with a specific cell label at a given time.
+
+    The `lab` parameter specifies the label of the cell to check for apoptotic events.
+
+    The `t` parameter specifies the current time.
+
+    The `apoptotic_events` parameter is a nested list representing apoptotic events.
+    Each event contains a list of apoptotic cells, where each cell is represented as [label, time].
+
+    The function iterates over the apoptotic events and removes those associated with the specified cell label and time.
+
+    Example
+    -------
+    >>> apoptotic_events = [[2, 1], [4, 2], [6, 3]]
+    >>> check_and_remove_if_cell_apoptotic(4, 2, apoptotic_events)
+    >>> apoptotic_events
+    [[2, 1], [6, 3]]
+    """
+    aevs_remove = get_apo_cells_to_remove(lab, t, apoptotic_events)
+    for i in prange(len(aevs_remove), 0, -1):
+        ev = aevs_remove[i]
+        _ = apoptotic_events.pop(ev)
+    return
 
 @njit(parallel=False)
 def extract_unique_labels_T(labels, start, times):
+    """
+    Extract unique labels at each time point within a specified range.
+
+    Parameters
+    ----------
+    labels : numpy.ndarray
+        Numpy array containin the segmented masks as a label array
+    start : int
+        The starting index of the time range.
+    times : int
+        The total number of time points.
+
+    Returns
+    -------
+        unique_labels_T: List[List[T]]
+
+    Tuple[List[List[int]], List[int]]
+        A tuple containing two lists:
+        - Numba types list storing a typed list for each time. Each sublist stores the labels for each time. T is the label type
+        - List of corresponding time point indices. Necessary for parallel computation
+
+    Notes
+    -----
+    This function extracts unique labels at each time point within a specified range.
+
+    The `labels` parameter is a numpy array containin the segmented masks as a label array. Usually of shape (T, Z, Y, X)
+
+    The `start` parameter specifies the starting index of the time range.
+
+    The `times` parameter specifies the total number of time points.
+
+    The function iterates over the specified time range and calculates unique labels for each time point. 0 is considered background.
+
+    Example
+    -------
+    >>> labels = np.array([[[
+       [1, 1, 0, 0],
+       [1, 1, 0, 0],
+       [0, 0, 2, 2],
+       [0, 0, 2, 2]
+       ]]])
+    >>> extract_unique_labels_T(labels, 0, 1)
+    ([[1, 2]], [0, 1])
+    """
     labs_t = List()
     order = List()
     for t in prange(times - start):
@@ -669,12 +1140,68 @@ def extract_unique_labels_T(labels, start, times):
 
 @njit
 def combine_lists(list1, list2):
+    """
+    Combine two lists into one.
+
+    Parameters
+    ----------
+    list1 : List[T]
+        The first list to combine.
+    list2 : List[T]
+        The second list to combine.
+
+    Notes
+    -----
+    This function combines two lists into one.
+
+    The `list1` parameter is the first list to combine.
+
+    The `list2` parameter is the second list to combine.
+
+    Example
+    -------
+    >>> list1 = [1, 2, 3]
+    >>> list2 = [4, 5, 6]
+    >>> combine_lists(list1, list2)
+    >>> list1
+    [1, 2, 3, 4, 5, 6]
+    """
     for l in list2:
         list1.append(l)
 
 
 @njit
 def reorder_list(lst, order):
+    """
+    Reorder a list based on a specified order.
+
+    Parameters
+    ----------
+    lst : List[T]
+        The list to reorder.
+    order : List[int]
+        The order specifying how to reorder the list.
+
+    Returns
+    -------
+    List[T]
+        The reordered list.
+
+    Notes
+    -----
+    This function reorders a list based on a specified order.
+
+    The `lst` parameter is the list to reorder.
+
+    The `order` parameter specifies how to reorder the list. It contains indices indicating the new order of elements.
+
+    Example
+    -------
+    >>> lst = [10, 20, 30, 40, 50]
+    >>> order = [2, 0, 4, 1, 3]
+    >>> reorder_list(lst, order)
+    [30, 10, 50, 20, 40]
+    """
     new_list = List()
     for o in order:
         new_list.append(lst[o])
@@ -684,6 +1211,37 @@ def reorder_list(lst, order):
 
 @njit
 def get_mito_info(mitotic_events):
+    """
+    Extract information about mitotic events.
+
+    Parameters
+    ----------
+    mitotic_events : List[List[List[int]]]
+        List of mitotic events, where each event contains three cells: mother and two daughters.
+        Each cell is represented as [label, time].
+
+    Returns
+    -------
+    Tuple[List[int], List[int], List[int], List[int]]
+        A tuple containing four lists:
+        - List of labels of mother cells.
+        - List of times of mother cells.
+        - List of labels of daughter cells.
+        - List of times of daughter cells.
+
+    Notes
+    -----
+    This function extracts information about mitotic events, including the labels and times of mother and daughter cells.
+
+    The `mitotic_events` parameter is a list of mitotic events, where each event contains three cells: mother and two daughters.
+    Each cell is represented as [label, time].
+
+    Example
+    -------
+    >>> mitotic_events = [[[1, 1], [2, 1], [3, 1]], [[4, 2], [5, 2], [6, 2]], [[7, 3], [8, 3], [9, 3]]]
+    >>> get_mito_info(mitotic_events)
+    ([1, 4, 7], [1, 2, 3], [2, 5, 8], [1, 2, 3])
+    """
     mito_mothers_ts = []
     mito_mothers_labs = []
     mito_daughters_ts = []
@@ -701,6 +1259,35 @@ def get_mito_info(mitotic_events):
 
 @njit
 def get_apo_info(apoptotic_event):
+    """
+    Extract information about apoptotic events.
+
+    Parameters
+    ----------
+    apoptotic_event : List[List[int]]
+        List of apoptotic cells, where each cell contains the label and time.
+        Each cell is represented as [label, time].
+
+    Returns
+    -------
+    Tuple[List[int], List[int]]
+        A tuple containing two lists:
+        - List of labels of apoptotic cells.
+        - List of times of apoptotic cells.
+
+    Notes
+    -----
+    This function extracts information about apoptotic events, including the labels and times of apoptotic cells.
+
+    The `apoptotic_event` parameter is a list of apoptotic cells, where each cell contains the label and time.
+    Each cell is represented as [label, time].
+
+    Example
+    -------
+    >>> apoptotic_event = [[1, 1], [2, 2], [3, 3]]
+    >>> get_apo_info(apoptotic_event)
+    ([1, 2, 3], [1, 2, 3])
+    """
     apo_ts = []
     apo_labs = []
     for apo_cell in apoptotic_event:
@@ -711,6 +1298,23 @@ def get_apo_info(apoptotic_event):
 
 
 def _init_hints():
+    """
+    Initialize hints for label inference.
+
+    Returns
+    -------
+    List[List[array(uint16, 1d, C)]]
+        An empty list initialized to store hints for label inference.
+
+    Notes
+    -----
+    This function initializes an empty list to store hints for label inference.
+
+    Example
+    -------
+    >>> _init_hints()
+    []
+    """
     hints = List([List([np.array([0], dtype="uint16")])])
     del hints[:]
     return hints
@@ -718,6 +1322,44 @@ def _init_hints():
 
 @njit(parallel=False)
 def get_hints(hints, mitotic_events, apoptotic_events, unique_labels_T):
+    """
+    Get hints for label inference based on mitotic and apoptotic events.
+
+    Parameters
+    ----------
+    hints : List[List[array(uint16, 1d, C)]]
+        List of lists storing hints for label inference for each time.
+    mitotic_events : List[List[List[int]]]
+        List of mitotic events, where each event contains three cells: mother and two daughters.
+        Each cell is represented as [label, time].
+    apoptotic_events : List[List[int]]
+        List of apoptotic cells, where each cell contains the label and time.
+        Each cell is represented as [label, time].
+    unique_labels_T : List[List[uint16]]
+        List of lists storing unique labels for each time point.
+
+    Notes
+    -----
+    This function generates hints for label inference based on mitotic, apoptotic events and cell appearance and disappearance.
+
+    The `hints` parameter is a list of lists storing hints for label inference.
+
+    The `mitotic_events` parameter is a list of mitotic events, where each event contains three cells: mother and two daughters.
+    Each cell is represented as [label, time].
+
+    The `apoptotic_events` parameter is a list of apoptotic cells, where each cell contains the label and time.
+    Each cell is represented as [label, time].
+
+    The `unique_labels_T` parameter is a list of lists storing unique labels for each time point.
+
+    Example
+    -------
+    >>> hints = [[np.array([0], dtype='uint16')]]
+    >>> mitotic_events = [[[1, 1], [2, 1], [3, 1]], [[4, 2], [5, 2], [6, 2]]]
+    >>> apoptotic_events = [[2, 3], [5, 4]]
+    >>> unique_labels_T = [[1, 2, 3], [2, 3, 4]]
+    >>> get_hints(hints, mitotic_events, apoptotic_events, unique_labels_T)
+    """
     # get hints of conflicts in current batch
     del hints[:]
 
@@ -792,6 +1434,33 @@ def get_hints(hints, mitotic_events, apoptotic_events, unique_labels_T):
 
 @nb.njit("uint16[:](ListType(uint16), ListType(uint16))")
 def setdiff1d_nb(arr1, arr2):
+    """
+    Compute the set difference between two 1D arrays of unsigned 16-bit integers.
+
+    Parameters
+    ----------
+    arr1 : ListType(uint16)
+        First array.
+    arr2 : ListType(uint16)
+        Second array.
+
+    Returns
+    -------
+    uint16[:]
+        Resulting array containing elements from `arr1` not present in `arr2`.
+
+    Notes
+    -----
+    This function computes the set difference between two 1D arrays of unsigned 16-bit integers.
+    It returns an array containing elements from `arr1` that are not present in `arr2`.
+
+    Example
+    -------
+    >>> arr1 = [1, 2, 3, 4, 5]
+    >>> arr2 = [3, 4, 5, 6, 7]
+    >>> setdiff1d_nb(arr1, arr2)
+    array([1, 2], dtype=uint16)
+    """
     delta = set(arr2)
 
     # : build the result
@@ -803,13 +1472,35 @@ def setdiff1d_nb(arr1, arr2):
             j += 1
     return result[:j]
 
-
-import numba as nb
-import numpy as np
-
-
 @njit(parallel=False)
 def in1d_nb(matrix, index_to_remove):
+    """
+    Check if elements of a matrix are present in a set of indices to remove.
+
+    Parameters
+    ----------
+    matrix : numpy.ndarray
+        Input matrix.
+    index_to_remove : ListType(int)
+        List of indices to be checked for presence.
+
+    Returns
+    -------
+    numpy.ndarray
+        Boolean array indicating whether each element of the matrix is present in the set of indices to remove.
+
+    Notes
+    -----
+    This function checks if elements of a matrix are present in a set of indices to remove.
+    It returns a boolean array indicating whether each element of the matrix is present in the set of indices to remove.
+
+    Example
+    -------
+    >>> matrix = np.array([1, 2, 3, 4, 5])
+    >>> index_to_remove = [3, 4]
+    >>> in1d_nb(matrix, index_to_remove)
+    array([False, False, False, True, True])
+    """
     out = np.empty(matrix.shape[0], dtype=nb.boolean)
     index_to_remove_set = set(index_to_remove)
 
