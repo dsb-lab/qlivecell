@@ -841,8 +841,8 @@ class PlotActionCT(PlotAction):
                 times_to_plot = List([i for i in range(self.times)])
                 zs_to_plot = -1
             else:
-                if self.current_state in ["apo", "mit"]:
-                    tt = self.global_times_list.index(lab_z_t[2])
+                if self.current_state in ["mit", "apo"]:
+                    tt = lab_z_t[2] - self.global_times_list[0]
                 else:
                     tt = lab_z_t[2]
 
@@ -891,11 +891,11 @@ class PlotActionCT(PlotAction):
                 times_to_plot = List([i for i in range(self.times)])
                 zs_to_plot = -1
             else:
-                if self.past_state in ["apo", "mit"]:
-                    tt = self.global_times_list.index(lab_z_t[2])
+                if self.past_state in ["mit", "apo"] or self.current_state in ["mit", "apo"]:
+                    tt = lab_z_t[2] - self.global_times_list[0]
                 else:
                     tt = lab_z_t[2]
-
+                
                 times_to_plot = List([tt])
                 zs_to_plot = lab_z_t[1]
 
