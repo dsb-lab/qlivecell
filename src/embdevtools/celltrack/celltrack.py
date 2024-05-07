@@ -2426,9 +2426,6 @@ class CellTracking(object):
 
         poped = self.jitcells.pop(idx1)
 
-        # check which times maxlab appears in future batches
-        # first_future_time = self.batch_times_list_global[-1]+self.batch_overlap
-
         if lab_change is None:
             self.max_label = self.max_label + 1
             lab_change = np.array([[poped.label, self.max_label]]).astype("uint16")

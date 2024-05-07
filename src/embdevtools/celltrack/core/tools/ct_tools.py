@@ -265,7 +265,7 @@ def _label_presence(unique_labels_T,max_lab):
     labels_T = np.zeros((max_lab+1, len(unique_labels_T)))
     for lab in range(max_lab+1):
         for t in range(len(unique_labels_T)):
-            if lab in unique_labels_T[t]:
+            if lab in unique_labels_T[np.uint16(t)]:
                 labels_T[lab,t] = 1
     return labels_T
 
