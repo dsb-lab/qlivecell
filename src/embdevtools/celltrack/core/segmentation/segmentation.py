@@ -1,12 +1,12 @@
 import logging
 
+import numpy as np
 import skimage
 
 from ..tools.tools import (get_default_args, get_outlines_masks_labels,
                            increase_point_resolution, mask_from_outline,
                            printclear, printfancy, progressbar)
 from .segmentation_tools import check3Dmethod
-import numpy as np
 
 logging.disable(logging.WARNING)
 
@@ -111,17 +111,17 @@ def cell_segmentation3D_from2D(
     elif "stardist" in segmentation_args["method"]:
         segmentation_function = cell_segmentation2D_stardist
         main_ch = 0
-    
+
     for z in range(slices):
         progressbar(z + 1, slices)
         # Current xy plane
-        
+
         if "cellpose" in segmentation_args["method"]:
             img = stack[z]
 
         elif "stardist" in segmentation_args["method"]:
             img = stack[z, main_ch]
-        
+
         if blur_args is not None:
             img = skimage.filters.gaussian(
                 img, sigma=blur_args[0], truncate=blur_args[1]
@@ -155,10 +155,11 @@ def cell_segmentation3D_from2D(
             if len(ptsin) == 0:
                 idxtoremove.append(cell)
 
-            elif np.sum(stack[z, main_ch, :, :][ptsin[:, 1], ptsin[:, 0]]) < (0.05*np.max(stack[z, main_ch,:, :])):
+            elif np.sum(stack[z, main_ch, :, :][ptsin[:, 1], ptsin[:, 0]]) < (
+                0.05 * np.max(stack[z, main_ch, :, :])
+            ):
                 idxtoremove.append(cell)
-                
-                
+
             # Store the mask otherwise
             else:
                 Masks[z].append(ptsin)
@@ -170,7 +171,9 @@ def cell_segmentation3D_from2D(
         # Keep the outline for the current z-level
         for o, outline in enumerate(outlines):
             if len(outline) < segmentation_args["min_outline_length"]:
-                outlines[o] = increase_point_resolution(outline, segmentation_args["min_outline_length"])
+                outlines[o] = increase_point_resolution(
+                    outline, segmentation_args["min_outline_length"]
+                )
         Outlines.append(outlines)
     return Outlines, Masks, None
 
@@ -345,16 +348,16 @@ def fill_segmentation_args(segmentation_args):
     segmentation_method = segmentation_args["method"]
 
     new_segmentation_args = {
-            "method": None,
-            "model": None,
-            "blur": None,
-            "make_isotropic": [False, 1.0],
-            "min_outline_length": 1,
-            "compute_center_method": "weighted_centroid"
-        }
-    if segmentation_method is None: 
+        "method": None,
+        "model": None,
+        "blur": None,
+        "make_isotropic": [False, 1.0],
+        "min_outline_length": 1,
+        "compute_center_method": "weighted_centroid",
+    }
+    if segmentation_method is None:
         return new_segmentation_args, dict()
-    
+
     if "cellpose" in segmentation_method:
         new_segmentation_args = {
             "method": None,
@@ -362,7 +365,7 @@ def fill_segmentation_args(segmentation_args):
             "blur": None,
             "make_isotropic": [False, 1.0],
             "min_outline_length": 1,
-            "compute_center_method": "weighted_centroid"
+            "compute_center_method": "weighted_centroid",
         }
         model = segmentation_args["model"]
         if model is None:
@@ -377,7 +380,7 @@ def fill_segmentation_args(segmentation_args):
             "blur": None,
             "make_isotropic": [False, 1.0],
             "min_outline_length": 1,
-            "compute_center_method": "weighted_centroid"
+            "compute_center_method": "weighted_centroid",
         }
         model = segmentation_args["model"]
         if model is None:
@@ -395,9 +398,12 @@ def fill_segmentation_args(segmentation_args):
                 "key %s is not a correct argument for the selected segmentation method"
                 % sarg
             )
-            
-    assert new_segmentation_args["compute_center_method"] in ["centroid", "weighted_centroid"], "compute_center_method selected not among the options [centroid, weighted_centroid]"
-    
+
+    assert new_segmentation_args["compute_center_method"] in [
+        "centroid",
+        "weighted_centroid",
+    ], "compute_center_method selected not among the options [centroid, weighted_centroid]"
+
     if "3D" not in new_segmentation_args["method"]:
         new_segmentation_args["make_isotropic"][0] = False
 

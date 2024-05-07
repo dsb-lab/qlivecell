@@ -34,7 +34,9 @@ class LineBuilder_points:
             for _z in range(len(lines[_t])):
                 self.xss[-1].append(list(lines[_t][_z].get_xdata()))
                 self.yss[-1].append(list(lines[_t][_z].get_ydata()))
-        self.cid = self.lines[t][z].figure.canvas.mpl_connect("button_press_event", self)
+        self.cid = self.lines[t][z].figure.canvas.mpl_connect(
+            "button_press_event", self
+        )
 
         self.t = t
         self.z = z
@@ -44,7 +46,7 @@ class LineBuilder_points:
         self.z = z
         self.t = t
         self.lines[self.t][self.z].set_marker("o")
-    
+
     def __call__(self, event):
         if event.inaxes != self.lines[self.t][self.z].axes:
             return
@@ -56,7 +58,9 @@ class LineBuilder_points:
                 self.lines[self.t][self.z].figure.canvas.toolbar.zoom()
             self.xss[self.t][self.z].append(event.xdata)
             self.yss[self.t][self.z].append(event.ydata)
-            self.lines[self.t][self.z].set_data(self.xss[self.t][self.z], self.yss[self.t][self.z])
+            self.lines[self.t][self.z].set_data(
+                self.xss[self.t][self.z], self.yss[self.t][self.z]
+            )
             self.lines[self.t][self.z].figure.canvas.draw()
         else:
             return
@@ -96,7 +100,7 @@ class LineBuilder_lasso:
     def reset(self, z, t):
         self.z = z
         self.t = t
-        if len(self.outlines[self.t][self.z])!=0:
+        if len(self.outlines[self.t][self.z]) != 0:
             self.sc.set_visible(True)
             self.sc.set_offsets(self.outlines[self.t][self.z])
         else:
@@ -104,7 +108,9 @@ class LineBuilder_lasso:
 
     def onselect(self, verts):
         self.sc.set_visible(True)
-        self.outlines[self.t][self.z] = np.rint([[x[0], x[1]] for x in verts]).astype("uint16")
+        self.outlines[self.t][self.z] = np.rint([[x[0], x[1]] for x in verts]).astype(
+            "uint16"
+        )
         self.outlines[self.t][self.z] = np.unique(self.outlines[self.t][self.z], axis=0)
 
         fl = 100

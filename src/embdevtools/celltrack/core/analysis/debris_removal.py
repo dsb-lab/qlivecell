@@ -1,4 +1,3 @@
-
 def plot_cell_sizes(CT, **kwargs):
     import matplotlib.pyplot as plt
     import numpy as np
@@ -34,19 +33,22 @@ def plot_cell_sizes(CT, **kwargs):
     ax.legend()
     ax.set_xlabel("area (µm²)")
     ax.set_yticks([])
-    
+
     if "xlim" in kwargs.keys():
         ax.set_xlim(kwargs["xlim"])
-    
+
     if "ylim" in kwargs.keys():
         ax.set_ylim(kwargs["ylim"])
-        
+
     if "path_save" in kwargs.keys():
         pth = kwargs["path_save"]
         plt.savefig(pth)
     plt.show()
 
+
 import numpy as np
+
+
 def remove_small_cells(CT, area_th, update_labels=False):
     labs_to_remove = []
     for cell in CT.jitcells:

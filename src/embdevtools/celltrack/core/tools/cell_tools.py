@@ -276,7 +276,7 @@ def extract_jitcell_centers(cell: jitCell, stacks, method):
             if method == "weighted_centroid":
                 for i in range(len(maskx)):
                     img_mask[i] = img[maskx[i], masky[i]]
-            
+
             xs = nb_weighted_average(maskx, img_mask)
             ys = nb_weighted_average(masky, img_mask)
 
@@ -403,7 +403,9 @@ def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, 
 
 # ISSUE: ONLY WORKS FOR NOW FOR ONE DISCONTINUITY
 # @njit
-def find_t_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, center_method):
+def find_t_discontinuities_jit(
+    cell: jitCell, stacks, max_label, currentcellid, center_method
+):
     consecutive = checkConsecutive(cell.times)
     if not consecutive:
         discontinuities = whereNotConsecutive(cell.times)

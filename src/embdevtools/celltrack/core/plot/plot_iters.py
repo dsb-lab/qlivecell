@@ -12,11 +12,11 @@ class CyclicList:
         return self.items[normalized_index]
 
     def __len__(self):
-        return len(self.items)        
-    
+        return len(self.items)
+
     def get_control(self, item):
-        return (item % len(self.items)) / (len(self)-1)
-        
+        return (item % len(self.items)) / (len(self) - 1)
+
     def get_map(self):
         item_list = []
         output_list = []
@@ -24,7 +24,8 @@ class CyclicList:
             item_list.append(self.get_control(item))
             output_list.append(self[item])
         return item_list, output_list
-    
+
+
 class plotCounter:
     def __init__(self, layout, totalsize, overlap):
         self.current = -1

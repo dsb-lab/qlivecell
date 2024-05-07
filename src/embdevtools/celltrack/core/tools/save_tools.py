@@ -113,7 +113,6 @@ def save_cells_to_json(cells, CT_info, path=None):
 def save_labels_stack(
     labels_stack, pthsave, times, filename=None, split_times=False, name_format="{}"
 ):
-    
     if split_times:
         if not os.path.isdir(pthsave):
             os.mkdir(pthsave)
@@ -128,7 +127,7 @@ def save_labels_stack(
         if filename is None:
             filename = "labels"
         if not isinstance(filename, str):
-            filename =  name_format.format(str(filename))
+            filename = name_format.format(str(filename))
 
         if len(labels_stack.shape) == 4:
             if labels_stack.shape[0] == 1:
@@ -462,7 +461,7 @@ def substitute_labels(post_range_start, post_range_end, path_to_save, lcT, batch
     post_range = prange(post_range_start, post_range_end)
     name_format = batch_args["name_format"]
     for postt in post_range:
-        labs_stack = np.load(path_to_save + name_format.format(postt)+".npy")
+        labs_stack = np.load(path_to_save + name_format.format(postt) + ".npy")
         new_labs_stack = labs_stack.copy()
         new_labs_stack = _sub_labs(labs_stack, new_labs_stack, lcT[postt])
         save_labels_stack(

@@ -3,7 +3,9 @@ import numpy as np
 from numba import jit, njit, types
 from numba.core.errors import TypingError
 from numba.extending import overload, register_jitable
+
 from .tools import increase_point_resolution
+
 
 @overload(np.all)
 def np_all(x, axis=None):
@@ -160,7 +162,9 @@ def get_cell_color(jitcell, labels_colors, alpha, blocked_cells):
         return np.array([1.0, 1.0, 1.0, alpha])
     return np.append(labels_colors[jitcell.label], alpha)
 
+
 import time
+
 
 # @njit
 def compute_point_stack(
@@ -175,7 +179,7 @@ def compute_point_stack(
     labels=None,
     mode=None,
     rem=False,
-    min_length=1
+    min_length=1,
 ):
     if labels is None:
         for t in times:
@@ -185,7 +189,7 @@ def compute_point_stack(
         _labels = np.unique(labels)
 
     for lab in _labels:
-        start1=time.time()
+        start1 = time.time()
         jitcell = get_cell(jitcells, lab)
 
         if rem:
@@ -199,9 +203,9 @@ def compute_point_stack(
         elif mode == "masks":
             points = jitcell.masks
 
-        end1=time.time()
+        end1 = time.time()
         # print("elapsed1", end1-start1)
-        start2=time.time()
+        start2 = time.time()
         set_cell_color(
             point_stack,
             points,
@@ -212,9 +216,10 @@ def compute_point_stack(
             times,
             -1,
         )
-        end2=time.time()
+        end2 = time.time()
         # print("elapsed2", end2-start2)
     return point_stack
+
 
 def get_cell(cells, label=None, cellid=None):
     if label == None:
@@ -260,31 +265,34 @@ def check_and_override_args(args_preferred, args_unpreferred, raise_exception=Tr
 
     return new_args
 
+
 @njit
-def _label_presence(unique_labels_T,max_lab):
-    labels_T = np.zeros((max_lab+1, len(unique_labels_T)))
-    for lab in range(max_lab+1):
+def _label_presence(unique_labels_T, max_lab):
+    labels_T = np.zeros((max_lab + 1, len(unique_labels_T)))
+    for lab in range(max_lab + 1):
         for t in range(len(unique_labels_T)):
             if lab in unique_labels_T[np.uint16(t)]:
-                labels_T[lab,t] = 1
+                labels_T[lab, t] = 1
     return labels_T
+
 
 @njit
 def _get_discontinuities(state_changes, max_lab):
     disc_labs = []
-    for lab in range(max_lab+1):
+    for lab in range(max_lab + 1):
         curr_change = 0
         for ch in state_changes[lab]:
-            if ch!=0:
-                if curr_change==-1:
-                    if ch==1:
+            if ch != 0:
+                if curr_change == -1:
+                    if ch == 1:
                         disc_labs.append(lab)
                         break
                 curr_change = ch
     return disc_labs
 
+
 def find_discontinuities_unique_labels_T(unique_labels_T, max_lab):
-    labels_T = _label_presence(unique_labels_T,max_lab)
+    labels_T = _label_presence(unique_labels_T, max_lab)
     state_changes = np.diff(labels_T, axis=1)
     disc_labs = _get_discontinuities(state_changes, max_lab)
 

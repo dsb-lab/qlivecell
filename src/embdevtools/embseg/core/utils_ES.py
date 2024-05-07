@@ -199,7 +199,7 @@ def segment_embryo(image, binths, seg_embryo_params):
     convimage = convimage[cut:-cut, cut:-cut]
     binimage = (convimage > binths) * 1
 
-    binimage=convimage
+    binimage = convimage
     # Morphological ACWE
 
     init_ls = checkerboard_level_set(binimage.shape, checkerboard_size)
@@ -261,15 +261,15 @@ def find_connected_components(grid):
             if 0 <= x < len(grid) and 0 <= y < len(grid[0]) and grid[x][y] == 1:
                 grid[x][y] = 0  # Mark as visited
                 component.append((x, y))
-                stack.extend([(x+1, y), (x-1, y), (x, y+1), (x, y-1)])
+                stack.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
         return component
-    
+
     components = []
     for i in range(len(grid)):
         for j in range(len(grid[0])):
             if grid[i][j] == 1:
                 components.append(dfs(i, j))
-    
+
     return components
 
 
@@ -281,7 +281,7 @@ def select_biggest_binary_cluster(grid):
         new_cluster = np.asarray(cluster)
         new_clusters.append(new_cluster)
         cluster_sizes.append(len(new_cluster))
-        
+
     biggest_cluster = np.argmax(cluster_sizes)
     for cid, cluster in enumerate(new_clusters):
         if cid != biggest_cluster:

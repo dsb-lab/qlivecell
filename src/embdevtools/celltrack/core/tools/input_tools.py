@@ -9,7 +9,9 @@ def get_file_names(path_data):
     return files
 
 
-def get_file_name(path_data, f, allow_file_fragment=False, return_files=False, return_name=False):
+def get_file_name(
+    path_data, f, allow_file_fragment=False, return_files=False, return_name=False
+):
     """
     Parameters
     ----------
@@ -242,19 +244,23 @@ def tif_reader_5D(path_to_file):
     imagej_metadata["ResolutionUnit"] = res_unit
     return hyperstack, imagej_metadata
 
+
 import tifffile
+
+
 def separate_times_hyperstack(path_data, file, name_format="{}", folder_name=None):
     if folder_name is None:
         folder_name = file.split(".")[0]
-    
+
     path_data_file = "{}{}/".format(path_data, folder_name)
-    try: 
+    try:
         files = get_file_names(path_data_file)
-    except: 
+    except:
         import os
+
         os.mkdir(path_data_file)
 
-    hyperstack, metadata = tif_reader_5D(path_data+file)
+    hyperstack, metadata = tif_reader_5D(path_data + file)
 
     mdata = {"axes": "ZCYX", "spacing": metadata["Zresolution"], "unit": "um"}
 
@@ -265,7 +271,6 @@ def separate_times_hyperstack(path_data, file, name_format="{}", folder_name=Non
             "{}{}.tif".format(path_data_file, name),
             stack.astype("uint8"),
             imagej=True,
-            resolution=(1 /  metadata["XYresolution"], 1 /  metadata["XYresolution"]),
+            resolution=(1 / metadata["XYresolution"], 1 / metadata["XYresolution"]),
             metadata=mdata,
-        )   
-    
+        )

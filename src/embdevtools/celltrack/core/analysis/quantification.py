@@ -1,16 +1,19 @@
 import numpy as np
-from scipy.interpolate import splrep, BSpline
+from scipy.interpolate import BSpline, splrep
 from scipy.signal import butter, lfilter
+
 
 # From https://stackoverflow.com/a/12233959
 def butter_bandpass(lowcut, highcut, fs, order=5):
-    return butter(order, [lowcut, highcut], fs=fs, btype='band')
+    return butter(order, [lowcut, highcut], fs=fs, btype="band")
+
 
 # From https://stackoverflow.com/a/12233959
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
     b, a = butter_bandpass(lowcut, highcut, fs, order=order)
     y = lfilter(b, a, data)
     return y
+
 
 def extract_fluoro(CT):
     results = {}
@@ -27,13 +30,13 @@ def extract_fluoro(CT):
     for cell in CT.jitcells:
         for zid, z in enumerate(cell.zs[0]):
             mask = cell.masks[0][zid]
-            
+
             if z == cell.centers[0][0]:
                 results["masks"].append(mask)
-            
+
             for ch in range(CT.hyperstack.shape[2]):
                 img = CT.hyperstack[0, z, ch]
-                _ch[ch].append(np.mean(img[mask[:,1], mask[:,0]]))
+                _ch[ch].append(np.mean(img[mask[:, 1], mask[:, 0]]))
 
         for ch in range(CT.hyperstack.shape[2]):
             results["channel_{}".format(ch)].append(np.mean(_ch[ch]))
@@ -42,24 +45,25 @@ def extract_fluoro(CT):
         zres = CT.metadata["Zresolution"]
         xyres = CT.metadata["XYresolution"]
         results["centers_px"].append(cell.centers[0])
-        results["centers"].append(cell.centers[0]*[zres, xyres, xyres])
+        results["centers"].append(cell.centers[0] * [zres, xyres, xyres])
         results["labels"].append(cell.label + 1)
 
     for i, j in results.items():
         results[i] = np.array(j)
-  
+
     return results
 
 
 import numpy as np
 from scipy.optimize import curve_fit
 
+
 def linear_decay(z, slope, intercept):
     return slope * z + intercept
 
-def get_intenity_profile(CT, ch):
 
-    image_stack = CT.hyperstack[0,:,ch]
+def get_intenity_profile(CT, ch):
+    image_stack = CT.hyperstack[0, :, ch]
 
     intensity_per_z = np.zeros(CT.slices)
     intensity_per_z_n = np.zeros(CT.slices)
@@ -71,26 +75,25 @@ def get_intenity_profile(CT, ch):
         msk = cell.masks[0][zcid]
         img = image_stack[zc]
         intensity = np.mean(img[msk[:, 1], msk[:, 0]])
-        
+
         intensity_per_z_n[zc] += 1
         intensity_per_z[zc] += intensity
 
-
-    zs = np.where(intensity_per_z_n!=0)[0]
+    zs = np.where(intensity_per_z_n != 0)[0]
     data_z = intensity_per_z[zs] / intensity_per_z_n[zs]
     data_z_filled = []
     zs_filled = []
-    for z in range(zs[0], zs[-1]+1):
+    for z in range(zs[0], zs[-1] + 1):
         if z in zs:
-            zid = np.where(zs==z)[0][0]
+            zid = np.where(zs == z)[0][0]
             data_z_filled.append(data_z[zid])
             zs_filled.append(z)
         else:
-            if (z + 1 in zs):
-                zid = np.where(zs==z+1)[0][0]
-                data_z_filled.append(np.mean([data_z[zid], data_z_filled[-1]])) 
+            if z + 1 in zs:
+                zid = np.where(zs == z + 1)[0][0]
+                data_z_filled.append(np.mean([data_z[zid], data_z_filled[-1]]))
                 zs_filled.append(z)
-            else: 
+            else:
                 data_z_filled.append(data_z_filled[-1])
                 zs_filled.append(z)
     # Measure intensity profile along the z-axis
@@ -110,14 +113,14 @@ def get_intenity_profile(CT, ch):
         if i not in zs:
             correct_val = linear_decay(i, slope, intercept)
         else:
-            zid = np.where(z_positions==i)[0][0]
+            zid = np.where(z_positions == i)[0][0]
             correct_val = intensity_profile[zid]
         correction_function.append(correct_val)
-    
+
     return correction_function, intensity_profile, z_positions
 
-def correct_drift(results, ch=0, plotting=False):
 
+def correct_drift(results, ch=0, plotting=False):
     data = results["channel_{}".format(ch)]
 
     z_order = np.argsort(results["centers_px"][:, 0])
@@ -126,10 +129,11 @@ def correct_drift(results, ch=0, plotting=False):
 
     data_z = []
     zs = []
-    for z in range(int(max(centers_ordered[:,0]))):
-        ids = np.where(centers_ordered[:,0] == z)
+    for z in range(int(max(centers_ordered[:, 0]))):
+        ids = np.where(centers_ordered[:, 0] == z)
         d = data[ids]
-        if len(d) == 0: continue
+        if len(d) == 0:
+            continue
         zs.append(z)
         data_z.append(np.mean(d))
 
@@ -140,25 +144,33 @@ def correct_drift(results, ch=0, plotting=False):
             data_z_filled.append(data_z[zid])
         else:
             if z == 0:
-               data_z_filled.append(data_z[0])  
-            if (z + 1 in zs):
-                zid = zs.index(z+1)
-                data_z_filled.append(np.mean([data_z[zid], data_z_filled[-1]])) 
-            else: 
+                data_z_filled.append(data_z[0])
+            if z + 1 in zs:
+                zid = zs.index(z + 1)
+                data_z_filled.append(np.mean([data_z[zid], data_z_filled[-1]]))
+            else:
                 data_z_filled.append(data_z_filled[-1])
-    
-    drift_correction = butter_bandpass_filter(data_z_filled, 0.1*results["zres"], results["zres"]/2.01, results["zres"], order=6)
+
+    drift_correction = butter_bandpass_filter(
+        data_z_filled,
+        0.1 * results["zres"],
+        results["zres"] / 2.01,
+        results["zres"],
+        order=6,
+    )
     drift_correction += np.mean(data_z)
 
     if plotting:
         import matplotlib.pyplot as plt
+
         fig, ax = plt.subplots()
         ax.plot(data_z)
         ax.plot(drift_correction)
         plt.show()
-    
+
     correct_factor = drift_correction - data_z_filled
     return correct_factor, data_z
+
 
 def quantify_channels(CT):
     import numpy as np

@@ -1,19 +1,20 @@
+import gc
 import time
 from copy import copy
 
 import matplotlib as mtp
+import napari
 import numpy as np
 from numba.typed import List
-import napari
-import gc
+
 from ..dataclasses import construct_Cell_from_jitCell
 from ..tools.ct_tools import get_cell_color, set_cell_color
 from ..tools.save_tools import save_cells_to_labels_stack
 from ..tools.tools import printfancy
+from .napari_tools import get_whole_lineage
 from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
 
-from .napari_tools import get_whole_lineage
 
 def get_axis_PACP(PACP, event):
     for id, ax in enumerate(PACP.ax):
@@ -97,7 +98,7 @@ class PlotAction:
         self._plot_args = CT._plot_args
 
         self._masks_stack = CT._masks_stack
-        self._napari_masks_stack = self._masks_stack[:,:,:,:,:3].copy()
+        self._napari_masks_stack = self._masks_stack[:, :, :, :, :3].copy()
         self._plot_stack = CT.plot_stacks
 
         self._3d_on = False
@@ -131,7 +132,7 @@ class PlotAction:
         self.CTplot_args = CT._plot_args
         self.CTblock_cells = CT.block_cells
         self.CThints = CT.hints
-        
+
         # Point to sliders
         CT._time_slider.on_changed(self.update_slider_t)
         self.set_val_t_slider = CT._time_slider.set_val
@@ -171,14 +172,14 @@ class PlotAction:
         self.CTupdate_labels_batches = CT.update_labels_batches
         self._CTget_cell = CT._get_cell
         self.CTprint_hints = CT.print_hints
-        
+
     def reinit(self, CT):
         # Point to CT variables
 
         self.jitcells = CT.jitcells
         self.jitcells_selected = CT.jitcells_selected
         self._masks_stack = CT._masks_stack
-        self._napari_masks_stack = self._masks_stack[:,:,:,:,:3].copy()
+        self._napari_masks_stack = self._masks_stack[:, :, :, :, :3].copy()
         self._plot_stack = CT.plot_stacks
 
         self.CTlist_of_cells = CT.list_of_cells
@@ -237,6 +238,7 @@ class PlotAction:
                     break
             self.reset_state()
             import time
+
             # print()
             start = time.time()
             self.set_batch(batch_number=self.bn, update_labels=True)
@@ -300,6 +302,7 @@ class PlotAction:
         self.bn = min(self.bn, self.batch_rounds - 1)
 
         import time
+
         # print()
         start = time.time()
         self.set_batch(batch_number=self.bn, update_labels=True)
@@ -447,8 +450,8 @@ class PlotActionCT(PlotAction):
     def __call__(self, event):
         if self.current_state in ["con-app", "con-dis"]:
             self.reset_state()
-            
-        if self.current_state==None:
+
+        if self.current_state == None:
             if event.key == "d":
                 # self.CTone_step_copy(self.t)
                 self._reset_CP()
@@ -531,6 +534,7 @@ class PlotActionCT(PlotAction):
             elif event.key == "u":
                 self._reset_CP()
                 import time
+
                 start = time.time()
                 self.CTupdate_labels()
                 end = time.time()
@@ -542,7 +546,7 @@ class PlotActionCT(PlotAction):
                 self.CTupdate_labels_batches()
                 self.visualization()
                 self.update()
-            elif event.key =="3":
+            elif event.key == "3":
                 self._reset_CP()
                 self.viewer3D()
                 self.visualization()
@@ -569,7 +573,7 @@ class PlotActionCT(PlotAction):
                     if hasattr(self, "linebuilder"):
                         self.linebuilder.stopit()
                         delattr(self, "linebuilder")
-                
+
                 self._reset_CP()
 
                 del self.list_of_cells[:]
@@ -742,7 +746,7 @@ class PlotActionCT(PlotAction):
 
                 elif "con-" in self.current_state:
                     self.reset_state
-                
+
                 else:
                     self.visualization()
 
@@ -818,14 +822,14 @@ class PlotActionCT(PlotAction):
 
         for i, lab_z_t in enumerate(labs_z_to_plot):
             jitcell = self._CTget_cell(label=lab_z_t[0])
-            
+
             try:
                 color = get_cell_color(
                     jitcell, self._plot_args["labels_colors"], 1, self.CTblocked_cells
                 )
             except AttributeError:
                 print("Attr error get color label {}".format(lab_z_t[0]))
-                
+
             color = np.rint(color * 255).astype("uint8")
             if self.current_state in ["Del"]:
                 times_to_plot = List([i for i in range(self.times)])
@@ -849,7 +853,7 @@ class PlotActionCT(PlotAction):
                 times_to_plot,
                 zs_to_plot,
             )
-            color_napari = color[:3] * (color[-1]/255)
+            color_napari = color[:3] * (color[-1] / 255)
             color_napari = color_napari.astype("uint8")
             set_cell_color(
                 self._napari_masks_stack,
@@ -900,7 +904,7 @@ class PlotActionCT(PlotAction):
                 zs_to_plot,
             )
 
-            color_napari = color[:3] * (color[-1]/255)
+            color_napari = color[:3] * (color[-1] / 255)
             color_napari = color_napari.astype("uint8")
             set_cell_color(
                 self._napari_masks_stack,
@@ -992,9 +996,9 @@ class PlotActionCT(PlotAction):
 
         lcells = np.array(self.list_of_cells)
         if self.ctrl_is_held:
-            if len(lcells)>0:
-                if lab in lcells[:,0]:
-                    idxtopop=[]
+            if len(lcells) > 0:
+                if lab in lcells[:, 0]:
+                    idxtopop = []
                     for jj, _cell in enumerate(self.list_of_cells):
                         if _cell[0] == lab:
                             idxtopop.append(jj)
@@ -1045,7 +1049,7 @@ class PlotActionCT(PlotAction):
                             if _t == self.t:
                                 add_all = False
                                 idxtopop.append(jj)
-                                
+
                 idxtopop.sort(reverse=True)
                 for jj in idxtopop:
                     self.list_of_cells.pop(jj)
@@ -1083,7 +1087,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 -1,
             )
-            color_napari = color[:3] * (color[-1]/255)
+            color_napari = color[:3] * (color[-1] / 255)
             color_napari = color_napari.astype("uint8")
             set_cell_color(
                 self._napari_masks_stack,
@@ -1099,9 +1103,13 @@ class PlotActionCT(PlotAction):
 
     def switch_centers(self, point=False, number=False):
         if point:
-            self.CTplot_args["plot_centers"][0] = not self.CTplot_args["plot_centers"][0]
+            self.CTplot_args["plot_centers"][0] = not self.CTplot_args["plot_centers"][
+                0
+            ]
         if number:
-            self.CTplot_args["plot_centers"][1] = not self.CTplot_args["plot_centers"][1]
+            self.CTplot_args["plot_centers"][1] = not self.CTplot_args["plot_centers"][
+                1
+            ]
         self.visualization()
 
     def show_conflict_cells(self, appeared=False, disappeared=False):
@@ -1111,17 +1119,21 @@ class PlotActionCT(PlotAction):
             self.instructions.set(text="showing cells that APPEARED")
         if disappeared:
             self.instructions.set(text="showing cells that DISAPPEARED")
-        
+
         self.instructions.set_backgroundcolor((0.26, 0.16, 0.055, 0.4))
         self.fig.patch.set_facecolor((0.26, 0.16, 0.055, 0.1))
         self.show_conflict_cells_callback(appeared, disappeared)
-        
+
     def show_conflict_cells_callback(self, appeared, disappeared):
         # Compute hints
         self.CTprint_hints(0)
 
         # Add conflicting cells to list_of_cells
-        hints = [hints_t for t, hints_t in enumerate(self.CThints) if t in self.global_times_list]
+        hints = [
+            hints_t
+            for t, hints_t in enumerate(self.CThints)
+            if t in self.global_times_list
+        ]
         for t, hints_t in enumerate(hints):
             if appeared:
                 # Appeared cells
@@ -1130,7 +1142,7 @@ class PlotActionCT(PlotAction):
                     tid = jitcell.times.index(t)
                     for zid, z in enumerate(jitcell.zs[tid]):
                         self.list_of_cells.append([lab, z, t])
-            
+
             if disappeared:
                 # Dissapeared cells
                 for lab in hints_t[1]:
@@ -1141,7 +1153,7 @@ class PlotActionCT(PlotAction):
 
         self.update()
         self.reploting()
-        
+
     def block_cells(self):
         self._reset_CP()
         self.title.set(text="BLOCK CELLS", ha="left", x=0.01)
@@ -1228,7 +1240,7 @@ class PlotActionCT(PlotAction):
         self.instructions.set_backgroundcolor((1.0, 0.0, 0.0, 0.4))
         self.fig.patch.set_facecolor((1.0, 0.0, 0.0, 0.1))
         self.CP = CellPicker(self.fig.canvas, self.delete_cells_callback)
-        
+
     def delete_cells_callback(self, event):
         inaxis = get_axis_PACP(self, event)
 
@@ -1262,7 +1274,7 @@ class PlotActionCT(PlotAction):
                         if _t == self.t:
                             add_all = False
                             idxtopop.append(jj)
-                            
+
             idxtopop.sort(reverse=True)
             for jj in idxtopop:
                 self.list_of_cells.pop(jj)
@@ -1373,8 +1385,8 @@ class PlotActionCT(PlotAction):
                 c = self._CTget_cell(l)
                 tid = c.times.index(t)
                 ZS = ZS + list(c.zs[tid])
-                ZS_first_last.append([c.zs[tid][0],c.zs[tid][-1]])
-            
+                ZS_first_last.append([c.zs[tid][0], c.zs[tid][-1]])
+
             if len(ZS) != len(set(ZS)):
                 printfancy("ERROR: cells overlap in z")
                 return
@@ -1382,7 +1394,7 @@ class PlotActionCT(PlotAction):
             # check that planes selected are contiguous over z
             ZS_first_last = np.array(ZS_first_last)
             Zdiff = ZS_first_last[1:, 0] - ZS_first_last[:-1, 1]
-            
+
             if not (np.abs(Zdiff) == 1).all():
                 printfancy("ERROR: cells must be contiguous over z")
                 return
@@ -1573,14 +1585,27 @@ class PlotActionCT(PlotAction):
         self.update()
         self.reploting()
 
-    def viewer3D(self):        
+    def viewer3D(self):
         self._3d_on = True
         xyres = self.CT_info.xyresolution
         zres = self.CT_info.zresolution
-        
-        self.napari_viewer = napari.view_image(self._plot_stack, name='hyperstack', scale=(zres*self._plot_args["dim_change"], xyres, xyres), rgb=False, ndisplay=3)
-        self.napari_viewer.add_image(self._napari_masks_stack, name='masks', scale=(zres*self._plot_args["dim_change"], xyres, xyres), channel_axis=-1, colormap=['red', 'green', 'blue'], rendering='iso')
-        
+
+        self.napari_viewer = napari.view_image(
+            self._plot_stack,
+            name="hyperstack",
+            scale=(zres * self._plot_args["dim_change"], xyres, xyres),
+            rgb=False,
+            ndisplay=3,
+        )
+        self.napari_viewer.add_image(
+            self._napari_masks_stack,
+            name="masks",
+            scale=(zres * self._plot_args["dim_change"], xyres, xyres),
+            channel_axis=-1,
+            colormap=["red", "green", "blue"],
+            rendering="iso",
+        )
+
         self.update_3Dviewer3D()
 
     def update_3Dviewer3D(self, update_plot_stacks=False):
@@ -1591,13 +1616,13 @@ class PlotActionCT(PlotAction):
         l = 0
         for layer in self.napari_viewer.layers:
             if "masks" in layer.name:
-                layer.data = self._napari_masks_stack[:,:,:,:,l]
-                layer.rendering="iso"
-                layer.opacity = 0.3        
-                layer.contrast_limits = [0 , 255]
+                layer.data = self._napari_masks_stack[:, :, :, :, l]
+                layer.rendering = "iso"
+                layer.opacity = 0.3
+                layer.contrast_limits = [0, 255]
                 layer.iso_threshold = 0.0
-                l+=1
-            
+                l += 1
+
             if update_plot_stacks:
                 if "hyperstack" in layer.name:
                     layer.data = self._plot_stack

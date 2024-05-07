@@ -1,6 +1,7 @@
 import napari
-import vispy.color
 import numpy as np
+import vispy.color
+
 
 def napari_tracks(cells):
     napari_tracks_data = []
@@ -9,8 +10,9 @@ def napari_tracks(cells):
             center = cell.centers[tid]
             track = [cell.label, t, center[0], center[2], center[1]]
             napari_tracks_data.append(track)
-    
+
     return np.array(napari_tracks_data)
+
 
 def get_lineage_graph(mitotic_events):
     graph = {}
@@ -22,6 +24,7 @@ def get_lineage_graph(mitotic_events):
         graph[cell2[0]] = cell0[0]
 
     return graph
+
 
 def get_lineage_root(graph, label):
     # Check if this label is the root of the lineage
@@ -35,14 +38,15 @@ def get_lineage_root(graph, label):
             root = True
     return lab
 
+
 def get_daughters(labels, graph, lab):
     vals = np.array(list(graph.values()))
     keys = np.array(list(graph.keys()))
 
     idxs = np.where(vals == lab)[0]
-    last=False
+    last = False
     while not last:
-        if len(idxs)==0:
+        if len(idxs) == 0:
             last = True
         else:
             for idx in idxs:
@@ -50,6 +54,7 @@ def get_daughters(labels, graph, lab):
                 get_daughters(labels, graph, labels[-1])
             last = True
     return labels
+
 
 def get_whole_lineage(mitotic_events, label):
     graph = get_lineage_graph(mitotic_events)
@@ -59,6 +64,7 @@ def get_whole_lineage(mitotic_events, label):
     labels = get_daughters(labels, graph, lab)
     return labels
 
+
 def arboretum_napari(CTB):
     controls, colors = CTB._plot_args["labels_colors"].get_map()
     custom_cmap = vispy.color.Colormap(colors, controls)
@@ -66,27 +72,32 @@ def arboretum_napari(CTB):
     graph = get_lineage_graph(CTB.mitotic_events)
 
     napari_tracks_data = napari_tracks(CTB.jitcells)
-    colors = [CTB._plot_args["labels_colors"].get_control(label) for label in napari_tracks_data[:,0]]
-    properties = {'colors': colors}
+    colors = [
+        CTB._plot_args["labels_colors"].get_control(label)
+        for label in napari_tracks_data[:, 0]
+    ]
+    properties = {"colors": colors}
 
     viewer = napari.view_image(
-        CTB.plot_stacks, 
-        name='hyperstack', 
-        scale=(CTB.metadata["Zresolution"], 
-               CTB.metadata["XYresolution"], 
-               CTB.metadata["XYresolution"]), 
-        rgb=False, 
-        ndisplay=3
+        CTB.plot_stacks,
+        name="hyperstack",
+        scale=(
+            CTB.metadata["Zresolution"],
+            CTB.metadata["XYresolution"],
+            CTB.metadata["XYresolution"],
+        ),
+        rgb=False,
+        ndisplay=3,
     )
 
     # tracks_layer = viewer.add_tracks(
-    #     napari_tracks_data, 
+    #     napari_tracks_data,
     #     name="tracks",
-    #     scale=(CTB.metadata["Zresolution"], 
-    #             CTB.metadata["XYresolution"], 
-    #             CTB.metadata["XYresolution"]), 
-    #     properties=properties, 
-    #     graph=graph, 
+    #     scale=(CTB.metadata["Zresolution"],
+    #             CTB.metadata["XYresolution"],
+    #             CTB.metadata["XYresolution"]),
+    #     properties=properties,
+    #     graph=graph,
     #     color_by='colors',
     #     colormaps_dict={"colors": custom_cmap}
     # )

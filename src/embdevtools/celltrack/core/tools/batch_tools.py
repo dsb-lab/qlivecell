@@ -109,7 +109,7 @@ def check_and_fill_batch_args(batch_args):
         - extension: ".tif"
 
     If a batch argument is provided in the input dictionary, it will override the corresponding default value.
-    
+
     The function ensures that batch size is greater than batch overlap, raising an exception otherwise.
 
     Example
@@ -131,10 +131,10 @@ def check_and_fill_batch_args(batch_args):
             new_batch_args[sarg] = batch_args[sarg]
         except KeyError:
             raise Exception("key %s is not a correct batch argument" % sarg)
-        
+
     if new_batch_args["batch_size"] <= new_batch_args["batch_overlap"]:
         raise Exception("batch size has to be bigger than batch overlap")
-    
+
     return new_batch_args
 
 
@@ -160,15 +160,15 @@ def init_label_correspondance(unique_labels_T, times, overlap):
     Notes
     -----
     This function initializes label correspondences for each time point based on the provided unique labels and time points.
-    
+
     The `unique_labels_T` parameter should be a list containing unique labels for each time point represented as NumPy arrays.
-    
+
     The `times` parameter should be a list of time points.
-    
+
     The `overlap` parameter specifies the amount of overlap between consecutive time points.
-    
+
     For each time point, label correspondences are initialized as lists of pairs where each pair consists of a label and itself. These correspondences are stored in a list, which is returned at the end.
-    
+
     If the total number of time points including overlap exceeds the length of `unique_labels_T`, an empty list is returned.
 
     Example
@@ -374,64 +374,66 @@ def update_new_label_correspondance(
             new_label_correspondance_T[postt][idx[0][0], 0] = pre_label
 
 
-def update_label_correspondance_subs(post_range_start, post_range_end, label_correspondance_T_subs, new_label_correspondance_T):
-    
+def update_label_correspondance_subs(
+    post_range_start,
+    post_range_end,
+    label_correspondance_T_subs,
+    new_label_correspondance_T,
+):
     post_range = prange(post_range_start, post_range_end)
-    
+
     lcts_copy = List(
-        [label_correspondance_T_subs[_t] if _t not in post_range else np.empty((0, 2), dtype="uint16") for _t in range(len(label_correspondance_T_subs))]
+        [
+            label_correspondance_T_subs[_t]
+            if _t not in post_range
+            else np.empty((0, 2), dtype="uint16")
+            for _t in range(len(label_correspondance_T_subs))
+        ]
     )
-    
+
     post_range = prange(post_range_start, post_range_end)
     for postt in post_range:
-
         lab_corr_range = range(len(new_label_correspondance_T[postt]))
-        
+
         # First case is, pre_label is not there yet
         for lcid in lab_corr_range:
-            lab_change = new_label_correspondance_T[postt][lcid:lcid+1]
+            lab_change = new_label_correspondance_T[postt][lcid : lcid + 1]
             pre_label = lab_change[0][0]
             post_label = lab_change[0][1]
-            
-            if pre_label not in label_correspondance_T_subs[postt][:, 1]:
-                if not any((lcts_copy[postt][:]==lab_change[0]).all(1)):
-                    # check if lab_change already in there
-                    lcts_copy[postt] = nb_add_row(
-                        lcts_copy[postt], lab_change
-                    )
 
-            # Second case is pre label is there. 
+            if pre_label not in label_correspondance_T_subs[postt][:, 1]:
+                if not any((lcts_copy[postt][:] == lab_change[0]).all(1)):
+                    # check if lab_change already in there
+                    lcts_copy[postt] = nb_add_row(lcts_copy[postt], lab_change)
+
+            # Second case is pre label is there.
             else:
                 # Where is pre label in the post labels
                 idx = np.where(label_correspondance_T_subs[postt][:, 1] == pre_label)
                 original_pre_label = label_correspondance_T_subs[postt][idx[0][0], 0]
-                new_lab_change = np.array([[original_pre_label, post_label]], dtype="uint16")
-                lcts_copy[postt] = nb_add_row(
-                    lcts_copy[postt], new_lab_change
-                )  
-        
+                new_lab_change = np.array(
+                    [[original_pre_label, post_label]], dtype="uint16"
+                )
+                lcts_copy[postt] = nb_add_row(lcts_copy[postt], new_lab_change)
+
         lab_corr_subs_range = range(len(label_correspondance_T_subs[postt]))
         for lcid in lab_corr_subs_range:
-            lab_change = label_correspondance_T_subs[postt][lcid:lcid+1]
+            lab_change = label_correspondance_T_subs[postt][lcid : lcid + 1]
             pre_label = lab_change[0][0]
 
             if pre_label not in lcts_copy[postt][:, 0]:
-                lcts_copy[postt] = nb_add_row(
-                    lcts_copy[postt], lab_change
-                )  
-    
-    
+                lcts_copy[postt] = nb_add_row(lcts_copy[postt], lab_change)
+
     return lcts_copy
 
 
 # Check if the pre_label of a new label change is in the subs label change post
-# If it is there the substitution will be done later, if it is not there, it 
-# will be added. 
+# If it is there the substitution will be done later, if it is not there, it
+# will be added.
 @njit(parallel=False)
 def fill_label_correspondance_T_subs(
     label_correspondance_T_subs, new_label_correspondance_T
 ):
-    
     for _postt in prange(len(label_correspondance_T_subs)):
         postt = np.int64(_postt)
         lab_corr_range = range(len(new_label_correspondance_T[postt]))
@@ -469,7 +471,7 @@ def remove_static_labels_label_correspondance(
 def add_lab_change(
     first_future_time, lab_change, label_correspondance_T, unique_labels_T
 ):
-    """ Add label change to list of label correspondances
+    """Add label change to list of label correspondances
 
     There are two scenarios:
         - pre_label is in the post_label position of a previously added lab_change in such case, the post_label is updated with the new one.
@@ -509,20 +511,20 @@ def add_lab_change(
 
     # for each future time
     for t in range(first_future_time, len(unique_labels_T)):
-
         # if pre_label is in an already exising lab_change as post_label
         # update the existing post_label with the new post_label
         if lab_change[0][0] in label_correspondance_T[t][:, 1]:
             idx = np.where(label_correspondance_T[t][:, 1] == lab_change[0][0])
             label_correspondance_T[t][idx[0][0], 1] = lab_change[0][1]
-        
-        # else, and if pre_label is a label present if t, 
+
+        # else, and if pre_label is a label present if t,
         # add the lab_change as it is.
         elif lab_change[0][0] in unique_labels_T[t]:
             label_correspondance_T[t] = nb_add_row(
                 label_correspondance_T[t], lab_change
             )
-            
+
+
 @njit()
 def get_unique_lab_changes(label_correspondance_T):
     """
@@ -558,6 +560,7 @@ def get_unique_lab_changes(label_correspondance_T):
 
     return nb_unique(lc_flatten, axis=0)
 
+
 @njit()
 def update_apo_cells(apoptotic_events, t, lab_change):
     """
@@ -578,7 +581,7 @@ def update_apo_cells(apoptotic_events, t, lab_change):
     This function is compiled with Numba's JIT (just-in-time) compiler for optimization.
 
     This function updates the apoptotic events list based on the provided label change. If the time of an apoptotic event is greater than or equal to `t` and its label matches the previous label in `lab_change`, the label is updated to the new label.
-    
+
     Example
     -------
     >>> apoptotic_events = [[1, 5], [2, 7], [3, 9]]
@@ -593,6 +596,7 @@ def update_apo_cells(apoptotic_events, t, lab_change):
             if apo_ev[0] == lab_change[0][0]:
                 apo_ev[0] = lab_change[0][1]
 
+
 @njit()
 def update_mito_cells(mitotic_events, t, lab_change):
     for mito_ev in mitotic_events:
@@ -600,6 +604,7 @@ def update_mito_cells(mitotic_events, t, lab_change):
             if mito_cell[1] >= t:
                 if mito_cell[0] == lab_change[0][0]:
                     mito_cell[0] = lab_change[0][1]
+
 
 @njit()
 def update_blocked_cells(blocked_cells, lab_change):
@@ -614,12 +619,12 @@ def check_and_remove_if_cell_mitotic(lab, t, mitotic_events):
     for i in prange(len(mevs_remove), 0, -1):
         ev = mevs_remove[i]
         _ = mitotic_events.pop(ev)
-    return 
+    return
 
 
 @njit(parallel=False)
 def get_mito_cells_to_remove(lab, t, mitotic_events):
-    mcell = List([lab,t])
+    mcell = List([lab, t])
     mevs_remove = List([0])
     for ev in prange(len(mitotic_events)):
         mitoev = mitotic_events[ev]
@@ -634,12 +639,12 @@ def check_and_remove_if_cell_apoptotic(lab, t, apoptotic_events):
     for i in prange(len(aevs_remove), 0, -1):
         ev = aevs_remove[i]
         _ = apoptotic_events.pop(ev)
-    return 
+    return
 
 
 @njit(parallel=False)
 def get_apo_cells_to_remove(lab, t, apoptotic_events):
-    acell = List([lab,t])
+    acell = List([lab, t])
     aevs_remove = List([0])
     for ev in prange(len(apoptotic_events)):
         apoev = apoptotic_events[ev]
@@ -676,6 +681,7 @@ def reorder_list(lst, order):
 
     return new_list
 
+
 @njit
 def get_mito_info(mitotic_events):
     mito_mothers_ts = []
@@ -689,8 +695,9 @@ def get_mito_info(mitotic_events):
         mito_daughters_ts.append(mito_ev[1][1])
         mito_daughters_labs.append(mito_ev[2][0])
         mito_daughters_ts.append(mito_ev[2][1])
-        
+
     return mito_mothers_labs, mito_mothers_ts, mito_daughters_labs, mito_daughters_ts
+
 
 @njit
 def get_apo_info(apoptotic_event):
@@ -699,7 +706,7 @@ def get_apo_info(apoptotic_event):
     for apo_cell in apoptotic_event:
         apo_labs.append(apo_cell[0])
         apo_ts.append(apo_cell[1])
-       
+
     return apo_labs, apo_ts
 
 
@@ -708,54 +715,66 @@ def _init_hints():
     del hints[:]
     return hints
 
+
 @njit(parallel=False)
 def get_hints(hints, mitotic_events, apoptotic_events, unique_labels_T):
     # get hints of conflicts in current batch
     del hints[:]
-    
-    mito_mothers_labs, mito_mothers_ts, mito_daughters_labs, mito_daughters_ts = get_mito_info(mitotic_events)
+
+    (
+        mito_mothers_labs,
+        mito_mothers_ts,
+        mito_daughters_labs,
+        mito_daughters_ts,
+    ) = get_mito_info(mitotic_events)
     apo_labs, apo_ts = get_apo_info(apoptotic_events)
 
     new_list = List([np.array([0], dtype="uint16")])
     del new_list[:]
     hints.append(new_list)
     hints[0].append(np.empty((0,), dtype="uint16"))
-    
-    for tg in prange(len(unique_labels_T)-1):
+
+    for tg in prange(len(unique_labels_T) - 1):
         new_list = List([np.array([0], dtype="uint16")])
         del new_list[:]
         hints.append(new_list)
-        
+
         # Get cells that disappear
         disappeared = setdiff1d_nb(unique_labels_T[tg], unique_labels_T[tg + 1])
-        
+
         # Get labels of mother cells in current time
-        labs_mito = [mito_mothers_labs[i] for i, t in enumerate(mito_mothers_ts) if t == tg]
+        labs_mito = [
+            mito_mothers_labs[i] for i, t in enumerate(mito_mothers_ts) if t == tg
+        ]
 
         # Get labels of apoptotic cells in current time
         labs_apo = [apo_labs[i] for i, t in enumerate(apo_ts) if t == tg]
 
         # Merge both lists
         labs = np.asarray(labs_mito + labs_apo)
-        
+
         # Create a boolean mask for elements of disappeared that are in labs
         mask = in1d_nb(disappeared, labs)
 
         # Get indices of True values in the mask
         indices = np.where(mask)[0]
-        
+
         # Delete disappeared cells that are marked as mothers
         disappeared = np.delete(disappeared, indices)
 
-        hints[tg].append(
-            disappeared.astype("uint16")
-        )
-        
+        hints[tg].append(disappeared.astype("uint16"))
+
         # Get cells that appeared
         appeared = setdiff1d_nb(unique_labels_T[tg + 1], unique_labels_T[tg])
 
         # Get labels of daughter cells in current time
-        labs = np.asarray([mito_daughters_labs[i] for i, t in enumerate(mito_daughters_ts) if t == tg+1])
+        labs = np.asarray(
+            [
+                mito_daughters_labs[i]
+                for i, t in enumerate(mito_daughters_ts)
+                if t == tg + 1
+            ]
+        )
 
         # Create a boolean mask for elements of appeared that are in labs
         mask = in1d_nb(appeared, labs)
@@ -766,14 +785,12 @@ def get_hints(hints, mitotic_events, apoptotic_events, unique_labels_T):
         # Delete disappeared cells that are marked as mothers
         appeared = np.delete(appeared, indices)
 
-        hints[tg+1].append(
-            appeared.astype("uint16")
-        )
+        hints[tg + 1].append(appeared.astype("uint16"))
     hints[-1].append(np.empty((0,), dtype="uint16"))
     return
 
 
-@nb.njit('uint16[:](ListType(uint16), ListType(uint16))')
+@nb.njit("uint16[:](ListType(uint16), ListType(uint16))")
 def setdiff1d_nb(arr1, arr2):
     delta = set(arr2)
 
@@ -787,19 +804,19 @@ def setdiff1d_nb(arr1, arr2):
     return result[:j]
 
 
-import numpy as np
 import numba as nb
+import numpy as np
+
 
 @njit(parallel=False)
 def in1d_nb(matrix, index_to_remove):
+    out = np.empty(matrix.shape[0], dtype=nb.boolean)
+    index_to_remove_set = set(index_to_remove)
 
-  out=np.empty(matrix.shape[0],dtype=nb.boolean)
-  index_to_remove_set=set(index_to_remove)
+    for i in nb.prange(matrix.shape[0]):
+        if matrix[i] in index_to_remove_set:
+            out[i] = True
+        else:
+            out[i] = False
 
-  for i in nb.prange(matrix.shape[0]):
-    if matrix[i] in index_to_remove_set:
-      out[i]=True
-    else:
-      out[i]=False
-
-  return out
+    return out
