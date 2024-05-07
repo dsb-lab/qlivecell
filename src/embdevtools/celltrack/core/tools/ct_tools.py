@@ -270,8 +270,9 @@ def check_and_override_args(args_preferred, args_unpreferred, raise_exception=Tr
 def _label_presence(unique_labels_T, max_lab):
     labels_T = np.zeros((max_lab + 1, len(unique_labels_T)))
     for lab in range(max_lab + 1):
-        for t in range(len(unique_labels_T)):
-            if lab in unique_labels_T[np.uint16(t)]:
+        for _t in range(len(unique_labels_T)):
+            t = np.uint16(_t)
+            if lab in unique_labels_T[t]:
                 labels_T[lab, t] = 1
     return labels_T
 

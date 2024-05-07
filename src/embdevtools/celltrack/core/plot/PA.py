@@ -766,12 +766,12 @@ class PlotActionCT(PlotAction):
             super().onscroll(event)
 
     def update(self):
-        if self.current_state in ["apo", "Com", "mit", "Sep", "blo"]:
+        if self.current_state in ["apo", "Com", "mit", "Sep"]:
             if self.current_state in ["Com", "Sep"]:
                 cells_to_plot = self.CTlist_of_cells
             if self.current_state == "mit":
                 cells_to_plot = self.CTmito_cells
-            elif self.current_state in ["apo", "blo"]:
+            elif self.current_state in ["apo"]:
                 cells_to_plot = self.list_of_cells
 
             cells_string = [
@@ -779,8 +779,14 @@ class PlotActionCT(PlotAction):
             ]
             zs = [-1 for _ in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
-
-        elif self.current_state in ["Del", "pic", None]:
+        elif self.current_state in ["Del", "blo"]:
+            cells_to_plot = self.sort_list_of_cells()
+            labs = [x[0] for x in cells_to_plot]
+            labs = np.unique(labs)
+            cells_string = ["cell=" + str(l) for l in labs]
+            zs = [0 for x in cells_to_plot]
+            ts = [0 for x in cells_to_plot]
+        elif self.current_state in ["pic", None]:
             cells_to_plot = self.sort_list_of_cells()
             labs = [x[0] for x in cells_to_plot]
             labs = np.unique(labs)
@@ -831,11 +837,11 @@ class PlotActionCT(PlotAction):
                 print("Attr error get color label {}".format(lab_z_t[0]))
 
             color = np.rint(color * 255).astype("uint8")
-            if self.current_state in ["Del"]:
+            if self.current_state in ["Del", "blo"]:
                 times_to_plot = List([i for i in range(self.times)])
                 zs_to_plot = -1
             else:
-                if self.current_state in ["apo", "mit", "blo"]:
+                if self.current_state in ["apo", "mit"]:
                     tt = self.global_times_list.index(lab_z_t[2])
                 else:
                     tt = lab_z_t[2]
@@ -881,11 +887,11 @@ class PlotActionCT(PlotAction):
                 jitcell, self._plot_args["labels_colors"], 0, self.CTblocked_cells
             )
             color = np.rint(color * 255).astype("uint8")
-            if self.past_state in ["Del"]:
+            if self.past_state in ["Del", "blo"] or self.current_state in ["Del", "blo"]:
                 times_to_plot = List([i for i in range(self.times)])
                 zs_to_plot = -1
             else:
-                if self.past_state in ["apo", "mit", "blo"]:
+                if self.past_state in ["apo", "mit"]:
                     tt = self.global_times_list.index(lab_z_t[2])
                 else:
                     tt = lab_z_t[2]
