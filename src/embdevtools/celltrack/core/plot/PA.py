@@ -779,7 +779,7 @@ class PlotActionCT(PlotAction):
             ]
             zs = [-1 for _ in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
-        elif self.current_state in ["Del", "blo", "Com", "Sep"]:
+        elif self.current_state in ["Del", "blo", "Com"]:
             cells_to_plot = self.sort_list_of_cells()
             labs = [x[0] for x in cells_to_plot]
             labs = np.unique(labs)
@@ -837,7 +837,7 @@ class PlotActionCT(PlotAction):
                 print("Attr error get color label {}".format(lab_z_t[0]))
 
             color = np.rint(color * 255).astype("uint8")
-            if self.current_state in ["Del", "blo", "Com", "Sep"]:
+            if self.current_state in ["Del", "blo", "Com"]:
                 times_to_plot = List([i for i in range(self.times)])
                 zs_to_plot = -1
             else:
@@ -887,7 +887,7 @@ class PlotActionCT(PlotAction):
                 jitcell, self._plot_args["labels_colors"], 0, self.CTblocked_cells
             )
             color = np.rint(color * 255).astype("uint8")
-            if self.past_state in ["Del", "blo", "Com", "Sep"] or self.current_state in ["Del", "blo", "Com", "Sep"]:
+            if self.past_state in ["Del", "blo", "Com"] or self.current_state in ["Del", "blo", "Com"]:
                 times_to_plot = List([i for i in range(self.times)])
                 zs_to_plot = -1
             else:
