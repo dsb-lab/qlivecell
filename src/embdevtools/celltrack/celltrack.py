@@ -1101,6 +1101,12 @@ class CellTracking(object):
             self.unique_labels_T,
         )
 
+        discs = find_discontinuities_unique_labels_T(
+            self.unique_labels_T, self.max_label
+        )
+        print()
+        print("discontinuities in labels UPDATE_LABELS", discs)
+        print()
         for t in range(len(self.unique_labels_T)):
             if len(self.unique_labels_T[t]) != len(np.unique(self.unique_labels_T[t])):
                 print("ERRORRRRRRRRRR element repeated")
@@ -1700,7 +1706,13 @@ class CellTracking(object):
                 new_labs.append(new_jitcell.label)
                 self.max_label = new_maxlabel
                 self.currentcellid = new_currentcellid
-
+                for t in range(len(self.unique_labels_T)):
+                    if new_cell.label in self.unique_labels_T[t]:
+                        print(
+                            "AFTER DELETE CELL NEW LABEL {} IS IN TIME {}".format(
+                                new_cell.label, t
+                            )
+                        )
                 update_jitcell(
                     new_jitcell, stack, self._seg_args["compute_center_method"]
                 )
@@ -1726,7 +1738,13 @@ class CellTracking(object):
                 self.currentcellid = new_currentcellid
                 # If cell is not removed, check if last time is removed
                 lab_change = np.array([[cell.label, self.max_label]]).astype("uint16")
-
+                for t in range(len(self.unique_labels_T)):
+                    if new_cell.label in self.unique_labels_T[t]:
+                        print(
+                            "AFTER MITO DEFINITION NEW LABEL {} IS IN TIME {}".format(
+                                new_cell.label, t
+                            )
+                        )
                 if t not in cell.times:
                     update_apo_cells(
                         self.apoptotic_events,
@@ -1822,7 +1840,7 @@ class CellTracking(object):
         )
 
         # Pre compute max label in the whole time-series
-        self._get_max_label()
+        self.update_label_attributes()
 
         for lab in cells:
             cell = self._get_cell(lab)
