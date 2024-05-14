@@ -38,6 +38,19 @@ def get_lineage_root(graph, label):
             root = True
     return lab
 
+def get_lineage(graph, label):
+    labels = [label]
+    # Check if this label is the root of the lineage
+    root = False
+    lab = label
+    # If it's in the keys, this is not the root so look for the root
+    while not root:
+        if lab in list(graph.keys()):
+            lab = graph[lab]
+            labels.append(lab)
+        else:
+            root = True
+    return labels
 
 def get_daughters(labels, graph, lab):
     vals = np.array(list(graph.values()))

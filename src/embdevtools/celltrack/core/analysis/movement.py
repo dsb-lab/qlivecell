@@ -23,6 +23,28 @@ def compute_distance_xy(x1, x2, y1, y2):
     return dist
 
 
+def compute_distance_xyz(x1, x2, y1, y2, z1, z2):
+    """
+    Parameters
+    ----------
+    x1 : number
+        x coordinate of point 1
+    x2 : number
+        x coordinate of point 2
+    y1 : number
+        y coordinate of point 1
+    y2 : number
+        y coordinate of point 2
+
+    Returns
+    -------
+    dist : number
+        euclidean distance between points (x1, y1) and (x2, y2)
+    """
+    dist = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    return dist
+
+
 def compute_disp_xy(X, Y):
     """
     Parameters

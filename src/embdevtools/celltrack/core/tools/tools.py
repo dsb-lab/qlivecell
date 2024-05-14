@@ -202,6 +202,11 @@ def compute_distance_xy(x1, x2, y1, y2):
 def compute_distance_xyz(x1, x2, y1, y2, z1, z2):
     return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
 
+def compute_distance_xyz_points(p1, p2):
+    x1,y1,z1 = p1
+    x2,y2,z2 = p2
+    return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
+
 
 @njit
 def numbadiff(x):

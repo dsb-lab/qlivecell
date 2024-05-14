@@ -59,6 +59,7 @@ def _get_cell(jitcells, label=None, cellid=None):
         for cell in jitcells:
             if cell.label == label:
                 return cell
+    print("ERROR: label {} not found".format(label))
     return None
 
 
@@ -131,6 +132,8 @@ class PlotAction:
         self.CTLabels = CT.ctattr.Labels
         self.CTplot_args = CT._plot_args
         self.CTblock_cells = CT.block_cells
+        self.CTunblock_cells = CT.unblock_cells
+
         self.CThints = CT.hints
 
         # Point to sliders
@@ -241,6 +244,7 @@ class PlotAction:
 
             # print()
             start = time.time()
+            del self.list_of_cells[:]
             self.set_batch(batch_number=self.bn, update_labels=True)
             end = time.time()
             # print("BATCH SETTED ", end - start)
@@ -521,10 +525,14 @@ class PlotActionCT(PlotAction):
             elif event.key == "L":
                 self.switch_centers(number=True)
             elif event.key == "b":
-                self._reset_CP()
                 self.current_state = "blo"
                 self.switch_masks(masks=False)
                 self.block_cells()
+            elif event.key == "B":
+                self.current_state = "ubl"
+                self.switch_masks(masks=False)
+                self.unblock_cells()
+                self.switch_masks(masks=True)
             elif event.key == "S":
                 # self.CTone_step_copy(self.t)
                 self._reset_CP()
@@ -1167,6 +1175,10 @@ class PlotActionCT(PlotAction):
         self.instructions.set_backgroundcolor((0.26, 0.16, 0.055, 0.4))
         self.fig.patch.set_facecolor((0.26, 0.16, 0.055, 0.1))
         self.CP = CellPicker(self.fig.canvas, self.block_cells_callback)
+        
+    def unblock_cells(self):
+        self.CTunblock_cells()
+        self.reploting()
 
     def block_cells_callback(self, event):
         inaxis = get_axis_PACP(self, event)

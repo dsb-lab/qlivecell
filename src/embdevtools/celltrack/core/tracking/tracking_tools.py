@@ -11,6 +11,31 @@ from ..tools.cell_tools import create_cell, update_cell
 
 @njit
 def _get_jitcell(jitcells, label=None, cellid=None):
+    """
+    Retrieve a jitCell object from the list of jitCells based on label or cell id.
+
+    This function searches for a jitCell object in the provided list of jitCells based on either the label or the cell id.
+
+    Parameters
+    ----------
+    jitcells : List of jitCell
+        List of jitCell objects to search through.
+    label : uint16 or None, optional
+        Label of the cell to search for. If None, search based on cell id.
+    cellid : int or None, optional
+        Cell id of the cell to search for. If None, search based on label.
+
+    Returns
+    -------
+    jitCell or None
+        The found jitCell object corresponding to the provided label or cell id, or None if not found.
+
+    Notes
+    -----
+    This function iterates through the list of jitCell objects and returns the first jitCell object that matches the provided label or cell id.
+    If no match is found, it returns None.
+
+    """
     if label == None:
         for cell in jitcells:
             if cell.id == cellid:
@@ -52,12 +77,56 @@ def _order_labels_z(jitcells, times):
 
 
 def isListEmpty(inList):
+    """
+    Check if a list (or nested lists) is empty.
+
+    This function recursively checks if a given list (or nested lists) is empty.
+
+    Parameters
+    ----------
+    inList : List or list
+        The list to check for emptiness.
+
+    Returns
+    -------
+    bool
+        True if the list (or nested lists) is empty, False otherwise.
+
+    Notes
+    -----
+    This function recursively checks if each element of the list is empty.
+    It returns True if all elements of the list are empty, otherwise returns False.
+
+    """
     if isinstance(inList, List) or isinstance(inList, list):  # Is a list
         return all(map(isListEmpty, inList))
     return False  # Not a list
 
 
 def _extract_unique_labels_per_time(Labels, times):
+    """
+    Extract unique labels per time from the given Labels.
+
+    This function extracts unique labels for each time point from the provided Labels.
+
+    Parameters
+    ----------
+    Labels : list of lists of uint16
+        List of labels organized by time and slice.
+    times : int
+        Number of time points.
+
+    Returns
+    -------
+    unique_labels_T : List of Lists of uint16
+        Unique labels for each time point.
+
+    Notes
+    -----
+    This function iterates through each time point and extracts unique labels.
+    It returns a list of lists, where each inner list contains the unique labels for a specific time point.
+
+    """
     unique_labels_T = list(
         [list(np.unique(np.hstack(Labels[i])).astype("uint16")) for i in range(times)]
     )
@@ -79,15 +148,27 @@ def _extract_unique_labels_per_time(Labels, times):
             unique_labels_T_pre[-1].pop(0)
 
     unique_labels_T = List(unique_labels_T_pre)
-    # unique_labels_T = List(
-    #     [List([int(x) for x in sublist]) for sublist in unique_labels_T]
-    # )
-    # _remove_nonlabels(unique_labels_T)
     return unique_labels_T
 
 
 @njit
 def _remove_nonlabels(unique_labels_T):
+    """
+    Remove non-label values from a list of unique labels.
+
+    This function removes non-label values (specifically -1) from each sublist of a list of unique labels.
+
+    Parameters
+    ----------
+    unique_labels_T : List of List of uint16
+        List containing sublists of unique label values.
+
+    Notes
+    -----
+    This function iterates through each sublist in the provided list of unique labels and removes any occurrence of -1.
+    It modifies the list in place.
+
+    """
     for sublist in unique_labels_T:
         if -1 in sublist:
             sublist.remove(-1)
@@ -105,6 +186,50 @@ def jmax(x):
 
 @njit
 def _order_labels_t(unique_labels_T, max_label):
+    """
+    Order labels in a list of unique labels.
+
+    This function orders labels in a list of unique labels such that each label is assigned a unique index.
+
+    Parameters
+    ----------
+    unique_labels_T : List of List of uint16
+        List containing sublists of unique label values for each time.
+    max_label : int
+        Maximum label value.
+
+    Returns
+    -------
+    List of List of uint16, List of List of uint16, List of int
+        Three lists representing the the original labels, new labels and label correspondance.
+
+    Notes
+    -----
+    This function orders labels based on their first appearance in time and starts from 0.
+    It returns three lists: the original labels, new labels and the label correspondance
+    Label correspondance is of length equal to max_label. Each element on the list corresponds to the new label assigned to the label equal to the index at that position.
+    -1 means the label is removed.
+    Finding a 1 at position 0 means label 1 is changed to 0.
+    
+    Examples
+    --------
+    >>> # Define some sample data
+    >>> unique_labels_T = [[1, 2, 3], [2, 3, 7], [2, 4, 5]]
+    >>> max_label = 7
+    >>>
+    >>> # Call the _order_labels_t function
+    >>> labels, new_labels, correspondance = _order_labels_t(unique_labels_T, max_label)
+    >>>
+    >>> # Display the results
+    >>> print("Original Labels:", ordered_labels)
+    >>> print("New Labels:", corresponding_indices)
+    >>> print("Label Correspondance", new_ordering)
+    >>>
+    >>> # Output:
+    >>> # Original Labels: [[1, 2, 3], [2, 3, 7], [2, 4, 5]]
+    >>> # New Labels: [[0, 1, 2], [1, 2, 3], [1, 4, 5]]
+    >>> # Label Correspondance: [-1, 0, 1, 2, 4, 5, -1, 3]
+    """
     P = unique_labels_T
     Q = List()
     Ci = List()
@@ -150,6 +275,23 @@ def _order_labels_t(unique_labels_T, max_label):
 
 
 def create_toy_cell():
+    """
+    Create a toy cell.
+
+    This function creates a toy cell with minimal attributes for testing purposes.
+
+    Returns
+    -------
+    cell : Cell
+        A toy cell object with minimal attributes.
+
+    Examples
+    --------
+    >>> toy_cell = create_toy_cell()
+    >>> print(toy_cell)
+    Cell(label=-1, id=-1, outlines=[[0]], masks=[0], centersi=[array([[0, 0]], dtype=int16)], centersj=[array([[0, 0]], dtype=int16)])
+
+    """
     cell = create_cell(
         -1,
         -1,
@@ -163,6 +305,28 @@ def create_toy_cell():
 
 
 def _init_CT_cell_attributes(jitcells: ListType(jitCell)):  # type: ignore
+    """
+    Initialize CT attributes.
+
+    This function initializes attributes for CT class.
+
+    Parameters
+    ----------
+    jitcells : List[jitCell]
+        List of jitCells.
+
+    Returns
+    -------
+    ctattr : CTattributes
+        CTattributes object initialized with empty lists for Labels, Outlines, Masks, Centersi, and Centersj.
+
+    Examples
+    --------
+    >>> jitcells = []
+    >>> ctattr = _init_CT_cell_attributes(jitcells)
+    >>> print(ctattr)
+    CTattributes(Labels=[], Outlines=[], Masks=[], Centersi=[], Centersj=[])
+    """
     if len(jitcells) == 0:
         cell = create_toy_cell()
         jitcell = construct_jitCell_from_Cell(cell)
@@ -181,6 +345,29 @@ def _init_CT_cell_attributes(jitcells: ListType(jitCell)):  # type: ignore
 def _reinit_update_CT_cell_attributes(
     jitcells: ListType(jitCell), slices, times, ctattr: CTattributes  # type: ignore
 ):
+    """
+    Reinitialize CT cell attributes.
+
+    This function reinitializes the CT cell attributes based on the provided parameters.
+
+    Parameters
+    ----------
+    jitcells : ListType(jitCell)
+        List of JIT cells.
+    slices : int
+        Number of slices.
+    times : int
+        Number of time points.
+    ctattr : CTattributes
+        CT attributes object to update.
+
+    Notes
+    -----
+    This function performs the following operations:
+    1. Remove current CT cell attributes.
+    2. Reinitialize the labels, outlines, masks, and centers for each time point and slice.
+
+    """
     if len(jitcells) == 0:
         cell = create_toy_cell()
         jitcell = construct_jitCell_from_Cell(cell)
@@ -213,6 +400,24 @@ def _reinit_update_CT_cell_attributes(
 
 @njit
 def _update_CT_cell_attributes(jitcells: ListType(jitCell), ctattr: CTattributes):  # type: ignore
+    """
+    Update CT cell attributes.
+
+    This function updates the CT cell attributes based on the provided JIT cells.
+
+    Parameters
+    ----------
+    jitcells : ListType(jitCell)
+        List of JIT cells to update the attributes from.
+    ctattr : CTattributes
+        CT attributes object to update.
+
+    Notes
+    -----
+    This function iterates through each JIT cell and updates the CT attributes:
+    1. Appends the label, outlines, masks, centers_i, and centers_j of each cell to the respective CT attribute lists for each slice and time.
+
+    """
     for cell in jitcells:
         for tid in range(len(cell.times)):
             t = cell.times[tid]
@@ -225,7 +430,30 @@ def _update_CT_cell_attributes(jitcells: ListType(jitCell), ctattr: CTattributes
                 ctattr.Centersj[t][z].append(cell.centersj[tid][zid])
 
 
-def _extract_unique_labels_and_max_label(Labels):
+def _extract_unique_labels_and_max_label_batch(Labels):
+    """
+    Extract unique labels and maximum label from the batch of labels.
+
+    This function extracts unique labels and calculates the maximum label present in the batch of labels.
+
+    Parameters
+    ----------
+    Labels : list of lists of lists of uint16
+        Batch of labels organized by time and slice.
+
+    Returns
+    -------
+    unique_labels : list of uint16
+        List of unique labels present in the batch.
+    max_label : uint16
+        Maximum label present in the batch. If no labels are present, returns -1.
+
+    Notes
+    -----
+    This function iterates through each label in the batch and collects unique labels.
+    It then calculates the maximum label from the unique labels.
+
+    """
     unique_labels = []
     for t in range(len(Labels)):
         for z in range(len(Labels[t])):

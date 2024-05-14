@@ -66,7 +66,8 @@ from .core.tools.batch_tools import (_init_hints, add_lab_change,
                                      update_label_correspondance_subs,
                                      update_mito_cells,
                                      update_new_label_correspondance,
-                                     update_unique_labels_T)
+                                     update_unique_labels_T,
+                                     _update_mito_apo_events)
 from .core.tools.cell_tools import (_predefine_jitcell_inputs, create_cell,
                                     extract_jitcells_from_label_stack,
                                     find_t_discontinuities_jit,
@@ -93,7 +94,7 @@ from .core.tools.tools import (check_and_fill_error_correction_args,
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                                      greedy_tracking, hungarian_tracking)
 from .core.tracking.tracking_tools import (
-    _extract_unique_labels_and_max_label, _extract_unique_labels_per_time,
+    _extract_unique_labels_and_max_label_batch, _extract_unique_labels_per_time,
     _init_cell, _init_CT_cell_attributes, _order_labels_t, _order_labels_z,
     _reinit_update_CT_cell_attributes, _update_CT_cell_attributes,
     get_labels_centers, prepare_labels_stack_for_tracking,
@@ -582,9 +583,7 @@ class CellTracking(object):
         return
 
     def init_masks_outlines_stacks(self):
-        import time
 
-        start = time.time()
         self.plot_stacks = check_stacks_for_plotting(
             None,
             self.hyperstack,
@@ -593,8 +592,7 @@ class CellTracking(object):
             self.slices,
             self.metadata["XYresolution"],
         )
-        end = time.time()
-        # print("check plot stacks", end - start)
+
         t = self.times
         z = self.slices
         x, y = self._plot_args["plot_stack_dims"][0:2]
@@ -609,12 +607,9 @@ class CellTracking(object):
             name_format=self._batch_args["name_format"],
             extension=".npy",
         )
-        import time
 
-        start = time.time()
         self.jitcells = extract_jitcells_from_label_stack(labels)
-        end = time.time()
-        # print("elapsed extract_jitcells", end - start)
+
         stack = self.hyperstack[
             :,
             :,
@@ -640,6 +635,7 @@ class CellTracking(object):
         printclear(2)
         print("###############           TRACKING FINISHED           ################")
         printfancy()
+        
         self.CT_info = self.init_CT_info()
 
         self.load(load_ct_info=False)
@@ -1037,6 +1033,22 @@ class CellTracking(object):
         self.total_conflicts = total_hints
 
     def update_label_attributes(self):
+        """
+        Update label attributes based on current state.
+
+        This method updates label attributes based on the current state of the class instance.
+
+        Notes
+        -----
+        This method performs various operations to update label attributes:
+        1. Reinitialize and update CT cell attributes.
+        2. Extract unique labels and maximum label for the batch.
+        3. Extract unique labels per time.
+        4. Update `unique_labels_T` attribute based on the batch times list.
+        5. Update other attributes related to unique labels and hints.
+
+        """
+        # reinit 
         _reinit_update_CT_cell_attributes(
             self.jitcells, self.slices, self.times, self.ctattr
         )
@@ -1045,7 +1057,7 @@ class CellTracking(object):
         (
             self.unique_labels_batch,
             self.max_label_batch,
-        ) = _extract_unique_labels_and_max_label(self.ctattr.Labels)
+        ) = _extract_unique_labels_and_max_label_batch(self.ctattr.Labels)
 
         self.unique_labels_T_batch = _extract_unique_labels_per_time(
             self.ctattr.Labels, self.times
@@ -1066,6 +1078,7 @@ class CellTracking(object):
         self._get_number_of_conflicts()
         self._get_cellids_celllabels()
 
+        ### TO BE RMEOVED ###
         discs = find_discontinuities_unique_labels_T(
             self.unique_labels_T, self.max_label
         )
@@ -1082,17 +1095,10 @@ class CellTracking(object):
         if hasattr(self, "PACP"):
             self.PACP.reinit(self)
 
-        # if hasattr(self, "PACP"):
-        #     self.PACP.reinit(self)
-
     def update_label_pre(self):
         self.jitcells_selected = self.jitcells
 
         self.update_label_attributes()
-
-        # iterate over future times and update manually unique_labels_T
-        # I think we should assume that there is no going to be conflict
-        # on label substitution, but we have to be careful in the future
 
         update_unique_labels_T(
             self.batch_times_list_global[-1] + 1,
@@ -1100,7 +1106,8 @@ class CellTracking(object):
             self.label_correspondance_T,
             self.unique_labels_T,
         )
-
+        
+        ### TO BE REMOVED ###
         discs = find_discontinuities_unique_labels_T(
             self.unique_labels_T, self.max_label
         )
@@ -1112,6 +1119,8 @@ class CellTracking(object):
                 print("ERRORRRRRRRRRR element repeated")
                 print("time of repetition", t)
 
+        #####################
+        
         # Once unique labels are updated, we can safely run label ordering
         # if there are cells, continue
         if self.jitcells:
@@ -1126,11 +1135,10 @@ class CellTracking(object):
                 self.unique_labels_T[t] for t in self.batch_times_list_global
             ]
 
-            # update cell labels
+            ### UPDATE LABELS BASED ON LABEL ORDERING ###
             for cell in self.jitcells:
                 cell.label = correspondance[cell.label]
 
-            # Update labels of blocked-cells list
             for bid, blabel in enumerate(self.blocked_cells):
                 self.blocked_cells[bid] = correspondance[blabel]
 
@@ -1162,31 +1170,10 @@ class CellTracking(object):
                 0, self.total_times, self.new_label_correspondance_T
             )
 
-            # Update labels on mitotic, apoptotic and blocked cells
-            for apo_ev in self.apoptotic_events:
-                if apo_ev[0] in self.new_label_correspondance_T[apo_ev[1]][:, 0]:
-                    idx = np.where(
-                        self.new_label_correspondance_T[apo_ev[1]][:, 0] == apo_ev[0]
-                    )
-                    new_lab = self.new_label_correspondance_T[apo_ev[1]][idx[0][0], 1]
-                    apo_ev[0] = new_lab
-
-            for mito_ev in self.mitotic_events:
-                for mito_cell in mito_ev:
-                    if (
-                        mito_cell[0]
-                        in self.new_label_correspondance_T[mito_cell[1]][:, 0]
-                    ):
-                        idx = np.where(
-                            self.new_label_correspondance_T[mito_cell[1]][:, 0]
-                            == mito_cell[0]
-                        )
-                        new_lab = self.new_label_correspondance_T[mito_cell[1]][
-                            idx[0][0], 1
-                        ]
-                        mito_cell[0] = new_lab
-
-            # Re-init label_correspondance only for the current and prior batches.
+            ### UPDATE MITOTIC AND APOPTOTIC EVENTS ###
+            _update_mito_apo_events(self.apoptotic_events, self.mitotic_events, self.new_label_correspondance_T)
+            
+            ### UPDATE LABEL CORRESPONDANCE T SUBS FOR THE FUTURE TIMES ###
             self.label_correspondance_T_subs = update_label_correspondance_subs(
                 self.batch_times_list_global[-1] + 1,
                 self.total_times,
@@ -1247,6 +1234,12 @@ class CellTracking(object):
         )
 
     def _get_max_label(self):
+        """
+        Update the maximum label value.
+
+        This method updates the maximum label value for the whole dataset.
+        It uses the unique labels for each time and the post-labels from label correspondance.
+        """
         self.max_label_T = [
             np.max(sublist) if len(sublist) != 0 else -1
             for sublist in self.unique_labels_T
@@ -1318,6 +1311,27 @@ class CellTracking(object):
         del self.blocked_cells[:]
 
     def append_cell_from_outlines_t(self, outlines, zs, t, sort=True):
+        """
+        Append a new cell to self.jitcells based on outlines at a specific time and and a reange of slices.
+
+        Parameters
+        ----------
+        outlines : List
+            List of outlines representing the cell contours at different slices.
+        zs : int
+            List of slices.
+        t : int
+            Time index.
+        sort : bool, optional
+            Whether to sort the points in the outlines, by default True.
+
+        Returns
+        -------
+        None
+            The function appends a new cell to the list of cells in place.
+        """
+        
+        # sort if necessary the outlines
         if sort:
             new_outlines = []
             for outline in outlines:
@@ -1331,6 +1345,7 @@ class CellTracking(object):
         else:
             new_outlines = outlines
 
+        # increase resolution and create masks
         final_outlines = []
         masks = []
         for new_outline_sorted in new_outlines:
@@ -1340,8 +1355,10 @@ class CellTracking(object):
             final_outlines.append(new_outline_sorted_highres)
             masks.append(mask_from_outline(new_outline_sorted_highres))
 
+        # compute current max lab
         self.update_label_attributes()
 
+        # create cell
         new_cell = create_cell(
             self.currentcellid + 1,
             self.max_label + 1,
@@ -1357,6 +1374,7 @@ class CellTracking(object):
                 :,
             ],
         )
+        # update max label to new value
         self.max_label += 1
         self.currentcellid += 1
         new_jitcell = construct_jitCell_from_Cell(new_cell)
@@ -1367,7 +1385,11 @@ class CellTracking(object):
             :,
             :,
         ]
+        
+        # update cell to compute attributes
         update_jitcell(new_jitcell, stack, self._seg_args["compute_center_method"])
+        
+        # append cell to jitcells
         jitcellslen = len(self.jitcells_selected)
         self.jitcells.append(new_jitcell)
 
@@ -1376,6 +1398,27 @@ class CellTracking(object):
             self.jitcells_selected.append(self.jitcells[-1])
 
     def append_cell_from_outlines(self, outlines, zs, ts, sort=True):
+        """
+        Append a new cell to self.jitcells based on outlines at a range of times and slices.
+
+        Parameters
+        ----------
+        outlines : List
+            List of Lists of outlines representing the cell contours.
+        zs : List
+            List of Lists of slices.
+        t : List
+            List of times.
+        sort : bool, optional
+            Whether to sort the points in the outlines, by default True.
+
+        Returns
+        -------
+        None
+            The function appends a new cell to the list of cells in place.
+        """
+        
+        # sort if necessary the outlines
         if sort:
             new_outlines = []
             for t in range(len(outlines)):
@@ -1390,7 +1433,8 @@ class CellTracking(object):
                         new_outlines[-1].append(new_outline_sorted)
         else:
             new_outlines = outlines
-
+            
+        # increase resolution and create masks
         final_outlines = []
         masks = []
         for t in range(len(new_outlines)):
@@ -1403,8 +1447,10 @@ class CellTracking(object):
                 final_outlines[-1].append(new_outline_sorted_highres)
                 masks[-1].append(mask_from_outline(new_outline_sorted_highres))
 
+        # compute current max lab
         self._get_max_label()
 
+        # create cell
         new_cell = create_cell(
             self.currentcellid + 1,
             self.max_label + 1,
@@ -1420,6 +1466,8 @@ class CellTracking(object):
                 :,
             ],
         )
+        
+        # update max label to new value
         self.max_label += 1
         self.currentcellid += 1
         new_jitcell = construct_jitCell_from_Cell(new_cell)
@@ -1430,7 +1478,11 @@ class CellTracking(object):
             :,
             :,
         ]
+        
+        # update cell to compute attributes
         update_jitcell(new_jitcell, stack, self._seg_args["compute_center_method"])
+        
+        # append cell to jitcells
         jitcellslen = len(self.jitcells_selected)
         self.jitcells.append(new_jitcell)
 
@@ -1438,7 +1490,21 @@ class CellTracking(object):
         if jitcellslen == len(self.jitcells_selected):
             self.jitcells_selected.append(self.jitcells[-1])
 
+
     def append_cell_from_cell(self, cell):
+        """
+        Append a new cell based on an existing cell.
+
+        Parameters
+        ----------
+        cell : jitCell
+            The cell object to append.
+
+        Returns
+        -------
+        None
+            The function appends a new cell to the list of cells in place.
+        """
         self.update_label_attributes()
 
         cell.label = self.max_label + 1
@@ -1668,9 +1734,9 @@ class CellTracking(object):
             # If the current time has been completely removed from the cell,
             # check if it was mitotic or apoptosis at this time
             if t not in cell.times:
-                check_and_remove_if_cell_mitotic(lab, t, self.mitotic_events)
+                check_and_remove_if_cell_mitotic(lab, self.batch_times_list_global[t], self.mitotic_events)
             if t not in cell.times:
-                check_and_remove_if_cell_apoptotic(lab, t, self.apoptotic_events)
+                check_and_remove_if_cell_apoptotic(lab, self.batch_times_list_global[t], self.apoptotic_events)
 
             if cell._rem:
                 idrem = cell.id
@@ -1706,11 +1772,11 @@ class CellTracking(object):
                 new_labs.append(new_jitcell.label)
                 self.max_label = new_maxlabel
                 self.currentcellid = new_currentcellid
-                for t in range(len(self.unique_labels_T)):
-                    if new_cell.label in self.unique_labels_T[t]:
+                for _t in range(len(self.unique_labels_T)):
+                    if new_cell.label in self.unique_labels_T[_t]:
                         print(
                             "AFTER DELETE CELL NEW LABEL {} IS IN TIME {}".format(
-                                new_cell.label, t
+                                new_cell.label, _t
                             )
                         )
                 update_jitcell(
@@ -1738,11 +1804,11 @@ class CellTracking(object):
                 self.currentcellid = new_currentcellid
                 # If cell is not removed, check if last time is removed
                 lab_change = np.array([[cell.label, self.max_label]]).astype("uint16")
-                for t in range(len(self.unique_labels_T)):
-                    if new_cell.label in self.unique_labels_T[t]:
+                for _t in range(len(self.unique_labels_T)):
+                    if new_cell.label in self.unique_labels_T[_t]:
                         print(
                             "AFTER MITO DEFINITION NEW LABEL {} IS IN TIME {}".format(
-                                new_cell.label, t
+                                new_cell.label, _t
                             )
                         )
                 if t not in cell.times:
@@ -1848,9 +1914,9 @@ class CellTracking(object):
                 # If the current time has been completely removed from the cell,
                 # check if it was mitotic or apoptosis at this time
                 if t not in cell.times:
-                    check_and_remove_if_cell_mitotic(lab, t, self.mitotic_events)
+                    check_and_remove_if_cell_mitotic(lab, self.batch_times_list_global[t], self.mitotic_events)
                 if t not in cell.times:
-                    check_and_remove_if_cell_apoptotic(lab, t, self.apoptotic_events)
+                    check_and_remove_if_cell_apoptotic(lab, self.batch_times_list_global[t], self.apoptotic_events)
             self._del_cell(lab)
 
         self.update_label_attributes()
@@ -2002,11 +2068,11 @@ class CellTracking(object):
             # check if it was mitotic or apoptosis at this time
             if t not in cell2.times:
                 check_and_remove_if_cell_mitotic(
-                    cell2.label, t_rem, self.mitotic_events
+                    cell2.label, self.batch_times_list_global[t_rem], self.mitotic_events
                 )
             if t not in cell2.times:
                 check_and_remove_if_cell_apoptotic(
-                    cell2.label, t_rem, self.apoptotic_events
+                    cell2.label, self.batch_times_list_global[t_rem], self.apoptotic_events
                 )
             cell2.zs.pop(tid_cell2)
             cell2.outlines.pop(tid_cell2)
@@ -2153,11 +2219,11 @@ class CellTracking(object):
                 # check if it was mitotic or apoptosis at this time
                 if t not in cell2.times:
                     check_and_remove_if_cell_mitotic(
-                        cell2.label, t, self.mitotic_events
+                        cell2.label, self.batch_times_list_global[t], self.mitotic_events
                     )
                 if t not in cell2.times:
                     check_and_remove_if_cell_apoptotic(
-                        cell2.label, t, self.apoptotic_events
+                        cell2.label, self.batch_times_list_global[t], self.apoptotic_events
                     )
             self._del_cell(cell2.label, lab_change=lab_change, t=cell2.times[0])
 
@@ -2488,6 +2554,7 @@ class CellTracking(object):
             "- A : apoptotic event",
             "- M : mitotic events",
             "- b : block cells",
+            "- B : unblock all cells",
             "- l : show/hide cell centers",
             "- L : show/hide cell label",
             "- o : show/hide outlines",

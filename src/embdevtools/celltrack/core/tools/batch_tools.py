@@ -1511,3 +1511,44 @@ def in1d_nb(matrix, index_to_remove):
             out[i] = False
 
     return out
+
+def _update_mito_apo_events(apoptotic_events, mitotic_events, new_label_correspondance_T):
+    """
+    Update labels in apoptotic and mitotic events based on a new label correspondence.
+
+    Parameters
+    ----------
+    apoptotic_events : List
+        List of apoptotic events, where each event is represented as [label, time].
+    mitotic_events : List
+        List of mitotic events, where each event is a list of cells [mother, daughter1, daughter2].
+    new_label_correspondance_T : List
+        New label correspondence for each time point.
+
+    Returns
+    -------
+    None
+        The function modifies the input apoptotic and mitotic events in place.
+    """
+    for apo_ev in apoptotic_events:
+        if apo_ev[0] in new_label_correspondance_T[apo_ev[1]][:, 0]:
+            idx = np.where(
+                new_label_correspondance_T[apo_ev[1]][:, 0] == apo_ev[0]
+            )
+            new_lab = new_label_correspondance_T[apo_ev[1]][idx[0][0], 1]
+            apo_ev[0] = new_lab
+
+    for mito_ev in mitotic_events:
+        for mito_cell in mito_ev:
+            if (
+                mito_cell[0]
+                in new_label_correspondance_T[mito_cell[1]][:, 0]
+            ):
+                idx = np.where(
+                    new_label_correspondance_T[mito_cell[1]][:, 0]
+                    == mito_cell[0]
+                )
+                new_lab = new_label_correspondance_T[mito_cell[1]][
+                    idx[0][0], 1
+                ]
+                mito_cell[0] = new_lab
