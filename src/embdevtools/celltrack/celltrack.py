@@ -786,7 +786,7 @@ class CellTracking(object):
             printfancy("Creating cells and saving results...", clear_prev=1)
             printfancy("")
 
-            self.init_cells(TLabels, Labels, Outlines, Masks, label_correspondance)
+            self.init_cells_segmentation(TLabels, Labels, Outlines, Masks, label_correspondance)
 
             save_cells_to_labels_stack(
                 self.jitcells,
@@ -835,13 +835,14 @@ class CellTracking(object):
         boverlap = 1
         rounds = np.int32(np.ceil((totalsize) / (bsize - boverlap)))
         maxlab = 0
+        printfancy("")
         for bnumber in range(rounds):
             first = (bsize * bnumber) - (boverlap * bnumber)
             last = first + bsize
             last = min(last, totalsize)
-
-            # if first < 222: continue
-
+            printfancy(
+                "######   CURRENT TIME = (%d - %d)/%d   ######" % (first + 1, last, self.total_times)
+            )
             times = range(first, last)
             if len(times) <= boverlap:
                 continue
@@ -892,7 +893,7 @@ class CellTracking(object):
             )
 
             labels_new = replace_labels_in_place(labels, label_correspondance)
-            maxlab = np.max(labels_new) - 1
+            maxlab = np.maximum(np.max(labels_new) - 1, maxlab)
             save_labels_stack(
                 labels_new,
                 self.path_to_save,
@@ -900,8 +901,9 @@ class CellTracking(object):
                 split_times=True,
                 name_format=self._batch_args["name_format"],
             )
+            printclear(1)
 
-    def init_cells(
+    def init_cells_segmentation(
         self, FinalLabels, Labels_tz, Outlines_tz, Masks_tz, label_correspondance
     ):
         self.currentcellid = 0
