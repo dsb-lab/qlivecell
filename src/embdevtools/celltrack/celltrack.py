@@ -90,7 +90,7 @@ from .core.tools.tools import (check_and_fill_error_correction_args,
                                get_default_args, increase_outline_width,
                                increase_point_resolution, mask_from_outline,
                                printclear, printfancy, progressbar,
-                               sort_point_sequence)
+                               sort_point_sequence, copytree)
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                                      greedy_tracking, hungarian_tracking)
 from .core.tracking.tracking_tools import (
@@ -152,9 +152,12 @@ class CellTracking(object):
         check_or_create_dir(self.path_to_save)
 
         self.path_to_save = correct_path(self.path_to_save)
+        self.path_to_backup = self.path_to_save+"backup"
+        check_or_create_dir(self.path_to_backup)
 
         printfancy("path to data = {}".format(self.path_to_data))
         printfancy("path to save = {}".format(self.path_to_save))
+
         printfancy("")
         # in batch mode times has to be always split
         self.split_times = True
@@ -705,7 +708,7 @@ class CellTracking(object):
             )
             printfancy("")
 
-            # if t < 223: continue
+            if t < 250: continue
             Outlines = []
             Masks = []
             Labels = []
@@ -840,6 +843,9 @@ class CellTracking(object):
             first = (bsize * bnumber) - (boverlap * bnumber)
             last = first + bsize
             last = min(last, totalsize)
+
+            if last < 250: continue
+
             printfancy(
                 "######   CURRENT TIME = (%d - %d)/%d   ######" % (first + 1, last, self.total_times)
             )
@@ -1088,7 +1094,11 @@ class CellTracking(object):
         print("discontinuities in labels ", discs)
         print()
 
-    def update_labels(self, backup=False):
+    def update_labels(self, backup=True):
+
+        if backup:
+            copytree(self.path_to_save, self.path_to_backup, copy_dirs=False)
+
         self.update_label_pre()
 
         self.store_CT_info()
@@ -1175,6 +1185,7 @@ class CellTracking(object):
             ### UPDATE MITOTIC AND APOPTOTIC EVENTS ###
             _update_mito_apo_events(self.apoptotic_events, self.mitotic_events, self.new_label_correspondance_T)
             
+
             ### UPDATE LABEL CORRESPONDANCE T SUBS FOR THE FUTURE TIMES ###
             self.label_correspondance_T_subs = update_label_correspondance_subs(
                 self.batch_times_list_global[-1] + 1,

@@ -739,11 +739,22 @@ def add_lab_change(
 
     # for each future time
     for t in range(first_future_time, len(unique_labels_T)):
+        # if pre_label is already in pre_labels, future vals have already been affected
+        # for a later time point, so this change should only affect locally and not propagate
+        if lab_change[0][0] in label_correspondance_T[t][:, 0]:
+            continue
+
         # if pre_label is in an already exising lab_change as post_label
         # update the existing post_label with the new post_label
         if lab_change[0][0] in label_correspondance_T[t][:, 1]:
             idx = np.where(label_correspondance_T[t][:, 1] == lab_change[0][0])
             label_correspondance_T[t][idx[0][0], 1] = lab_change[0][1]
+
+            # If pre_label == post_label, remove it as it's redundant
+            if label_correspondance_T[t][idx[0][0], 0] == label_correspondance_T[t][idx[0][0], 1]:
+                label_correspondance_T[t] = numba_delete(
+                    label_correspondance_T[t], idx[0][0]
+                )
 
         # else, and if pre_label is a label present if t,
         # add the lab_change as it is.

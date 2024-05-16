@@ -296,3 +296,37 @@ def check_or_create_dir(path):
         if ".tif" in path:
             return
         os.mkdir(path)
+
+# adapted from https://stackoverflow.com/a/12514470/7546279
+import os, shutil
+def copytree(src, dst, symlinks=False, ignore=None, copy_dirs=False):
+    """
+    Recursively copy a directory tree from `src` to `dst`.
+
+    Parameters
+    ----------
+    src : str
+        Source directory path.
+    dst : str
+        Destination directory path.
+    symlinks : bool, optional
+        If True, copy symbolic links as symbolic links. Default is False.
+    ignore : callable, optional
+        Function that will be called with the `src`, and `names` arguments, which should return a list of items to ignore. Default is None.
+    copy_dirs : bool, optional
+        If True, copy directories as well. Default is False.
+
+    Returns
+    -------
+    None
+        This function copies the directory tree from `src` to `dst`.
+    """
+    for item in os.listdir(src):
+        s = os.path.join(src, item)
+        d = os.path.join(dst, item)
+        if os.path.isdir(s):
+            if copy_dirs:
+                shutil.copytree(s, d, symlinks, ignore)
+        else:
+            shutil.copy2(s, d)
+
