@@ -449,6 +449,7 @@ def read_split_times(
                 IMG = IMG[:, :, channels, :, :]
                 IMGS.append(IMG[0].astype("uint8"))
             elif extension == ".npy":
+                print(path_to_file)
                 IMG = np.load(path_to_file)
                 IMGS.append(IMG.astype("uint16"))
     if extension == ".tif":

@@ -392,7 +392,7 @@ class CellTracking(object):
 
             # Set batch to extract batch times and unique labels
             start = time.time()
-            self.set_batch(batch_number=r, plotting=False, init_cells=False)
+            self.set_batch(batch_number=r, plotting=False, init_cells=False, sub_labels=False)
             end = time.time()
             # print("elapsed 1", end - start)
 
@@ -474,6 +474,7 @@ class CellTracking(object):
         plotting=True,
         init_cells=True,
         force=False,
+        sub_labels=True
     ):
         import time
 
@@ -515,13 +516,14 @@ class CellTracking(object):
         #     print(self.label_correspondance_T_subs[t])
 
         start2 = time.time()
-        substitute_labels(
-            self.batch_times_list_global[0],
-            self.batch_times_list_global[-1] + 1,
-            self.path_to_save,
-            self.label_correspondance_T_subs,
-            self._batch_args,
-        )
+        if sub_labels:
+            substitute_labels(
+                self.batch_times_list_global[0],
+                self.batch_times_list_global[-1] + 1,
+                self.path_to_save,
+                self.label_correspondance_T_subs,
+                self._batch_args,
+            )
         end2 = time.time()
         elapsed2 = end2 - start2
         # print("subs labels in set batch", elapsed2)
