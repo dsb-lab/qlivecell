@@ -710,7 +710,7 @@ class CellTracking(object):
             )
             printfancy("")
 
-            if t < 250: continue
+            if t != 132: continue
             Outlines = []
             Masks = []
             Labels = []
@@ -846,7 +846,10 @@ class CellTracking(object):
             last = first + bsize
             last = min(last, totalsize)
 
-            if last < 250: continue
+            print(first)
+            print(last)
+            if first!=131: continue
+            # if last < 250: continue
 
             printfancy(
                 "######   CURRENT TIME = (%d - %d)/%d   ######" % (first + 1, last, self.total_times)

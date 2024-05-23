@@ -840,14 +840,15 @@ class PlotActionCT(PlotAction):
         ])
         if len(labs_z_to_plot)==0:
             labs_z_to_plot = List([List([0,0,0])])
-            labs_z_to_plot[:]
+            del labs_z_to_plot[:]
 
         end_0 = time.time()
-        print("elapsed 0 =", end_0 - start)
+        # print("elapsed 0 =", end_0 - start)
         start_1 = time.time()
 
         new_labs_z_to_plot = get_dif_nested_list(labs_z_to_plot, self._pre_labs_z_to_plot)
         for i, lab_z_t in enumerate(new_labs_z_to_plot):
+            print(lab_z_t)
             print("padentro")
             print("YES")
             jitcell = self._CTget_cell(label=lab_z_t[0])
@@ -897,7 +898,7 @@ class PlotActionCT(PlotAction):
         
 
         end_1 = time.time()
-        print("elapsed 1 =", end_1-start_1)
+        # print("elapsed 1 =", end_1-start_1)
 
         start_2 = time.time()
         labs_z_to_remove = get_dif_nested_list(self._pre_labs_z_to_plot, labs_z_to_plot)
@@ -950,7 +951,7 @@ class PlotActionCT(PlotAction):
         self._pre_labs_z_to_plot = labs_z_to_plot
 
         end_2 = time.time()
-        print("elapsed 2 =", end_2 - start_2)
+        # print("elapsed 2 =", end_2 - start_2)
 
         start_3 = time.time()
         self.selected_cells.set(fontsize=width_or_height / scale1)
@@ -982,9 +983,9 @@ class PlotActionCT(PlotAction):
         self.fig.subplots_adjust(top=0.9, left=0.1)
         self.fig.canvas.draw_idle()
         end_3 = time.time()
-        print("elapsed 3 =", end_3 - start_3)
+        # print("elapsed 3 =", end_3 - start_3)
         end = time.time()
-        print("elapsed = ", end - start)
+        # print("elapsed = ", end - start)
 
     def sort_list_of_cells(self):
         if len(self.list_of_cells) == 0:

@@ -103,29 +103,29 @@ def arboretum_napari(CTB):
         ndisplay=3,
     )
 
-    # tracks_layer = viewer.add_tracks(
-    #     napari_tracks_data,
-    #     name="tracks",
-    #     scale=(CTB.metadata["Zresolution"],
-    #             CTB.metadata["XYresolution"],
-    #             CTB.metadata["XYresolution"]),
-    #     properties=properties,
-    #     graph=graph,
-    #     color_by='colors',
-    #     colormaps_dict={"colors": custom_cmap}
-    # )
+    tracks_layer = viewer.add_tracks(
+        napari_tracks_data,
+        name="tracks",
+        scale=(CTB.metadata["Zresolution"],
+                CTB.metadata["XYresolution"],
+                CTB.metadata["XYresolution"]),
+        properties=properties,
+        graph=graph,
+        color_by='colors',
+        colormaps_dict={"colors": custom_cmap}
+    )
 
-    # points_layer = viewer.add_points(
-    #     napari_tracks_data[:, 1:]*(1, CTB.metadata["Zresolution"], CTB.metadata["XYresolution"], CTB.metadata["XYresolution"]),
-    #     size=2,
-    #     name="centers",
-    #     properties=properties,
-    #     edge_color='colors',
-    #     edge_colormap=custom_cmap,
-    #     face_color='colors',
-    #     face_colormap=custom_cmap,
-    # )
+    points_layer = viewer.add_points(
+        napari_tracks_data[:, 1:]*(1, CTB.metadata["Zresolution"], CTB.metadata["XYresolution"], CTB.metadata["XYresolution"]),
+        size=2,
+        name="centers",
+        properties=properties,
+        edge_color='colors',
+        edge_colormap=custom_cmap,
+        face_color='colors',
+        face_colormap=custom_cmap,
+    )
 
-    # _, widget = viewer.window.add_plugin_dock_widget(
-    #     plugin_name="napari-arboretum", widget_name="Arboretum"
-    # )
+    _, widget = viewer.window.add_plugin_dock_widget(
+        plugin_name="napari-arboretum", widget_name="Arboretum"
+    )
