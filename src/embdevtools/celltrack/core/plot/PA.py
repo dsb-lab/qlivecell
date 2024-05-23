@@ -840,7 +840,7 @@ class PlotActionCT(PlotAction):
         ])
         if len(labs_z_to_plot)==0:
             labs_z_to_plot = List([List([0,0,0])])
-            labs_z_to_plot[:]
+            del labs_z_to_plot[:]
 
         end_0 = time.time()
         print("elapsed 0 =", end_0 - start)

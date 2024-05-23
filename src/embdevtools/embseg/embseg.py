@@ -12,7 +12,7 @@ class EmbryoSegmentation:
         IMGS,
         ksize=5,
         ksigma=3,
-        binths=8,
+        binths=None,
         apply_biths_to_zrange_only=False,
         checkerboard_size=6,
         num_inter=100,
