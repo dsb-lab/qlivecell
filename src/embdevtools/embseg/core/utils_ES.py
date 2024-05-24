@@ -197,9 +197,11 @@ def segment_embryo(image, binths, seg_embryo_params):
     convimage = convolve2D(image, kernel, padding=10)
     cut = int((convimage.shape[0] - image.shape[0]) / 2)
     convimage = convimage[cut:-cut, cut:-cut]
-    binimage = (convimage > binths) * 1
+    if binths==None:
+        binimage = convimage
+    else:
+        binimage = (convimage > binths) * 1
 
-    binimage = convimage
     # Morphological ACWE
 
     init_ls = checkerboard_level_set(binimage.shape, checkerboard_size)
