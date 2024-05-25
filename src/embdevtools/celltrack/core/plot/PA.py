@@ -1059,6 +1059,7 @@ class PlotActionCT(PlotAction):
                 labels = get_whole_lineage(self.CTmitotic_events, lab)
                 for _lab in labels:
                     jitcell = _get_cell(self.jitcells_selected, label=_lab)
+                    if jitcell is None: continue
                     for tid, t in enumerate(jitcell.times):
                         for zid, z in enumerate(jitcell.zs[tid]):
                             self.list_of_cells.append([_lab, z, t])
