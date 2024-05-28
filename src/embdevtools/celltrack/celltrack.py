@@ -133,6 +133,7 @@ class CellTracking(object):
         channels=[
             0
         ],  # first element is the channel used for computing cell centers and for segmentation on stardist
+        save_cells=True
     ):
         print()
         print()
@@ -140,6 +141,7 @@ class CellTracking(object):
         printfancy("")
         # Basic arguments
 
+        self.save_cells = True
         self.channels = np.sort(channels)
         self.channels_order = np.array(channels)
         # Directory containing stakcs
@@ -1210,16 +1212,17 @@ class CellTracking(object):
                 self.label_correspondance_T_subs[t] = np.empty((0, 2), dtype="uint16")
             # _order_labels_z(self.jitcells, self.times, List(self._labels_previous_time))
 
-        save_cells_to_labels_stack(
-            self.jitcells,
-            self.CT_info,
-            self.batch_times_list_global,
-            path=self.path_to_save,
-            filename=None,
-            split_times=True,
-            name_format=self._batch_args["name_format"],
-            save_info=False,
-        )
+        if self.save_cells:
+            save_cells_to_labels_stack(
+                self.jitcells,
+                self.CT_info,
+                self.batch_times_list_global,
+                path=self.path_to_save,
+                filename=None,
+                split_times=True,
+                name_format=self._batch_args["name_format"],
+                save_info=False,
+            )
 
         self.jitcells_selected = self.jitcells
 

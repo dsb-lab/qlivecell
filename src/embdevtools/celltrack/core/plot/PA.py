@@ -848,9 +848,6 @@ class PlotActionCT(PlotAction):
 
         new_labs_z_to_plot = get_dif_nested_list(labs_z_to_plot, self._pre_labs_z_to_plot)
         for i, lab_z_t in enumerate(new_labs_z_to_plot):
-            print(lab_z_t)
-            print("padentro")
-            print("YES")
             jitcell = self._CTget_cell(label=lab_z_t[0])
 
             try:
