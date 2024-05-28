@@ -2941,19 +2941,20 @@ class CellTracking(object):
 
     def update_labels_batches(self):
         printfancy("substituting labels on non-loaded batches")
-        self.update_labels()
-        substitute_labels(
-            0,
-            self.total_times,
-            self.path_to_save,
-            self.label_correspondance_T_subs,
-            self._batch_args,
-        )
-        self.label_correspondance_T_subs = List(
-            [np.empty((0, 2), dtype="uint16") for t in range(self.total_times)]
-        )
-        printfancy("")
-        printfancy("Error correction finished", clear_prev=2)
+        if self.save_cells:
+            self.update_labels()
+            substitute_labels(
+                0,
+                self.total_times,
+                self.path_to_save,
+                self.label_correspondance_T_subs,
+                self._batch_args,
+            )
+            self.label_correspondance_T_subs = List(
+                [np.empty((0, 2), dtype="uint16") for t in range(self.total_times)]
+            )
+            printfancy("")
+            printfancy("Error correction finished", clear_prev=2)
 
     def on_close_plot_tracking(self, event):
         self.update_labels_batches()
