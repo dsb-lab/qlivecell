@@ -52,7 +52,10 @@ def get_lineage(graph, label):
             root = True
     return labels
 
-def get_daughters(labels, graph, lab):
+def get_all_lineages(mitotic_events):
+    roots = []
+    
+def get_all_daughters(labels, graph, lab):
     vals = np.array(list(graph.values()))
     keys = np.array(list(graph.keys()))
 
@@ -64,7 +67,7 @@ def get_daughters(labels, graph, lab):
         else:
             for idx in idxs:
                 labels.append(keys[idx])
-                get_daughters(labels, graph, labels[-1])
+                get_all_daughters(labels, graph, labels[-1])
             last = True
     return labels
 
@@ -74,7 +77,7 @@ def get_whole_lineage(mitotic_events, label):
     root = get_lineage_root(graph, label)
     labels = [root]
     lab = root
-    labels = get_daughters(labels, graph, lab)
+    labels = get_all_daughters(labels, graph, lab)
     return labels
 
 
