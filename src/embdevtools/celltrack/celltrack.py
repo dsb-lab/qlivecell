@@ -712,7 +712,6 @@ class CellTracking(object):
             )
             printfancy("")
 
-            if t != 132: continue
             Outlines = []
             Masks = []
             Labels = []
