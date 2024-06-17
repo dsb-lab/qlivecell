@@ -38,6 +38,21 @@ def get_lineage_root(graph, label):
             root = True
     return lab
 
+def get_mothers(graph, label):
+    # Check if this label is the root of the lineage
+    root = False
+    lab = label
+    labels = []
+
+    # If it's in the keys, this is not the root so look for the root
+    while not root:
+        if lab in list(graph.keys()):
+            lab = graph[lab]
+            labels.append(lab)
+        else:
+            root = True
+    return labels
+
 def get_lineage(graph, label):
     labels = [label]
     # Check if this label is the root of the lineage
@@ -71,6 +86,25 @@ def get_all_daughters(labels, graph, lab):
             last = True
     return labels
 
+def get_daughters(graph, lab):
+    vals = np.array(list(graph.values()))
+    keys = np.array(list(graph.keys()))
+    labels = []
+    idxs = np.where(vals == lab)[0]
+    last = False
+    while not last:
+        for idx in idxs:
+            labels.append(keys[idx])
+        last = True
+    return labels
+
+def get_lineage_ends(graph, lineage):
+    ends = []
+    mothers = np.unique(list(graph.values()))
+    for lab in lineage:
+        if lab not in mothers:
+            ends.append(lab)
+    return ends
 
 def get_whole_lineage(mitotic_events, label):
     graph = get_lineage_graph(mitotic_events)
