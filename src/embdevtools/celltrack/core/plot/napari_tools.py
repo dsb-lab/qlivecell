@@ -97,7 +97,7 @@ def get_daughters(graph, lab):
             labels.append(keys[idx])
         last = True
     return labels
-
+    
 def get_lineage_ends(graph, lineage):
     ends = []
     mothers = np.unique(list(graph.values()))
