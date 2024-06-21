@@ -106,6 +106,7 @@ def check_and_fill_batch_args(batch_args):
         - batch_size: 5
         - batch_overlap: 1
         - name_format: "{}"
+        - name_format_save: None
         - extension: ".tif"
 
     If a batch argument is provided in the input dictionary, it will override the corresponding default value.
@@ -124,6 +125,7 @@ def check_and_fill_batch_args(batch_args):
         "batch_size": 5,
         "batch_overlap": 1,
         "name_format": "{}",
+        "name_format_save": "{}",
         "extension": ".tif",
     }
     for sarg in batch_args.keys():
@@ -131,6 +133,10 @@ def check_and_fill_batch_args(batch_args):
             new_batch_args[sarg] = batch_args[sarg]
         except KeyError:
             raise Exception("key %s is not a correct batch argument" % sarg)
+
+    if "name_format_save" not in  batch_args.keys():
+        if "name_format" in  batch_args.keys():
+            new_batch_args["name_format_save"] = batch_args["name_format"]
 
     if new_batch_args["batch_size"] <= new_batch_args["batch_overlap"]:
         raise Exception("batch size has to be bigger than batch overlap")

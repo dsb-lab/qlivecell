@@ -459,7 +459,7 @@ def read_split_times(
 
 def substitute_labels(post_range_start, post_range_end, path_to_save, lcT, batch_args):
     post_range = prange(post_range_start, post_range_end)
-    name_format = batch_args["name_format"]
+    name_format = batch_args["name_format_save"]
     for postt in post_range:
         labs_stack = np.load(path_to_save + name_format.format(postt) + ".npy")
         new_labs_stack = labs_stack.copy()

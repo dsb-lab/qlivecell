@@ -342,7 +342,7 @@ class CellTracking(object):
             if ".npy" not in file:
                 files_to_remove.append(file)
             else:
-                if self._batch_args["name_format"].format("") not in file:
+                if self._batch_args["name_format_save"].format("") not in file:
                     if file in files:
                         files_to_remove.append(file)
 
@@ -406,7 +406,7 @@ class CellTracking(object):
             labels = read_split_times(
                 self.path_to_save,
                 self.batch_times_list_global,
-                name_format=self._batch_args["name_format"],
+                name_format=self._batch_args["name_format_save"],
                 extension=".npy",
             )
             end = time.time()
@@ -611,7 +611,7 @@ class CellTracking(object):
         labels = read_split_times(
             self.path_to_save,
             self.batch_times_list_global,
-            name_format=self._batch_args["name_format"],
+            name_format=self._batch_args["name_format_save"],
             extension=".npy",
         )
 
@@ -800,7 +800,7 @@ class CellTracking(object):
                 List([t]),
                 path=self.path_to_save,
                 filename=t,
-                name_format=self._batch_args["name_format"],
+                name_format=self._batch_args["name_format_save"],
                 split_times=False,
                 save_info=False,
             )
@@ -821,7 +821,7 @@ class CellTracking(object):
             if ".npy" not in file:
                 files_to_remove.append(file)
             else:
-                if self._batch_args["name_format"].format("") not in file:
+                if self._batch_args["name_format_save"].format("") not in file:
                     if file in files:
                         files_to_remove.append(file)
 
@@ -831,7 +831,7 @@ class CellTracking(object):
         file_sort_idxs = []
         for file in files:
             file_code = file.split(".")[0]
-            number_code = file_code[len(self._batch_args["name_format"].format("")) :]
+            number_code = file_code[len(self._batch_args["name_format_save"].format("")) :]
             file_sort_idxs.append(int(number_code))
         file_sort_idxs = np.argsort(file_sort_idxs)
         files = [files[i] for i in file_sort_idxs]
@@ -862,7 +862,7 @@ class CellTracking(object):
             labels = read_split_times(
                 self.path_to_save,
                 times,
-                name_format=self._batch_args["name_format"],
+                name_format=self._batch_args["name_format_save"],
                 extension=".npy",
             )
 
@@ -911,7 +911,7 @@ class CellTracking(object):
                 self.path_to_save,
                 times,
                 split_times=True,
-                name_format=self._batch_args["name_format"],
+                name_format=self._batch_args["name_format_save"],
             )
             printclear(1)
 
@@ -1219,7 +1219,7 @@ class CellTracking(object):
                 path=self.path_to_save,
                 filename=None,
                 split_times=True,
-                name_format=self._batch_args["name_format"],
+                name_format=self._batch_args["name_format_save"],
                 save_info=False,
             )
 
