@@ -831,7 +831,7 @@ class CellTracking(object):
         file_sort_idxs = []
         for file in files:
             file_code = file.split(".")[0]
-            number_code = file_code[len(self._batch_args["name_format_save"].format("")) :]
+            number_code = file_code[len(self._batch_args["name_format"].format("")) :]
             file_sort_idxs.append(int(number_code))
         file_sort_idxs = np.argsort(file_sort_idxs)
         files = [files[i] for i in file_sort_idxs]
