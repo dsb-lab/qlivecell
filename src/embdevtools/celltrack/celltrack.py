@@ -82,7 +82,9 @@ from .core.tools.save_tools import (load_cells, load_CT_info, read_split_times,
                                     save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels,
                                     save_cells_to_labels_stack, save_CT_info,
-                                    save_labels_stack, substitute_labels)
+                                    save_labels_stack, substitute_labels,
+                                    extract_integer_from_filename)
+
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
                                      isotropize_stack, isotropize_stackRGB)
 from .core.tools.tools import (check_and_fill_error_correction_args,
@@ -352,7 +354,7 @@ class CellTracking(object):
         file_sort_idxs = []
         for file in files:
             file_code = file.split(".")[0]
-            number_code = file_code[len(self._batch_args["name_format"].format("")) :]
+            number_code = extract_integer_from_filename(file_code, self._batch_args["name_format_save"])
             file_sort_idxs.append(int(number_code))
         file_sort_idxs = np.argsort(file_sort_idxs)
         files = [files[i] for i in file_sort_idxs]
@@ -831,7 +833,7 @@ class CellTracking(object):
         file_sort_idxs = []
         for file in files:
             file_code = file.split(".")[0]
-            number_code = file_code[len(self._batch_args["name_format"].format("")) :]
+            number_code = extract_integer_from_filename(file_code, self._batch_args["name_format_save"])
             file_sort_idxs.append(int(number_code))
         file_sort_idxs = np.argsort(file_sort_idxs)
         files = [files[i] for i in file_sort_idxs]
@@ -846,10 +848,8 @@ class CellTracking(object):
             first = (bsize * bnumber) - (boverlap * bnumber)
             last = first + bsize
             last = min(last, totalsize)
-
-            print(first)
-            print(last)
-            if first!=131: continue
+            
+            # if first!=131: continue
             # if last < 250: continue
 
             printfancy(

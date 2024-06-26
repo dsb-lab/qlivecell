@@ -1,6 +1,7 @@
 import dataclasses
 import json
 import os
+import re
 
 import numpy as np
 from numba import njit, prange
@@ -12,6 +13,49 @@ from .ct_tools import compute_labels_stack
 from .input_tools import tif_reader_5D
 from .tools import correct_path
 
+def extract_integer_from_filename(file_name, file_format):
+    """
+    Extract an integer from a filename based on a given format string.
+
+    The format string should use `{}` to denote the position where the integer
+    appears in the filename. The function will replace `{}` with a regex pattern
+    to capture an integer and match the filename.
+
+    Args:
+        file_name (str): The name of the file from which to extract the integer.
+        file_format (str): The format string that specifies the position of the integer.
+                           It should contain `{}` where the integer appears in the filename.
+
+    Returns:
+        int or None: The extracted integer if found, otherwise None.
+
+    Examples:
+        >>> extract_integer_from_filename("123_no_tracking", "{}_no_tracking")
+        123
+
+        >>> extract_integer_from_filename("file_456_data", "file_{}_data")
+        456
+
+        >>> extract_integer_from_filename("version_789_release", "version_{}_release")
+        789
+
+        >>> extract_integer_from_filename("data_abc.csv", "data_{}_abc.csv")
+        None  # No integer to match
+        
+        >>> extract_integer_from_filename("no_tracking_123", "{}_no_tracking")
+        None  # Format does not match the position of the integer
+    """
+    # Escape special regex characters in the format, except for {}
+    escaped_format = re.escape(file_format).replace(r'\{\}', r'(\d+)')
+    # Compile the regex
+    pattern = re.compile(escaped_format)
+    # Search for the pattern in the file name
+    match = pattern.search(file_name)
+    
+    if match:
+        return int(match.group(1))  # Extract the captured integer
+    else:
+        return None
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
