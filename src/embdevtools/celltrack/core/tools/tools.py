@@ -257,7 +257,7 @@ def get_outlines_masks_labels(label_img):
             continue
 
         outline = mask[hull.vertices]
-        outline[:] = outline[:, [1, 0]]
+        outline[:] = outline[:, [0, 1]]
 
         outlines.append(outline)
         masks.append(mask)
