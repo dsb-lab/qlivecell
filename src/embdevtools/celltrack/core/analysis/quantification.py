@@ -61,8 +61,7 @@ from scipy.optimize import curve_fit
 def linear_decay(z, slope, intercept):
     return slope * z + intercept
 
-
-def get_intenity_profile(CT, ch):
+def get_intenity_profile(CT, ch, cell_number_threshold=2, fit_everything=True):
     image_stack = CT.hyperstack[0, :, ch]
 
     intensity_per_z = np.zeros(CT.slices)
@@ -79,6 +78,8 @@ def get_intenity_profile(CT, ch):
         intensity_per_z_n[zc] += 1
         intensity_per_z[zc] += intensity
 
+    # intensity_per_z = np.array([intensity_per_z[zc]  if intensity_per_z_n[zc]>cell_number_threshold else 0 for zc in range(len(intensity_per_z))])
+    intensity_per_z_n[intensity_per_z_n < cell_number_threshold] = 0
     zs = np.where(intensity_per_z_n != 0)[0]
     data_z = intensity_per_z[zs] / intensity_per_z_n[zs]
     data_z_filled = []
@@ -110,11 +111,14 @@ def get_intenity_profile(CT, ch):
     image_stack = image_stack.astype("float32")
     correction_function = []
     for i in range(image_stack.shape[0]):
-        if i not in zs:
+        if fit_everything:
             correct_val = linear_decay(i, slope, intercept)
         else:
-            zid = np.where(z_positions == i)[0][0]
-            correct_val = intensity_profile[zid]
+            if i not in zs:
+                correct_val = linear_decay(i, slope, intercept)
+            else:
+                zid = np.where(z_positions == i)[0][0]
+                correct_val = intensity_profile[zid]
         correction_function.append(correct_val)
 
     return correction_function, intensity_profile, z_positions

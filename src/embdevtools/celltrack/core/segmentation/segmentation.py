@@ -165,7 +165,8 @@ def cell_segmentation3D_from2D(
                 Masks[z].append(ptsin)
 
         # Remove the outlines for the masks
-        for idrem in idxtoremove:
+        idxtoremove.sort()
+        for idrem in reversed(idxtoremove):
             outlines.pop(idrem)
 
         # Keep the outline for the current z-level

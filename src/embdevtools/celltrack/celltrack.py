@@ -1537,6 +1537,19 @@ class CellTracking(object):
         if jitcellslen == len(self.jitcells_selected):
             self.jitcells_selected.append(self.jitcells[-1])
 
+    def cut_cell_in_midz(self, cell, tid=0):
+        zplanes_ids = [i for i in range(len(cell.zs[tid]))]
+        mid_plane = np.rint(len(zplanes_ids)/2).astype("int64")
+        ids1 = [i for i in range(mid_plane)]
+        ids2 = [i for i in range(mid_plane, len(zplanes_ids))]
+        zs1 = [cell.zs[tid][i] for i in ids1]
+        zs2 = [cell.zs[tid][i] for i in ids2]
+        outlines1 = [cell.outlines[tid][i] for i in ids1]
+        outlines2 = [cell.outlines[tid][i] for i in ids2]
+        self._del_cell(cell.label)
+        self.append_cell_from_outlines_t(outlines1, zs1, cell.times[tid])
+        self.append_cell_from_outlines_t(outlines2, zs2, cell.times[tid])
+
     def add_cell(self, PACP):
         if self._err_corr_args["line_builder_mode"] == "points":
             lines = []
