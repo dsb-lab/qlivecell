@@ -1355,9 +1355,14 @@ class CellTracking(object):
         if sort:
             new_outlines = []
             for outline in outlines:
-                new_outline_sorted, _ = sort_point_sequence(
-                    outline, self._nearest_neighs, self.PACP.visualization
-                )
+                if hasattr(self, "PACP"):
+                    new_outline_sorted, _ = sort_point_sequence(
+                        outline, self._nearest_neighs, self.PACP.visualization
+                    )
+                else:
+                    new_outline_sorted, _ = sort_point_sequence(
+                        outline, self._nearest_neighs
+                    )
                 if new_outline_sorted is None:
                     return
                 else:
@@ -1537,7 +1542,8 @@ class CellTracking(object):
         if jitcellslen == len(self.jitcells_selected):
             self.jitcells_selected.append(self.jitcells[-1])
 
-    def cut_cell_in_midz(self, cell, tid=0):
+    def cut_cell_in_midz(self, lab, tid=0):
+        cell = self._get_cell(lab)
         zplanes_ids = [i for i in range(len(cell.zs[tid]))]
         mid_plane = np.rint(len(zplanes_ids)/2).astype("int64")
         ids1 = [i for i in range(mid_plane)]
@@ -1547,8 +1553,10 @@ class CellTracking(object):
         outlines1 = [cell.outlines[tid][i] for i in ids1]
         outlines2 = [cell.outlines[tid][i] for i in ids2]
         self._del_cell(cell.label)
+        self.update_label_attributes()
         self.append_cell_from_outlines_t(outlines1, zs1, cell.times[tid])
         self.append_cell_from_outlines_t(outlines2, zs2, cell.times[tid])
+        self.update_label_attributes()
 
     def add_cell(self, PACP):
         if self._err_corr_args["line_builder_mode"] == "points":

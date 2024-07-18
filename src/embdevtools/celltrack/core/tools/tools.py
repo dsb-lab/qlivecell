@@ -123,7 +123,7 @@ def increase_point_resolution(outline, min_outline_length):
     return newoutline_new
 
 
-def sort_point_sequence(outline, nearest_neighs, callback):
+def sort_point_sequence(outline, nearest_neighs, callback=lambda : None):
     min_dists, min_dist_idx = cKDTree(outline).query(outline, nearest_neighs)
     min_dists = min_dists[:, 1:]
     min_dist_idx = min_dist_idx[:, 1:]
@@ -257,7 +257,7 @@ def get_outlines_masks_labels(label_img):
             continue
 
         outline = mask[hull.vertices]
-        outline[:] = outline[:, [0, 1]]
+        outline[:] = outline[:, [1, 0]]
 
         outlines.append(outline)
         masks.append(mask)
