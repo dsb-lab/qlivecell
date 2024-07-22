@@ -283,7 +283,7 @@ def select_biggest_binary_cluster(grid):
         new_cluster = np.asarray(cluster)
         new_clusters.append(new_cluster)
         cluster_sizes.append(len(new_cluster))
-
+    if len(clusters)==0: return grid
     biggest_cluster = np.argmax(cluster_sizes)
     for cid, cluster in enumerate(new_clusters):
         if cid != biggest_cluster:
