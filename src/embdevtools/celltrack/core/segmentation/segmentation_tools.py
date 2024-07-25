@@ -116,7 +116,7 @@ def compute_overlap_measure(stack, labels, Masks, fullmat, relative, zneigh):
     return Zoverlaps_conv
 
 
-def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overlap_th):
+def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overlap_th, near_th_cellbarriers):
     Zsignals = nuclear_intensity_cell_z(stack, labels, Masks)
     Zoverlaps_conv = compute_overlap_measure(
         stack, labels, Masks, fullmat, relative, zneigh
@@ -151,6 +151,7 @@ def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overla
             else:
                 cellbarriers[-1].append(Zlevel_cb)
 
+        print(cellbarriers[-1])
         keep_checking = True
         # remove a deltabarrier if the distance between two barriers is lower than a threshold.
         while keep_checking:
@@ -159,7 +160,8 @@ def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overla
             Zlevel_cbs_to_add = []
             for i, Zlevel_cb in enumerate(cellbarriers[-1][0:-1]):
                 dif = cellbarriers[-1][i + 1] - Zlevel_cb
-                if dif < 5:
+                print(dif)
+                if dif < near_th_cellbarriers:
                     if i not in Zlevel_cbs_to_pop:
                         Zlevel_cbs_to_pop.append(i)
                     if i + 1 not in Zlevel_cbs_to_pop:
@@ -174,6 +176,7 @@ def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overla
                         * intensity[new_cb]
                     )
                     keep_checking = True
+            print(Zlevel_cbs_to_pop)
             Zlevel_cbs_to_pop.reverse()
             for i in Zlevel_cbs_to_pop:
                 cellbarriers[-1].pop(i)
@@ -205,10 +208,11 @@ def separate_concatenated_cells(stack, labels, Outlines, Masks, conc3D_args):
     relative = conc3D_args["relative_overlap"]
     zneigh = conc3D_args["z_neighborhood"]
     overlap_th = conc3D_args["overlap_gradient_th"]
-
+    near_th_cellbarriers = conc3D_args["near_th_cellbarriers"]
+    
     Zlabel_l, Zlabel_z = label_per_z(stack.shape[0], labels)
     cellbarriers = detect_cell_barriers(
-        stack, labels, Masks, fullmat, relative, zneigh, overlap_th
+        stack, labels, Masks, fullmat, relative, zneigh, overlap_th, near_th_cellbarriers
     )
     zids_remove = []
     labs_remove = []

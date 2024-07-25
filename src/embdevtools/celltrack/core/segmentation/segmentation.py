@@ -418,6 +418,7 @@ def check_and_fill_concatenation3D_args(concatenation3D_args):
         "use_full_matrix_to_compute_overlap": True,
         "z_neighborhood": 2,
         "overlap_gradient_th": 0.3,
+        "near_th_cellbarriers": 4,
         "min_cell_planes": 0,
     }
 

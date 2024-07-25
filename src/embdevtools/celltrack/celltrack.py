@@ -639,7 +639,8 @@ class CellTracking(object):
         printfancy("")
         printfancy("computing tracking...")
 
-        self.cell_tracking()
+        if self.total_times > 2:
+            self.cell_tracking()
 
         printclear(2)
         print("###############           TRACKING FINISHED           ################")
@@ -754,13 +755,14 @@ class CellTracking(object):
             outlines, masks, labels = cell_segmentation3D(
                 stack_seg, self._seg_args, self._seg_method_args
             )
+
             if self._seg_args["make_isotropic"][0]:
                 outlines = [outlines[i] for i in ori_idxs]
                 masks = [masks[i] for i in ori_idxs]
                 labels = [labels[i] for i in ori_idxs]
 
             if not self.segment3D:
-                stack = self.hyperstack[0, :, self.channels_order[0], :, :]
+                stack = self.hyperstack[t, :, self.channels_order[0], :, :]
                 # outlines and masks are modified in place
                 labels = concatenate_to_3D(
                     stack,
