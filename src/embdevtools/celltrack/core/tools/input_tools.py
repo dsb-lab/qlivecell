@@ -192,19 +192,20 @@ def tif_reader_5D(path_to_file):
         imagej_metadata = tif.imagej_metadata
         tags = tif.pages[0].tags
 
+        
         try:
             frames = imagej_metadata["frames"]
-        except KeyError:
+        except:
             frames = 1
 
         try:
             slices = imagej_metadata["slices"]
-        except KeyError:
+        except:
             slices = 1
 
         try:
             channels = imagej_metadata["channels"]
-        except KeyError:
+        except:
             channels = 1
 
         hyperstack = np.reshape(
@@ -215,19 +216,19 @@ def tif_reader_5D(path_to_file):
         try:
             npix, unit = tags["XResolution"].value
             xres = unit / npix
-        except KeyError:
+        except:
             xres = 1
 
         try:
             npix, unit = tags["YResolution"].value
             yres = unit / npix
-        except KeyError:
+        except:
             yres = 1
 
         try:
             res_unit = tags["ResolutionUnit"].value
-        except KeyError:
-            yres = 1
+        except:
+            res_unit = 1
 
         try:
             zres = imagej_metadata["spacing"]
