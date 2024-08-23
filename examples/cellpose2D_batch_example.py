@@ -1,5 +1,5 @@
 ### LOAD PACKAGE ###
-from embdevtools import get_file_name, CellTracking, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels, tif_reader_5D
+from qlivecell import get_file_name, cellSegTrack, save_3Dstack, save_4Dstack, get_file_names, tif_reader_5D
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
 # embcode = "E14 72H DMSO BRA488 SOX2647 OCT4555 DAPI2"
@@ -69,7 +69,7 @@ batch_args = {
 
 if __name__ == "__main__":
 
-    CTB = CellTracking(
+    CTB = cellSegTrack(
         path_data,
         path_save,
         segmentation_args=segmentation_args,

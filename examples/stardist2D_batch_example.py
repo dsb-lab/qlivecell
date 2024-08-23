@@ -1,5 +1,5 @@
 ### LOAD PACKAGE ###
-from embdevtools import get_file_name, CellTracking, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels, tif_reader_5D, arboretum_napari
+from qlivecell import get_file_name, cellSegTrack, save_3Dstack, save_4Dstack, get_file_names, tif_reader_5D, arboretum_napari
 from numba import prange
 import numpy as np
 
@@ -77,7 +77,7 @@ batch_args = {
 
 if __name__ == "__main__":
 
-    CTB = CellTracking(
+    CTB = cellSegTrack(
         path_data,
         path_save,
         segmentation_args=segmentation_args,
@@ -102,6 +102,3 @@ if __name__ == "__main__":
     }
     CTB.plot_tracking(plot_args=plot_args, block=False)
 
-# arboretum_napari(CTB)
-c1 = CTB._get_cell(46)
-c2 = CTB._get_cell(63)

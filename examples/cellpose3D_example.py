@@ -1,8 +1,8 @@
 ### LOAD PACKAGE ###
-# from embdevtools import get_file_name, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
+# from embdevtools import get_file_name, read_img_with_resolution, cellSegTrack, load_cellSegTrack, save_4Dstack
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_name, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack
+from qlivecell import get_file_name, read_img_with_resolution, cellSegTrack, load_cellSegTrack, save_4Dstack
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/2h_claire_ERK-KTR_MKATE2/movies/registered/'
@@ -53,8 +53,8 @@ error_correction_args = {
 }
 
 
-### CREATE CELLTRACKING CLASS ###
-CT = CellTracking(
+### CREATE cellSegTrack CLASS ###
+CT = cellSegTrack(
     IMGS[:1], 
     path_save, 
     xyresolution=xyres, 

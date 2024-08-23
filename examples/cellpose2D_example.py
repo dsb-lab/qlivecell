@@ -1,6 +1,6 @@
 ### LOAD PACKAGE ###
 
-from embdevtools import get_file_name, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, get_file_names, save_4Dstack_labels
+from qlivecell import get_file_name, read_img_with_resolution, cellSegTrack, load_cellSegTrack, save_4Dstack, get_file_names, save_4Dstack_labels
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/'
@@ -80,7 +80,7 @@ error_correction_args = {
 
 
 ### CREATE CELL TRACKING CLASS ###
-CT = CellTracking(
+CT = cellSegTrack(
     IMGS[:3,:30], 
     path_save, 
     xyresolution=xyres, 

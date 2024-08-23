@@ -6,7 +6,7 @@ from numba.types import Array, ListType, float32, int64, uint16
 
 
 @dataclass
-class CellTracking_info:
+class cellSegTrack_info:
     xyresolution: float
     zresolution: float
     times: list

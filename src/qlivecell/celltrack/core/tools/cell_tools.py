@@ -2,7 +2,7 @@ import numpy as np
 from numba import int64, njit, prange, uint16
 from numba.typed import List
 
-from embdevtools.celltrack.core.dataclasses import jitCell
+from qlivecell.celltrack.core.dataclasses import jitCell
 
 from ..dataclasses import Cell, jitCell
 from .batch_tools import reorder_list

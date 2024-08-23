@@ -22,7 +22,7 @@ from .core.analysis.quantification import (correct_drift, extract_fluoro,
                                            plot_channel_quantification_bar,
                                            plot_channel_quantification_hist,
                                            quantify_channels)
-from .core.dataclasses import (CellTracking_info, backup_CellTrack,
+from .core.dataclasses import (cellSegTrack_info, backup_CellTrack,
                                construct_Cell_from_jitCell,
                                construct_jitCell_from_Cell, jitCell)
 from .core.multiprocessing import (multiprocess_add_tasks, multiprocess_end,
@@ -72,13 +72,14 @@ from .core.tools.cell_tools import (_predefine_jitcell_inputs, create_cell,
                                     extract_jitcells_from_label_stack,
                                     find_t_discontinuities_jit,
                                     find_z_discontinuities_jit, update_cell,
-                                    update_jitcell, update_jitcells)
+                                    update_jitcell, update_jitcells,
+                                    compute_movement_cell)
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack,
                                   find_discontinuities_unique_labels_T)
 from .core.tools.input_tools import (get_file_name, get_file_names,
                                      separate_times_hyperstack, tif_reader_5D)
-from .core.tools.save_tools import (load_cells, load_CT_info, read_split_times,
+from .core.tools.save_tools import (load_CT_info, read_split_times,
                                     save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels,
                                     save_cells_to_labels_stack, save_CT_info,
@@ -121,7 +122,7 @@ LINE_UP = "\033[1A"
 LINE_CLEAR = "\x1b[2K"
 
 
-class CellTracking(object):
+class cellSegTrack(object):
     def __init__(
         self,
         pthtodata,
@@ -306,7 +307,7 @@ class CellTracking(object):
             [list(mitocell) for mitocell in mitoev] for mitoev in self.mitotic_events
         ]
         apo_evs = [list(apoev) for apoev in self.apoptotic_events]
-        CT_info = CellTracking_info(
+        CT_info = cellSegTrack_info(
             self.metadata["XYresolution"],
             self.metadata["Zresolution"],
             self.total_times,

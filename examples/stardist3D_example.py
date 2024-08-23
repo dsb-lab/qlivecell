@@ -1,7 +1,7 @@
 ### LOAD PACKAGE ###
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_name, read_img_with_resolution, CellTracking, load_CellTracking, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack
+from qlivecell import get_file_name, read_img_with_resolution, cellSegTrack, load_cellSegTrack, save_4Dstack, save_4Dstack_labels, norm_stack_per_z, compute_labels_stack
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/PH3/movies/'
@@ -67,8 +67,8 @@ error_correction_args = {
 }
 
 
-### CREATE CELLTRACKING CLASS ###
-CT = CellTracking(
+### CREATE cellSegTrack CLASS ###
+CT = cellSegTrack(
     IMGS, 
     path_save, 
     xyresolution=xyres, 
@@ -104,7 +104,7 @@ CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
 
 # ### LOAD PREVIOUSLY SAVED RESULTS ###
-# CT=load_CellTracking(
+# CT=load_cellSegTrack(
 #         IMGS, 
 #         path_save, 
 #         xyresolution=xyres, 

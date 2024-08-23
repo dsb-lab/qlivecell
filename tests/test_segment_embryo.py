@@ -4,7 +4,7 @@ import sys
 import matplotlib.pyplot as plt
 from cellpose.io import imread
 
-sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/CellTracking")
+sys.path.insert(0, "/home/pablo/Desktop/PhD/projects/cellSegTrack")
 from src.cytodonut.core.utils_ERKKTR import segment_embryo
 
 home = os.path.expanduser("~")

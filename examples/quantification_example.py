@@ -1,5 +1,5 @@
 ### LOAD PACKAGE ###
-from embdevtools import get_file_name, CellTracking, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels, tif_reader_5D, remove_small_cells
+from qlivecell import get_file_name, cellSegTrack, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels, tif_reader_5D, remove_small_cells
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
 
 
@@ -64,7 +64,7 @@ except:
 
 
 
-CT = CellTracking(
+CT = cellSegTrack(
     path_data,
     path_save,
     segmentation_args=segmentation_args,
@@ -90,7 +90,7 @@ CT.plot_tracking(plot_args=plot_args)
 
 
 # Remove debris
-from embdevtools import remove_small_cells, plot_cell_sizes
+from qlivecell import remove_small_cells, plot_cell_sizes
 plot_cell_sizes(CT, bw=50, bins=30)
 remove_small_cells(CT, 140)
 
@@ -98,6 +98,6 @@ plot_cell_sizes(CT, bw=80, bins=30)
 CT.plot_tracking(plot_args=plot_args)
 
 # Channels quantification
-from embdevtools import plot_channel_quantification_bar, plot_channel_quantification_hist, quantify_channels
+from qlivecell import plot_channel_quantification_bar, plot_channel_quantification_hist, quantify_channels
 plot_channel_quantification_bar(CT, channel_labels=["SOX2","OCT4","T","DAPI"])
 plot_channel_quantification_hist(CT, channel_labels=["SOX2","OCT4","T","DAPI"], bins=25, log=True)

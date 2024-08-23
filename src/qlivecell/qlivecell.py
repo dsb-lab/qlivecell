@@ -1,4 +1,4 @@
-from .celltrack.celltrack import (CellTracking, compute_labels_stack,
+from .celltrack.celltrack import (cellSegTrack, compute_labels_stack,
                                   construct_RGB, get_default_args,
                                   get_file_name, get_file_names,
                                   isotropize_hyperstack, norm_stack_per_z,

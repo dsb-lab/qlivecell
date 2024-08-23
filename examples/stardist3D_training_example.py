@@ -10,7 +10,7 @@ import numpy as np
 
 import sys
 sys.path.append('/home/pablo/Desktop/PhD/projects/embdevtools/src')
-from embdevtools import get_file_names, get_file_name, read_img_with_resolution
+from qlivecell import get_file_names, get_file_name, read_img_with_resolution
 from csbdeep.utils import normalize
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###

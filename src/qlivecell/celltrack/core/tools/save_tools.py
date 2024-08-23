@@ -7,7 +7,7 @@ import numpy as np
 from numba import njit, prange
 from scipy.spatial import ConvexHull
 
-from ..dataclasses import Cell, CellTracking_info
+from ..dataclasses import Cell, cellSegTrack_info
 from .cell_tools import create_cell
 from .ct_tools import compute_labels_stack
 from .input_tools import tif_reader_5D
@@ -111,7 +111,7 @@ class CTinfoJSONDecoder(json.JSONDecoder):
             nactions = d["nactions"]
             args = d["args"]
 
-            return CellTracking_info(
+            return cellSegTrack_info(
                 xyresolution,
                 zresolution,
                 times,
