@@ -69,7 +69,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size': 10,
+    'batch_size': 30,
     'batch_overlap':1,
     'name_format':"{}",
     'extension':".tif",
@@ -95,11 +95,13 @@ if __name__ == "__main__":
         'plot_layout': (1,1),
         'plot_overlap': 1,
         'masks_cmap': 'tab10',
-        'plot_stack_dims': (512, 512), 
+        'plot_stack_dims': (256, 256), 
         'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
         'channels':[1],
         'min_outline_length':75
     }
-    CTB.plot_tracking(plot_args=plot_args)
+    CTB.plot_tracking(plot_args=plot_args, block=False)
 
 # arboretum_napari(CTB)
+c1 = CTB._get_cell(46)
+c2 = CTB._get_cell(63)
