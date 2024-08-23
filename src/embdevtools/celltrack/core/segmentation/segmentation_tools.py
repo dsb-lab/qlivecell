@@ -151,7 +151,6 @@ def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overla
             else:
                 cellbarriers[-1].append(Zlevel_cb)
 
-        print(cellbarriers[-1])
         keep_checking = True
         # remove a deltabarrier if the distance between two barriers is lower than a threshold.
         while keep_checking:
@@ -160,7 +159,7 @@ def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overla
             Zlevel_cbs_to_add = []
             for i, Zlevel_cb in enumerate(cellbarriers[-1][0:-1]):
                 dif = cellbarriers[-1][i + 1] - Zlevel_cb
-                print(dif)
+
                 if dif < near_th_cellbarriers:
                     if i not in Zlevel_cbs_to_pop:
                         Zlevel_cbs_to_pop.append(i)
@@ -176,7 +175,7 @@ def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overla
                         * intensity[new_cb]
                     )
                     keep_checking = True
-            print(Zlevel_cbs_to_pop)
+
             Zlevel_cbs_to_pop.reverse()
             for i in Zlevel_cbs_to_pop:
                 cellbarriers[-1].pop(i)

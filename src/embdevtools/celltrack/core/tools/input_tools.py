@@ -191,7 +191,6 @@ def tif_reader_5D(path_to_file):
         hyperstack = tif.asarray()
         imagej_metadata = tif.imagej_metadata
         tags = tif.pages[0].tags
-
         
         try:
             frames = imagej_metadata["frames"]
@@ -208,10 +207,13 @@ def tif_reader_5D(path_to_file):
         except:
             channels = 1
 
-        hyperstack = np.reshape(
-            hyperstack, (frames, slices, channels, *hyperstack.shape[-2:])
-        )
-
+        try:
+            hyperstack = np.reshape(
+                hyperstack, (frames, slices, channels, *hyperstack.shape[-2:])
+            )
+        except:
+            print("WARNING: Could not interpret metadata to reshape hyperstack. Returning raw hyperstack")
+            print("returning array with shape", hyperstack.shape)
         # parse X, Y resolution
         try:
             npix, unit = tags["XResolution"].value
@@ -240,6 +242,8 @@ def tif_reader_5D(path_to_file):
         else:
             xyres = np.mean([xres, yres])
 
+    if imagej_metadata is None:
+        imagej_metadata = {}
     imagej_metadata["XYresolution"] = xyres
     imagej_metadata["Zresolution"] = zres
     imagej_metadata["ResolutionUnit"] = res_unit

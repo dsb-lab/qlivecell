@@ -762,7 +762,7 @@ class CellTracking(object):
                 labels = [labels[i] for i in ori_idxs]
 
             if not self.segment3D:
-                stack = self.hyperstack[t, :, self.channels_order[0], :, :]
+                stack = self.hyperstack[0, :, self.channels_order[0], :, :]
                 # outlines and masks are modified in place
                 labels = concatenate_to_3D(
                     stack,
