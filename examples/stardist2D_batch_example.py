@@ -100,5 +100,7 @@ if __name__ == "__main__":
         'channels':[1],
         'min_outline_length':75
     }
-    CTB.plot_tracking(plot_args=plot_args, block=False)
+    CTB.plot_tracking(plot_args=plot_args)
+
+arboretum_napari(CTB)
 

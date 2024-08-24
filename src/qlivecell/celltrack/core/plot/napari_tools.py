@@ -116,6 +116,7 @@ def get_whole_lineage(mitotic_events, label):
 
 
 def arboretum_napari(CTB):
+
     controls, colors = CTB._plot_args["labels_colors"].get_map()
     custom_cmap = vispy.color.Colormap(colors, controls)
 
@@ -129,7 +130,7 @@ def arboretum_napari(CTB):
     properties = {"colors": colors}
 
     viewer = napari.view_image(
-        CTB.plot_stacks,
+        CTB.hyperstack[:,:,CTB.channels_order[0]],
         name="hyperstack",
         scale=(
             CTB.metadata["Zresolution"],
