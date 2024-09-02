@@ -11,9 +11,11 @@ import numpy as np
 # path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/20230607_CAG_H2B_GFP_16_cells_stack2_registered/test/'
 # path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
-path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/Lineage_2hr_082119_p1/'
-path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/ctobjects/'
+# path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/Lineage_2hr_082119_p1/'
+# path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/ctobjects/'
 
+path_data = "/home/pablo/test_data/rigid-files/rigid_070.tif"
+path_save = "/home/pablo/test_data/segtrack/"
 
 try: 
     files = get_file_names(path_save)
@@ -23,8 +25,6 @@ except:
 
 import os
 
-files = get_file_names(path_data)
-# path_data = path_data+files[2]
 
 ### LOAD STARDIST MODEL ###
 from stardist.models import StarDist2D
@@ -58,7 +58,7 @@ plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    # 'plot_stack_dims': (256, 256), 
+    # 'plot_stack_dims': (512, 512), 
     'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
     'channels':[0]
 }
@@ -86,21 +86,21 @@ if __name__ == "__main__":
         error_correction_args=error_correction_args,
         plot_args=plot_args,
         batch_args=batch_args,
-        channels=[1, 0]
+        channels=[0]
     )
 
-    CTB.load()
+    CTB.metadata["XYresolution"] = 0.341
+    CTB.metadata["Zresolution"] = 2.0
+    CTB.run()
 
     plot_args = {
         'plot_layout': (1,1),
         'plot_overlap': 1,
         'masks_cmap': 'tab10',
-        'plot_stack_dims': (256, 256), 
+        'plot_stack_dims': (512, 512), 
         'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-        'channels':[1],
+        'channels':[0],
         'min_outline_length':75
     }
     CTB.plot_tracking(plot_args=plot_args)
-
-arboretum_napari(CTB)
 

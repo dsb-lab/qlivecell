@@ -212,7 +212,20 @@ def tif_reader_5D(path_to_file):
                 hyperstack, (frames, slices, channels, *hyperstack.shape[-2:])
             )
         except:
-            print("WARNING: Could not interpret metadata to reshape hyperstack. Returning raw hyperstack")
+            print("WARNING: Could not interpret metadata to reshape hyperstack. Making up dimensions")
+            print("raw array with shape", hyperstack.shape)
+            if len(hyperstack.shape)==2:
+                hyperstack = np.reshape(
+                hyperstack, (1, 1, 1, *hyperstack.shape[-2:])
+                )
+            elif len(hyperstack.shape)==3:
+                hyperstack = np.reshape(
+                hyperstack, (1, hyperstack.shape[0], 1, *hyperstack.shape[-2:])
+                )
+            elif len(hyperstack.shape)==4:
+                hyperstack = np.reshape(
+                hyperstack, (hyperstack.shape[0], hyperstack.shape[1], 1,*hyperstack.shape[-2:])
+                )
             print("returning array with shape", hyperstack.shape)
         # parse X, Y resolution
         try:
