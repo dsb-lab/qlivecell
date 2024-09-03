@@ -51,9 +51,7 @@ times = [i for i in range(cST.times)]
 norm_time = np.zeros(cST.times)
 for i in range(len(cells)):
     cell_times = np.array(list(cells[i].times))
-    print(cell_times)
     movement =  movements_filtered[i]
-    print(movement)
     global_movements[cell_times[:-1]] += movement
     norm_time[cell_times[:-1]] += 1
 global_movements /= norm_time
