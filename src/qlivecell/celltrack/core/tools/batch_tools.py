@@ -134,8 +134,8 @@ def check_and_fill_batch_args(batch_args):
         except KeyError:
             raise Exception("key %s is not a correct batch argument" % sarg)
 
-    if "name_format_save" not in  batch_args.keys():
-        if "name_format" in  batch_args.keys():
+    if "name_format_save" not in batch_args.keys():
+        if "name_format" in batch_args.keys():
             new_batch_args["name_format_save"] = batch_args["name_format"]
 
     if new_batch_args["batch_size"] <= new_batch_args["batch_overlap"]:
@@ -406,18 +406,18 @@ def update_unique_labels_T(
     This function updates the unique labels for each time point based on the provided label correspondences.
 
     The `post_range_start` parameter specifies the starting index of the range of time points to update.
-    
+
     The `post_range_end` parameter specifies the ending index (exclusive) of the range of time points to update.
-    
+
     The `label_correspondance_T` parameter is a Numba typed list storing the label changes for each time point.
     Each element of the list is a 2D ndarray that stores the label changes for that time. Label_correspondance_T is updated in-place.
-    
+
     The `unique_labels_T` parameter is a Numba typed list storing a typed list for each time.
     Each sublist stores the labels for each time. T is the label type.
 
     For each time point within the specified range, this function iterates over the label correspondences.
     For each correspondence, it updates the unique labels list if the pre-label is found.
-    
+
     This function modifies the unique_labels_T list in place.
 
     Example
@@ -463,18 +463,18 @@ def update_new_label_correspondance(
     This function updates new label correspondences based on existing label correspondences.
 
     The `post_range_start` parameter specifies the starting index of the range of time points to update.
-    
+
     The `post_range_end` parameter specifies the ending index (exclusive) of the range of time points to update.
-    
+
     The `label_correspondance_T` parameter is a Numba typed list storing the label changes for each time point.
     Each element of the list is a 2D ndarray that stores the label changes for that time.
-    
+
     The `new_label_correspondance_T` parameter is a Numba typed list storing the updated label changes for each time point.
     Each element of the list is a 2D ndarray that stores the updated label changes for that time.
 
     For each time point within the specified range, this function iterates over the label correspondences.
     For each correspondence, it updates the new label correspondences if the post-label is found.
-    
+
     This function modifies the new_label_correspondance_T list in place.
 
     Example
@@ -494,6 +494,7 @@ def update_new_label_correspondance(
             post_label = lab_change[1]
             idx = np.where(new_label_correspondance_T[postt][:, 0] == post_label)
             new_label_correspondance_T[postt][idx[0][0], 0] = pre_label
+
 
 def update_label_correspondance_subs(
     post_range_start,
@@ -525,16 +526,16 @@ def update_label_correspondance_subs(
     This function updates label correspondences for a subset of time points based on new label changes. Does the same as update_new_label_correspondance but without assuming that every label is present.
 
     The `post_range_start` parameter specifies the starting index of the range of time points to update.
-    
+
     The `post_range_end` parameter specifies the ending index (exclusive) of the range of time points to update.
-    
+
     The `label_correspondance_T_subs` parameter is a list of label correspondences for each time point.
-    
+
     The `new_label_correspondance_T` parameter is a list of updated label changes for each time point.
 
     For each time point within the specified range, this function iterates over the new label correspondences.
     It updates the label correspondences based on the provided new label changes.
-    
+
     This function returns the updated list of label correspondences.
 
     Example
@@ -613,7 +614,7 @@ def fill_label_correspondance_T_subs(
     This function fills label correspondences for a subset of time points with new label changes.
 
     The `label_correspondance_T_subs` parameter is a list of label correspondences for a subset of time points.
-    
+
     The `new_label_correspondance_T` parameter is a list of new label changes for each time point.
 
     For each time point in the subset, this function iterates over the new label changes.
@@ -669,9 +670,9 @@ def remove_static_labels_label_correspondance(
     This function removes static labels from label correspondences for a range of time points.
 
     The `post_range_start` parameter specifies the starting index of the range of time points to process.
-    
+
     The `post_range_end` parameter specifies the ending index (exclusive) of the range of time points to process.
-    
+
     The `label_correspondance_T` parameter is a list of label correspondences for each time point.
 
     For each time point within the specified range, this function iterates over the label correspondences.
@@ -757,7 +758,10 @@ def add_lab_change(
             label_correspondance_T[t][idx[0][0], 1] = lab_change[0][1]
 
             # If pre_label == post_label, remove it as it's redundant
-            if label_correspondance_T[t][idx[0][0], 0] == label_correspondance_T[t][idx[0][0], 1]:
+            if (
+                label_correspondance_T[t][idx[0][0], 0]
+                == label_correspondance_T[t][idx[0][0], 1]
+            ):
                 label_correspondance_T[t] = numba_delete(
                     label_correspondance_T[t], idx[0][0]
                 )
@@ -919,6 +923,7 @@ def update_blocked_cells(blocked_cells, lab_change):
         if blabel == lab_change[0][0]:
             blocked_cells[blid] = lab_change[0][1]
 
+
 @njit(parallel=False)
 def get_mito_cells_to_remove(lab, t, mitotic_events):
     """
@@ -967,6 +972,7 @@ def get_mito_cells_to_remove(lab, t, mitotic_events):
             mevs_remove.append(ev)
     return mevs_remove[1:]
 
+
 @njit()
 def check_and_remove_if_cell_mitotic(lab, t, mitotic_events):
     """
@@ -1008,6 +1014,7 @@ def check_and_remove_if_cell_mitotic(lab, t, mitotic_events):
         ev = mevs_remove[i]
         _ = mitotic_events.pop(ev)
     return
+
 
 @njit(parallel=False)
 def get_apo_cells_to_remove(lab, t, apoptotic_events):
@@ -1056,6 +1063,7 @@ def get_apo_cells_to_remove(lab, t, apoptotic_events):
             aevs_remove.append(ev)
     return aevs_remove[1:]
 
+
 @njit()
 def check_and_remove_if_cell_apoptotic(lab, t, apoptotic_events):
     """
@@ -1096,6 +1104,7 @@ def check_and_remove_if_cell_apoptotic(lab, t, apoptotic_events):
         ev = aevs_remove[i]
         _ = apoptotic_events.pop(ev)
     return
+
 
 @njit(parallel=False)
 def extract_unique_labels_T(labels, start, times):
@@ -1489,6 +1498,7 @@ def setdiff1d_nb(arr1, arr2):
             j += 1
     return result[:j]
 
+
 @njit(parallel=False)
 def in1d_nb(matrix, index_to_remove):
     """
@@ -1529,7 +1539,10 @@ def in1d_nb(matrix, index_to_remove):
 
     return out
 
-def _update_mito_apo_events(apoptotic_events, mitotic_events, new_label_correspondance_T):
+
+def _update_mito_apo_events(
+    apoptotic_events, mitotic_events, new_label_correspondance_T
+):
     """
     Update labels in apoptotic and mitotic events based on a new label correspondence.
 
@@ -1549,23 +1562,15 @@ def _update_mito_apo_events(apoptotic_events, mitotic_events, new_label_correspo
     """
     for apo_ev in apoptotic_events:
         if apo_ev[0] in new_label_correspondance_T[apo_ev[1]][:, 0]:
-            idx = np.where(
-                new_label_correspondance_T[apo_ev[1]][:, 0] == apo_ev[0]
-            )
+            idx = np.where(new_label_correspondance_T[apo_ev[1]][:, 0] == apo_ev[0])
             new_lab = new_label_correspondance_T[apo_ev[1]][idx[0][0], 1]
             apo_ev[0] = new_lab
 
     for mito_ev in mitotic_events:
         for mito_cell in mito_ev:
-            if (
-                mito_cell[0]
-                in new_label_correspondance_T[mito_cell[1]][:, 0]
-            ):
+            if mito_cell[0] in new_label_correspondance_T[mito_cell[1]][:, 0]:
                 idx = np.where(
-                    new_label_correspondance_T[mito_cell[1]][:, 0]
-                    == mito_cell[0]
+                    new_label_correspondance_T[mito_cell[1]][:, 0] == mito_cell[0]
                 )
-                new_lab = new_label_correspondance_T[mito_cell[1]][
-                    idx[0][0], 1
-                ]
+                new_lab = new_label_correspondance_T[mito_cell[1]][idx[0][0], 1]
                 mito_cell[0] = new_lab

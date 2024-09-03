@@ -116,7 +116,9 @@ def compute_overlap_measure(stack, labels, Masks, fullmat, relative, zneigh):
     return Zoverlaps_conv
 
 
-def detect_cell_barriers(stack, labels, Masks, fullmat, relative, zneigh, overlap_th, near_th_cellbarriers):
+def detect_cell_barriers(
+    stack, labels, Masks, fullmat, relative, zneigh, overlap_th, near_th_cellbarriers
+):
     Zsignals = nuclear_intensity_cell_z(stack, labels, Masks)
     Zoverlaps_conv = compute_overlap_measure(
         stack, labels, Masks, fullmat, relative, zneigh
@@ -208,10 +210,17 @@ def separate_concatenated_cells(stack, labels, Outlines, Masks, conc3D_args):
     zneigh = conc3D_args["z_neighborhood"]
     overlap_th = conc3D_args["overlap_gradient_th"]
     near_th_cellbarriers = conc3D_args["near_th_cellbarriers"]
-    
+
     Zlabel_l, Zlabel_z = label_per_z(stack.shape[0], labels)
     cellbarriers = detect_cell_barriers(
-        stack, labels, Masks, fullmat, relative, zneigh, overlap_th, near_th_cellbarriers
+        stack,
+        labels,
+        Masks,
+        fullmat,
+        relative,
+        zneigh,
+        overlap_th,
+        near_th_cellbarriers,
     )
     zids_remove = []
     labs_remove = []

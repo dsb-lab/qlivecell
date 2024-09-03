@@ -1,11 +1,12 @@
 import numpy as np
 from matplotlib import cm
+from numba import njit
 from skimage.transform import resize
 
 from ..tools.ct_tools import get_cell_color, set_cell_color
 from ..tools.tools import printfancy
 from .plot_iters import CyclicList
-from numba import njit
+
 
 def check_and_fill_plot_args(plot_args, stack_dims):
     if "plot_layout" not in plot_args.keys():
@@ -154,7 +155,7 @@ def adjust_contrast(image, min_contrast, max_contrast):
 #             -1,
 #         )
 
+
 @njit
 def get_dif_nested_list(nested_list1, nested_list2):
     return [x for x in nested_list1 if x not in nested_list2]
-

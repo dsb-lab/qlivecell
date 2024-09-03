@@ -22,7 +22,7 @@ from .core.analysis.quantification import (correct_drift, extract_fluoro,
                                            plot_channel_quantification_bar,
                                            plot_channel_quantification_hist,
                                            quantify_channels)
-from .core.dataclasses import (cellSegTrack_info, backup_CellTrack,
+from .core.dataclasses import (backup_CellTrack, cellSegTrack_info,
                                construct_Cell_from_jitCell,
                                construct_jitCell_from_Cell, jitCell)
 from .core.multiprocessing import (multiprocess_add_tasks, multiprocess_end,
@@ -48,8 +48,8 @@ from .core.segmentation.segmentation_tools import (assign_labels,
 from .core.segmentation.segmentation_training import (
     check_and_fill_train_segmentation_args, get_training_set,
     train_CellposeModel, train_StardistModel)
-from .core.tools.batch_tools import (_init_hints, add_lab_change,
-                                     check_and_fill_batch_args,
+from .core.tools.batch_tools import (_init_hints, _update_mito_apo_events,
+                                     add_lab_change, check_and_fill_batch_args,
                                      check_and_remove_if_cell_apoptotic,
                                      check_and_remove_if_cell_mitotic,
                                      combine_lists, compute_batch_times,
@@ -66,42 +66,41 @@ from .core.tools.batch_tools import (_init_hints, add_lab_change,
                                      update_label_correspondance_subs,
                                      update_mito_cells,
                                      update_new_label_correspondance,
-                                     update_unique_labels_T,
-                                     _update_mito_apo_events)
-from .core.tools.cell_tools import (_predefine_jitcell_inputs, create_cell,
+                                     update_unique_labels_T)
+from .core.tools.cell_tools import (_predefine_jitcell_inputs,
+                                    compute_movement_cell, create_cell,
                                     extract_jitcells_from_label_stack,
                                     find_t_discontinuities_jit,
                                     find_z_discontinuities_jit, update_cell,
-                                    update_jitcell, update_jitcells,
-                                    compute_movement_cell)
+                                    update_jitcell, update_jitcells)
 from .core.tools.ct_tools import (check_and_override_args,
                                   compute_labels_stack, compute_point_stack,
                                   find_discontinuities_unique_labels_T)
 from .core.tools.input_tools import (get_file_name, get_file_names,
                                      separate_times_hyperstack, tif_reader_5D)
-from .core.tools.save_tools import (load_CT_info, read_split_times,
+from .core.tools.save_tools import (extract_integer_from_filename,
+                                    load_CT_info, read_split_times,
                                     save_3Dstack, save_4Dstack,
                                     save_4Dstack_labels,
                                     save_cells_to_labels_stack, save_CT_info,
-                                    save_labels_stack, substitute_labels,
-                                    extract_integer_from_filename)
-
+                                    save_labels_stack, substitute_labels)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
                                      isotropize_stack, isotropize_stackRGB)
 from .core.tools.tools import (check_and_fill_error_correction_args,
-                               check_or_create_dir, correct_path,
+                               check_or_create_dir, copytree, correct_path,
                                get_default_args, increase_outline_width,
                                increase_point_resolution, mask_from_outline,
                                printclear, printfancy, progressbar,
-                               sort_point_sequence, copytree)
+                               sort_point_sequence)
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                                      greedy_tracking, hungarian_tracking)
 from .core.tracking.tracking_tools import (
-    _extract_unique_labels_and_max_label_batch, _extract_unique_labels_per_time,
-    _init_cell, _init_CT_cell_attributes, _order_labels_t, _order_labels_z,
-    _reinit_update_CT_cell_attributes, _update_CT_cell_attributes,
-    get_labels_centers, prepare_labels_stack_for_tracking,
-    replace_labels_in_place, replace_labels_t)
+    _extract_unique_labels_and_max_label_batch,
+    _extract_unique_labels_per_time, _init_cell, _init_CT_cell_attributes,
+    _order_labels_t, _order_labels_z, _reinit_update_CT_cell_attributes,
+    _update_CT_cell_attributes, get_labels_centers,
+    prepare_labels_stack_for_tracking, replace_labels_in_place,
+    replace_labels_t)
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -136,7 +135,7 @@ class cellSegTrack(object):
         channels=[
             0
         ],  # first element is the channel used for computing cell centers and for segmentation on stardist
-        save_cells=True
+        save_cells=True,
     ):
         print()
         print()
@@ -157,7 +156,7 @@ class cellSegTrack(object):
         check_or_create_dir(self.path_to_save)
 
         self.path_to_save = correct_path(self.path_to_save)
-        self.path_to_backup = self.path_to_save+"backup"
+        self.path_to_backup = self.path_to_save + "backup"
         check_or_create_dir(self.path_to_backup)
 
         printfancy("path to data = {}".format(self.path_to_data))
@@ -355,7 +354,9 @@ class cellSegTrack(object):
         file_sort_idxs = []
         for file in files:
             file_code = file.split(".")[0]
-            number_code = extract_integer_from_filename(file_code, self._batch_args["name_format_save"])
+            number_code = extract_integer_from_filename(
+                file_code, self._batch_args["name_format_save"]
+            )
             file_sort_idxs.append(int(number_code))
         file_sort_idxs = np.argsort(file_sort_idxs)
         files = [files[i] for i in file_sort_idxs]
@@ -396,7 +397,9 @@ class cellSegTrack(object):
             printfancy("batch {} of {}".format(r + 1, self.batch_rounds))
 
             # Set batch to extract batch times and unique labels
-            self.set_batch(batch_number=r, plotting=False, init_cells=False, sub_labels=False)
+            self.set_batch(
+                batch_number=r, plotting=False, init_cells=False, sub_labels=False
+            )
 
             # Save batch times
             self.batch_all_rounds_times.append(self.batch_times_list_global)
@@ -462,9 +465,8 @@ class cellSegTrack(object):
         plotting=True,
         init_cells=True,
         force=False,
-        sub_labels=True
+        sub_labels=True,
     ):
-
         if update_labels:
             self.update_labels()
 
@@ -538,7 +540,6 @@ class cellSegTrack(object):
         return
 
     def init_masks_outlines_stacks(self):
-
         self.plot_stacks = check_stacks_for_plotting(
             None,
             self.hyperstack,
@@ -591,7 +592,7 @@ class cellSegTrack(object):
         printclear(2)
         print("###############           TRACKING FINISHED           ################")
         printfancy()
-        
+
         self.CT_info = self.init_CT_info()
 
         self.load(load_ct_info=False)
@@ -740,7 +741,9 @@ class cellSegTrack(object):
             printfancy("Creating cells and saving results...", clear_prev=1)
             printfancy("")
 
-            self.init_cells_segmentation(TLabels, Labels, Outlines, Masks, label_correspondance)
+            self.init_cells_segmentation(
+                TLabels, Labels, Outlines, Masks, label_correspondance
+            )
 
             save_cells_to_labels_stack(
                 self.jitcells,
@@ -779,7 +782,9 @@ class cellSegTrack(object):
         file_sort_idxs = []
         for file in files:
             file_code = file.split(".")[0]
-            number_code = extract_integer_from_filename(file_code, self._batch_args["name_format_save"])
+            number_code = extract_integer_from_filename(
+                file_code, self._batch_args["name_format_save"]
+            )
             file_sort_idxs.append(int(number_code))
         file_sort_idxs = np.argsort(file_sort_idxs)
         files = [files[i] for i in file_sort_idxs]
@@ -794,12 +799,13 @@ class cellSegTrack(object):
             first = (bsize * bnumber) - (boverlap * bnumber)
             last = first + bsize
             last = min(last, totalsize)
-            
+
             # if first!=131: continue
             # if last < 250: continue
 
             printfancy(
-                "######   CURRENT TIME = (%d - %d)/%d   ######" % (first + 1, last, self.total_times)
+                "######   CURRENT TIME = (%d - %d)/%d   ######"
+                % (first + 1, last, self.total_times)
             )
             times = range(first, last)
             if len(times) <= boverlap:
@@ -1008,7 +1014,7 @@ class cellSegTrack(object):
         5. Update other attributes related to unique labels and hints.
 
         """
-        # reinit 
+        # reinit
         _reinit_update_CT_cell_attributes(
             self.jitcells, self.slices, self.times, self.ctattr
         )
@@ -1043,9 +1049,7 @@ class cellSegTrack(object):
             self.unique_labels_T, self.max_label
         )
 
-
     def update_labels(self, backup=True):
-
         if backup:
             copytree(self.path_to_save, self.path_to_backup, copy_dirs=False)
 
@@ -1068,14 +1072,14 @@ class cellSegTrack(object):
             self.label_correspondance_T,
             self.unique_labels_T,
         )
-        
+
         ### TO BE REMOVED ###
         discs = find_discontinuities_unique_labels_T(
             self.unique_labels_T, self.max_label
         )
 
         #####################
-        
+
         # Once unique labels are updated, we can safely run label ordering
         # if there are cells, continue
         if self.jitcells:
@@ -1126,8 +1130,11 @@ class cellSegTrack(object):
             )
 
             ### UPDATE MITOTIC AND APOPTOTIC EVENTS ###
-            _update_mito_apo_events(self.apoptotic_events, self.mitotic_events, self.new_label_correspondance_T)
-            
+            _update_mito_apo_events(
+                self.apoptotic_events,
+                self.mitotic_events,
+                self.new_label_correspondance_T,
+            )
 
             ### UPDATE LABEL CORRESPONDANCE T SUBS FOR THE FUTURE TIMES ###
             self.label_correspondance_T_subs = update_label_correspondance_subs(
@@ -1287,7 +1294,7 @@ class cellSegTrack(object):
         None
             The function appends a new cell to the list of cells in place.
         """
-        
+
         # sort if necessary the outlines
         if sort:
             new_outlines = []
@@ -1347,10 +1354,10 @@ class cellSegTrack(object):
             :,
             :,
         ]
-        
+
         # update cell to compute attributes
         update_jitcell(new_jitcell, stack, self._seg_args["compute_center_method"])
-        
+
         # append cell to jitcells
         jitcellslen = len(self.jitcells_selected)
         self.jitcells.append(new_jitcell)
@@ -1379,7 +1386,7 @@ class cellSegTrack(object):
         None
             The function appends a new cell to the list of cells in place.
         """
-        
+
         # sort if necessary the outlines
         if sort:
             new_outlines = []
@@ -1395,7 +1402,7 @@ class cellSegTrack(object):
                         new_outlines[-1].append(new_outline_sorted)
         else:
             new_outlines = outlines
-            
+
         # increase resolution and create masks
         final_outlines = []
         masks = []
@@ -1428,7 +1435,7 @@ class cellSegTrack(object):
                 :,
             ],
         )
-        
+
         # update max label to new value
         self.max_label += 1
         self.currentcellid += 1
@@ -1440,10 +1447,10 @@ class cellSegTrack(object):
             :,
             :,
         ]
-        
+
         # update cell to compute attributes
         update_jitcell(new_jitcell, stack, self._seg_args["compute_center_method"])
-        
+
         # append cell to jitcells
         jitcellslen = len(self.jitcells_selected)
         self.jitcells.append(new_jitcell)
@@ -1451,7 +1458,6 @@ class cellSegTrack(object):
         # If len is still the same, add the cell because jitcells is not a copy of the selection
         if jitcellslen == len(self.jitcells_selected):
             self.jitcells_selected.append(self.jitcells[-1])
-
 
     def append_cell_from_cell(self, cell):
         """
@@ -1482,7 +1488,7 @@ class cellSegTrack(object):
     def cut_cell_in_midz(self, lab, tid=0):
         cell = self._get_cell(lab)
         zplanes_ids = [i for i in range(len(cell.zs[tid]))]
-        mid_plane = np.rint(len(zplanes_ids)/2).astype("int64")
+        mid_plane = np.rint(len(zplanes_ids) / 2).astype("int64")
         ids1 = [i for i in range(mid_plane)]
         ids2 = [i for i in range(mid_plane, len(zplanes_ids))]
         zs1 = [cell.zs[tid][i] for i in ids1]
@@ -1709,9 +1715,13 @@ class cellSegTrack(object):
             # If the current time has been completely removed from the cell,
             # check if it was mitotic or apoptosis at this time
             if t not in cell.times:
-                check_and_remove_if_cell_mitotic(lab, self.batch_times_list_global[t], self.mitotic_events)
+                check_and_remove_if_cell_mitotic(
+                    lab, self.batch_times_list_global[t], self.mitotic_events
+                )
             if t not in cell.times:
-                check_and_remove_if_cell_apoptotic(lab, self.batch_times_list_global[t], self.apoptotic_events)
+                check_and_remove_if_cell_apoptotic(
+                    lab, self.batch_times_list_global[t], self.apoptotic_events
+                )
 
             if cell._rem:
                 idrem = cell.id
@@ -1824,7 +1834,6 @@ class cellSegTrack(object):
             min_length=self._plot_args["min_outline_length"],
         )
 
-
     def delete_cell_in_batch(self, PACP, count_action=True):
         cells = [x[0] for x in PACP.list_of_cells]
         Zs = [x[1] for x in PACP.list_of_cells]
@@ -1874,9 +1883,13 @@ class cellSegTrack(object):
                 # If the current time has been completely removed from the cell,
                 # check if it was mitotic or apoptosis at this time
                 if t not in cell.times:
-                    check_and_remove_if_cell_mitotic(lab, self.batch_times_list_global[t], self.mitotic_events)
+                    check_and_remove_if_cell_mitotic(
+                        lab, self.batch_times_list_global[t], self.mitotic_events
+                    )
                 if t not in cell.times:
-                    check_and_remove_if_cell_apoptotic(lab, self.batch_times_list_global[t], self.apoptotic_events)
+                    check_and_remove_if_cell_apoptotic(
+                        lab, self.batch_times_list_global[t], self.apoptotic_events
+                    )
             self._del_cell(lab)
 
         self.update_label_attributes()
@@ -1893,7 +1906,6 @@ class cellSegTrack(object):
         PACP : PlotActionCT
             selected cells are stored in PACP.list_of_cells
         """
-
 
         # get labels, planes and times.
         # times and zs should be equal for both cells
@@ -2026,11 +2038,15 @@ class cellSegTrack(object):
             # check if it was mitotic or apoptosis at this time
             if t not in cell2.times:
                 check_and_remove_if_cell_mitotic(
-                    cell2.label, self.batch_times_list_global[t_rem], self.mitotic_events
+                    cell2.label,
+                    self.batch_times_list_global[t_rem],
+                    self.mitotic_events,
                 )
             if t not in cell2.times:
                 check_and_remove_if_cell_apoptotic(
-                    cell2.label, self.batch_times_list_global[t_rem], self.apoptotic_events
+                    cell2.label,
+                    self.batch_times_list_global[t_rem],
+                    self.apoptotic_events,
                 )
             cell2.zs.pop(tid_cell2)
             cell2.outlines.pop(tid_cell2)
@@ -2177,11 +2193,15 @@ class cellSegTrack(object):
                 # check if it was mitotic or apoptosis at this time
                 if t not in cell2.times:
                     check_and_remove_if_cell_mitotic(
-                        cell2.label, self.batch_times_list_global[t], self.mitotic_events
+                        cell2.label,
+                        self.batch_times_list_global[t],
+                        self.mitotic_events,
                     )
                 if t not in cell2.times:
                     check_and_remove_if_cell_apoptotic(
-                        cell2.label, self.batch_times_list_global[t], self.apoptotic_events
+                        cell2.label,
+                        self.batch_times_list_global[t],
+                        self.apoptotic_events,
                     )
             self._del_cell(cell2.label, lab_change=lab_change, t=cell2.times[0])
 
@@ -2433,7 +2453,6 @@ class cellSegTrack(object):
             return cell
 
     def _del_cell(self, label=None, cellid=None, lab_change=None, t=None):
-
         len_selected_jitcells = len(self.jitcells_selected)
         idx1 = None
         if label == None:

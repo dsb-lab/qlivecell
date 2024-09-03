@@ -191,7 +191,7 @@ def tif_reader_5D(path_to_file):
         hyperstack = tif.asarray()
         imagej_metadata = tif.imagej_metadata
         tags = tif.pages[0].tags
-        
+
         try:
             frames = imagej_metadata["frames"]
         except:
@@ -212,19 +212,25 @@ def tif_reader_5D(path_to_file):
                 hyperstack, (frames, slices, channels, *hyperstack.shape[-2:])
             )
         except:
-            print("WARNING: Could not interpret metadata to reshape hyperstack. Making up dimensions")
+            print(
+                "WARNING: Could not interpret metadata to reshape hyperstack. Making up dimensions"
+            )
             print("         raw array with shape", hyperstack.shape)
-            if len(hyperstack.shape)==2:
+            if len(hyperstack.shape) == 2:
+                hyperstack = np.reshape(hyperstack, (1, 1, 1, *hyperstack.shape[-2:]))
+            elif len(hyperstack.shape) == 3:
                 hyperstack = np.reshape(
-                hyperstack, (1, 1, 1, *hyperstack.shape[-2:])
+                    hyperstack, (1, hyperstack.shape[0], 1, *hyperstack.shape[-2:])
                 )
-            elif len(hyperstack.shape)==3:
+            elif len(hyperstack.shape) == 4:
                 hyperstack = np.reshape(
-                hyperstack, (1, hyperstack.shape[0], 1, *hyperstack.shape[-2:])
-                )
-            elif len(hyperstack.shape)==4:
-                hyperstack = np.reshape(
-                hyperstack, (hyperstack.shape[0], hyperstack.shape[1], 1,*hyperstack.shape[-2:])
+                    hyperstack,
+                    (
+                        hyperstack.shape[0],
+                        hyperstack.shape[1],
+                        1,
+                        *hyperstack.shape[-2:],
+                    ),
                 )
             print("         returning array with shape", hyperstack.shape)
 

@@ -197,7 +197,7 @@ def segment_embryo(image, binths, seg_embryo_params):
     convimage = convolve2D(image, kernel, padding=10)
     cut = int((convimage.shape[0] - image.shape[0]) / 2)
     convimage = convimage[cut:-cut, cut:-cut]
-    if binths==None:
+    if binths == None:
         binimage = convimage
     else:
         binimage = (convimage > binths) * 1
@@ -283,7 +283,8 @@ def select_biggest_binary_cluster(grid):
         new_cluster = np.asarray(cluster)
         new_clusters.append(new_cluster)
         cluster_sizes.append(len(new_cluster))
-    if len(clusters)==0: return grid
+    if len(clusters) == 0:
+        return grid
     biggest_cluster = np.argmax(cluster_sizes)
     for cid, cluster in enumerate(new_clusters):
         if cid != biggest_cluster:

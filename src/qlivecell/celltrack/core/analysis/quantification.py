@@ -61,6 +61,7 @@ from scipy.optimize import curve_fit
 def linear_decay(z, slope, intercept):
     return slope * z + intercept
 
+
 def get_intenity_profile(CT, ch, cell_number_threshold=2, fit_everything=True):
     image_stack = CT.hyperstack[0, :, ch]
 

@@ -210,7 +210,7 @@ def _order_labels_t(unique_labels_T, max_label):
     Label correspondance is of length equal to max_label. Each element on the list corresponds to the new label assigned to the label equal to the index at that position.
     -1 means the label is removed.
     Finding a 1 at position 0 means label 1 is changed to 0.
-    
+
     Examples
     --------
     >>> # Define some sample data

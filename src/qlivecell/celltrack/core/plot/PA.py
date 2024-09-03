@@ -5,8 +5,8 @@ from copy import copy
 import matplotlib as mtp
 import napari
 import numpy as np
-from numba.typed import List
 from numba import typeof
+from numba.typed import List
 
 from ..dataclasses import construct_Cell_from_jitCell
 from ..tools.ct_tools import get_cell_color, set_cell_color
@@ -16,7 +16,7 @@ from .napari_tools import get_whole_lineage
 from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
 from .plotting import get_dif_nested_list
-import time
+
 
 def get_axis_PACP(PACP, event):
     for id, ax in enumerate(PACP.ax):
@@ -305,7 +305,6 @@ class PlotAction:
 
         import time
 
-
         self.set_batch(batch_number=self.bn, update_labels=True)
         self.t = 0
         self.tg = self.global_times_list[self.t]
@@ -442,7 +441,7 @@ class PlotActionCT(PlotAction):
 
         # Predefine some variables
         self.plot_outlines = True
-        self._pre_labs_z_to_plot = List([List([0,0,0])])
+        self._pre_labs_z_to_plot = List([List([0, 0, 0])])
         del self._pre_labs_z_to_plot[:]
         # Update plot after initialization
         self.update()
@@ -826,15 +825,16 @@ class PlotActionCT(PlotAction):
             scale2 = 90
             width_or_height = self.figwidth
 
-        labs_z_to_plot = List([
-            List([x[0], zs[xid], ts[xid]]) for xid, x in enumerate(cells_to_plot)
-        ])
-        if len(labs_z_to_plot)==0:
-            labs_z_to_plot = List([List([0,0,0])])
+        labs_z_to_plot = List(
+            [List([x[0], zs[xid], ts[xid]]) for xid, x in enumerate(cells_to_plot)]
+        )
+        if len(labs_z_to_plot) == 0:
+            labs_z_to_plot = List([List([0, 0, 0])])
             del labs_z_to_plot[:]
 
-
-        new_labs_z_to_plot = get_dif_nested_list(labs_z_to_plot, self._pre_labs_z_to_plot)
+        new_labs_z_to_plot = get_dif_nested_list(
+            labs_z_to_plot, self._pre_labs_z_to_plot
+        )
         for i, lab_z_t in enumerate(new_labs_z_to_plot):
             jitcell = self._CTget_cell(label=lab_z_t[0])
 
@@ -880,7 +880,6 @@ class PlotActionCT(PlotAction):
                 times_to_plot,
                 zs_to_plot,
             )
-        
 
         labs_z_to_remove = get_dif_nested_list(self._pre_labs_z_to_plot, labs_z_to_plot)
 
@@ -893,15 +892,22 @@ class PlotActionCT(PlotAction):
                 jitcell, self._plot_args["labels_colors"], 0, self.CTblocked_cells
             )
             color = np.rint(color * 255).astype("uint8")
-            if self.past_state in ["Del", "blo", "Com"] or self.current_state in ["Del", "blo", "Com"]:
+            if self.past_state in ["Del", "blo", "Com"] or self.current_state in [
+                "Del",
+                "blo",
+                "Com",
+            ]:
                 times_to_plot = List([i for i in range(self.times)])
                 zs_to_plot = -1
             else:
-                if self.past_state in ["mit", "apo"] or self.current_state in ["mit", "apo"]:
+                if self.past_state in ["mit", "apo"] or self.current_state in [
+                    "mit",
+                    "apo",
+                ]:
                     tt = lab_z_t[2] - self.global_times_list[0]
                 else:
                     tt = lab_z_t[2]
-                
+
                 times_to_plot = List([tt])
                 zs_to_plot = lab_z_t[1]
 
@@ -1032,7 +1038,8 @@ class PlotActionCT(PlotAction):
                 labels = get_whole_lineage(self.CTmitotic_events, lab)
                 for _lab in labels:
                     jitcell = _get_cell(self.jitcells_selected, label=_lab)
-                    if jitcell is None: continue
+                    if jitcell is None:
+                        continue
                     for tid, t in enumerate(jitcell.times):
                         for zid, z in enumerate(jitcell.zs[tid]):
                             self.list_of_cells.append([_lab, z, t])
@@ -1174,7 +1181,7 @@ class PlotActionCT(PlotAction):
         self.instructions.set_backgroundcolor((0.26, 0.16, 0.055, 0.4))
         self.fig.patch.set_facecolor((0.26, 0.16, 0.055, 0.1))
         self.CP = CellPicker(self.fig.canvas, self.block_cells_callback)
-        
+
     def unblock_cells(self):
         self.CTunblock_cells()
         self.reploting()

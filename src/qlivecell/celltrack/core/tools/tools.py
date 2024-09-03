@@ -122,7 +122,7 @@ def increase_point_resolution(outline, min_outline_length):
     return newoutline_new
 
 
-def sort_point_sequence(outline, nearest_neighs, callback=lambda : None):
+def sort_point_sequence(outline, nearest_neighs, callback=lambda: None):
     min_dists, min_dist_idx = cKDTree(outline).query(outline, nearest_neighs)
     min_dists = min_dists[:, 1:]
     min_dist_idx = min_dist_idx[:, 1:]
@@ -201,9 +201,10 @@ def compute_distance_xy(x1, x2, y1, y2):
 def compute_distance_xyz(x1, x2, y1, y2, z1, z2):
     return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
 
+
 def compute_distance_xyz_points(p1, p2):
-    x1,y1,z1 = p1
-    x2,y2,z2 = p2
+    x1, y1, z1 = p1
+    x2, y2, z2 = p2
     return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
 
 
@@ -296,8 +297,12 @@ def check_or_create_dir(path):
             return
         os.mkdir(path)
 
+
 # adapted from https://stackoverflow.com/a/12514470/7546279
-import os, shutil
+import os
+import shutil
+
+
 def copytree(src, dst, symlinks=False, ignore=None, copy_dirs=False):
     """
     Recursively copy a directory tree from `src` to `dst`.
@@ -328,4 +333,3 @@ def copytree(src, dst, symlinks=False, ignore=None, copy_dirs=False):
                 shutil.copytree(s, d, symlinks, ignore)
         else:
             shutil.copy2(s, d)
-

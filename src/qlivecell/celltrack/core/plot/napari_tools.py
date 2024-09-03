@@ -38,6 +38,7 @@ def get_lineage_root(graph, label):
             root = True
     return lab
 
+
 def get_mothers(graph, label):
     # Check if this label is the root of the lineage
     root = False
@@ -53,6 +54,7 @@ def get_mothers(graph, label):
             root = True
     return labels
 
+
 def get_lineage(graph, label):
     labels = [label]
     # Check if this label is the root of the lineage
@@ -67,9 +69,11 @@ def get_lineage(graph, label):
             root = True
     return labels
 
+
 def get_all_lineages(mitotic_events):
     roots = []
-    
+
+
 def get_all_daughters(labels, graph, lab):
     vals = np.array(list(graph.values()))
     keys = np.array(list(graph.keys()))
@@ -86,6 +90,7 @@ def get_all_daughters(labels, graph, lab):
             last = True
     return labels
 
+
 def get_daughters(graph, lab):
     vals = np.array(list(graph.values()))
     keys = np.array(list(graph.keys()))
@@ -97,7 +102,8 @@ def get_daughters(graph, lab):
             labels.append(keys[idx])
         last = True
     return labels
-    
+
+
 def get_lineage_ends(graph, lineage):
     ends = []
     mothers = np.unique(list(graph.values()))
@@ -105,6 +111,7 @@ def get_lineage_ends(graph, lineage):
         if lab not in mothers:
             ends.append(lab)
     return ends
+
 
 def get_whole_lineage(mitotic_events, label):
     graph = get_lineage_graph(mitotic_events)
@@ -116,7 +123,6 @@ def get_whole_lineage(mitotic_events, label):
 
 
 def arboretum_napari(CTB):
-
     controls, colors = CTB._plot_args["labels_colors"].get_map()
     custom_cmap = vispy.color.Colormap(colors, controls)
 
@@ -130,7 +136,7 @@ def arboretum_napari(CTB):
     properties = {"colors": colors}
 
     viewer = napari.view_image(
-        CTB.hyperstack[:,:,CTB.channels_order[0]],
+        CTB.hyperstack[:, :, CTB.channels_order[0]],
         name="hyperstack",
         scale=(
             CTB.metadata["Zresolution"],
@@ -144,23 +150,31 @@ def arboretum_napari(CTB):
     tracks_layer = viewer.add_tracks(
         napari_tracks_data,
         name="tracks",
-        scale=(CTB.metadata["Zresolution"],
-                CTB.metadata["XYresolution"],
-                CTB.metadata["XYresolution"]),
+        scale=(
+            CTB.metadata["Zresolution"],
+            CTB.metadata["XYresolution"],
+            CTB.metadata["XYresolution"],
+        ),
         properties=properties,
         graph=graph,
-        color_by='colors',
-        colormaps_dict={"colors": custom_cmap}
+        color_by="colors",
+        colormaps_dict={"colors": custom_cmap},
     )
 
     points_layer = viewer.add_points(
-        napari_tracks_data[:, 1:]*(1, CTB.metadata["Zresolution"], CTB.metadata["XYresolution"], CTB.metadata["XYresolution"]),
+        napari_tracks_data[:, 1:]
+        * (
+            1,
+            CTB.metadata["Zresolution"],
+            CTB.metadata["XYresolution"],
+            CTB.metadata["XYresolution"],
+        ),
         size=2,
         name="centers",
         properties=properties,
-        edge_color='colors',
+        edge_color="colors",
         edge_colormap=custom_cmap,
-        face_color='colors',
+        face_color="colors",
         face_colormap=custom_cmap,
     )
 
