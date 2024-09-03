@@ -1,5 +1,5 @@
 ### LOAD PACKAGE ###
-from qlivecell import get_file_name, cellSegTrack, save_3Dstack, save_4Dstack, get_file_names, tif_reader_5D, arboretum_napari
+from qlivecell import cellSegTrack, save_4Dstack, get_file_names, tif_reader_5D, arboretum_napari
 from numba import prange
 import numpy as np
 
@@ -12,16 +12,16 @@ import numpy as np
 # path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
 
 # path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/Lineage_2hr_082119_p1/'
-# path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/ctobjects/'
+# path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/ctobjects-test/'
 
-path_data = "/home/pablo/test_data/rigid-files/rigid_070.tif"
+path_data = "/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsheet/movies_registered/Pos6_CH1emiRFP_CH2mCherry_CH3flipGFP_10hours-1_8bit.tif"
 path_save = "/home/pablo/test_data/segtrack/"
 
 try: 
     files = get_file_names(path_save)
 except: 
     import os
-    os.mkdir(path_save)
+    os.makedirs(path_save)
 
 import os
 
@@ -60,7 +60,7 @@ plot_args = {
     'masks_cmap': 'tab10',
     # 'plot_stack_dims': (512, 512), 
     'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-    'channels':[0]
+    'channels':[1]
 }
 
 error_correction_args = {
@@ -86,11 +86,9 @@ if __name__ == "__main__":
         error_correction_args=error_correction_args,
         plot_args=plot_args,
         batch_args=batch_args,
-        channels=[0]
+        channels=[1, 0]
     )
 
-    CTB.metadata["XYresolution"] = 0.341
-    CTB.metadata["Zresolution"] = 2.0
     CTB.run()
 
     plot_args = {
@@ -99,7 +97,7 @@ if __name__ == "__main__":
         'masks_cmap': 'tab10',
         'plot_stack_dims': (512, 512), 
         'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-        'channels':[0],
+        'channels':[1],
         'min_outline_length':75
     }
     CTB.plot_tracking(plot_args=plot_args)
