@@ -203,9 +203,6 @@ def compute_point_stack(
         elif mode == "masks":
             points = jitcell.masks
 
-        end1 = time.time()
-        # print("elapsed1", end1-start1)
-        start2 = time.time()
         set_cell_color(
             point_stack,
             points,
@@ -216,8 +213,7 @@ def compute_point_stack(
             times,
             -1,
         )
-        end2 = time.time()
-        # print("elapsed2", end2-start2)
+
     return point_stack
 
 
@@ -231,8 +227,6 @@ def get_cell(cells, label=None, cellid=None):
             if cell.label == label:
                 return cell
 
-    # print("LABEL NOT FOUND")
-    # print(label)
     return None
 
 
