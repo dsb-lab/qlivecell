@@ -1077,7 +1077,7 @@ class cellSegTrack(object):
         discs = find_discontinuities_unique_labels_T(
             self.unique_labels_T, self.max_label
         )
-
+        print("WHATS GOING ON?")
         #####################
 
         # Once unique labels are updated, we can safely run label ordering
