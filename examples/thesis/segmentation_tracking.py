@@ -68,5 +68,5 @@ if __name__ == "__main__":
 
     cST.run()
 
-    cST.plot_tracking(plot_args=plot_args, block=False)
+    cST.plot(plot_args=plot_args, block=False)
 

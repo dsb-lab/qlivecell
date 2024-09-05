@@ -1,18 +1,7 @@
 ### LOAD PACKAGE ###
 from qlivecell import cellSegTrack, save_4Dstack, get_file_names, tif_reader_5D, arboretum_napari
-from numba import prange
-import numpy as np
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-# path_data='/home/pablo/Desktop/PhD/projects/Data/test_Andre_Stephen/data/'
-# path_save='/home/pablo/Desktop/PhD/projects/Data/test_Andre_Stephen/ctobjects/'
-
-### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-# path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/20230607_CAG_H2B_GFP_16_cells_stack2_registered/test/'
-# path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
-
-# path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/Lineage_2hr_082119_p1/'
-# path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/ctobjects-test/'
 
 path_data = "/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsheet/movies_registered/Pos6_CH1emiRFP_CH2mCherry_CH3flipGFP_10hours-1_8bit.tif"
 path_save = "/home/pablo/test_data/segtrack/"
@@ -77,7 +66,7 @@ batch_args = {
 
 if __name__ == "__main__":
 
-    CTB = cellSegTrack(
+    cST = cellSegTrack(
         path_data,
         path_save,
         segmentation_args=segmentation_args,
@@ -89,7 +78,7 @@ if __name__ == "__main__":
         channels=[1, 0]
     )
 
-    CTB.load()
+    cST.load()
 
     plot_args = {
         'plot_layout': (1,1),
@@ -100,5 +89,6 @@ if __name__ == "__main__":
         'channels':[0],
         'min_outline_length':75
     }
-    CTB.plot_tracking(plot_args=plot_args)
+    cST.plot(plot_args=plot_args)
 
+arboretum_napari(cST)

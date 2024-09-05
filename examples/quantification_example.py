@@ -1,6 +1,18 @@
 ### LOAD PACKAGE ###
-from qlivecell import get_file_name, cellSegTrack, save_3Dstack, save_4Dstack, get_file_names, save_4Dstack_labels, tif_reader_5D, remove_small_cells
+from qlivecell import cellSegTrack, save_4Dstack, get_file_names, tif_reader_5D, arboretum_napari
+
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
+
+path_data = "/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsheet/movies_registered/Pos6_CH1emiRFP_CH2mCherry_CH3flipGFP_10hours-1_8bit.tif"
+path_save = "/home/pablo/test_data/segtrack/"
+
+try: 
+    files = get_file_names(path_save)
+except: 
+    import os
+    os.makedirs(path_save)
+
+import os
 
 
 ### LOAD STARDIST MODEL ###
@@ -35,9 +47,9 @@ plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
     'masks_cmap': 'tab10',
-    # 'plot_stack_dims': (256, 256), 
+    # 'plot_stack_dims': (512, 512), 
     'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-    'channels':[0,1,2]
+    'channels':[1]
 }
 
 error_correction_args = {
@@ -46,58 +58,34 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size': 7,
+    'batch_size': 30,
     'batch_overlap':1,
     'name_format':"{}",
     'extension':".tif",
 }
 
-embcode = "E14 72H DMSO BRA488 SOX2647 OCT4555 DAPI2"
-path_data='/home/pablo/Desktop/PhD/projects/Data/gastruloids/Stephen/raw/{}.tif'.format(embcode)
-path_save='/home/pablo/Desktop/PhD/projects/Data/gastruloids/Stephen/ctobjects/{}/'.format(embcode)
+if __name__ == "__main__":
 
-try: 
-    files = get_file_names(path_save)
-except: 
-    import os
-    os.mkdir(path_save)
+    cST = cellSegTrack(
+        path_data,
+        path_save,
+        segmentation_args=segmentation_args,
+        concatenation3D_args=concatenation3D_args,
+        tracking_args=tracking_args,
+        error_correction_args=error_correction_args,
+        plot_args=plot_args,
+        batch_args=batch_args,
+        channels=[1, 0, 2]
+    )
 
-
-
-CT = cellSegTrack(
-    path_data,
-    path_save,
-    segmentation_args=segmentation_args,
-    concatenation3D_args=concatenation3D_args,
-    tracking_args=tracking_args,
-    error_correction_args=error_correction_args,
-    plot_args=plot_args,
-    batch_args=batch_args,
-    channels=[3, 0, 1, 2]
-)
-
-CT.load()
-
-plot_args = {
-    'plot_layout': (1,1),
-    'plot_overlap': 1,
-    'masks_cmap': 'tab10',
-    'plot_stack_dims': (512, 512), 
-    'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-    'channels':[3]
-}
-CT.plot_tracking(plot_args=plot_args)
-
+    cST.load()
 
 # Remove debris
 from qlivecell import remove_small_cells, plot_cell_sizes
-plot_cell_sizes(CT, bw=50, bins=30)
-remove_small_cells(CT, 140)
-
-plot_cell_sizes(CT, bw=80, bins=30)
-CT.plot_tracking(plot_args=plot_args)
+plot_cell_sizes(cST, bw=50, bins=100)
+# remove_small_cells(cST, 140)
 
 # Channels quantification
 from qlivecell import plot_channel_quantification_bar, plot_channel_quantification_hist, quantify_channels
-plot_channel_quantification_bar(CT, channel_labels=["SOX2","OCT4","T","DAPI"])
-plot_channel_quantification_hist(CT, channel_labels=["SOX2","OCT4","T","DAPI"], bins=25, log=True)
+plot_channel_quantification_bar(cST, channel_labels=["F3","A12","Casp3"])
+# plot_channel_quantification_hist(cST, channel_labels=["F3","A12","Casp3"], bins=25, log=True)

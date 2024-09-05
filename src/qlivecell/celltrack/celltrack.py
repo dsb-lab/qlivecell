@@ -1077,7 +1077,7 @@ class cellSegTrack(object):
         discs = find_discontinuities_unique_labels_T(
             self.unique_labels_T, self.max_label
         )
-        print("WHATS GOING ON?")
+
         #####################
 
         # Once unique labels are updated, we can safely run label ordering
@@ -2610,7 +2610,7 @@ class cellSegTrack(object):
         self._titles.append(title)
         _ = _ax.axis(False)
 
-    def plot_tracking(
+    def plot(
         self,
         plot_args=None,
         cell_picker=False,
@@ -2660,7 +2660,7 @@ class cellSegTrack(object):
             round=0,
         )
         fig, ax = plt.subplots(counter.layout[0], counter.layout[1], figsize=(10, 10))
-        fig.canvas.mpl_connect("close_event", self.on_close_plot_tracking)
+        fig.canvas.mpl_connect("close_event", self.on_close_plot)
 
         if not hasattr(ax, "__iter__"):
             ax = np.array([ax])
@@ -2791,7 +2791,7 @@ class cellSegTrack(object):
             )
         self._titles[imid].set_text("z = %d" % (z + 1))
 
-    def replot_tracking(self, PACP, plot_outlines=True):
+    def replot(self, PACP, plot_outlines=True):
         t = PACP.t
         counter = plotRound(
             layout=self._plot_args["plot_layout"],
@@ -2895,5 +2895,5 @@ class cellSegTrack(object):
             printfancy("")
             printfancy("Error correction finished", clear_prev=2)
 
-    def on_close_plot_tracking(self, event):
+    def on_close_plot(self, event):
         self.update_labels_batches()

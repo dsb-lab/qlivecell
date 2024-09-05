@@ -191,13 +191,14 @@ def quantify_channels(CT):
         mask[:, 1][mask[:, 1] >= CT.hyperstack.shape[-1]] = CT.hyperstack.shape[-1] - 1
         for ch_id, ch in enumerate(CT.channels):
             stack = CT.hyperstack[0, zc, ch, :, :]
-            quantifications[ch_id].append(np.mean(stack[mask[:, 0], mask[:, 1]]))
+            quantifications[ch_id].append(np.mean(stack[mask[:, 1], mask[:, 0]]))
 
     return quantifications
 
 
-def plot_channel_quantification_bar(CT, channel_labels=None):
-    colors = ["yellow", "magenta", "green", "blue"]
+def plot_channel_quantification_bar(CT, channel_labels=None, colors=[]):
+    if len(colors)==0:
+        colors = ["yellow", "magenta", "green", "blue"]
     quantifications = quantify_channels(CT)
     import matplotlib.pyplot as plt
     import numpy as np

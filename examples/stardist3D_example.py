@@ -92,7 +92,7 @@ CT.run()
 
 ### PLOTTING ###
 IMGS_norm = norm_stack_per_z( IMGS, saturation=0.7)
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
+CT.plot(plot_args, stacks_for_plotting=IMGS)
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
@@ -117,7 +117,7 @@ CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
 
 # ### PLOTTING ###
 # IMGS_norm = norm_stack_per_z(IMGS, saturation=0.7)
-# CT.plot_tracking(plot_args, stacks_for_plotting=IMGS_norm)
+# CT.plot(plot_args, stacks_for_plotting=IMGS_norm)
 
 # ### SAVE RESULTS AS LABELS HYPERSTACK ###
 # save_4Dstack_labels(path_save, CT, imagejformat="TZYX")

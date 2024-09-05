@@ -167,6 +167,6 @@ class CellPicker_CM(CellPicker_CP):
         self.PACP.CT.plot_cell_movement(
             label_list=self.PACP.label_list,
             plot_mean=self.PACP.plot_mean,
-            plot_tracking=False,
+            plot=False,
         )
         self.PACP.update()

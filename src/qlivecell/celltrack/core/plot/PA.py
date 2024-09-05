@@ -160,7 +160,7 @@ class PlotAction:
         # Point to CT functions
         # self.CTone_step_copy = CT.one_step_copy
         # self.CTundo_corrections = CT.undo_corrections
-        self.CTreplot_tracking = CT.replot_tracking
+        self.CTreplot = CT.replot
 
         self.CTadd_cell = CT.add_cell
         self.CTcomplete_add_cell = CT.complete_add_cell
@@ -253,7 +253,7 @@ class PlotAction:
             else:
                 self.set_val_t_slider(self.tg + 1)
 
-            self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+            self.CTreplot(self, plot_outlines=self.plot_outlines)
 
             self.update()
 
@@ -264,13 +264,13 @@ class PlotAction:
 
         else:
             self.t = t - self.global_times_list[0] - 1
-            self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+            self.CTreplot(self, plot_outlines=self.plot_outlines)
             self.update()
 
     # The function to be called anytime a z-slider's value changes
     def update_slider_z(self, cr):
         self.cr = cr
-        self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+        self.CTreplot(self, plot_outlines=self.plot_outlines)
         self.update()
 
     def reset_state(self):
@@ -313,7 +313,7 @@ class PlotAction:
         else:
             self.set_val_t_slider(self.tg + 1)
 
-        self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+        self.CTreplot(self, plot_outlines=self.plot_outlines)
 
         self.update()
 
@@ -380,7 +380,7 @@ class PlotAction:
         self.figheight = heightfig
 
     def reploting(self):
-        self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+        self.CTreplot(self, plot_outlines=self.plot_outlines)
         self.fig.canvas.draw_idle()
         self.fig.canvas.draw()
 
@@ -587,7 +587,7 @@ class PlotActionCT(PlotAction):
                 self.current_state = None
                 self.ax_sel = None
                 self.z = None
-                self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                self.CTreplot(self, plot_outlines=self.plot_outlines)
                 self.visualization()
 
             elif event.key == "espace":
@@ -620,7 +620,7 @@ class PlotActionCT(PlotAction):
                     self.current_state = None
                     self.ax_sel = None
                     self.z = None
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
                     self.visualization()
 
                 elif self.current_state == "del":
@@ -636,7 +636,7 @@ class PlotActionCT(PlotAction):
                     self.ax_sel = None
                     self.z = None
 
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
 
                     self.visualization()
 
@@ -653,7 +653,7 @@ class PlotActionCT(PlotAction):
                     self.ax_sel = None
                     self.z = None
 
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
 
                     self.visualization()
 
@@ -666,7 +666,7 @@ class PlotActionCT(PlotAction):
                     self.ax_sel = None
                     self.z = None
                     del self.CTlist_of_cells[:]
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
                     self.visualization()
 
                 elif self.current_state == "com":
@@ -678,7 +678,7 @@ class PlotActionCT(PlotAction):
                     self.current_state = None
                     self.ax_sel = None
                     self.z = None
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
                     self.visualization()
 
                 elif self.current_state == "joi":
@@ -690,7 +690,7 @@ class PlotActionCT(PlotAction):
                     self.current_state = None
                     self.ax_sel = None
                     self.z = None
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
                     self.visualization()
 
                 elif self.current_state == "Sep":
@@ -702,7 +702,7 @@ class PlotActionCT(PlotAction):
                     self.ax_sel = None
                     self.z = None
                     del self.CTlist_of_cells[:]
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
                     self.visualization()
 
                 elif self.current_state == "apo":
@@ -710,7 +710,7 @@ class PlotActionCT(PlotAction):
                     delattr(self, "CP")
                     self.CTapoptosis(self.list_of_cells)
                     del self.list_of_cells[:]
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
                     self.visualization()
 
                 elif self.current_state == "blo":
@@ -718,7 +718,7 @@ class PlotActionCT(PlotAction):
                     delattr(self, "CP")
                     self.CTblock_cells(self.list_of_cells)
                     del self.list_of_cells[:]
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
                     self.visualization()
 
                 elif self.current_state == "mit":
@@ -730,7 +730,7 @@ class PlotActionCT(PlotAction):
                     self.ax_sel = None
                     self.z = None
                     del self.CTmito_cells[:]
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
                     self.visualization()
 
                 elif self.current_state == "pic":
@@ -742,7 +742,7 @@ class PlotActionCT(PlotAction):
                     self.ax_sel = None
                     self.z = None
                     del self.list_of_cells[:]
-                    self.CTreplot_tracking(self, plot_outlines=self.plot_outlines)
+                    self.CTreplot(self, plot_outlines=self.plot_outlines)
                     self.visualization()
                     self.switch_masks(True)
 
@@ -1709,7 +1709,7 @@ class PlotActionCellPicker(PlotAction):
                     self.CT.plot_cell_movement(
                         label_list=self.label_list,
                         plot_mean=self.plot_mean,
-                        plot_tracking=False,
+                        plot=False,
                     )
                 self.update()
             elif event.key == "m":
@@ -1718,7 +1718,7 @@ class PlotActionCellPicker(PlotAction):
                     self.CT.plot_cell_movement(
                         label_list=self.label_list,
                         plot_mean=self.plot_mean,
-                        plot_tracking=False,
+                        plot=False,
                     )
                 self.update()
 
