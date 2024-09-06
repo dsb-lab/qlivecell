@@ -758,10 +758,11 @@ class cellSegTrack(object):
 
             # Initialize cells with this
             if not self.segment3D:
-                printclear(n=6)
-            # printclear(n=6)
+                printclear(n=5)
+
         if not self.segment3D:
             printclear(n=1)
+            
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
@@ -799,9 +800,6 @@ class cellSegTrack(object):
             first = (bsize * bnumber) - (boverlap * bnumber)
             last = first + bsize
             last = min(last, totalsize)
-
-            # if first!=131: continue
-            # if last < 250: continue
 
             printfancy(
                 "######   CURRENT TIME = (%d - %d)/%d   ######"

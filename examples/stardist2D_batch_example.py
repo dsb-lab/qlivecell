@@ -1,21 +1,10 @@
 ### LOAD PACKAGE ###
-from qlivecell import cellSegTrack, save_4Dstack, get_file_names, tif_reader_5D, arboretum_napari
-from numba import prange
-import numpy as np
+from qlivecell import cellSegTrack, get_file_names, arboretum_napari
+import os
 
 ### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-# path_data='/home/pablo/Desktop/PhD/projects/Data/test_Andre_Stephen/data/'
-# path_save='/home/pablo/Desktop/PhD/projects/Data/test_Andre_Stephen/ctobjects/'
-
-### PATH TO YOU DATA FOLDER AND TO YOUR SAVING FOLDER ###
-# path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/20230607_CAG_H2B_GFP_16_cells_stack2_registered/test/'
-# path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Lana/20230607_CAG_H2B_GFP_16_cells/stack_2_channel_0_obj_bottom/crop/ctobjects/'
-
-# path_data='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/Lineage_2hr_082119_p1/'
-# path_save='/home/pablo/Desktop/PhD/projects/Data/blastocysts/Claire/2h_claire_ERK-KTR_MKATE2/ctobjects-test/'
-
 path_data = "/home/pablo/Desktop/PhD/projects/Data/gastruloids/joshi/competition/lightsheet/movies_registered/Pos6_CH1emiRFP_CH2mCherry_CH3flipGFP_10hours-1_8bit.tif"
-path_save = "/home/pablo/test_data/segtrack/"
+path_save = "/home/pablo/test_data/segtrack_stardist2D/"
 
 try: 
     files = get_file_names(path_save)
@@ -23,19 +12,18 @@ except:
     import os
     os.makedirs(path_save)
 
-import os
-
 
 ### LOAD STARDIST MODEL ###
 from stardist.models import StarDist2D
 model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
+
 ### DEFINE ARGUMENTS ###
 segmentation_args={
     'method': 'stardist2D', 
     'model': model, 
+    # "make_isotropic": [False, 1.5],
     'blur': [1,1], 
-    # 'n_tiles': (2,2),
 }
 
 concatenation3D_args = {
@@ -54,15 +42,6 @@ tracking_args = {
     'dist_th' : 10.0,
 }
 
-plot_args = {
-    'plot_layout': (1,1),
-    'plot_overlap': 1,
-    'masks_cmap': 'tab10',
-    # 'plot_stack_dims': (512, 512), 
-    'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-    'channels':[1]
-}
-
 error_correction_args = {
     'backup_steps': 10,
     'line_builder_mode': 'points',
@@ -77,19 +56,19 @@ batch_args = {
 
 if __name__ == "__main__":
 
-    CTB = cellSegTrack(
+    cST = cellSegTrack(
         path_data,
         path_save,
         segmentation_args=segmentation_args,
         concatenation3D_args=concatenation3D_args,
         tracking_args=tracking_args,
         error_correction_args=error_correction_args,
-        plot_args=plot_args,
         batch_args=batch_args,
-        channels=[1, 0]
+        channels=[0,1,2]
     )
 
-    CTB.run()
+    # cST.run()
+    # cST.load()
 
     plot_args = {
         'plot_layout': (1,1),
@@ -97,8 +76,9 @@ if __name__ == "__main__":
         'masks_cmap': 'tab10',
         'plot_stack_dims': (512, 512), 
         'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
-        'channels':[1],
+        'channels':[0,1,2],
         'min_outline_length':75
     }
-    CTB.plot_tracking(plot_args=plot_args)
+    cST.plot_tracking(plot_args=plot_args)
 
+arboretum_napari(cST)
