@@ -81,7 +81,7 @@ from .core.tools.input_tools import (get_file_name, get_file_names,
 from .core.tools.save_tools import (extract_integer_from_filename,
                                     load_CT_info, read_split_times,
                                     save_3Dstack, save_4Dstack,
-                                    save_4Dstack_labels,
+                                    save_4Dstack_labels,read_split_vectors,
                                     save_cells_to_labels_stack, save_CT_info,
                                     save_labels_stack, substitute_labels)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,

@@ -12,6 +12,7 @@ from .cell_tools import create_cell
 from .ct_tools import compute_labels_stack
 from .input_tools import tif_reader_5D
 from .tools import correct_path
+from skimage.exposure import rescale_intensity
 
 
 def extract_integer_from_filename(file_name, file_format):
@@ -483,7 +484,8 @@ def read_split_times(
             channels = [i for i in range(IMGS.shape[2])]
         IMGS = IMGS[:, :, channels, :, :]
         times_ids = np.array(times)
-        IMGS = IMGS[times_ids].astype("uint8")
+        # IMGS = IMGS[times_ids].astype("uint8")
+        IMGS = rescale_intensity(IMGS[times_ids], out_range='uint8')
     else:
         for t in times:
             path_to_file = correct_path(path_data) + name_format.format(t) + extension
@@ -492,8 +494,10 @@ def read_split_times(
                 IMG, metadata = tif_reader_5D(path_to_file)
                 if channels is None:
                     channels = [i for i in range(IMG.shape[2])]
+                # IMGS.append(IMG[0].astype("uint8"))
                 IMG = IMG[:, :, channels, :, :]
-                IMGS.append(IMG[0].astype("uint8"))
+                IMGS.append(rescale_intensity(IMG[0], out_range='uint8'))
+                del IMG
             elif extension == ".npy":
                 IMG = np.load(path_to_file)
                 IMGS.append(IMG.astype("uint16"))
@@ -501,6 +505,43 @@ def read_split_times(
         return np.array(IMGS), metadata
     elif extension == ".npy":
         return np.array(IMGS)
+
+
+def read_split_vectors(
+    path_data, times, mask=None, name_format="{}{}"
+):
+    
+    path_to_file = correct_path(path_data) + name_format.format(times[0], times[1]) + ".npy"
+    vecs = np.load(path_to_file)
+    Vectors =[]
+
+    idmax = 0
+    for tid, t in enumerate(times[:-1]):
+        print(times[tid])
+        print(times[tid+1])
+        path_to_file = correct_path(path_data) + name_format.format(times[tid], times[tid+1]) + ".npy"
+        vecs = np.load(path_to_file)
+        print(vecs.shape)
+        if mask is not None:        
+            keep = mask[tid, vecs[:, 0, 0].astype(int), vecs[:, 0, 1].astype(int), vecs[:, 0, 2].astype(int)]
+            vecs = vecs[keep,:,:]
+        nvecs = vecs.shape[0]
+
+        Vecs = np.zeros((nvecs*2, 5))
+
+        #Ids
+        Vecs[:nvecs,0] = range(idmax, idmax+nvecs)
+        Vecs[nvecs:2*nvecs,0] = range(idmax, idmax+nvecs)
+        #Time
+        Vecs[:nvecs,1] = tid
+        Vecs[nvecs:2*nvecs,1] = tid+1
+        #Pos
+        Vecs[:nvecs,2:] = vecs[:,0,:]
+        Vecs[nvecs:2*nvecs,2:] = vecs[:,0,:]+vecs[:,1,:]
+
+        idmax += nvecs
+        Vectors.append(Vecs)
+    return np.array(np.vstack(Vectors))
 
 
 def substitute_labels(post_range_start, post_range_end, path_to_save, lcT, batch_args):
