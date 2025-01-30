@@ -1546,6 +1546,7 @@ class cellSegTrack(object):
 
             if len(ts) == 0:
                 printfancy("ERROR: no outlines drawn")
+                return
 
             for tid, t in enumerate(ts):
                 new_outlines.append([])
@@ -1594,6 +1595,7 @@ class cellSegTrack(object):
 
             if len(ts) == 0:
                 printfancy("ERROR: no outlines drawn")
+                return
 
             for tid, t in enumerate(ts):
                 new_outlines.append([])
