@@ -62,7 +62,7 @@ def linear_decay(z, slope, intercept):
     return slope * z + intercept
 
 
-def get_intenity_profile(CT, ch, cell_number_threshold=2, fit_everything=True):
+def get_intenity_profile(CT, ch, cell_number_threshold=2, fit_everything=True, return_slope_intercept=False):
     image_stack = CT.hyperstack[0, :, ch]
 
     intensity_per_z = np.zeros(CT.slices)
@@ -122,7 +122,10 @@ def get_intenity_profile(CT, ch, cell_number_threshold=2, fit_everything=True):
                 correct_val = intensity_profile[zid]
         correction_function.append(correct_val)
 
-    return correction_function, intensity_profile, z_positions
+    if return_slope_intercept:
+        return correction_function, intensity_profile, z_positions, slope, intercept
+    else:
+        return correction_function, intensity_profile, z_positions
 
 
 def correct_drift(results, ch=0, plotting=False):

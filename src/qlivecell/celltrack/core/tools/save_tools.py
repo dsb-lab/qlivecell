@@ -374,10 +374,10 @@ def save_4Dstack_labels(path, filename, cells, CT_info, imagejformat="TZYX"):
 
 def save_4Dstack(
     path,
-    filename,
-    stack_4D,
-    xyresolution,
-    zresolution,
+    filename=None,
+    stack_4D=None,
+    xyresolution=None,
+    zresolution=None,
     imagejformat="TZCYX",
 ):
     sh = stack_4D.shape
@@ -394,7 +394,10 @@ def save_4Dstack(
     else:
         new_masks = stack_4D
 
-    fullfilename = path + filename + ".tif"
+    if ".tif" in path:
+        fullfilename=path
+    else:
+        fullfilename = path + filename + ".tif"
 
     imwrite(
         fullfilename,

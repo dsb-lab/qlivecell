@@ -1617,14 +1617,14 @@ class PlotActionCT(PlotAction):
         self.napari_viewer = napari.view_image(
             self._plot_stack,
             name="hyperstack",
-            scale=(zres * self._plot_args["dim_change"], xyres, xyres),
+            scale=(zres * self._plot_args["dim_change"], 1/xyres, 1/xyres),
             rgb=False,
             ndisplay=3,
         )
         self.napari_viewer.add_image(
             self._napari_masks_stack,
             name="masks",
-            scale=(zres * self._plot_args["dim_change"], xyres, xyres),
+            scale=(zres * self._plot_args["dim_change"], 1/xyres, 1/xyres),
             channel_axis=-1,
             colormap=["red", "green", "blue"],
             rendering="iso",

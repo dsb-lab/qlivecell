@@ -515,7 +515,8 @@ class cellSegTrack(object):
             self.batch_times_list_global,
             name_format=self._batch_args["name_format"],
             extension=self._batch_args["extension"],
-            channels=self.channels,
+            # channels=self.channels,
+            channels=None
         )
 
         # If the stack is RGB, pick the channel to segment
@@ -673,7 +674,8 @@ class cellSegTrack(object):
                 range(t, t + 1),
                 name_format=self._batch_args["name_format"],
                 extension=self._batch_args["extension"],
-                channels=self.channels,
+                # channels=self.channels,
+                channels=None,
             )
 
             pre_stack_seg = self.hyperstack[0]
@@ -696,7 +698,7 @@ class cellSegTrack(object):
                 stack_seg = stack_seg[
                     :, self.channels_order[0] : self.channels_order[0] + 1, :, :
                 ]
-
+                
             outlines, masks, labels = cell_segmentation3D(
                 stack_seg, self._seg_args, self._seg_method_args
             )
