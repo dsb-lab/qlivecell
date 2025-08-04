@@ -3,6 +3,10 @@ literature
 os
 tmp
 
+# Image files
+*.tif
+*.npy
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
