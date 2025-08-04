@@ -1611,8 +1611,8 @@ class PlotActionCT(PlotAction):
 
     def viewer3D(self):
         self._3d_on = True
-        xyres = self.CT_info.xyresolution
-        zres = self.CT_info.zresolution
+        xyres = self.CT_info.voxel_size[1]
+        zres = self.CT_info.voxel_size[0]
 
         self.napari_viewer = napari.view_image(
             self._plot_stack,

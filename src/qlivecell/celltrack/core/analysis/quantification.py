@@ -42,8 +42,8 @@ def extract_fluoro(CT):
             results["channel_{}".format(ch)].append(np.mean(_ch[ch]))
             del _ch[ch][:]
 
-        zres = CT.metadata["Zresolution"]
-        xyres = CT.metadata["XYresolution"]
+        zres = CT.metadata["voxel_size"][0]
+        xyres = CT.metadata["voxel_size"][1]
         results["centers_px"].append(cell.centers[0])
         results["centers"].append(cell.centers[0] * [zres, xyres, xyres])
         results["labels"].append(cell.label + 1)

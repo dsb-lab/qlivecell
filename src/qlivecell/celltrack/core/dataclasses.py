@@ -7,8 +7,7 @@ from numba.types import Array, ListType, float32, int64, uint16
 
 @dataclass
 class cellSegTrack_info:
-    xyresolution: float
-    zresolution: float
+    voxel_size : list
     times: list
     slices: int
     stack_dims: tuple

@@ -101,9 +101,8 @@ class CTinfoJSONDecoder(json.JSONDecoder):
         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
 
     def object_hook(self, d):
-        if "xyresolution" in d:
-            xyresolution = d["xyresolution"]
-            zresolution = d["zresolution"]
+        if "voxel_size" in d:
+            voxel_size = d["voxel_size"]
             times = d["times"]
             slices = d["slices"]
             stack_dims = d["stack_dims"]
@@ -115,8 +114,7 @@ class CTinfoJSONDecoder(json.JSONDecoder):
             args = d["args"]
 
             return cellSegTrack_info(
-                xyresolution,
-                zresolution,
+                voxel_size,
                 times,
                 slices,
                 stack_dims,
@@ -362,7 +360,7 @@ def save_4Dstack_labels(path, filename, cells, CT_info, imagejformat="TZYX"):
         path + filename + ".tif",
         labels_stack,
         imagej=True,
-        resolution=(1 / CT_info.xyresolution, 1 / CT_info.xyresolution),
+        resolution=(1 / CT_info.voxel_size[1], 1 / CT_info.voxel_size[1]),
         metadata={
             "spacing": CT_info.zresolution,
             "unit": "um",
@@ -376,8 +374,7 @@ def save_4Dstack(
     path,
     filename=None,
     stack_4D=None,
-    xyresolution=None,
-    zresolution=None,
+    voxel_size=None,
     imagejformat="TZCYX",
 ):
     sh = stack_4D.shape
@@ -403,9 +400,9 @@ def save_4Dstack(
         fullfilename,
         new_masks,
         imagej=True,
-        resolution=(1 / xyresolution, 1 / xyresolution),
+        resolution=(1 / voxel_size[1], 1 / voxel_size[1]),
         metadata={
-            "spacing": zresolution,
+            "spacing": voxel_size[0],
             "unit": "um",
             "finterval": 300,
             "axes": imagejformat,
@@ -417,8 +414,7 @@ def save_3Dstack(
     path,
     filename,
     stack_3D,
-    xyresolution,
-    zresolution,
+    voxel_size,
     channels=True,
     imagejformat="ZCYX",
 ):
@@ -440,16 +436,16 @@ def save_3Dstack(
         path + filename,
         new_masks,
         imagej=True,
-        resolution=(1 / xyresolution, 1 / xyresolution),
+        resolution=(1 / voxel_size[1], 1 / voxel_size[1]),
         metadata={
-            "spacing": zresolution,
+            "spacing": voxel_size[0],
             "unit": "um",
             "axes": imagejformat,
         },
     )
 
 
-def save_2Dtiff(path, filename, image, xyresolution, imagejformat="CYX"):
+def save_2Dtiff(path, filename, image, voxel_size, imagejformat="CYX"):
     if len(image.shape) == 3:
         sh = image.shape
 
@@ -467,7 +463,7 @@ def save_2Dtiff(path, filename, image, xyresolution, imagejformat="CYX"):
         path + filename,
         new_masks,
         imagej=True,
-        resolution=(1 / xyresolution, 1 / xyresolution),
+        resolution=(1 / voxel_size[1], 1 / voxel_size[1]),
         metadata={
             "unit": "um",
             "axes": imagejformat,

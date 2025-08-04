@@ -272,13 +272,13 @@ def extract_cell_centers(stack, Outlines, Masks):
 
 
 def compute_distances_with_pre_post_z(
-    stack, Outlines, Masks, distance_th_z, xyresolution
+    stack, Outlines, Masks, distance_th_z, voxel_size
 ):
     centersi, centersj = extract_cell_centers(stack, Outlines, Masks)
     slices = stack.shape[0]
     distances_idx = []
     distances_val = []
-    distance_th = distance_th_z / xyresolution
+    distance_th = distance_th_z / voxel_size[0]
     for z in range(slices):
         distances_idx.append([])
         distances_val.append([])
@@ -328,9 +328,9 @@ def remove_short_cells(stack, labels, Outlines, Masks, min_cell_planes):
                 Masks[z].pop(id_l)
 
 
-def assign_labels(stack, Outlines, Masks, distance_th_z, xyresolution):
+def assign_labels(stack, Outlines, Masks, distance_th_z, voxel_size):
     distances_idx, distances_val = compute_distances_with_pre_post_z(
-        stack, Outlines, Masks, distance_th_z, xyresolution
+        stack, Outlines, Masks, distance_th_z, voxel_size
     )
     slices = stack.shape[0]
     labels = []
@@ -392,12 +392,12 @@ def assign_labels(stack, Outlines, Masks, distance_th_z, xyresolution):
     return labels
 
 
-def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
+def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, voxel_size):
     printfancy("")
     printfancy("running concatenation correction... (1/2)")
 
     labels = assign_labels(
-        stack, Outlines, Masks, conc3D_args["distance_th_z"], xyresolution
+        stack, Outlines, Masks, conc3D_args["distance_th_z"], voxel_size
     )
     separate_concatenated_cells(stack, labels, Outlines, Masks, conc3D_args)
 
@@ -408,7 +408,7 @@ def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
     printfancy("running concatenation correction... (2/2)")
 
     labels = assign_labels(
-        stack, Outlines, Masks, conc3D_args["distance_th_z"], xyresolution
+        stack, Outlines, Masks, conc3D_args["distance_th_z"], voxel_size
     )
     separate_concatenated_cells(stack, labels, Outlines, Masks, conc3D_args)
 
@@ -419,7 +419,7 @@ def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
     printfancy("running short cell removal...")
 
     labels = assign_labels(
-        stack, Outlines, Masks, conc3D_args["distance_th_z"], xyresolution
+        stack, Outlines, Masks, conc3D_args["distance_th_z"], voxel_size
     )
     remove_short_cells(stack, labels, Outlines, Masks, conc3D_args["min_cell_planes"])
 
@@ -432,7 +432,7 @@ def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
     printclear()
 
     labels = assign_labels(
-        stack, Outlines, Masks, conc3D_args["distance_th_z"], xyresolution
+        stack, Outlines, Masks, conc3D_args["distance_th_z"], voxel_size
     )
 
     return labels
