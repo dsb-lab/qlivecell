@@ -307,8 +307,7 @@ class cellSegTrack(object):
         ]
         apo_evs = [list(apoev) for apoev in self.apoptotic_events]
         CT_info = cellSegTrack_info(
-            self.metadata["XYresolution"],
-            self.metadata["Zresolution"],
+            self.metadata["voxel_size"],
             self.total_times,
             self.slices,
             self.stack_dims,
@@ -322,8 +321,7 @@ class cellSegTrack(object):
         return CT_info
 
     def store_CT_info(self):
-        self.CT_info.xyresolution = self.metadata["XYresolution"]
-        self.CT_info.zresolution = self.metadata["Zresolution"]
+        self.CT_info.voxel_size = self.metadata["voxel_size"]
         self.CT_info.times = self.total_times
         self.CT_info.slices = self.slices
         self.CT_info.stack_dims = self.stack_dims
@@ -547,7 +545,7 @@ class cellSegTrack(object):
             self._plot_args,
             self.times,
             self.slices,
-            self.metadata["XYresolution"],
+            self.metadata["voxel_size"],
         )
 
         t = self.times
@@ -682,12 +680,9 @@ class cellSegTrack(object):
 
             if self._seg_args["make_isotropic"][0]:
                 iso_frac = self._seg_args["make_isotropic"][1]
-                zres = self.metadata["Zresolution"]
-                xyres = self.metadata["XYresolution"]
                 stack_seg, ori_idxs = isotropize_stackRGB(
                     pre_stack_seg,
-                    zres,
-                    xyres,
+                    self.metadata["voxel_size"],
                     isotropic_fraction=iso_frac,
                     return_original_idxs=True,
                 )
@@ -716,7 +711,7 @@ class cellSegTrack(object):
                     outlines,
                     masks,
                     self._conc3D_args,
-                    self.metadata["XYresolution"],
+                    self.metadata["voxel_size"],
                 )
 
             Outlines.append(outlines)
@@ -837,8 +832,7 @@ class cellSegTrack(object):
                 FinalLabels, label_correspondance = greedy_tracking(
                     TLabels,
                     TCenters,
-                    metadata["XYresolution"],
-                    metadata["Zresolution"],
+                    metadata["voxel_size"],
                     self._track_args,
                     lab_max=maxlab,
                 )
@@ -848,8 +842,7 @@ class cellSegTrack(object):
                     TCenters,
                     TOutlines,
                     TMasks,
-                    metadata["XYresolution"],
-                    metadata["Zresolution"],
+                    metadata["voxel_size"],
                     self._track_args,
                     lab_max=maxlab,
                 )
@@ -2636,7 +2629,7 @@ class cellSegTrack(object):
             self._plot_args,
             self.times,
             self.slices,
-            self.metadata["XYresolution"],
+            self.metadata["voxel_size"],
         )
 
         t = self.times

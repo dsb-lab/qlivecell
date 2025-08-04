@@ -6,12 +6,12 @@ from ..tools.tools import printfancy
 
 
 def greedy_tracking(
-    TLabels, TCenters, xyresolution, zresolution, track_args, lab_max=0
+    TLabels, TCenters, voxel_size, track_args, lab_max=0
 ):
     dist_th = track_args["dist_th"]
     z_th = track_args["z_th"]
 
-    z_th_units = int(np.rint(z_th / zresolution))
+    z_th_units = int(np.rint(z_th / voxel_size[0]))
     FinalLabels = []
     FinalCenters = []
     label_correspondance = []
@@ -37,14 +37,14 @@ def greedy_tracking(
         for i in range(len(FinalLabels[t - 1])):
             # position of ith cell at t-1
             poscell1 = np.array(FinalCenters[t - 1][i][1:]) * np.array(
-                [xyresolution, xyresolution]
+                [voxel_size[1], voxel_size[1]]
             )
 
             # for each cell at t
             for j in range(len(TLabels[t])):
                 # position of jth cell at t
                 poscell2 = np.array(TCenters[t][j][1:]) * np.array(
-                    [xyresolution, xyresolution]
+                    [voxel_size[1], voxel_size[1]]
                 )
 
                 # compute distance between the two
@@ -52,7 +52,7 @@ def greedy_tracking(
 
                 # check if cell cell centers are separated by more than z_th slices
                 zdisp = np.abs(FinalCenters[t - 1][i][0] - TCenters[t][j][0])
-                zdisp_units = int(np.rint(zdisp / zresolution))
+                zdisp_units = int(np.rint(zdisp / voxel_size[0]))
 
                 if zdisp_units > z_th_units:
                     # if so, set the distance to a large number (e.g. 100)
@@ -107,13 +107,12 @@ def hungarian_tracking(
     TCenters,
     TOutlines,
     TMasks,
-    xyresolution,
-    zresolution,
+    voxel_size,
     track_args,
     lab_max=0,
 ):
     z_th = track_args["z_th"]
-    z_th_units = int(np.rint(z_th / zresolution))
+    z_th_units = int(np.rint(z_th / voxel_size[0]))
 
     cost_attributes = track_args["cost_attributes"]
     cost_ratios = track_args["cost_ratios"]
@@ -149,7 +148,7 @@ def hungarian_tracking(
             row = []
             for j in range(len(labs2)):
                 zdisp = np.abs(pos1[i][0] - pos2[j][0])
-                zdisp_units = int(np.rint(zdisp / zresolution))
+                zdisp_units = int(np.rint(zdisp / voxel_size[0]))
 
                 if zdisp_units > z_th_units:
                     distance = 100.0
@@ -157,7 +156,7 @@ def hungarian_tracking(
                     distance = (
                         (pos1[i][1] - pos2[j][1]) ** 2 + (pos1[i][2] - pos2[j][2]) ** 2
                     ) ** 0.5
-                    distance *= xyresolution
+                    distance *= voxel_size[1]
 
                 vol1 = len(masks1[i])
                 vol2 = len(masks2[j])
@@ -215,8 +214,6 @@ def hungarian_tracking(
 """
 checks necessary arguments.
 """
-
-
 def check_tracking_args(tracking_arguments, available_tracking=["greedy", "hungarian"]):
     if "method" not in tracking_arguments.keys():
         printfancy("No tracking method provided. Using greedy algorithm (if needed)")

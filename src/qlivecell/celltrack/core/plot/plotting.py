@@ -57,7 +57,7 @@ def update_plot_stack(pstackdims, channels, img_for_plotting, plot_stack):
 
 
 def check_stacks_for_plotting(
-    stacks_for_plotting, stacks, plot_args, times, slices, xyresolution
+    stacks_for_plotting, stacks, plot_args, times, slices, voxel_size
 ):
     if stacks_for_plotting is None:
         stacks_for_plotting = stacks
@@ -73,7 +73,7 @@ def check_stacks_for_plotting(
             channels = [i for i in range(min(stacks_for_plotting.shape[2], 3))]
             
     plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[-2]
-    plot_args["_plot_xyresolution"] = xyresolution * plot_args["dim_change"]
+    plot_args["_plot_xyresolution"] = voxel_size[1] * plot_args["dim_change"]
 
     if plot_args["dim_change"] != 1:
         plot_stacks = np.zeros(

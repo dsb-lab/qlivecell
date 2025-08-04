@@ -11,7 +11,7 @@ def plot_cell_sizes(CT, **kwargs):
         area = len(msk)
         areas.append(area)
 
-    areas = np.array(areas) * CT.CT_info.xyresolution**2
+    areas = np.array(areas) * CT.CT_info.voxel_size[1]**2
     from scipy.signal import argrelextrema
     from sklearn.neighbors import KernelDensity
 
@@ -58,7 +58,7 @@ def remove_small_cells(CT, area_th, update_labels=False):
             zcid = cell.zs[tid].index(zc)
 
             msk = cell.masks[tid][zcid]
-            area = len(msk) * CT.CT_info.xyresolution**2
+            area = len(msk) * CT.CT_info.voxel_size[1]**2
             areas.append(area)
         if np.mean(areas) < area_th:
             labs_to_remove.append(cell.label)

@@ -77,11 +77,11 @@ def isotropize_stack(
 
 
 def isotropize_stackRGB(
-    stack, zres, xyres, isotropic_fraction=1.0, return_original_idxs=True
+    stack, voxel_size, isotropic_fraction=1.0, return_original_idxs=True
 ):
     # factor = final n of slices / initial n of slices
-    if zres > xyres:
-        fres = (zres / (xyres)) * isotropic_fraction
+    if voxel_size[0] > voxel_size[1]:
+        fres = (voxel_size[0] / (voxel_size[1])) * isotropic_fraction
         S = stack.shape[0]
         N = np.rint((S - 1) * fres).astype("int16")
         if N < S:

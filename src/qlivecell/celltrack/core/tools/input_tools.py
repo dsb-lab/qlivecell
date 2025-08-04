@@ -264,8 +264,7 @@ def tif_reader_5D(path_to_file):
 
     if imagej_metadata is None:
         imagej_metadata = {}
-    imagej_metadata["XYresolution"] = xyres
-    imagej_metadata["Zresolution"] = zres
+    imagej_metadata["voxel_size"] = [zres, xyres, xyres]
     imagej_metadata["ResolutionUnit"] = res_unit
     return hyperstack, imagej_metadata
 
@@ -287,7 +286,7 @@ def separate_times_hyperstack(path_data, file, name_format="{}", folder_name=Non
 
     hyperstack, metadata = tif_reader_5D(path_data + file)
 
-    mdata = {"axes": "ZCYX", "spacing": metadata["Zresolution"], "unit": "um"}
+    mdata = {"axes": "ZCYX", "spacing": metadata["voxel_size"][0], "unit": "um"}
 
     for t in range(hyperstack.shape[0]):
         stack = hyperstack[t]
@@ -296,6 +295,6 @@ def separate_times_hyperstack(path_data, file, name_format="{}", folder_name=Non
             "{}{}.tif".format(path_data_file, name),
             stack.astype("uint8"),
             imagej=True,
-            resolution=(1 / metadata["XYresolution"], 1 / metadata["XYresolution"]),
+            resolution=(1 / metadata["voxel_size"][1], 1 / metadata["voxel_size"][1]),
             metadata=mdata,
         )
