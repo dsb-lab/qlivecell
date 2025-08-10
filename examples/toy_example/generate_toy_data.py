@@ -5,7 +5,7 @@ seed=10
 np.random.seed(seed)
 
 # Stack shape
-shape = (64, 256, 256)
+shape = (1, 1, 64, 256, 256)
 # Cell radius in physical units
 cell_radius = 10
 # total number of cells generated
@@ -20,7 +20,7 @@ blur_sigmas = np.ones_like(voxel_size)*blur_sigma
 blur_sigmas/=voxel_size
 
 Z, Y, X = shape
-volume = np.ones((Z, Y, X), dtype=np.float32)*0.01
+volume = np.ones((T, Z, Y, X), dtype=np.float32)*0.01
 
 # Convert physical radius into voxel units (considering voxel size)
 rz = cell_radius / voxel_size[0]
@@ -46,7 +46,6 @@ for _ in range(num_cells):
     y0, y1 = yc - ry_int, yc + ry_int + 1
     x0, x1 = xc - rx_int, xc + rx_int + 1
     volume[z0:z1, y0:y1, x0:x1] += ellipsoid    
-
 
 # Apply anisotropic blur
 blurred = gaussian_filter(volume, sigma=blur_sigmas)
@@ -75,7 +74,7 @@ plt.show()
 import os
 path_cwd = os.path.abspath(os.getcwd())
 path_to_save = path_cwd+"/examples/toy_example/toy_data.tif"
-save_4Dstack(path_to_save, "toy_data.tif", xyresolution=)
+save_4Dstack(path_to_save, "toy_data.tif", np.array([[volume]]), voxel_size=voxel_size)
 from tifffile import imwrite
 imwrite(
     path_to_save,
