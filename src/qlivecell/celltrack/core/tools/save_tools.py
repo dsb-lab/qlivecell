@@ -483,7 +483,7 @@ def read_split_times(
             channels = [i for i in range(IMGS.shape[2])]
         IMGS = IMGS[:, :, channels, :, :]
         times_ids = np.array(times)
-        IMGS = IMGS[times_ids].astype("uint8")
+        # IMGS = IMGS[times_ids].astype("uint8")
     else:
         for t in times:
             path_to_file = correct_path(path_data) + name_format.format(t) + extension
@@ -493,7 +493,7 @@ def read_split_times(
                 if channels is None:
                     channels = [i for i in range(IMG.shape[2])]
                 IMG = IMG[:, :, channels, :, :]
-                IMGS.append(IMG[0].astype("uint8"))
+                # IMGS.append(IMG[0].astype("uint8"))
             elif extension == ".npy":
                 IMG = np.load(path_to_file)
                 IMGS.append(IMG.astype("uint16"))

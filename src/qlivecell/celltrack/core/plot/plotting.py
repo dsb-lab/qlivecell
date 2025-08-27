@@ -56,6 +56,44 @@ def update_plot_stack(pstackdims, channels, img_for_plotting, plot_stack):
         plot_stack = plot_stack_resized
 
 
+def convert_to_8bit_per_channel(image, channel_axis=2):
+    """
+    Convert 16-bit image to 8-bit, rescaling intensities
+    per channel (like ImageJ).
+    
+    Parameters
+    ----------
+    image : ndarray
+        Input array of any shape, e.g. (T, Z, C, X, Y).
+    channel_axis : int
+        Axis index corresponding to channels.
+    
+    Returns
+    -------
+    image8 : ndarray (uint8)
+        Same shape as input, but dtype=uint8.
+    """
+    image = np.asarray(image)
+    image8 = np.zeros_like(image, dtype=np.uint8)
+
+    # Loop over channels
+    for c in range(image.shape[channel_axis]):
+        # Slice channel
+        ch = np.take(image, indices=c, axis=channel_axis)
+
+        min_val = ch.min()
+        max_val = ch.max()
+
+        if max_val == min_val:
+            ch8 = np.zeros_like(ch, dtype=np.uint8)
+        else:
+            ch8 = ((ch - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+
+        # Put back into result
+        np.put_along_axis(image8, np.expand_dims(np.full_like(ch, c), channel_axis), ch8, axis=channel_axis)
+
+    return image8
+
 def check_stacks_for_plotting(
     stacks_for_plotting, stacks, plot_args, times, slices, xyresolution
 ):
@@ -70,6 +108,7 @@ def check_stacks_for_plotting(
         channels = plot_args["channels"]
         if channels is None:
             channels = [i for i in range(stacks_for_plotting.shape[2])]
+    stacks_for_plotting = convert_to_8bit_per_channel(stacks_for_plotting, 2)
     plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[-2]
     plot_args["_plot_xyresolution"] = xyresolution * plot_args["dim_change"]
 
