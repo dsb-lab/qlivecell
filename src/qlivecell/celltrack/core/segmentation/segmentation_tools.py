@@ -391,6 +391,18 @@ def assign_labels(stack, Outlines, Masks, distance_th_z, xyresolution):
             labels[z].append(label)
     return labels
 
+def assign_labels_direct(Outlines):
+    labels = []
+    label=None
+    for z in range(len(Outlines)):
+        labels.append([])
+        for cell, outline in enumerate(Outlines[z]):
+            if label == None:
+                label = 0
+            else:
+                label = label + 1
+            labels[z].append(label)
+    return labels
 
 def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
     printfancy("")
@@ -437,6 +449,9 @@ def concatenate_to_3D(stack, Outlines, Masks, conc3D_args, xyresolution):
 
     return labels
 
+def dont_concatenate_to_3D(Outlines):
+    labels = assign_labels_direct(Outlines)
+    return labels
 
 def check3Dmethod(method):
     return True if "3D" in method else False

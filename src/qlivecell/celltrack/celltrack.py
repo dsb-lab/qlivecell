@@ -42,6 +42,7 @@ from .core.segmentation.segmentation import (
 from .core.segmentation.segmentation_tools import (assign_labels,
                                                    check3Dmethod,
                                                    concatenate_to_3D,
+                                                   dont_concatenate_to_3D,
                                                    label_per_z,
                                                    remove_short_cells,
                                                    separate_concatenated_cells)
@@ -709,13 +710,16 @@ class cellSegTrack(object):
             if not self.segment3D:
                 stack = self.hyperstack[0, :, self.channels_order[0], :, :]
                 # outlines and masks are modified in place
-                labels = concatenate_to_3D(
-                    stack,
-                    outlines,
-                    masks,
-                    self._conc3D_args,
-                    self.metadata["XYresolution"],
-                )
+                if self._conc3D_args["do_3Dconcatenation"]:
+                    labels = concatenate_to_3D(
+                        stack,
+                        outlines,
+                        masks,
+                        self._conc3D_args,
+                        self.metadata["XYresolution"],
+                    )
+                else:
+                    labels = dont_concatenate_to_3D(outlines)
 
             Outlines.append(outlines)
             Masks.append(masks)
