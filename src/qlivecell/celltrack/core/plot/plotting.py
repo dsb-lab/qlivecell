@@ -55,11 +55,10 @@ def update_plot_stack(pstackdims, channels, img_for_plotting, plot_stack):
         plot_stack_resized = resize(img_for_plotting, pstackdims)
         plot_stack = plot_stack_resized
 
-
 def convert_to_8bit_per_channel(image, channel_axis=2):
     """
     Convert 16-bit image to 8-bit, rescaling intensities
-    per channel (like ImageJ).
+    per channel independently (like ImageJ).
     
     Parameters
     ----------
@@ -78,7 +77,7 @@ def convert_to_8bit_per_channel(image, channel_axis=2):
 
     # Loop over channels
     for c in range(image.shape[channel_axis]):
-        # Slice channel
+        # Extract one channel
         ch = np.take(image, indices=c, axis=channel_axis)
 
         min_val = ch.min()
@@ -89,8 +88,10 @@ def convert_to_8bit_per_channel(image, channel_axis=2):
         else:
             ch8 = ((ch - min_val) / (max_val - min_val) * 255).astype(np.uint8)
 
-        # Put back into result
-        np.put_along_axis(image8, np.expand_dims(np.full_like(ch, c), channel_axis), ch8, axis=channel_axis)
+        # Put it back into the output
+        sl = [slice(None)] * image.ndim
+        sl[channel_axis] = c
+        image8[tuple(sl)] = ch8
 
     return image8
 
