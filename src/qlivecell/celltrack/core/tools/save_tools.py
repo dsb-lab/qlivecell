@@ -482,9 +482,9 @@ def read_split_times(
         if channels is None:
             channels = [i for i in range(IMGS.shape[2])]
         IMGS = IMGS[:, :, channels, :, :]
-        times_ids = np.array(times)
+        # times_ids = np.array(times)
         # IMGS = IMGS[times_ids].astype("uint8")
-        IMGS = rescale_intensity(IMGS[times_ids], out_range='uint8')
+        # IMGS = rescale_intensity(IMGS[times_ids], out_range='uint8')
     else:
         for t in times:
             path_to_file = correct_path(path_data) + name_format.format(t) + extension
@@ -493,9 +493,9 @@ def read_split_times(
                 IMG, metadata = tif_reader_5D(path_to_file)
                 if channels is None:
                     channels = [i for i in range(IMG.shape[2])]
-                # IMGS.append(IMG[0].astype("uint8"))
                 IMG = IMG[:, :, channels, :, :]
-                IMGS.append(rescale_intensity(IMG[0], out_range='uint8'))
+                IMGS.append(IMG[0])
+                # IMGS.append(rescale_intensity(IMG[0], out_range='uint8'))
                 del IMG
             elif extension == ".npy":
                 IMG = np.load(path_to_file)

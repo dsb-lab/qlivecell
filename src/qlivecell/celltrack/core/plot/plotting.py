@@ -55,6 +55,45 @@ def update_plot_stack(pstackdims, channels, img_for_plotting, plot_stack):
         plot_stack_resized = resize(img_for_plotting, pstackdims)
         plot_stack = plot_stack_resized
 
+def convert_to_8bit_per_channel(image, channel_axis=2):
+    """
+    Convert 16-bit image to 8-bit, rescaling intensities
+    per channel independently (like ImageJ).
+    
+    Parameters
+    ----------
+    image : ndarray
+        Input array of any shape, e.g. (T, Z, C, X, Y).
+    channel_axis : int
+        Axis index corresponding to channels.
+    
+    Returns
+    -------
+    image8 : ndarray (uint8)
+        Same shape as input, but dtype=uint8.
+    """
+    image = np.asarray(image)
+    image8 = np.zeros_like(image, dtype=np.uint8)
+
+    # Loop over channels
+    for c in range(image.shape[channel_axis]):
+        # Extract one channel
+        ch = np.take(image, indices=c, axis=channel_axis)
+
+        min_val = ch.min()
+        max_val = ch.max()
+
+        if max_val == min_val:
+            ch8 = np.zeros_like(ch, dtype=np.uint8)
+        else:
+            ch8 = ((ch - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+
+        # Put it back into the output
+        sl = [slice(None)] * image.ndim
+        sl[channel_axis] = c
+        image8[tuple(sl)] = ch8
+
+    return image8
 
 def check_stacks_for_plotting(
     stacks_for_plotting, stacks, plot_args, times, slices, voxel_size
@@ -71,7 +110,7 @@ def check_stacks_for_plotting(
         if channels is None:
             # If no plotting channel is specified, the first three in the hyperstack are used for RGB plotting
             channels = [i for i in range(min(stacks_for_plotting.shape[2], 3))]
-            
+    stacks_for_plotting = convert_to_8bit_per_channel(stacks_for_plotting, 2)
     plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[-2]
     plot_args["_plot_xyresolution"] = voxel_size[1] * plot_args["dim_change"]
 

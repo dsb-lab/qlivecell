@@ -414,6 +414,7 @@ def fill_segmentation_args(segmentation_args):
 
 def check_and_fill_concatenation3D_args(concatenation3D_args):
     new_concatenation3d_args = {
+        "do_3Dconcatenation":True,
         "distance_th_z": 3.0,
         "relative_overlap": False,
         "use_full_matrix_to_compute_overlap": True,
