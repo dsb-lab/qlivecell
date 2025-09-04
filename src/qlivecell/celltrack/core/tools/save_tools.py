@@ -12,6 +12,7 @@ from .cell_tools import create_cell
 from .ct_tools import compute_labels_stack
 from .input_tools import tif_reader_5D
 from .tools import correct_path
+from skimage.exposure import rescale_intensity
 
 
 def extract_integer_from_filename(file_name, file_format):
@@ -100,9 +101,8 @@ class CTinfoJSONDecoder(json.JSONDecoder):
         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
 
     def object_hook(self, d):
-        if "xyresolution" in d:
-            xyresolution = d["xyresolution"]
-            zresolution = d["zresolution"]
+        if "voxel_size" in d:
+            voxel_size = d["voxel_size"]
             times = d["times"]
             slices = d["slices"]
             stack_dims = d["stack_dims"]
@@ -114,8 +114,7 @@ class CTinfoJSONDecoder(json.JSONDecoder):
             args = d["args"]
 
             return cellSegTrack_info(
-                xyresolution,
-                zresolution,
+                voxel_size,
                 times,
                 slices,
                 stack_dims,
@@ -361,7 +360,7 @@ def save_4Dstack_labels(path, filename, cells, CT_info, imagejformat="TZYX"):
         path + filename + ".tif",
         labels_stack,
         imagej=True,
-        resolution=(1 / CT_info.xyresolution, 1 / CT_info.xyresolution),
+        resolution=(1 / CT_info.voxel_size[1], 1 / CT_info.voxel_size[1]),
         metadata={
             "spacing": CT_info.zresolution,
             "unit": "um",
@@ -373,10 +372,9 @@ def save_4Dstack_labels(path, filename, cells, CT_info, imagejformat="TZYX"):
 
 def save_4Dstack(
     path,
-    filename,
-    stack_4D,
-    xyresolution,
-    zresolution,
+    filename=None,
+    stack_4D=None,
+    voxel_size=None,
     imagejformat="TZCYX",
 ):
     sh = stack_4D.shape
@@ -393,15 +391,18 @@ def save_4Dstack(
     else:
         new_masks = stack_4D
 
-    fullfilename = path + filename + ".tif"
+    if ".tif" in path:
+        fullfilename=path
+    else:
+        fullfilename = path + filename + ".tif"
 
     imwrite(
         fullfilename,
         new_masks,
         imagej=True,
-        resolution=(1 / xyresolution, 1 / xyresolution),
+        resolution=(1 / voxel_size[1], 1 / voxel_size[1]),
         metadata={
-            "spacing": zresolution,
+            "spacing": voxel_size[0],
             "unit": "um",
             "finterval": 300,
             "axes": imagejformat,
@@ -413,8 +414,7 @@ def save_3Dstack(
     path,
     filename,
     stack_3D,
-    xyresolution,
-    zresolution,
+    voxel_size,
     channels=True,
     imagejformat="ZCYX",
 ):
@@ -436,16 +436,16 @@ def save_3Dstack(
         path + filename,
         new_masks,
         imagej=True,
-        resolution=(1 / xyresolution, 1 / xyresolution),
+        resolution=(1 / voxel_size[1], 1 / voxel_size[1]),
         metadata={
-            "spacing": zresolution,
+            "spacing": voxel_size[0],
             "unit": "um",
             "axes": imagejformat,
         },
     )
 
 
-def save_2Dtiff(path, filename, image, xyresolution, imagejformat="CYX"):
+def save_2Dtiff(path, filename, image, voxel_size, imagejformat="CYX"):
     if len(image.shape) == 3:
         sh = image.shape
 
@@ -463,7 +463,7 @@ def save_2Dtiff(path, filename, image, xyresolution, imagejformat="CYX"):
         path + filename,
         new_masks,
         imagej=True,
-        resolution=(1 / xyresolution, 1 / xyresolution),
+        resolution=(1 / voxel_size[1], 1 / voxel_size[1]),
         metadata={
             "unit": "um",
             "axes": imagejformat,
@@ -482,8 +482,9 @@ def read_split_times(
         if channels is None:
             channels = [i for i in range(IMGS.shape[2])]
         IMGS = IMGS[:, :, channels, :, :]
-        times_ids = np.array(times)
+        # times_ids = np.array(times)
         # IMGS = IMGS[times_ids].astype("uint8")
+        # IMGS = rescale_intensity(IMGS[times_ids], out_range='uint8')
     else:
         for t in times:
             path_to_file = correct_path(path_data) + name_format.format(t) + extension
@@ -493,7 +494,9 @@ def read_split_times(
                 if channels is None:
                     channels = [i for i in range(IMG.shape[2])]
                 IMG = IMG[:, :, channels, :, :]
-                # IMGS.append(IMG[0].astype("uint8"))
+                IMGS.append(IMG[0])
+                # IMGS.append(rescale_intensity(IMG[0], out_range='uint8'))
+                del IMG
             elif extension == ".npy":
                 IMG = np.load(path_to_file)
                 IMGS.append(IMG.astype("uint16"))
@@ -501,6 +504,43 @@ def read_split_times(
         return np.array(IMGS), metadata
     elif extension == ".npy":
         return np.array(IMGS)
+
+
+def read_split_vectors(
+    path_data, times, mask=None, name_format="{}{}"
+):
+    
+    path_to_file = correct_path(path_data) + name_format.format(times[0], times[1]) + ".npy"
+    vecs = np.load(path_to_file)
+    Vectors =[]
+
+    idmax = 0
+    for tid, t in enumerate(times[:-1]):
+        print(times[tid])
+        print(times[tid+1])
+        path_to_file = correct_path(path_data) + name_format.format(times[tid], times[tid+1]) + ".npy"
+        vecs = np.load(path_to_file)
+        print(vecs.shape)
+        if mask is not None:        
+            keep = mask[tid, vecs[:, 0, 0].astype(int), vecs[:, 0, 1].astype(int), vecs[:, 0, 2].astype(int)]
+            vecs = vecs[keep,:,:]
+        nvecs = vecs.shape[0]
+
+        Vecs = np.zeros((nvecs*2, 5))
+
+        #Ids
+        Vecs[:nvecs,0] = range(idmax, idmax+nvecs)
+        Vecs[nvecs:2*nvecs,0] = range(idmax, idmax+nvecs)
+        #Time
+        Vecs[:nvecs,1] = tid
+        Vecs[nvecs:2*nvecs,1] = tid+1
+        #Pos
+        Vecs[:nvecs,2:] = vecs[:,0,:]
+        Vecs[nvecs:2*nvecs,2:] = vecs[:,0,:]+vecs[:,1,:]
+
+        idmax += nvecs
+        Vectors.append(Vecs)
+    return np.array(np.vstack(Vectors))
 
 
 def substitute_labels(post_range_start, post_range_end, path_to_save, lcT, batch_args):

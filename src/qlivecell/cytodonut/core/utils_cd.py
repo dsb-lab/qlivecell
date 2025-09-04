@@ -528,7 +528,7 @@ class PlotAction:
             self.cr = min(self.cr, self.max_round)
             self.CT._z_sliders[self.id].set_val(self.cr)
 
-            self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+            self.CT.replot(self, plot_outlines=self.plot_outlines)
             self.update()
 
             if self.current_state == "SCL":
@@ -546,7 +546,7 @@ class PlotAction:
         self.figheight = heightfig
 
     def reploting(self):
-        self.CT.replot_tracking(self, plot_outlines=self.plot_outlines)
+        self.CT.replot(self, plot_outlines=self.plot_outlines)
         self.fig.canvas.draw_idle()
         self.fig.canvas.draw()
 

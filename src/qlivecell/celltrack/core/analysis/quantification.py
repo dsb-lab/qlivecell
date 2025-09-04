@@ -42,8 +42,8 @@ def extract_fluoro(CT):
             results["channel_{}".format(ch)].append(np.mean(_ch[ch]))
             del _ch[ch][:]
 
-        zres = CT.metadata["Zresolution"]
-        xyres = CT.metadata["XYresolution"]
+        zres = CT.metadata["voxel_size"][0]
+        xyres = CT.metadata["voxel_size"][1]
         results["centers_px"].append(cell.centers[0])
         results["centers"].append(cell.centers[0] * [zres, xyres, xyres])
         results["labels"].append(cell.label + 1)
@@ -62,7 +62,7 @@ def linear_decay(z, slope, intercept):
     return slope * z + intercept
 
 
-def get_intenity_profile(CT, ch, cell_number_threshold=2, fit_everything=True):
+def get_intenity_profile(CT, ch, cell_number_threshold=2, fit_everything=True, return_slope_intercept=False):
     image_stack = CT.hyperstack[0, :, ch]
 
     intensity_per_z = np.zeros(CT.slices)
@@ -122,7 +122,10 @@ def get_intenity_profile(CT, ch, cell_number_threshold=2, fit_everything=True):
                 correct_val = intensity_profile[zid]
         correction_function.append(correct_val)
 
-    return correction_function, intensity_profile, z_positions
+    if return_slope_intercept:
+        return correction_function, intensity_profile, z_positions, slope, intercept
+    else:
+        return correction_function, intensity_profile, z_positions
 
 
 def correct_drift(results, ch=0, plotting=False):
@@ -191,13 +194,14 @@ def quantify_channels(CT):
         mask[:, 1][mask[:, 1] >= CT.hyperstack.shape[-1]] = CT.hyperstack.shape[-1] - 1
         for ch_id, ch in enumerate(CT.channels):
             stack = CT.hyperstack[0, zc, ch, :, :]
-            quantifications[ch_id].append(np.mean(stack[mask[:, 0], mask[:, 1]]))
+            quantifications[ch_id].append(np.mean(stack[mask[:, 1], mask[:, 0]]))
 
     return quantifications
 
 
-def plot_channel_quantification_bar(CT, channel_labels=None):
-    colors = ["yellow", "magenta", "green", "blue"]
+def plot_channel_quantification_bar(CT, channel_labels=None, colors=[]):
+    if len(colors)==0:
+        colors = ["yellow", "magenta", "green", "blue"]
     quantifications = quantify_channels(CT)
     import matplotlib.pyplot as plt
     import numpy as np

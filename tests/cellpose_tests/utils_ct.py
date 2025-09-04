@@ -118,12 +118,12 @@ def cell_segmentation_outlines(imgs, cellposemodel=None, trainedmodel=False):
 
 
 def compute_distances_with_pre_post_z(
-    imgs, centersi, centersj, distth=1.5, xyresolution=0.2767553
+    imgs, centersi, centersj, voxel_size, distth=1.5
 ):
     slices = imgs.shape[0]
     distances_idx = []
     distances_val = []
-    distance_th = np.round(distth / xyresolution)
+    distance_th = np.round(distth / voxel_size[0])
     for z in range(slices):
         distances_idx.append([])
         distances_val.append([])

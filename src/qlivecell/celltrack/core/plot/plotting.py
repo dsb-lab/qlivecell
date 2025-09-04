@@ -96,7 +96,7 @@ def convert_to_8bit_per_channel(image, channel_axis=2):
     return image8
 
 def check_stacks_for_plotting(
-    stacks_for_plotting, stacks, plot_args, times, slices, xyresolution
+    stacks_for_plotting, stacks, plot_args, times, slices, voxel_size
 ):
     if stacks_for_plotting is None:
         stacks_for_plotting = stacks
@@ -108,10 +108,11 @@ def check_stacks_for_plotting(
         ]
         channels = plot_args["channels"]
         if channels is None:
-            channels = [i for i in range(stacks_for_plotting.shape[2])]
+            # If no plotting channel is specified, the first three in the hyperstack are used for RGB plotting
+            channels = [i for i in range(min(stacks_for_plotting.shape[2], 3))]
     stacks_for_plotting = convert_to_8bit_per_channel(stacks_for_plotting, 2)
     plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[-2]
-    plot_args["_plot_xyresolution"] = xyresolution * plot_args["dim_change"]
+    plot_args["_plot_xyresolution"] = voxel_size[1] * plot_args["dim_change"]
 
     if plot_args["dim_change"] != 1:
         plot_stacks = np.zeros(
@@ -143,7 +144,7 @@ def check_stacks_for_plotting(
 
 def norm_stack_per_z(IMGS, saturation=0.7):
     IMGS_norm = np.zeros_like(IMGS)
-    saturation = 0.7 * 255
+    saturation = saturation * 255
     for t in range(IMGS.shape[0]):
         for z in range(IMGS.shape[1]):
             IMGS_norm[t, z] = (IMGS[t, z] / np.max(IMGS[t, z])) * saturation

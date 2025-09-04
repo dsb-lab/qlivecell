@@ -82,7 +82,7 @@ from .core.tools.input_tools import (get_file_name, get_file_names,
 from .core.tools.save_tools import (extract_integer_from_filename,
                                     load_CT_info, read_split_times,
                                     save_3Dstack, save_4Dstack,
-                                    save_4Dstack_labels,
+                                    save_4Dstack_labels,read_split_vectors,
                                     save_cells_to_labels_stack, save_CT_info,
                                     save_labels_stack, substitute_labels)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
@@ -308,8 +308,7 @@ class cellSegTrack(object):
         ]
         apo_evs = [list(apoev) for apoev in self.apoptotic_events]
         CT_info = cellSegTrack_info(
-            self.metadata["XYresolution"],
-            self.metadata["Zresolution"],
+            self.metadata["voxel_size"],
             self.total_times,
             self.slices,
             self.stack_dims,
@@ -323,8 +322,7 @@ class cellSegTrack(object):
         return CT_info
 
     def store_CT_info(self):
-        self.CT_info.xyresolution = self.metadata["XYresolution"]
-        self.CT_info.zresolution = self.metadata["Zresolution"]
+        self.CT_info.voxel_size = self.metadata["voxel_size"]
         self.CT_info.times = self.total_times
         self.CT_info.slices = self.slices
         self.CT_info.stack_dims = self.stack_dims
@@ -516,7 +514,8 @@ class cellSegTrack(object):
             self.batch_times_list_global,
             name_format=self._batch_args["name_format"],
             extension=self._batch_args["extension"],
-            channels=self.channels,
+            # channels=self.channels,
+            channels=None
         )
 
         # If the stack is RGB, pick the channel to segment
@@ -547,7 +546,7 @@ class cellSegTrack(object):
             self._plot_args,
             self.times,
             self.slices,
-            self.metadata["XYresolution"],
+            self.metadata["voxel_size"],
         )
 
         t = self.times
@@ -674,19 +673,17 @@ class cellSegTrack(object):
                 range(t, t + 1),
                 name_format=self._batch_args["name_format"],
                 extension=self._batch_args["extension"],
-                channels=self.channels,
+                # channels=self.channels,
+                channels=None,
             )
 
             pre_stack_seg = self.hyperstack[0]
 
             if self._seg_args["make_isotropic"][0]:
                 iso_frac = self._seg_args["make_isotropic"][1]
-                zres = self.metadata["Zresolution"]
-                xyres = self.metadata["XYresolution"]
                 stack_seg, ori_idxs = isotropize_stackRGB(
                     pre_stack_seg,
-                    zres,
-                    xyres,
+                    self.metadata["voxel_size"],
                     isotropic_fraction=iso_frac,
                     return_original_idxs=True,
                 )
@@ -697,7 +694,7 @@ class cellSegTrack(object):
                 stack_seg = stack_seg[
                     :, self.channels_order[0] : self.channels_order[0] + 1, :, :
                 ]
-
+                
             outlines, masks, labels = cell_segmentation3D(
                 stack_seg, self._seg_args, self._seg_method_args
             )
@@ -716,7 +713,7 @@ class cellSegTrack(object):
                         outlines,
                         masks,
                         self._conc3D_args,
-                        self.metadata["XYresolution"],
+                        self.metadata["voxel_size"],
                     )
                 else:
                     labels = dont_concatenate_to_3D(outlines)
@@ -839,8 +836,7 @@ class cellSegTrack(object):
                 FinalLabels, label_correspondance = greedy_tracking(
                     TLabels,
                     TCenters,
-                    metadata["XYresolution"],
-                    metadata["Zresolution"],
+                    metadata["voxel_size"],
                     self._track_args,
                     lab_max=maxlab,
                 )
@@ -850,8 +846,7 @@ class cellSegTrack(object):
                     TCenters,
                     TOutlines,
                     TMasks,
-                    metadata["XYresolution"],
-                    metadata["Zresolution"],
+                    metadata["voxel_size"],
                     self._track_args,
                     lab_max=maxlab,
                 )
@@ -1081,7 +1076,7 @@ class cellSegTrack(object):
         discs = find_discontinuities_unique_labels_T(
             self.unique_labels_T, self.max_label
         )
-        print("WHATS GOING ON?")
+
         #####################
 
         # Once unique labels are updated, we can safely run label ordering
@@ -1550,6 +1545,7 @@ class cellSegTrack(object):
 
             if len(ts) == 0:
                 printfancy("ERROR: no outlines drawn")
+                return
 
             for tid, t in enumerate(ts):
                 new_outlines.append([])
@@ -1598,6 +1594,7 @@ class cellSegTrack(object):
 
             if len(ts) == 0:
                 printfancy("ERROR: no outlines drawn")
+                return
 
             for tid, t in enumerate(ts):
                 new_outlines.append([])
@@ -2614,7 +2611,7 @@ class cellSegTrack(object):
         self._titles.append(title)
         _ = _ax.axis(False)
 
-    def plot_tracking(
+    def plot(
         self,
         plot_args=None,
         cell_picker=False,
@@ -2636,7 +2633,7 @@ class cellSegTrack(object):
             self._plot_args,
             self.times,
             self.slices,
-            self.metadata["XYresolution"],
+            self.metadata["voxel_size"],
         )
 
         t = self.times
@@ -2664,7 +2661,7 @@ class cellSegTrack(object):
             round=0,
         )
         fig, ax = plt.subplots(counter.layout[0], counter.layout[1], figsize=(10, 10))
-        fig.canvas.mpl_connect("close_event", self.on_close_plot_tracking)
+        fig.canvas.mpl_connect("close_event", self.on_close_plot)
 
         if not hasattr(ax, "__iter__"):
             ax = np.array([ax])
@@ -2795,7 +2792,7 @@ class cellSegTrack(object):
             )
         self._titles[imid].set_text("z = %d" % (z + 1))
 
-    def replot_tracking(self, PACP, plot_outlines=True):
+    def replot(self, PACP, plot_outlines=True):
         t = PACP.t
         counter = plotRound(
             layout=self._plot_args["plot_layout"],
@@ -2899,5 +2896,5 @@ class cellSegTrack(object):
             printfancy("")
             printfancy("Error correction finished", clear_prev=2)
 
-    def on_close_plot_tracking(self, event):
+    def on_close_plot(self, event):
         self.update_labels_batches()

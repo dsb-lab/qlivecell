@@ -139,9 +139,9 @@ def arboretum_napari(CTB):
         CTB.hyperstack[:, :, CTB.channels_order[0]],
         name="hyperstack",
         scale=(
-            CTB.metadata["Zresolution"],
-            CTB.metadata["XYresolution"],
-            CTB.metadata["XYresolution"],
+            CTB.metadata["voxel_size"][0],
+            CTB.metadata["voxel_size"][1],
+            CTB.metadata["voxel_size"][2],
         ),
         rgb=False,
         ndisplay=3,
@@ -151,9 +151,9 @@ def arboretum_napari(CTB):
         napari_tracks_data,
         name="tracks",
         scale=(
-            CTB.metadata["Zresolution"],
-            CTB.metadata["XYresolution"],
-            CTB.metadata["XYresolution"],
+            CTB.metadata["voxel_size"][0],
+            CTB.metadata["voxel_size"][1],
+            CTB.metadata["voxel_size"][2],
         ),
         properties=properties,
         graph=graph,
@@ -165,9 +165,9 @@ def arboretum_napari(CTB):
         napari_tracks_data[:, 1:]
         * (
             1,
-            CTB.metadata["Zresolution"],
-            CTB.metadata["XYresolution"],
-            CTB.metadata["XYresolution"],
+            CTB.metadata["voxel_size"][0],
+            CTB.metadata["voxel_size"][1],
+            CTB.metadata["voxel_size"][2],
         ),
         size=2,
         name="centers",

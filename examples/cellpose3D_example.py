@@ -70,5 +70,5 @@ CT = cellSegTrack(
 CT.run()
 
 ### PLOTTING ###
-CT.plot_tracking(plot_args, stacks_for_plotting=IMGS)
+CT.plot(plot_args, stacks_for_plotting=IMGS)
 

@@ -91,7 +91,7 @@ if __name__ == "__main__":
         'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
         'channels':[0]
     }
-    CTB.plot_tracking(plot_args=plot_args)
+    CTB.plot(plot_args=plot_args)
 
 
 # ### SAVE RESULTS AS MASKS HYPERSTACK ###
