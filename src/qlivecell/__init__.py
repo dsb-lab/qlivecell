@@ -9,6 +9,7 @@ from .celltrack.celltrack import (arboretum_napari, cellSegTrack,
                                   plot_channel_quantification_hist,
                                   quantify_channels, remove_small_cells,
                                   save_3Dstack, save_4Dstack,
-                                  separate_times_hyperstack, tif_reader_5D, check_or_create_dir)
+                                  separate_times_hyperstack, tif_reader_5D, check_or_create_dir,
+                                  add_ellipsoid_safe, reflect_in_box)
 from .cytodonut.cytodonut import ERKKTR, load_donuts, plot_donuts
 from .embseg.embseg import EmbryoSegmentation, load_ES, save_ES
