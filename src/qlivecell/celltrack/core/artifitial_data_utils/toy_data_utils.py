@@ -43,6 +43,33 @@ def add_ellipsoid_safe(vol, ellipsoid, zc, yc, xc, rz_int, ry_int, rx_int, Z, Y,
     
     vol[z0:z1, y0:y1, x0:x1] += ellipsoid[ez0:ez1, ey0:ey1, ex0:ex1]
 
+def add_circle_safe(img2d, circle, yc, xc, r_int, Y, X):
+    """
+    Safely add a 2D `circle` mask (shape (2*r_int+1, 2*r_int+1)) into `img2d` at center (yc, xc),
+    clipping to image bounds. img2d is modified in-place.
+    """
+    y0, y1 = yc - r_int, yc + r_int + 1
+    x0, x1 = xc - r_int, xc + r_int + 1
+
+    cy0, cy1 = 0, 2*r_int + 1
+    cx0, cx1 = 0, 2*r_int + 1
+
+    if y0 < 0:
+        cy0 += -y0
+        y0 = 0
+    if x0 < 0:
+        cx0 += -x0
+        x0 = 0
+    if y1 > Y:
+        cy1 -= (y1 - Y)
+        y1 = Y
+    if x1 > X:
+        cx1 -= (x1 - X)
+        x1 = X
+
+    if (y0 < y1) and (x0 < x1) and (cy0 < cy1) and (cx0 < cx1):
+        img2d[y0:y1, x0:x1] += circle[cy0:cy1, cx0:cx1]
+        
 def render_cells_to_tiff(
     out_path,
     positions,                    # dict (single frame) or list[dict] (multi-frame) with keys: x,y,z,r,Ncells

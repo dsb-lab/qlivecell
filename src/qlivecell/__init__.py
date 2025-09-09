@@ -10,7 +10,7 @@ from .celltrack.celltrack import (arboretum_napari, cellSegTrack,
                                   quantify_channels, remove_small_cells,
                                   save_3Dstack, save_4Dstack,
                                   separate_times_hyperstack, tif_reader_5D, check_or_create_dir,
-                                  add_ellipsoid_safe, reflect_in_box,
-                                  agentsimICM_python, scale_cell_centers, create_volume)
+                                  add_ellipsoid_safe, reflect_in_box, add_circle_safe,
+                                  agentsim3D, agentsim2D, scale_cell_centers3D, scale_cell_centers2D, create_volume, create_sheet)
 from .cytodonut.cytodonut import ERKKTR, load_donuts, plot_donuts
 from .embseg.embseg import EmbryoSegmentation, load_ES, save_ES
