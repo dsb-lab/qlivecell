@@ -40,6 +40,7 @@ step_std_vox = np.array([step_std_um / voxel_size[0],
 # -------------------------
 # Initialize volume
 # -------------------------
+
 volume = np.ones(shape, dtype=np.float32) * 0.01
 
 # Convert physical radius into voxel units

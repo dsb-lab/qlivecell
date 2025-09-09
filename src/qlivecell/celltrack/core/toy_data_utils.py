@@ -40,7 +40,7 @@ def add_ellipsoid_safe(vol, ellipsoid, zc, yc, xc, rz_int, ry_int, rx_int, Z, Y,
     if x1 > X:
         ex1 -= (x1 - X)
         x1 = X
-
+    
     vol[z0:z1, y0:y1, x0:x1] += ellipsoid[ez0:ez1, ey0:ey1, ex0:ex1]
 
 def render_cells_to_tiff(

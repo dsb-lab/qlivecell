@@ -125,10 +125,17 @@ def agentsimICM_python(model, h=1e-3, record_every=30):
         
         # accumulate pairwise forces
         for i in range(Ncells):
-            # sum over j != i
-            dvx[i] += F0m[i] * np.sum(Fx[i, :Ncells])
-            dvy[i] += F0m[i] * np.sum(Fy[i, :Ncells])
-            dvz[i] += F0m[i] * np.sum(Fz[i, :Ncells])
+            for j in range(Ncells):
+                if i!=j:
+                    dvx[i] += F0m[i]*Fx[i,j]
+                    dvy[i] += F0m[i]*Fy[i,j]
+                    dvz[i] += F0m[i]*Fz[i,j]
+                    
+        # for i in range(Ncells):
+        #     # sum over j != i
+        #     dvx[i] += F0m[i] * np.sum(Fx[i, :Ncells])
+        #     dvy[i] += F0m[i] * np.sum(Fy[i, :Ncells])
+        #     dvz[i] += F0m[i] * np.sum(Fz[i, :Ncells])
 
         # Euler prediction
         xi[:Ncells]  = x[:Ncells]  + h * dx[:Ncells]
@@ -168,11 +175,19 @@ def agentsimICM_python(model, h=1e-3, record_every=30):
         dvyi[:Ncells] = bm[:Ncells] * vyi[:Ncells]
         dvzi[:Ncells] = bm[:Ncells] * vzi[:Ncells]
 
-        for i in range(Ncells):
-            dvxi[i] += F0m[i] * np.sum(Fx[i, :Ncells])
-            dvyi[i] += F0m[i] * np.sum(Fy[i, :Ncells])
-            dvzi[i] += F0m[i] * np.sum(Fz[i, :Ncells])
+        # for i in range(Ncells):
+        #     dvxi[i] += F0m[i] * np.sum(Fx[i, :Ncells])
+        #     dvyi[i] += F0m[i] * np.sum(Fy[i, :Ncells])
+        #     dvzi[i] += F0m[i] * np.sum(Fz[i, :Ncells])
 
+        # accumulate pairwise forces
+        for i in range(Ncells):
+            for j in range(Ncells):
+                if i!=j:
+                    dvxi[i] += F0m[i]*Fx[i,j]
+                    dvyi[i] += F0m[i]*Fy[i,j]
+                    dvzi[i] += F0m[i]*Fz[i,j]
+                    
         # Heun update (average of k1 and k2)
         x[:Ncells]  += h2 * (dx[:Ncells]  + dxi[:Ncells])
         y[:Ncells]  += h2 * (dy[:Ncells]  + dyi[:Ncells])
@@ -276,35 +291,178 @@ def agentsimICM_python(model, h=1e-3, record_every=30):
         params=dict(h=h, mu=mu, b=b, F0=F0, rdiv=rdiv, tdiv=tdiv),
         frames= frames
     )
+
 model = dict(
     Nmax=50,
-    rinit=5.0, minit=1.0, rdiv=0.8,
-    sdiv=1.0, tdiv=1.0,
-    mu=1.2, b=0.1, F0=1.0,
+    rinit=5.0, minit=np.power(10.0, -6), rdiv=1.0/(2.0**(1.0/3.0)),
+    sdiv=0.5, tdiv=50.0,
+    mu=2, b=np.power(10.0, -6), F0=np.power(10.0, -4),
 )
 
-# run sim
-out = agentsimICM_python(model, h=1e-3, record_every=30)  # every step
-sel_frames = out["frames"]                 # list[dict], one per recorded step
+out = agentsimICM_python(model, h=0.001, record_every=1)  # every step
+sel_frames = out["frames"][::500]              # list[dict], one per recorded step
 
-Z, Y, X = 64, 256, 256
-shape = (len(sel_frames), Z, 1, Y, X)      # T=selected frames
+def scale_cell_centers(sel_frames, xydim=512, border_margin=0.1):
+    total_min = np.inf
+    total_max = 0
+    
+    margin = np.ceil(xydim*(border_margin)).astype("int32")
+    max_center = xydim - margin
+    offset = np.rint(xydim/2).astype("int32")
+    for t in range(len(sel_frames)):
+        x, y, z = sel_frames[t]['x'], sel_frames[t]['y'], sel_frames[t]['z']
+        
+        _new_total_min = np.min([total_min, x.min(), y.min(),  z.min()])
 
-from qlivecell.celltrack.core.toy_data_utils import render_cells_to_tiff
+        total_min = _new_total_min
+        total_max = np.max([total_max, x.max(), y.max(),  z.max()])
 
-_ = render_cells_to_tiff(
-    "./abm_series_every10.tif",
-    positions=sel_frames,
-    shape=shape,
-    voxel_size=(4.0, 1.0, 1.0),
-    blur_sigma_um=3.0,
-    background=0.01,
-    positions_in_voxels=False,        # set False if positions are in µm or ABM units
-    um_per_unit=1.0,
-    center_mode="frame_centroid",  # or "frame_centroid" / "none"
-)
+    for t in range(len(sel_frames)):
+        x, y, z = sel_frames[t]['x'], sel_frames[t]['y'], sel_frames[t]['z']
+
+        x -= total_min  
+        y -= total_min
+        z -= total_min
+        
+        x /= (total_max - total_min)
+        y /= (total_max - total_min)
+        z /= (total_max - total_min)
+
+        x *= max_center
+        y *= max_center
+        z *= max_center
+
+        sel_frames[t]['x'], sel_frames[t]['y'], sel_frames[t]['z'] = x, y, z
+
+    offsetx = sel_frames[0]['x'][0] - offset
+    offsety = sel_frames[0]['y'][0] - offset
+    offsetz = sel_frames[0]['z'][0] - offset
+    
+    for t in range(len(sel_frames)):
+        x, y, z = sel_frames[t]['x'], sel_frames[t]['y'], sel_frames[t]['z']
+
+        x -= offsetx  
+        y -= offsety
+        z -= offsetz
+        
+        sel_frames[t]['x'], sel_frames[t]['y'], sel_frames[t]['z'] = x, y, z
+    
+xydim = 512  
+scale_cell_centers(sel_frames, xydim=xydim, border_margin=0.1)
+# Suppose you recorded frames during the sim:
+# out["frames"] is a list of dicts: {'x','y','z','r','Ncells'} per time point
+
+def create_volume(
+    sel_frames,
+    voxel_size=[4,1,1], 
+    dtype="uint16", 
+    xydim=512, 
+    blur_sigma=3.0, 
+    radii_scale=None,
+    intensity_value=None):
+    
+    from qlivecell import add_ellipsoid_safe
+
+    shape = (len(sel_frames), np.rint(xydim/voxel_size[0]).astype("int32"), 1, xydim, xydim)
+    T, Z, C, Y, X = shape
+    
+    volume = np.ones(shape, dtype=dtype)
+
+    blur_sigmas = np.ones_like(voxel_size) * np.float64(blur_sigma)
+    # Normalize by voxel size
+    blur_sigmas /= voxel_size
+
+    if intensity_value is None:
+        intensity_value = (np.int16(-1).astype(dtype)-1)/2
+        intensity_value = intensity_value.astype(dtype)
+    
+    if radii_scale is None:
+        radii_scale = 0.04*xydim
+        print(radii_scale)
+    for t in range(shape[0]):
+        print(t)
+        x = np.rint(sel_frames[t]['x']).astype("int32")
+        y = np.rint(sel_frames[t]['y']).astype("int32")
+        z = np.rint(sel_frames[t]['z']/voxel_size[0]).astype("int32")
+        r = sel_frames[t]['r']*radii_scale
+        vol = volume[t, :, 0]
+        for c in range(len(x)):
+            # use floor to avoid pushing to the very top edge
+            # Convert physical radius into voxel units
+            rz = r[c] / voxel_size[0]
+            ry = r[c] / voxel_size[1]
+            rx = r[c] / voxel_size[2]
+
+            rz_int = int(np.ceil(rz))
+            ry_int = int(np.ceil(ry))
+            rx_int = int(np.ceil(rx))
+
+            # Build ellipsoid directly in voxel units
+            zz, yy, xx = np.indices((2 * rz_int + 1, 2 * ry_int + 1, 2 * rx_int + 1))
+            ellipsoid = ((zz - rz) / rz) ** 2 + ((yy - ry) / ry) ** 2 + ((xx - rx) / rx) ** 2 <= 1.0
+            ellipsoid = ellipsoid.astype(dtype)
+            ellipsoid*= intensity_value
+            
+            add_ellipsoid_safe(
+                vol, ellipsoid, z[c], y[c], x[c],
+                rz_int, ry_int, rx_int, Z, Y, X
+            )
+            # Desired box in the volume
+        volume[t, :, 0] = vol
+
+    from scipy.ndimage import gaussian_filter
+    for t in range(T):
+        print(t)
+        vol = volume[t, :, 0]
+        blurred = gaussian_filter(vol, sigma=blur_sigmas)
+        blurred = np.rint(blurred).astype(dtype)
+        volume[t, :, 0] = blurred
+    return volume
+
+voxel_size=[4,1,1]
+volume=create_volume(
+    sel_frames,
+    voxel_size=voxel_size, 
+    dtype="uint8", 
+    xydim=xydim, 
+    blur_sigma=5)
+
+from scipy.ndimage import center_of_mass
+
+# intensity-weighted centroid
+centroid = center_of_mass(volume[0,:,0])
+
+# -------------------------
+# Visualization
+# -------------------------
 import matplotlib.pyplot as plt
-plt.imshow(_[0, 0, 0])
+mid_z = volume.shape[1] // 2
+zs = np.linspace(mid_z - 4, mid_z + 4, 9, endpoint=True).astype("int32")
+fig, ax = plt.subplots(3, 3, figsize=(8, 8))
+axs = ax.flatten()
+for ax_id, each_ax in enumerate(axs):
+    each_ax.imshow(volume[0, zs[ax_id], 0], cmap='gray')
+    each_ax.set_title(f"z = {zs[ax_id]}")
+    each_ax.axis('off')
 plt.show()
 
-sel_frames[10]
+import os
+# -------------------------
+# Save as TIFF
+# -------------------------
+path_cwd = os.path.abspath(os.getcwd())
+path_to_save = path_cwd + "/examples/toy_example/toy_data.tif"
+
+from tifffile import imwrite
+# save_4Dstack(path_to_save, "toy_data.tif", np.array(volume), voxel_size=voxel_size)
+imwrite(
+    path_to_save,
+    volume,
+    imagej=True,
+    resolution=(1 / voxel_size[1], 1 / voxel_size[2]),
+    metadata={
+        "spacing": voxel_size[0],
+        "unit": "um",
+        "axes": "TZCYX",
+    },
+)
