@@ -1,1 +1,0 @@
-TIP: This empty folder can be used for storing the data generated using the given scripts
