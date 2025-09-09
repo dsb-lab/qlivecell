@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 
 def agentsimICM_python(model, h=1e-3, record_every=30):
     # --- pull required params from the model dict
@@ -292,23 +293,35 @@ def agentsimICM_python(model, h=1e-3, record_every=30):
         frames= frames
     )
 
-def scale_cell_centers(sel_frames, xydim=512, border_margin=0.1):
+def scale_cell_centers(sel_frames, xdim=512, ydim=512, zdim=512, xborder_margin=0.1, yborder_margin=0.1, zborder_margin=0.1):
+    
+    corrected_frames = copy.deepcopy(sel_frames)
     total_min = np.inf
     total_max = 0
     
-    margin = np.ceil(xydim*(border_margin)).astype("int32")
-    max_center = xydim - margin
-    offset = np.rint(xydim/2).astype("int32")
-    for t in range(len(sel_frames)):
-        x, y, z = sel_frames[t]['x'], sel_frames[t]['y'], sel_frames[t]['z']
+    xmargin = np.ceil(xdim*(xborder_margin)).astype("int32")
+    ymargin = np.ceil(ydim*(yborder_margin)).astype("int32")
+    zmargin = np.ceil(zdim*(zborder_margin)).astype("int32")
+
+    xmax_center = xdim - xmargin
+    ymax_center = ydim - ymargin
+    
+    max_center = np.minimum(xmax_center, ymax_center)
+    
+    xoffset = np.rint(xdim/2).astype("int32")
+    yoffset = np.rint(ydim/2).astype("int32")
+    zoffset = np.rint(zdim/2).astype("int32")
+
+    for t in range(len(corrected_frames)):
+        x, y, z = corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z']
         
         _new_total_min = np.min([total_min, x.min(), y.min(),  z.min()])
 
         total_min = _new_total_min
         total_max = np.max([total_max, x.max(), y.max(),  z.max()])
 
-    for t in range(len(sel_frames)):
-        x, y, z = sel_frames[t]['x'], sel_frames[t]['y'], sel_frames[t]['z']
+    for t in range(len(corrected_frames)):
+        x, y, z = corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z']
 
         x -= total_min  
         y -= total_min
@@ -322,33 +335,37 @@ def scale_cell_centers(sel_frames, xydim=512, border_margin=0.1):
         y *= max_center
         z *= max_center
 
-        sel_frames[t]['x'], sel_frames[t]['y'], sel_frames[t]['z'] = x, y, z
+        corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z'] = x, y, z
 
-    offsetx = sel_frames[0]['x'][0] - offset
-    offsety = sel_frames[0]['y'][0] - offset
-    offsetz = sel_frames[0]['z'][0] - offset
+    offsetx = corrected_frames[0]['x'][0] - xoffset
+    offsety = corrected_frames[0]['y'][0] - yoffset
+    offsetz = corrected_frames[0]['z'][0] - zoffset
     
-    for t in range(len(sel_frames)):
-        x, y, z = sel_frames[t]['x'], sel_frames[t]['y'], sel_frames[t]['z']
+    for t in range(len(corrected_frames)):
+        x, y, z = corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z']
 
         x -= offsetx  
         y -= offsety
         z -= offsetz
         
-        sel_frames[t]['x'], sel_frames[t]['y'], sel_frames[t]['z'] = x, y, z
-        
+        corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z'] = x, y, z
+    return corrected_frames
+
 def create_volume(
     sel_frames,
     voxel_size=[4,1,1], 
     dtype="uint16", 
-    xydim=512, 
+    xdim=512, 
+    ydim = 512,
+    zdim=512,
     blur_sigma=3.0, 
     radii_scale=None,
     intensity_value=None):
     
     from qlivecell import add_ellipsoid_safe
 
-    shape = (len(sel_frames), np.rint(xydim/voxel_size[0]).astype("int32"), 1, xydim, xydim)
+    
+    shape = (len(sel_frames), np.rint(zdim/voxel_size[0]).astype("int32"), 1, ydim, xdim)
     T, Z, C, Y, X = shape
     
     volume = np.ones(shape, dtype=dtype)
@@ -362,8 +379,8 @@ def create_volume(
         intensity_value = intensity_value.astype(dtype)
     
     if radii_scale is None:
-        radii_scale = 0.04*xydim
-        print(radii_scale)
+        radii_scale = 0.04*np.minimum(xdim, ydim)
+
     for t in range(shape[0]):
         print(t)
         x = np.rint(sel_frames[t]['x']).astype("int32")
