@@ -295,7 +295,7 @@ def check_or_create_dir(path):
     else:
         if ".tif" in path:
             return
-        os.mkdir(path)
+        os.makedirs(path)
 
 
 # adapted from https://stackoverflow.com/a/12514470/7546279
