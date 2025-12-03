@@ -92,7 +92,7 @@ from .core.tools.tools import (check_and_fill_error_correction_args,
                                get_default_args, increase_outline_width,
                                increase_point_resolution, mask_from_outline,
                                printclear, printfancy, progressbar,
-                               sort_point_sequence)
+                               sort_point_sequence, fill_channels)
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                                      greedy_tracking, hungarian_tracking)
 from .core.tracking.tracking_tools import (
@@ -1081,7 +1081,6 @@ class cellSegTrack(object):
         discs = find_discontinuities_unique_labels_T(
             self.unique_labels_T, self.max_label
         )
-        print("WHATS GOING ON?")
         #####################
 
         # Once unique labels are updated, we can safely run label ordering

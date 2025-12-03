@@ -32,6 +32,13 @@ def printfancy(string="", finallength=70, clear_prev=0):
     printclear(clear_prev)
     print(new_str)
 
+def fill_channels(ch_name, channel_names):
+    ch = channel_names.index(ch_name)
+    chans = [ch]
+    for _ch in range(len(channel_names)):
+        if _ch not in chans:
+            chans.append(_ch)
+    return chans
 
 def progressbar(step, total, width=46):
     percent = np.rint(step * 100 / total).astype("uint16")

@@ -106,7 +106,7 @@ def cell_segmentation3D_from2D(
 
     if "cellpose" in segmentation_args["method"]:
         segmentation_function = cell_segmentation2D_cellpose
-        main_ch = segmentation_method_args["channels"][0]
+        main_ch = segmentation_method_args["channels"][0] - 1
 
     elif "stardist" in segmentation_args["method"]:
         segmentation_function = cell_segmentation2D_stardist
