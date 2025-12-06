@@ -32,8 +32,17 @@ def printfancy(string="", finallength=70, clear_prev=0):
     printclear(clear_prev)
     print(new_str)
 
-def fill_channels(ch_name, channel_names):
-    ch = channel_names.index(ch_name)
+def fill_channels(channel=None, channel_name=None, channel_names=None):
+    if channel is None:
+        try:
+            ch = channel_names.index(channel_name)
+        except:
+            raise Exception("wrong arguments fill channels, try again")
+    elif isinstance(channel, (int, np.integer)):
+        ch = channel
+    else:
+        raise Exception("wrong arguments fill channels, try again")
+            
     chans = [ch]
     for _ch in range(len(channel_names)):
         if _ch not in chans:
