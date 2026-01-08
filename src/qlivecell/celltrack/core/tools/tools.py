@@ -223,11 +223,31 @@ def compute_distance_xyz_points(p1, p2):
     x2, y2, z2 = p2
     return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
 
+@njit
+def compute_distance_xy_jit(p1, p2):
+    x1, y1= p1
+    x2, y2 = p2
+    dist = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    return dist
+
+@njit
+def compute_distance_xyz_jit(p1, p2):
+    x1, y1, z1 = p1
+    x2, y2, z2 = p2
+    dist = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
+    return dist
+
+@njit
+def compute_dists_jit(points1, points2, compute_distances):
+    dists = np.zeros((len(points1), len(points2)))
+    for i, center in enumerate(points1):
+        for j, cont in enumerate(points2):
+            dists[i,j] = compute_distances(center, cont)
+    return dists
 
 @njit
 def numbadiff(x):
     return x[1:] - x[:-1]
-
 
 @njit
 def checkConsecutive(l):

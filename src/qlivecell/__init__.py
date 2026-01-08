@@ -10,6 +10,7 @@ from .celltrack.celltrack import (arboretum_napari, cellSegTrack, check_or_creat
                                   quantify_channels, remove_small_cells,
                                   save_3Dstack, save_4Dstack,
                                   separate_times_hyperstack, tif_reader_5D, check_or_create_dir,
-                                  fill_channels)
+                                  fill_channels, compute_distance_xyz_jit, compute_distance_xy_jit, 
+                                  compute_dists_jit)
 from .cytodonut.cytodonut import ERKKTR, load_donuts, plot_donuts
 from .embseg.embseg import EmbryoSegmentation, load_ES, save_ES

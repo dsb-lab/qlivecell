@@ -92,7 +92,10 @@ from .core.tools.tools import (check_and_fill_error_correction_args,
                                get_default_args, increase_outline_width,
                                increase_point_resolution, mask_from_outline,
                                printclear, printfancy, progressbar,
-                               sort_point_sequence, fill_channels)
+                               sort_point_sequence, fill_channels,
+                               compute_distance_xyz_jit, compute_dists_jit,
+                               compute_distance_xy_jit)
+
 from .core.tracking.tracking import (check_tracking_args, fill_tracking_args,
                                      greedy_tracking, hungarian_tracking)
 from .core.tracking.tracking_tools import (
@@ -127,18 +130,23 @@ class cellSegTrack(object):
         self,
         pthtodata,
         pthtosave,
-        segmentation_args={},
-        concatenation3D_args={},
-        tracking_args={},
-        error_correction_args={},
-        plot_args={},
-        batch_args={},
-        channels=[
-            0
-        ],  # first element is the channel used for computing cell centers and for segmentation on stardist
+        segmentation_args=None,
+        concatenation3D_args=None,
+        tracking_args=None,
+        error_correction_args=None,
+        plot_args=None,
+        batch_args=None,
+        channels=None,
         save_cells=True,
     ):
-        print()
+        segmentation_args = segmentation_args or {}
+        concatenation3D_args = concatenation3D_args or {}
+        tracking_args = tracking_args or {}
+        error_correction_args = error_correction_args or {}
+        plot_args = plot_args or {}
+        batch_args = batch_args or {}
+        channels = channels or [0]
+        
         print()
         print("###############           INIT ON BATCH MODE          ################")
         printfancy("")
@@ -181,7 +189,7 @@ class cellSegTrack(object):
             plot_args,
             batch_args,
         )
-
+        
         # list of cells used by the pickers
         self.list_of_cells = []
         self.mito_cells = []
@@ -264,9 +272,9 @@ class cellSegTrack(object):
 
         # check and fill plot arguments
         self._plot_args = check_and_fill_plot_args(
-            plot_args, (self.stack_dims[0], self.stack_dims[1])
+            plot_args, (self.stack_dims[0], self.stack_dims[1]), self.channels_order
         )
-
+        
         # check and fill batch arguments
         self._batch_args = check_and_fill_batch_args(batch_args)
 
@@ -2626,7 +2634,7 @@ class cellSegTrack(object):
             plot_args = self._plot_args
 
         #  Plotting Attributes
-        self._plot_args = check_and_fill_plot_args(plot_args, self.hyperstack.shape[3:])
+        self._plot_args = check_and_fill_plot_args(plot_args, self.hyperstack.shape[3:], self.channels_order)
         self._plot_args["plot_masks"] = True
 
         self.plot_stacks = check_stacks_for_plotting(

@@ -7,7 +7,7 @@ from ..tools.tools import (get_default_args, get_outlines_masks_labels,
                            increase_point_resolution, mask_from_outline,
                            printclear, printfancy, progressbar)
 from .segmentation_tools import check3Dmethod
-
+import matplotlib.pyplot as plt
 logging.disable(logging.WARNING)
 
 
@@ -28,8 +28,12 @@ def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_arg
     from cellpose.utils import outlines_list
 
     model = segmentation_args["model"]
-    masks, flows, styles = model.eval(img, **segmentation_method_args)
-
+    chans = segmentation_method_args["channels"]
+    if chans[-1] == 0:
+        seg_img = img[chans[0]-1]
+    else:
+        seg_img = img
+    masks, flows, styles = model.eval(seg_img, **segmentation_method_args)
     outlines = outlines_list(masks)
     return outlines
 
@@ -107,7 +111,6 @@ def cell_segmentation3D_from2D(
     if "cellpose" in segmentation_args["method"]:
         segmentation_function = cell_segmentation2D_cellpose
         main_ch = segmentation_method_args["channels"][0] - 1
-
     elif "stardist" in segmentation_args["method"]:
         segmentation_function = cell_segmentation2D_stardist
         main_ch = 0
