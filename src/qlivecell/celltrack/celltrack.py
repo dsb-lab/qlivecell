@@ -895,8 +895,6 @@ class cellSegTrack(object):
         self.jitcells = typed.List([jitcell])
         self.jitcells.pop(0)
 
-        printfancy("Progress: ")
-
         for l, lab in enumerate(self.unique_labels):
             progressbar(l + 1, len(self.unique_labels))
             cell = _init_cell(

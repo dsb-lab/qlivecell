@@ -4,6 +4,7 @@ import numpy as np
 from numba import njit
 from scipy.spatial import ConvexHull, cKDTree
 from scipy.spatial._qhull import QhullError
+import qlivecell.config as cfg
 
 LINE_UP = "\033[1A"
 LINE_CLEAR = "\x1b[2K"
@@ -50,6 +51,9 @@ def fill_channels(channel=None, channel_name=None, channel_names=None):
     return chans
 
 def progressbar(step, total, width=46):
+    if not cfg.PROGRESS: return
+    print(cfg.PROGRESS)
+    
     percent = np.rint(step * 100 / total).astype("uint16")
     left = width * percent // 100
     right = width - left
@@ -64,7 +68,6 @@ def progressbar(step, total, width=46):
         print("#   Progress: [", tags, spaces, "] ", percents, "   #", sep="")
     elif percent > 99:
         print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
-
 
 import inspect
 

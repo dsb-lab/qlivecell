@@ -12,5 +12,6 @@ from .celltrack.celltrack import (arboretum_napari, cellSegTrack, check_or_creat
                                   separate_times_hyperstack, tif_reader_5D, check_or_create_dir,
                                   fill_channels, compute_distance_xyz_jit, compute_distance_xy_jit, 
                                   compute_dists_jit)
+from .config import PROGRESS
 from .cytodonut.cytodonut import ERKKTR, load_donuts, plot_donuts
 from .embseg.embseg import EmbryoSegmentation, load_ES, save_ES

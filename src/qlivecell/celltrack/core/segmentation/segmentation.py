@@ -104,8 +104,6 @@ def cell_segmentation3D_from2D(
 
     slices = stack.shape[0]
     blur_args = segmentation_args["blur"]
-    # Number of z-levels
-    printfancy("Progress: ")
     # Loop over the z-levels
 
     if "cellpose" in segmentation_args["method"]:
