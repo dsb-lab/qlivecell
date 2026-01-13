@@ -122,26 +122,27 @@ def get_whole_lineage(mitotic_events, label):
     return labels
 
 
-def arboretum_napari(CTB):
-    controls, colors = CTB._plot_args["labels_colors"].get_map()
+def arboretum_napari(cellSegTrack_instance):
+    cST = cellSegTrack_instance
+    controls, colors = cST._plot_args["labels_colors"].get_map()
     custom_cmap = vispy.color.Colormap(colors, controls)
 
-    graph = get_lineage_graph(CTB.mitotic_events)
+    graph = get_lineage_graph(cST.mitotic_events)
 
-    napari_tracks_data = napari_tracks(CTB.jitcells)
+    napari_tracks_data = napari_tracks(cST.jitcells)
     colors = [
-        CTB._plot_args["labels_colors"].get_control(label)
+        cST._plot_args["labels_colors"].get_control(label)
         for label in napari_tracks_data[:, 0]
     ]
     properties = {"colors": colors}
 
     viewer = napari.view_image(
-        CTB.hyperstack[:, :, CTB.channels_order[0]],
+        cST.hyperstack[:, :, cST.channels_order[0]],
         name="hyperstack",
         scale=(
-            CTB.metadata["Zresolution"],
-            CTB.metadata["XYresolution"],
-            CTB.metadata["XYresolution"],
+            cST.metadata["Zresolution"],
+            cST.metadata["XYresolution"],
+            cST.metadata["XYresolution"],
         ),
         rgb=False,
         ndisplay=3,
@@ -151,9 +152,9 @@ def arboretum_napari(CTB):
         napari_tracks_data,
         name="tracks",
         scale=(
-            CTB.metadata["Zresolution"],
-            CTB.metadata["XYresolution"],
-            CTB.metadata["XYresolution"],
+            cST.metadata["Zresolution"],
+            cST.metadata["XYresolution"],
+            cST.metadata["XYresolution"],
         ),
         properties=properties,
         graph=graph,
@@ -165,9 +166,9 @@ def arboretum_napari(CTB):
         napari_tracks_data[:, 1:]
         * (
             1,
-            CTB.metadata["Zresolution"],
-            CTB.metadata["XYresolution"],
-            CTB.metadata["XYresolution"],
+            cST.metadata["Zresolution"],
+            cST.metadata["XYresolution"],
+            cST.metadata["XYresolution"],
         ),
         size=2,
         name="centers",
