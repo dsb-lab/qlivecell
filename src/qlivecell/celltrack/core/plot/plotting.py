@@ -8,7 +8,7 @@ from ..tools.tools import printfancy
 from .plot_iters import CyclicList
 
 
-def check_and_fill_plot_args(plot_args, stack_dims):
+def check_and_fill_plot_args(plot_args, stack_dims, channels_order):
     if "plot_layout" not in plot_args.keys():
         plot_args["plot_layout"] = (1, 1)
     if not hasattr(plot_args["plot_layout"], "__iter__"):
@@ -26,7 +26,7 @@ def check_and_fill_plot_args(plot_args, stack_dims):
     if "plot_centers" not in plot_args.keys():
         plot_args["plot_centers"] = [True, True]
     if "channels" not in plot_args.keys():
-        plot_args["channels"] = None
+        plot_args["channels"] = channels_order[:1]
     if "min_outline_length" not in plot_args.keys():
         plot_args["min_outline_length"] = 1
     plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stack_dims[-1]

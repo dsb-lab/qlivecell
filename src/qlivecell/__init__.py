@@ -1,4 +1,4 @@
-from .celltrack.celltrack import (arboretum_napari, cellSegTrack,
+from .celltrack.celltrack import (arboretum_napari, cellSegTrack, check_or_create_dir,
                                   compute_labels_stack, compute_movement_cell,
                                   construct_RGB, correct_drift, correct_path,
                                   extract_fluoro, get_default_args,
@@ -11,6 +11,9 @@ from .celltrack.celltrack import (arboretum_napari, cellSegTrack,
                                   save_3Dstack, save_4Dstack,
                                   separate_times_hyperstack, tif_reader_5D, check_or_create_dir,
                                   add_ellipsoid_safe, reflect_in_box, add_circle_safe,
-                                  agentsim3D, agentsim2D, scale_cell_centers3D, scale_cell_centers2D, create_volume, create_sheet)
+                                  agentsim3D, agentsim2D, scale_cell_centers3D, scale_cell_centers2D, create_volume, create_sheet,
+                                  fill_channels, compute_distance_xyz_jit, compute_distance_xy_jit, 
+                                  compute_dists_jit)
+from .config import PROGRESS
 from .cytodonut.cytodonut import ERKKTR, load_donuts, plot_donuts
 from .embseg.embseg import EmbryoSegmentation, load_ES, save_ES

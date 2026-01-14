@@ -2,6 +2,7 @@ literatureembdevtools
 literature
 os
 tmp
+# *examples
 
 # Image files
 *.tif

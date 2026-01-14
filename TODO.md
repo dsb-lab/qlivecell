@@ -1,1 +1,0 @@
-chaqnge all xyresolution and zresolution references to voxel_size references. Apart from being a more handy approach in general, it is also more general as it does not assume equal resoluton in the x and y axis

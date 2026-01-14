@@ -4,6 +4,7 @@ import numpy as np
 from numba import njit
 from scipy.spatial import ConvexHull, cKDTree
 from scipy.spatial._qhull import QhullError
+import qlivecell.config as cfg
 
 LINE_UP = "\033[1A"
 LINE_CLEAR = "\x1b[2K"
@@ -32,8 +33,27 @@ def printfancy(string="", finallength=70, clear_prev=0):
     printclear(clear_prev)
     print(new_str)
 
+def fill_channels(channel=None, channel_name=None, channel_names=None):
+    if channel is None:
+        try:
+            ch = channel_names.index(channel_name)
+        except:
+            raise Exception("wrong arguments fill channels, try again")
+    elif isinstance(channel, (int, np.integer)):
+        ch = channel
+    else:
+        raise Exception("wrong arguments fill channels, try again")
+            
+    chans = [ch]
+    for _ch in range(len(channel_names)):
+        if _ch not in chans:
+            chans.append(_ch)
+    return chans
 
 def progressbar(step, total, width=46):
+    if not cfg.PROGRESS: return
+    print(cfg.PROGRESS)
+    
     percent = np.rint(step * 100 / total).astype("uint16")
     left = width * percent // 100
     right = width - left
@@ -48,7 +68,6 @@ def progressbar(step, total, width=46):
         print("#   Progress: [", tags, spaces, "] ", percents, "   #", sep="")
     elif percent > 99:
         print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
-
 
 import inspect
 
@@ -207,11 +226,31 @@ def compute_distance_xyz_points(p1, p2):
     x2, y2, z2 = p2
     return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
 
+@njit
+def compute_distance_xy_jit(p1, p2):
+    x1, y1= p1
+    x2, y2 = p2
+    dist = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    return dist
+
+@njit
+def compute_distance_xyz_jit(p1, p2):
+    x1, y1, z1 = p1
+    x2, y2, z2 = p2
+    dist = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2)
+    return dist
+
+@njit
+def compute_dists_jit(points1, points2, compute_distances):
+    dists = np.zeros((len(points1), len(points2)))
+    for i, center in enumerate(points1):
+        for j, cont in enumerate(points2):
+            dists[i,j] = compute_distances(center, cont)
+    return dists
 
 @njit
 def numbadiff(x):
     return x[1:] - x[:-1]
-
 
 @njit
 def checkConsecutive(l):
@@ -295,7 +334,7 @@ def check_or_create_dir(path):
     else:
         if ".tif" in path:
             return
-        os.mkdir(path)
+        os.makedirs(path)
 
 
 # adapted from https://stackoverflow.com/a/12514470/7546279
