@@ -516,11 +516,8 @@ def read_split_vectors(
 
     idmax = 0
     for tid, t in enumerate(times[:-1]):
-        print(times[tid])
-        print(times[tid+1])
         path_to_file = correct_path(path_data) + name_format.format(times[tid], times[tid+1]) + ".npy"
         vecs = np.load(path_to_file)
-        print(vecs.shape)
         if mask is not None:        
             keep = mask[tid, vecs[:, 0, 0].astype(int), vecs[:, 0, 1].astype(int), vecs[:, 0, 2].astype(int)]
             vecs = vecs[keep,:,:]

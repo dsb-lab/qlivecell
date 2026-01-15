@@ -71,10 +71,9 @@ def extract_total_times_from_files(path):
         total_times = 0
         files = get_file_names(path)
         for file in files:
-            try:
-                _ = int(file.split(".")[0])
+            if ".tif" in file:
                 total_times += 1
-            except:
+            else:
                 continue
 
     return total_times
