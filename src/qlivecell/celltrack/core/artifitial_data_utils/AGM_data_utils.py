@@ -705,7 +705,6 @@ def create_volume(
         radii_scale = 0.04*np.minimum(xdim, ydim)
 
     for t in range(shape[0]):
-        print(t)
         x = np.rint(sel_frames[t]['x']).astype("int32")
         y = np.rint(sel_frames[t]['y']).astype("int32")
         z = np.rint(sel_frames[t]['z']/voxel_size[0]).astype("int32")
@@ -737,7 +736,6 @@ def create_volume(
 
     from scipy.ndimage import gaussian_filter
     for t in range(T):
-        print(t)
         vol = volume[t, :, 0]
         blurred = gaussian_filter(vol, sigma=blur_sigmas)
         blurred = np.rint(blurred).astype(dtype)
@@ -750,7 +748,7 @@ def create_sheet(
     voxel_size=[1,1], 
     dtype="uint16", 
     xdim=512, 
-    ydim = 512,
+    ydim=512,
     blur_sigma=3.0, 
     radii_scale=None,
     intensity_value=None):
@@ -770,7 +768,6 @@ def create_sheet(
     if intensity_value is None:
         intensity_value = (np.int16(-1).astype(dtype)-1)/2
         intensity_value = intensity_value.astype(dtype)
-        print(intensity_value)
     if radii_scale is None:
         radii_scale = 0.04*np.minimum(xdim, ydim)
 
@@ -779,7 +776,6 @@ def create_sheet(
         y = np.rint(sel_frames[t]['y']).astype(np.int32)
         r = sel_frames[t]['r'] * radii_scale
 
-        # assuming `sheet[t, :, 0]` is a 2D canvas (Y, X):
         she = sheet[t, 0]
         Y, X = she.shape
 
@@ -797,14 +793,12 @@ def create_sheet(
 
             add_circle_safe(she, circle, y[c], x[c], r_int, Y, X)
 
-        print(she.max())
         sheet[t, 0] = she  # write back
 
     from scipy.ndimage import gaussian_filter
     for t in range(T):
-        # print(t)
-        she = sheet[t, :, 0]
+        she = sheet[t, 0]
         blurred = gaussian_filter(she, sigma=blur_sigmas)
         blurred = np.rint(blurred).astype(dtype)
-        sheet[t, :, 0] = blurred
+        sheet[t, 0] = blurred
     return sheet

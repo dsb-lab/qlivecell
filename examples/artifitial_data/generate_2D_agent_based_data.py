@@ -1,5 +1,5 @@
 import numpy as np
-from qlivecell import agentsim2D, scale_cell_centers2D, create_sheet
+from qlivecell import agentsim2D, scale_cell_centers2D, create_sheet, check_or_create_dir
 import os
 from tifffile import imwrite
 
@@ -11,33 +11,36 @@ model = dict(
 )
 
 out = agentsim2D(model, h=0.001, record_every=1)  # every step
-sel_frames = out["frames"][::500][25:]              # list[dict], one per recorded step
+sel_frames = out["frames"][::500]      # list[dict], one per recorded step
 
-xdim = 256
+xdim = 400
 ydim = 400
 voxel_size=[1,1]
 corrected_frames = scale_cell_centers2D(sel_frames, xdim=xdim, ydim=ydim, xborder_margin=0.1, yborder_margin=0.1)
-
 
 sheet=create_sheet(
     corrected_frames,
     dtype="uint8", 
     xdim=xdim, 
     ydim=ydim,
+    voxel_size=voxel_size,
+    radii_scale=15,
     blur_sigma=5)
-
+    
 path_cwd = os.path.abspath(os.getcwd())
-path_to_save = path_cwd + "/examples/artifitial_data/data/AGM_2Dexample.tif"
+path_to_save = path_cwd + "/examples/artifitial_data/data/AGM_2Dexample/"
+name_format = "t{:04d}.tif"
+check_or_create_dir(path_to_save)
 
-# save_4Dstack(path_to_save, "toy_data.tif", np.array(volume), voxel_size=voxel_size)
-imwrite(
-    path_to_save,
-    sheet,
-    imagej=True,
-    resolution=(1 / voxel_size[0], 1 / voxel_size[1]),
-    metadata={
-        "unit": "um",
-        "axes": "TCYX",
-    },
-)
-
+for t in range(len(sheet)):
+    pth_save = path_to_save+name_format.format(t)
+    imwrite(
+        pth_save,
+        sheet[t:t+1],
+        imagej=True,
+        resolution=(1 / voxel_size[0], 1 / voxel_size[1]),
+        metadata={
+            "unit": "um",
+            "axes": "TCYX",
+        },
+    )
