@@ -11,12 +11,14 @@ LINE_CLEAR = "\x1b[2K"
 
 
 def printclear(n=1):
-    LINE_UP = "\033[1A"
-    LINE_CLEAR = "\x1b[2K"
-    for i in range(n):
-        print(LINE_UP, end=LINE_CLEAR)
-
-
+    if cfg.CLEARPRINTS:
+        LINE_UP = "\033[1A"
+        LINE_CLEAR = "\x1b[2K"
+        for i in range(n):
+            print(LINE_UP, end=LINE_CLEAR)
+    else:
+        return
+    
 def printfancy(string="", finallength=70, clear_prev=0):
     if string is None:
         new_str = ""
@@ -52,7 +54,6 @@ def fill_channels(channel=None, channel_name=None, channel_names=None):
 
 def progressbar(step, total, width=46):
     if not cfg.PROGRESS: return
-    print(cfg.PROGRESS)
     
     percent = np.rint(step * 100 / total).astype("uint16")
     left = width * percent // 100
