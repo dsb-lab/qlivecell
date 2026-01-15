@@ -705,9 +705,25 @@ class cellSegTrack(object):
                 stack_seg = stack_seg[
                     :, self.channels_order[0] : self.channels_order[0] + 1, :, :
                 ]
-                
+                seg_m_args = self._seg_method_args
+            
+            # In long movies, cells decrease significantly in size and the diameter argument
+            # needs to be adjusted accordingly. This allows for a range of values to be used
+            # without a major setback on the performance.
+            if "cellpose" in self._seg_args["method"]:
+                if  hasattr(self._seg_method_args['diameter'], "__iter__"):
+                    seg_m_args = deepcopy(self._seg_method_args)
+                    if len(self._seg_method_args['diameter'])==self.total_times:
+                        diam_range = self._seg_method_args['diameter']
+                        seg_m_args['diameter'] = diam_range[t]
+                    else:
+                        diam_range = np.linspace(self._seg_method_args['diameter'][0], self._seg_method_args['diameter'][-1], self.total_times)
+                        seg_m_args['diameter'] = np.rint(diam_range[t]).astype("int64")
+                else:
+                    seg_m_args = self._seg_method_args
+                    
             outlines, masks, labels = cell_segmentation3D(
-                stack_seg, self._seg_args, self._seg_method_args
+                stack_seg, self._seg_args, seg_m_args
             )
 
             if self._seg_args["make_isotropic"][0]:
