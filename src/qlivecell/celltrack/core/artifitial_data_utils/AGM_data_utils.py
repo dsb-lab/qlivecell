@@ -564,65 +564,118 @@ def agentsim3D(model, h=1e-3, record_every=30):
     )
 
 def scale_cell_centers3D(sel_frames, xdim=512, ydim=512, zdim=512, xborder_margin=0.1, yborder_margin=0.1, zborder_margin=0.1):
-    
-    corrected_frames = copy.deepcopy(sel_frames)
-    total_min = np.inf
-    total_max = 0
-    
+    import copy 
+
     xmargin = np.ceil(xdim*(xborder_margin)).astype("int32")
     ymargin = np.ceil(ydim*(yborder_margin)).astype("int32")
     zmargin = np.ceil(zdim*(zborder_margin)).astype("int32")
 
-    xmax_center = xdim - xmargin
-    ymax_center = ydim - ymargin
-    
-    max_center = np.minimum(xmax_center, ymax_center)
-    
-    xoffset = np.rint(xdim/2).astype("int32")
-    yoffset = np.rint(ydim/2).astype("int32")
-    zoffset = np.rint(zdim/2).astype("int32")
+    xrange = xdim - 2*xmargin
+    yrange = ydim - 2*ymargin
+    zrange = zdim - 2*zmargin
+
+    # This is going to be divided in two steps
+    # 1. centering
+    # 2. scaling
+
+    # For the centering we compute the mins and max vals per axis
+    # Then we compute the center of min-max per axis
+    # we bring that center to 0 so the image is centered at 0.
+    # Then scale to the desire min and max center value
+    # We recenter so that the center of the image is axis_length/2
+
+    corrected_frames = copy.deepcopy(sel_frames)
+    xmin = np.inf
+    ymin = np.inf
+    zmin = np.inf
+    xmax = -np.inf
+    ymax = -np.inf
+    zmax = -np.inf
+    for t in range(len(corrected_frames)):
+        x, y, z = corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z']
+        xmin =np.min([xmin, x.min()])
+        ymin =np.min([ymin, y.min()])
+        zmin =np.min([zmin, z.min()])
+
+        xmax =np.max([xmax, x.max()])
+        ymax =np.max([ymax, y.max()])
+        zmax =np.max([zmax, z.max()])
+
+    center = np.array([(zmax + zmin)/2, (ymax + ymin)/2, (xmax + xmin)/2])
 
     for t in range(len(corrected_frames)):
         x, y, z = corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z']
+        z -= center[0]
+        y -= center[1]
+        x -= center[2]
         
-        _new_total_min = np.min([total_min, x.min(), y.min(),  z.min()])
-
-        total_min = _new_total_min
-        total_max = np.max([total_max, x.max(), y.max(),  z.max()])
-
-    for t in range(len(corrected_frames)):
-        x, y, z = corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z']
-
-        x -= total_min  
-        y -= total_min
-        z -= total_min
+        z /= zmax - center[0]
+        y /= ymax - center[1]
+        x /= xmax - center[2]
         
-        x /= (total_max - total_min)
-        y /= (total_max - total_min)
-        z /= (total_max - total_min)
-
-        x *= max_center
-        y *= max_center
-        z *= max_center
-
-        corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z'] = x, y, z
-
-    offsetx = corrected_frames[0]['x'][0] - xoffset
-    offsety = corrected_frames[0]['y'][0] - yoffset
-    offsetz = corrected_frames[0]['z'][0] - zoffset
-    
-    for t in range(len(corrected_frames)):
-        x, y, z = corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z']
-
-        x -= offsetx  
-        y -= offsety
-        z -= offsetz
+        z *= zrange/2
+        y *= yrange/2
+        x *= xrange/2
+        
+        z += zrange/2 + zmargin
+        y += yrange/2 + ymargin
+        x += xrange/2 + xmargin
         
         corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z'] = x, y, z
     return corrected_frames
 
-
 def scale_cell_centers2D(sel_frames, xdim=512, ydim=512, xborder_margin=0.1, yborder_margin=0.1):
+    import copy 
+
+    xmargin = np.ceil(xdim*(xborder_margin)).astype("int32")
+    ymargin = np.ceil(ydim*(yborder_margin)).astype("int32")
+
+    xrange = xdim - 2*xmargin
+    yrange = ydim - 2*ymargin
+
+    # This is going to be divided in two steps
+    # 1. centering
+    # 2. scaling
+
+    # For the centering we compute the mins and max vals per axis
+    # Then we compute the center of min-max per axis
+    # we bring that center to 0 so the image is centered at 0.
+    # Then scale to the desire min and max center value
+    # We recenter so that the center of the image is axis_length/2
+
+    corrected_frames = copy.deepcopy(sel_frames)
+    xmin = np.inf
+    ymin = np.inf
+    xmax = -np.inf
+    ymax = -np.inf
+    for t in range(len(corrected_frames)):
+        x, y = corrected_frames[t]['x'], corrected_frames[t]['y']
+        xmin =np.min([xmin, x.min()])
+        ymin =np.min([ymin, y.min()])
+
+        xmax =np.max([xmax, x.max()])
+        ymax =np.max([ymax, y.max()])
+
+    center = np.array([(ymax + ymin)/2, (xmax + xmin)/2])
+
+    for t in range(len(corrected_frames)):
+        x, y = corrected_frames[t]['x'], corrected_frames[t]['y']
+        y -= center[1]
+        x -= center[2]
+        
+        y /= ymax - center[1]
+        x /= xmax - center[2]
+        
+        y *= yrange/2
+        x *= xrange/2
+        
+        y += yrange/2 + ymargin
+        x += xrange/2 + xmargin
+        
+        corrected_frames[t]['x'], corrected_frames[t]['y'] = x, y
+    return corrected_frames
+
+def _scale_cell_centers2D(sel_frames, xdim=512, ydim=512, xborder_margin=0.1, yborder_margin=0.1):
     
     corrected_frames = copy.deepcopy(sel_frames)
     total_min = np.inf
