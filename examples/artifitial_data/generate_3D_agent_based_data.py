@@ -33,7 +33,7 @@ volume=create_volume(
     xdim=xdim, 
     ydim=ydim,
     zdim=zdim,
-    radii_scale=15,
+    radii_scale=25,
     blur_sigma=10)
 
 path_cwd = os.path.abspath(os.getcwd())
