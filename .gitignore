@@ -3,6 +3,7 @@ literature
 os
 tmp
 data*
+segtrack*
 
 # Image files
 *.tif
