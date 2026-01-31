@@ -564,64 +564,63 @@ def agentsim3D(model, h=1e-3, record_every=30):
     )
 
 def scale_cell_centers3D(sel_frames, xdim=512, ydim=512, zdim=512, xborder_margin=0.1, yborder_margin=0.1, zborder_margin=0.1):
-    import copy 
+    import copy
 
-    xmargin = np.ceil(xdim*(xborder_margin)).astype("int32")
-    ymargin = np.ceil(ydim*(yborder_margin)).astype("int32")
-    zmargin = np.ceil(zdim*(zborder_margin)).astype("int32")
+    # margins/ranges (your code)
+    xmargin = int(np.ceil(xdim * xborder_margin))
+    ymargin = int(np.ceil(ydim * yborder_margin))
+    zmargin = int(np.ceil(zdim * zborder_margin))
 
-    xrange = xdim - 2*xmargin
-    yrange = ydim - 2*ymargin
-    zrange = zdim - 2*zmargin
-
-    # This is going to be divided in two steps
-    # 1. centering
-    # 2. scaling
-
-    # For the centering we compute the mins and max vals per axis
-    # Then we compute the center of min-max per axis
-    # we bring that center to 0 so the image is centered at 0.
-    # Then scale to the desire min and max center value
-    # We recenter so that the center of the image is axis_length/2
+    xrange = xdim - 2 * xmargin
+    yrange = ydim - 2 * ymargin
+    zrange = zdim - 2 * zmargin
 
     corrected_frames = copy.deepcopy(sel_frames)
-    xmin = np.inf
-    ymin = np.inf
-    zmin = np.inf
-    xmax = -np.inf
-    ymax = -np.inf
-    zmax = -np.inf
+
+    # ---- 1) Gather all positions across time (global scaling) ----
+    xs = np.concatenate([f["x"].ravel() for f in corrected_frames])
+    ys = np.concatenate([f["y"].ravel() for f in corrected_frames])
+    zs = np.concatenate([f["z"].ravel() for f in corrected_frames])
+
+    # ---- 2) Robust bounds via percentiles ----
+    p_low, p_high = 1, 99   # try (5,95) if you want more aggressive outlier rejection
+
+    xlo, xhi = np.percentile(xs, [p_low, p_high])
+    ylo, yhi = np.percentile(ys, [p_low, p_high])
+    zlo, zhi = np.percentile(zs, [p_low, p_high])
+
+    # ---- 3) Define center and half-range (robust) ----
+    x_center = 0.5 * (xlo + xhi)
+    y_center = 0.5 * (ylo + yhi)
+    z_center = 0.5 * (zlo + zhi)
+
+    x_half = 0.5 * (xhi - xlo)
+    y_half = 0.5 * (yhi - ylo)
+    z_half = 0.5 * (zhi - zlo)
+
+    # ---- 4) Degenerate fallback (single point / flat axis) ----
+    eps = 1e-9
+    x_half = max(x_half, eps)
+    y_half = max(y_half, eps)
+    z_half = max(z_half, eps)
+
+    # ---- 5) Apply transform frame-by-frame ----
     for t in range(len(corrected_frames)):
-        x, y, z = corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z']
-        xmin =np.min([xmin, x.min()])
-        ymin =np.min([ymin, y.min()])
-        zmin =np.min([zmin, z.min()])
+        x = corrected_frames[t]["x"].astype(np.float64, copy=False)
+        y = corrected_frames[t]["y"].astype(np.float64, copy=False)
+        z = corrected_frames[t]["z"].astype(np.float64, copy=False)
 
-        xmax =np.max([xmax, x.max()])
-        ymax =np.max([ymax, y.max()])
-        zmax =np.max([zmax, z.max()])
+        # center -> normalize to roughly [-1, 1]
+        x = (x - x_center) / x_half
+        y = (y - y_center) / y_half
+        z = (z - z_center) / z_half
 
-    center = np.array([(zmax + zmin)/2, (ymax + ymin)/2, (xmax + xmin)/2])
+        # scale into your target usable region
+        x = x * (xrange / 2) + (xrange / 2 + xmargin)
+        y = y * (yrange / 2) + (yrange / 2 + ymargin)
+        z = z * (zrange / 2) + (zrange / 2 + zmargin)
 
-    for t in range(len(corrected_frames)):
-        x, y, z = corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z']
-        z -= center[0]
-        y -= center[1]
-        x -= center[2]
-        
-        z /= zmax - center[0]
-        y /= ymax - center[1]
-        x /= xmax - center[2]
-        
-        z *= zrange/2
-        y *= yrange/2
-        x *= xrange/2
-        
-        z += zrange/2 + zmargin
-        y += yrange/2 + ymargin
-        x += xrange/2 + xmargin
-        
-        corrected_frames[t]['x'], corrected_frames[t]['y'], corrected_frames[t]['z'] = x, y, z
+        corrected_frames[t]["x"], corrected_frames[t]["y"], corrected_frames[t]["z"] = x, y, z
     return corrected_frames
 
 def scale_cell_centers2D(sel_frames, xdim=512, ydim=512, xborder_margin=0.1, yborder_margin=0.1):
