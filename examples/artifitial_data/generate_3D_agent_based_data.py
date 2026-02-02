@@ -1,6 +1,5 @@
 import numpy as np
 from qlivecell import agentsim3D, scale_cell_centers3D, create_volume, check_or_create_dir
-import os
 from tifffile import imwrite
 
 model = dict(
@@ -43,7 +42,7 @@ path_cwd = "/home/pablo/Desktop/PhD/projects/qlivecell"
 path_to_save = path_cwd + "/examples/artifitial_data/data/AGM_3Dexample/"
 name_format = "t{:04d}.tif"
 check_or_create_dir(path_to_save)
-
+ 
 for t in range(len(volume)):
     pth_save = path_to_save+name_format.format(t)
     imwrite(

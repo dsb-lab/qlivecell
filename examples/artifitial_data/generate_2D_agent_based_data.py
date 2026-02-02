@@ -27,7 +27,7 @@ sheet=create_sheet(
     radii_scale=15,
     blur_sigma=5)
     
-path_cwd = os.path.abspath(os.getcwd())
+path_cwd = "/home/pablo/Desktop/PhD/projects/qlivecell"
 path_to_save = path_cwd + "/examples/artifitial_data/data/AGM_2Dexample/"
 name_format = "t{:04d}.tif"
 check_or_create_dir(path_to_save)
