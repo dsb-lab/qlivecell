@@ -30,12 +30,13 @@ def check_and_fill_plot_args(plot_args, stack_dims, channels_order):
     if "min_outline_length" not in plot_args.keys():
         plot_args["min_outline_length"] = 1
     plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stack_dims[-1]
+    if "wheel_motor" not in plot_args.keys():
+        plot_args["wheel_motor"] = "regular"
 
     _cmap = cm.get_cmap(plot_args["masks_cmap"])
     plot_args["labels_colors"] = CyclicList(_cmap.colors)
     plot_args["plot_masks"] = True
     return plot_args
-
 
 def update_plot_stack(pstackdims, channels, img_for_plotting, plot_stack):
     if len(pstackdims) == 3:

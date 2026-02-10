@@ -13,8 +13,9 @@ from ..tools.ct_tools import get_cell_color, set_cell_color
 from ..tools.save_tools import save_cells_to_labels_stack
 from ..tools.tools import printfancy
 from .napari_tools import get_whole_lineage
-from .pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
+from .GUI.pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
+from .GUI.scroll_handling import SmoothWheelMotor, RegularWheelMotor
 from .plotting import get_dif_nested_list
 
 
@@ -37,7 +38,7 @@ def get_point_PACP(dim_change, event):
 
 
 def get_cell_PACP(PACP, event, block=True):
-    picked_point = get_point_PACP(PACP._plot_args["dim_change"], event)
+    picked_point = get_point_PACP(PACP.CTplot_args["dim_change"], event)
     for i, mask in enumerate(PACP.CTMasks[PACP.t][PACP.z]):
         for point in mask:
             if (picked_point == point).all():
@@ -79,7 +80,9 @@ class PlotAction:
             "key_release_event", self.on_key_release
         )
         self.ctrl_is_held = False
-        self.ctrl_shift_is_held = False
+        self.shift_is_held = False
+        self.tab_is_held = False
+        self._control_shift_combs = ["shift+ctrl", "ctrl+shift", "control+shift", "shift+control"]
 
         self.current_state = None
         self.past_state = None
@@ -98,14 +101,60 @@ class PlotAction:
 
         self.CT_info = CT.CT_info
 
-        self._plot_args = CT._plot_args
-
         self._masks_stack = CT._masks_stack
         self._napari_masks_stack = self._masks_stack[:, :, :, :, :3].copy()
         self._plot_stack = CT.plot_stacks
 
         self._3d_on = False
-        self.scl = fig.canvas.mpl_connect("scroll_event", self.onscroll)
+        
+        if CT._plot_args["wheel_motor"] == "regular":
+            
+            # Profiles: precise vs fast
+            self.profile_precise = dict(
+                scroll_scale = 1.0,
+            )
+            self.profile_fast = dict(
+                scroll_scale = 4.0,
+            )
+            
+            self.motor_z = RegularWheelMotor(self.cr_scroll_regular, **self.profile_precise)
+            self.motor_t = RegularWheelMotor(self.time_scroll_regular, **self.profile_precise)
+
+        elif CT._plot_args["wheel_motor"] == "smooth":
+            # If your Logitech sends ~3 events per notch, start here and tune:
+
+            # Profiles: precise vs fast
+            self.profile_precise = dict(
+                gain=10.0,
+                decay=0.5,
+                base_threshold=1.0,
+                threshold_increment=2.0,
+                threshold_decay=0.85,
+                scroll_scale = 1.0 / 4.0,
+            )
+            self.profile_fast = dict(
+                gain=9.0,
+                decay=0.85,
+                base_threshold=0.6,
+                threshold_increment=0.2,
+                threshold_decay=0.95,
+                scroll_scale = 1.0 / 4.0,
+            )
+
+            # Two motors: one for z, one for t
+            self.motor_z = SmoothWheelMotor(fig, self.cr_scroll_smooth, fps=60, **self.profile_precise)
+            self.motor_t = SmoothWheelMotor(fig, self.time_scroll_smooth, fps=60, **self.profile_precise)
+
+        else: 
+            raise Exception("wheel motor not supported make sure to use one of the following: [regular, smooth]")
+        
+        
+        # optional: throttle for batch (because it's heavy)
+        self._batch_last = 0.0
+        self._batch_min_interval = 0.08  # seconds
+
+        self.scl = fig.canvas.mpl_connect("scroll_event", self.onscroll_fancy)
+
         self.batch = CT.batch
         if self.batch:
             self.times = CT.times
@@ -128,11 +177,11 @@ class PlotAction:
         self.CTmitotic_events = CT.mitotic_events
         self.CThints = CT.hints
         self.CTconflicts = CT.total_conflicts
-        self.CTplot_masks = self._plot_args["plot_masks"]
+        self.CTplot_args = CT._plot_args
+        self.CTplot_masks = self.CTplot_args["plot_masks"]
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
-        self.CTplot_args = CT._plot_args
         self.CTblock_cells = CT.block_cells
         self.CTunblock_cells = CT.unblock_cells
 
@@ -146,11 +195,11 @@ class PlotAction:
         self.set_val_z_slider = CT._z_slider.set_val
 
         groupsize = (
-            self._plot_args["plot_layout"][0] * self._plot_args["plot_layout"][1]
+            self.CTplot_args["plot_layout"][0] * self.CTplot_args["plot_layout"][1]
         )
         self.max_round = int(
             np.ceil(
-                (CT.slices - groupsize) / (groupsize - self._plot_args["plot_overlap"])
+                (CT.slices - groupsize) / (groupsize - self.CTplot_args["plot_overlap"])
             )
         )
         self.get_size()
@@ -178,9 +227,9 @@ class PlotAction:
         self._CTget_cell = CT._get_cell
         self.CTprint_hints = CT.print_hints
 
+        
     def reinit(self, CT):
         # Point to CT variables
-
         self.jitcells = CT.jitcells
         self.jitcells_selected = CT.jitcells_selected
         self._masks_stack = CT._masks_stack
@@ -196,45 +245,51 @@ class PlotAction:
 
         self.CThints = CT.hints
         self.CTconflicts = CT.total_conflicts
-        self.CTplot_masks = self._plot_args["plot_masks"]
+        self.CTplot_args = CT._plot_args
+        self.CTplot_masks = self.CTplot_args["plot_masks"]
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
-        self.CTplot_args = CT._plot_args
 
         self.CThints = CT.hints
 
         self.times = CT.times
         if self.batch:
             self.global_times_list = CT.batch_times_list_global
-
+        
     def __call__(self, event):
         # To be defined
         pass
 
     def on_key_press(self, event):
-        possible_combs = ["shift+ctrl", "ctrl+shift", "control+shift", "shift+control"]
         if event.key == "control":
             self.ctrl_is_held = True
 
-        elif event.key in possible_combs:
-            self.ctrl_shift_is_held = True
+        elif event.key =="shift":
+            self.shift_is_held = True
+            
+        elif event.key in self._control_shift_combs:
+            self.ctrl_is_held = True
+            self.shift_is_held = True
+
+        elif event.key =="tab":
+            self.tab_is_held = True
 
     def on_key_release(self, event):
-        possible_combs = ["shift+ctrl", "ctrl+shift", "control+shift", "shift+control"]
 
         if event.key == "control":
             self.ctrl_is_held = False
-            self.ctrl_shift_is_held = False
 
         elif event.key == "shift":
-            self.ctrl_is_held = False
-            self.ctrl_shift_is_held = False
+            self.shift_is_held = False
 
-        elif event.key in possible_combs:
+        elif event.key in self._control_shift_combs:
             self.ctrl_is_held = False
-            self.ctrl_shift_is_held = False
-
+            self.shift_is_held = False
+            
+        elif event.key =="tab":
+            self.tab_is_held = False
+            
     def update_slider_t(self, t):
         if t - 1 not in self.global_times_list:
             for bn in range(len(self.batch_all_rounds_times)):
@@ -242,7 +297,6 @@ class PlotAction:
                     self.bn = bn
                     break
             self.reset_state()
-            import time
 
             del self.list_of_cells[:]
             self.set_batch(batch_number=self.bn, update_labels=True)
@@ -256,11 +310,14 @@ class PlotAction:
             self.CTreplot(self, plot_outlines=self.plot_outlines)
 
             self.update()
-
+            
+            # This should be all removed (need to check)
+            # previously on this same function, reset is called.
             if self.current_state == "SCL":
                 self.current_state = None
-                self.ctrl_shift_is_held = False
                 self.ctrl_is_held = False
+                self.shift_is_held = False
+                self.tab_is_held = False
 
         else:
             self.t = t - self.global_times_list[0] - 1
@@ -282,28 +339,72 @@ class PlotAction:
             self._reset_CP()
 
             self.current_subplot = None
+            self.ctrl_is_held = False
+            self.shift_is_held = False
+            self.tab_is_held = False
             self.past_state = self.current_state
             self.current_state = None
             self.ax_sel = None
             self.z = None
             self.visualization()
 
-    def batch_scroll(self, event):
+    def time_scroll_regular(self, delta: int):
+        self.t = self.t + delta
+        self.t = max(self.t, 0)
+        self.t = min(self.t, self.times - 1)
+        self.tg = self.global_times_list[self.t]
+        self.tg = max(self.tg, 0)
+        self.tg = min(self.tg, self.total_times - 1)
+        if self.batch:
+            self.set_val_t_slider(self.tg + 1, self.t + 1)
+        else:
+            self.set_val_t_slider(self.tg + 1)
+
+        if self.current_state == "SCL":
+            self.current_state = None
+
+    def cr_scroll_regular(self, delta: int):
+        self.cr = self.cr - delta
+        
+        self.cr = max(self.cr, 0)
+        self.cr = min(self.cr, self.max_round)
+        self.set_val_z_slider(self.cr)
+
+        if self.current_state == "SCL":
+            self.current_state = None
+
+    def time_scroll_smooth(self, delta: int):
+        self.t = max(0, min(self.times - 1, self.t + delta))
+        self.tg = self.global_times_list[self.t]
+        self.tg = max(0, min(self.total_times - 1, self.tg))
+
+        if self.batch:
+            self.set_val_t_slider(self.tg + 1, self.t + 1)
+        else:
+            self.set_val_t_slider(self.tg + 1)
+
+        # If slider callbacks redraw the view, you may not need this.
+        # But draw_idle is usually safe and makes it smooth.
+        self.fig.canvas.draw_idle()
+
+    def cr_scroll_smooth(self, delta: int):
+        # keep your sign convention: you had up => cr-1, down => cr+1
+        self.cr = self.cr - delta
+        self.cr = max(0, min(self.max_round, self.cr))
+        self.set_val_z_slider(self.cr)
+        self.fig.canvas.draw_idle()
+
+    def batch_scroll(self, delta: int):
         if self.current_state == "SCL":
             return
 
         self.reset_state()
 
         self.current_state = "SCL"
-        if event.button == "up":
-            self.bn = self.bn + 1
-        elif event.button == "down":
-            self.bn = self.bn - 1
 
+        self.bn = self.bn + delta
         self.bn = max(self.bn, 0)
         self.bn = min(self.bn, self.batch_rounds - 1)
-
-        import time
 
         self.set_batch(batch_number=self.bn, update_labels=True)
         self.t = 0
@@ -319,55 +420,51 @@ class PlotAction:
 
         if self.current_state == "SCL":
             self.current_state = None
-            self.ctrl_shift_is_held = False
             self.ctrl_is_held = False
-
-    def time_scroll(self, event):
-        if event.button == "up":
-            self.t = self.t + 1
-        elif event.button == "down":
-            self.t = self.t - 1
-        self.t = max(self.t, 0)
-        self.t = min(self.t, self.times - 1)
-        self.tg = self.global_times_list[self.t]
-        self.tg = max(self.tg, 0)
-        self.tg = min(self.tg, self.total_times - 1)
-        if self.batch:
-            self.set_val_t_slider(self.tg + 1, self.t + 1)
-        else:
-            self.set_val_t_slider(self.tg + 1)
-
-        if self.current_state == "SCL":
-            self.current_state = None
-
-    def cr_scroll(self, event):
-        if event.button == "up":
-            self.cr = self.cr - 1
-        elif event.button == "down":
-            self.cr = self.cr + 1
-
-        self.cr = max(self.cr, 0)
-        self.cr = min(self.cr, self.max_round)
-        self.set_val_z_slider(self.cr)
-
-        if self.current_state == "SCL":
-            self.current_state = None
-
-    def onscroll(self, event):
-        if self.ctrl_shift_is_held:
-            if self.current_state == "SCL":
-                return
-            self.batch_scroll(event)
+            self.shift_is_held = False
+            
+    def batch_scroll_throttled(self, step: int):
+        now = time.monotonic()
+        if now - self._batch_last < self._batch_min_interval:
             return
-        elif self.ctrl_is_held:
-            self.time_scroll(event)
-        else:
-            # if data is 2D, scroll moves always on time
-            if self.max_round == 0:
-                self.time_scroll(event)
-            else:
-                self.cr_scroll(event)
+        self._batch_last = now
 
+        delta = 1 if step > 0 else -1
+        self.batch_scroll(delta)
+
+    def _event_to_step(self, event) -> int:
+        b = getattr(event, "button", None)
+        if b == "up":
+            return +1
+        if b == "down":
+            return -1
+        s = getattr(event, "step", 0)
+        try:
+            return int(s)
+        except Exception:
+            return 0
+        
+    def onscroll_fancy(self, event):
+        step = self._event_to_step(event)
+        if step == 0:
+            return
+
+        # TAB + scroll => batches (always discrete)
+        if self.tab_is_held:
+            self.batch_scroll_throttled(step)
+            return
+
+        # Decide axis (ctrl => time, otherwise z)
+        motor = self.motor_t if self.ctrl_is_held else self.motor_z
+
+        # Decide speed profile (shift => fast)
+        if self.shift_is_held:
+            motor.configure(**self.profile_fast)
+        else:
+            motor.configure(**self.profile_precise)
+
+        motor.impulse(step)
+        
     def get_size(self):
         bboxfig = self.fig.get_window_extent().transformed(
             self.fig.dpi_scale_trans.inverted()
@@ -382,7 +479,7 @@ class PlotAction:
     def reploting(self):
         self.CTreplot(self, plot_outlines=self.plot_outlines)
         self.fig.canvas.draw_idle()
-        self.fig.canvas.draw()
+        # self.fig.canvas.draw()
 
     def update(self):
         pass
@@ -760,7 +857,7 @@ class PlotActionCT(PlotAction):
     def onscroll(self, event):
         if self.current_state == "add":
             self.ctrl_is_held = False
-            self.ctrl_shift_is_held = False
+            self.shift_is_held = False
             super().onscroll(event)
             #### THIS SHOULD BE CHANGED IF WE GO BACK TO MULTIPANEL PLOTS
             self.linebuilder.reset(self.cr, self.t)
@@ -840,7 +937,7 @@ class PlotActionCT(PlotAction):
 
             try:
                 color = get_cell_color(
-                    jitcell, self._plot_args["labels_colors"], 1, self.CTblocked_cells
+                    jitcell, self.CTplot_args["labels_colors"], 1, self.CTblocked_cells
                 )
             except AttributeError:
                 print("ERROR: Attr error get color label {}".format(lab_z_t[0]))
@@ -864,7 +961,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color,
-                self._plot_args["dim_change"],
+                self.CTplot_args["dim_change"],
                 times_to_plot,
                 zs_to_plot,
             )
@@ -876,7 +973,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color_napari,
-                self._plot_args["dim_change"],
+                self.CTplot_args["dim_change"],
                 times_to_plot,
                 zs_to_plot,
             )
@@ -889,7 +986,7 @@ class PlotActionCT(PlotAction):
                 continue
 
             color = get_cell_color(
-                jitcell, self._plot_args["labels_colors"], 0, self.CTblocked_cells
+                jitcell, self.CTplot_args["labels_colors"], 0, self.CTblocked_cells
             )
             color = np.rint(color * 255).astype("uint8")
             if self.past_state in ["Del", "blo", "Com"] or self.current_state in [
@@ -917,7 +1014,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color,
-                self._plot_args["dim_change"],
+                self.CTplot_args["dim_change"],
                 times_to_plot,
                 zs_to_plot,
             )
@@ -930,7 +1027,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color_napari,
-                self._plot_args["dim_change"],
+                self.CTplot_args["dim_change"],
                 times_to_plot,
                 zs_to_plot,
             )
@@ -1094,7 +1191,7 @@ class PlotActionCT(PlotAction):
             else:
                 alpha = 0
             color = get_cell_color(
-                jitcell, self._plot_args["labels_colors"], alpha, self.CTblocked_cells
+                jitcell, self.CTplot_args["labels_colors"], alpha, self.CTblocked_cells
             )
             color = np.rint(color * 255).astype("uint8")
             set_cell_color(
@@ -1103,7 +1200,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color,
-                self._plot_args["dim_change"],
+                self.CTplot_args["dim_change"],
                 jitcell.times,
                 -1,
             )
@@ -1115,7 +1212,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color_napari,
-                self._plot_args["dim_change"],
+                self.CTplot_args["dim_change"],
                 jitcell.times,
                 -1,
             )
@@ -1617,14 +1714,14 @@ class PlotActionCT(PlotAction):
         self.napari_viewer = napari.view_image(
             self._plot_stack,
             name="hyperstack",
-            scale=(zres * self._plot_args["dim_change"], 1/xyres, 1/xyres),
+            scale=(zres * self.CTplot_args["dim_change"], 1/xyres, 1/xyres),
             rgb=False,
             ndisplay=3,
         )
         self.napari_viewer.add_image(
             self._napari_masks_stack,
             name="masks",
-            scale=(zres * self._plot_args["dim_change"], 1/xyres, 1/xyres),
+            scale=(zres * self.CTplot_args["dim_change"], 1/xyres, 1/xyres),
             channel_axis=-1,
             colormap=["red", "green", "blue"],
             rendering="iso",
@@ -1757,4 +1854,3 @@ class PlotActionCellPicker(PlotAction):
         self.fig.subplots_adjust(right=0.75)
         self.fig.canvas.draw_idle()
         # if self.mode == "CM": self.CT.fig_cellmovement.canvas.draw()
-        self.fig.canvas.draw()

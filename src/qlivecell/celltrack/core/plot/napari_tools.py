@@ -140,9 +140,9 @@ def arboretum_napari(cellSegTrack_instance):
         cST.hyperstack[:, :, cST.channels_order[0]],
         name="hyperstack",
         scale=(
-            CTB.metadata["voxel_size"][0],
-            CTB.metadata["voxel_size"][1],
-            CTB.metadata["voxel_size"][2],
+            cST.metadata["voxel_size"][0],
+            cST.metadata["voxel_size"][1],
+            cST.metadata["voxel_size"][2],
         ),
         rgb=False,
         ndisplay=3,
@@ -152,9 +152,9 @@ def arboretum_napari(cellSegTrack_instance):
         napari_tracks_data,
         name="tracks",
         scale=(
-            CTB.metadata["voxel_size"][0],
-            CTB.metadata["voxel_size"][1],
-            CTB.metadata["voxel_size"][2],
+            cST.metadata["voxel_size"][0],
+            cST.metadata["voxel_size"][1],
+            cST.metadata["voxel_size"][2],
         ),
         properties=properties,
         graph=graph,
@@ -166,9 +166,9 @@ def arboretum_napari(cellSegTrack_instance):
         napari_tracks_data[:, 1:]
         * (
             1,
-            CTB.metadata["voxel_size"][0],
-            CTB.metadata["voxel_size"][1],
-            CTB.metadata["voxel_size"][2],
+            cST.metadata["voxel_size"][0],
+            cST.metadata["voxel_size"][1],
+            cST.metadata["voxel_size"][2],
         ),
         size=2,
         name="centers",

@@ -33,7 +33,7 @@ from .core.artifitial_data_utils.AGM_data_utils import agentsim3D, agentsim2D, s
 
 from .core.plot.napari_tools import arboretum_napari
 from .core.plot.PA import PlotActionCellPicker, PlotActionCT
-from .core.plot.pickers import LineBuilder_lasso, LineBuilder_points
+from .core.plot.GUI.pickers import LineBuilder_lasso, LineBuilder_points
 from .core.plot.plot_extraclasses import Slider_t, Slider_t_batch, Slider_z
 from .core.plot.plot_iters import plotRound
 from .core.plot.plotting import (check_and_fill_plot_args,

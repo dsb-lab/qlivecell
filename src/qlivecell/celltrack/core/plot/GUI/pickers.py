@@ -72,7 +72,7 @@ class LineBuilder_points:
                 line.remove()
 
 
-from .plot_extraclasses import CustomLassoSelector
+from ..plot_extraclasses import CustomLassoSelector
 
 
 class LineBuilder_lasso:

@@ -8,10 +8,9 @@ cfg.CLEARPRINTS = True
 path_cwd = "/home/pablo/Desktop/PhD/projects/qlivecell"
 path_data = path_cwd+"/examples/artifitial_data/data/AGM_3Dexample/"
 path_save = path_cwd+"/examples/artifitial_data/segtrack/3Dexample/"
-import shutil
-shutil.rmtree(path_save)
+# import shutil
+# shutil.rmtree(path_save)
 check_or_create_dir(path_save)
-import os
 
 # ### LOAD CELLPOSE MODEL ###
 # from cellpose import models
@@ -77,7 +76,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size':600,
+    'batch_size':2,
     'name_format':"t{:04d}",
     'name_format_save':"{}",
     'extension':".tif",
@@ -96,7 +95,7 @@ cST = cellSegTrack(
     channels=[0]
 )
 
-cST.run()
+cST.load()
 
 plot_args = {
     'plot_layout': (1,1),
@@ -105,7 +104,8 @@ plot_args = {
     'plot_stack_dims': (256, 256), 
     'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
     'channels':[0],
-    'min_outline_length':75
+    'min_outline_length':75,
+    'wheel_motor':"regular"
 }
-cST.plot(plot_args=plot_args)
+cST.plot(block_plot=False, plot_args=plot_args)
 
