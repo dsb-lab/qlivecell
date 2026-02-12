@@ -76,7 +76,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size':2,
+    'batch_size':6,
     'name_format':"t{:04d}",
     'name_format_save':"{}",
     'extension':".tif",
@@ -96,7 +96,7 @@ cST = cellSegTrack(
 )
 
 cST.run()
-
+# cST.cell_tracking()
 plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,

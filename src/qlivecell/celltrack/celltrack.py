@@ -594,13 +594,10 @@ class cellSegTrack(object):
     def run(self):
         self.cell_segmentation()
 
-        printfancy("")
-        printfancy("computing tracking...")
-
         if self.total_times > 2:
             self.cell_tracking()
-
-        printclear(2)
+            
+        printclear(3)
         print("###############           TRACKING FINISHED           ################")
         printfancy()
 
@@ -610,7 +607,6 @@ class cellSegTrack(object):
 
     def load(self, load_ct_info=True, batch_args=None):
         print("###############        LOADING AND INITIALIZING       ################")
-        printfancy()
         printfancy()
 
         if load_ct_info:
@@ -643,11 +639,12 @@ class cellSegTrack(object):
             batch_args = self._batch_args
         self._batch_args = check_and_fill_batch_args(batch_args)
 
-        printfancy("Initializing first batch and cells...")
+        printfancy("Initializing batches and cells...")
+        printfancy("")
         self.init_batch()
 
         printfancy("cells initialised. updating labels...", clear_prev=1)
-
+        
         self.ctattr = _init_CT_cell_attributes(self.jitcells)
 
         self.hints = _init_hints()
@@ -656,9 +653,9 @@ class cellSegTrack(object):
 
         printfancy("labels updated", clear_prev=1)
 
-        printfancy("", clear_prev=1)
+        printfancy("", clear_prev=2)
         print("###############   LABELS UPDATED & CELLS INITIALISED  ################")
-        printfancy
+
 
     def cell_segmentation(self):
         if self._seg_args["method"] is None:
@@ -671,6 +668,7 @@ class cellSegTrack(object):
             printfancy(
                 "######   CURRENT TIME = %d/%d   ######" % (t + 1, self.total_times)
             )
+            printfancy("")
             printfancy("")
 
             Outlines = []
@@ -786,15 +784,16 @@ class cellSegTrack(object):
 
             # Initialize cells with this
             if not self.segment3D:
-                printclear(n=5)
+                printclear(n=4)
 
         if not self.segment3D:
             printclear(n=1)
-            
+        
         print("###############      ALL SEGMENTATIONS COMPLEATED     ################")
         printfancy("")
 
     def cell_tracking(self):
+        printfancy("computing tracking...")
         files = get_file_names(self.path_to_save)
         files_to_remove = []
         for file in files:
@@ -876,8 +875,8 @@ class cellSegTrack(object):
                     lab_max=maxlab,
                 )
 
+            # Force each array on label correspondance to be (n,2), even if n=0
             label_correspondance = List()
-
             for sublist in _label_correspondance:
                 if len(sublist) == 0:
                     arr = np.empty((0, 2), dtype=np.uint16)

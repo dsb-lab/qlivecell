@@ -43,7 +43,7 @@ path_to_save = path_cwd + "/examples/artifitial_data/data/AGM_3Dexample/"
 name_format = "t{:04d}.tif"
 check_or_create_dir(path_to_save)
  
-for t in range(len(volume)):
+for t in range(len(volume[:20])):
     pth_save = path_to_save+name_format.format(t)
     imwrite(
         pth_save,
