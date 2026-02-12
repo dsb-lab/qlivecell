@@ -858,7 +858,7 @@ class cellSegTrack(object):
             )
 
             if self._track_args["method"] == "greedy":
-                FinalLabels, label_correspondance = greedy_tracking(
+                FinalLabels, _label_correspondance = greedy_tracking(
                     TLabels,
                     TCenters,
                     metadata["voxel_size"],
@@ -866,7 +866,7 @@ class cellSegTrack(object):
                     lab_max=maxlab,
                 )
             elif self._track_args["method"] == "hungarian":
-                FinalLabels, label_correspondance = hungarian_tracking(
+                FinalLabels, _label_correspondance = hungarian_tracking(
                     TLabels,
                     TCenters,
                     TOutlines,
@@ -876,11 +876,21 @@ class cellSegTrack(object):
                     lab_max=maxlab,
                 )
 
-            label_correspondance = List(
-                [np.array(sublist).astype("uint16") for sublist in label_correspondance]
-            )
+            label_correspondance = List()
 
+            for sublist in _label_correspondance:
+                if len(sublist) == 0:
+                    arr = np.empty((0, 2), dtype=np.uint16)
+                else:
+                    arr = np.asarray(sublist, dtype=np.uint16).reshape((-1, 2))
+                label_correspondance.append(arr)
+
+            # label_correspondance = List(
+            #     [np.array(sublist).astype("uint16") for sublist in _label_correspondance]
+            # )
+            
             labels_new = replace_labels_in_place(labels, label_correspondance)
+
             maxlab = np.maximum(np.max(labels_new) - 1, maxlab)
             save_labels_stack(
                 labels_new,

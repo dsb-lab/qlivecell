@@ -671,19 +671,40 @@ def prepare_labels_stack_for_tracking(labels_stack):
     return Labels, Outlines, Masks
 
 
-@njit(parallel=False)
+# No prange here as it's not safe to write into labels in parallel
+# @njit
+# def replace_labels_t(labels, lab_corr):
+#     labels_t_copy = labels.copy()
+#     if lab_corr.shape[0] == 0:
+#         return labels_t_copy
+    
+#     for lab_init, lab_final in lab_corr:
+#         idxs = np.where(lab_init + 1 == labels)
+
+#         idxz = idxs[0]
+#         idxx = idxs[1]
+#         idxy = idxs[2]
+
+#         for q in range(len(idxz)):
+#             labels_t_copy[idxz[q], idxx[q], idxy[q]] = lab_final + 1
+#     return labels_t_copy
+
+# No prange here as it's not safe to write into labels in parallel
+@njit
 def replace_labels_t(labels, lab_corr):
-    labels_t_copy = labels.copy()
-    for lab_init, lab_final in lab_corr:
-        idxs = np.where(lab_init + 1 == labels)
+    out = labels.copy()
+    if lab_corr.shape[0] == 0:
+        return out
 
-        idxz = idxs[0]
-        idxx = idxs[1]
-        idxy = idxs[2]
+    for i in range(lab_corr.shape[0]):
+        lab_init = lab_corr[i, 0] + 1
+        lab_final = lab_corr[i, 1] + 1
 
-        for q in prange(len(idxz)):
-            labels_t_copy[idxz[q], idxx[q], idxy[q]] = lab_final + 1
-    return labels_t_copy
+        z, x, y = np.where(labels == lab_init)
+        for q in range(len(z)):
+            out[z[q], x[q], y[q]] = lab_final
+
+    return out
 
 
 @njit(parallel=False)
@@ -691,5 +712,9 @@ def replace_labels_in_place(labels, label_correspondance):
     labels_copy = np.zeros_like(labels, dtype="uint16")
     for t in prange(len(label_correspondance)):
         t = np.uint16(t)
-        labels_copy[t] = replace_labels_t(labels[t], label_correspondance[t])
+        corr = label_correspondance[t]
+        if corr.shape[0]==0:  
+            labels_copy[t] = replace_labels_t(labels[t], corr)
+        else:
+            labels_copy[t] = labels[t]
     return labels_copy

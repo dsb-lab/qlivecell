@@ -22,7 +22,7 @@ def greedy_tracking(
         if t == 0:
             FinalLabels.append(TLabels[0])
             FinalCenters.append(TCenters[0])
-            labmax = np.maximum(np.max(FinalLabels[0]), lab_max)
+            labmax = np.maximum(np.max(FinalLabels[0], initial=0), lab_max)
             for lab in TLabels[0]:
                 label_correspondance[0].append([lab, lab])
             continue
@@ -88,7 +88,7 @@ def greedy_tracking(
                 notcorrespondenta.append(i)
 
         # update max label
-        labmax = np.maximum(np.max(FinalLabels[t - 1]), labmax)
+        labmax = np.maximum(np.max(FinalLabels[t - 1], initial=0), labmax)
         # for each future cell
         for j in range(len(a)):
             # check if the future cell is in the correspondance
@@ -125,8 +125,8 @@ def hungarian_tracking(
     FinalLabels.append(TLabels[0])
     lc = [[l, l] for l in TLabels[0]]
     label_correspondance.append(lc)
-
-    labmax = np.maximum(np.max(FinalLabels[0]), lab_max)
+    
+    labmax = np.maximum(np.max(FinalLabels[0], initial=0), lab_max)
     for t in range(1, len(TLabels)):
         FinalLabels_t = []
         label_correspondance_t = []
@@ -199,7 +199,7 @@ def hungarian_tracking(
             FinalLabels_t.append(label1)
 
         if len(FinalLabels[t - 1]) != 0:
-            labmax = np.maximum(np.max(FinalLabels[t - 1]), labmax)
+            labmax = np.maximum(np.max(FinalLabels[t - 1], initial=0), labmax)
         for lab in labs2:
             if lab not in np.array(label_correspondance_t)[:, 0]:
                 labmax += 1
@@ -265,3 +265,4 @@ def fill_tracking_args(tracking_arguments):
             )
 
     return new_tracking_arguments
+

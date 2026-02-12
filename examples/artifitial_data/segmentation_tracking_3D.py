@@ -16,26 +16,26 @@ check_or_create_dir(path_save)
 from cellpose import models
 model = models.CellposeModel(gpu=True, model_type='cyto3')
 
-### DEFINE ARGUMENTS ###
-segmentation_args={
-    'method': 'cellpose2D', 
-    'model': model, 
-    'blur': None, 
-    'channels': [0, 0],
-    # 'diameter':[45, 35],
-    'diameter':45
-}
-
-# ### LOAD STARDIST MODEL ###
-# from stardist.models import StarDist2D
-# model = StarDist2D.from_pretrained('2D_versatile_fluo')
-
+# ### DEFINE ARGUMENTS ###
 # segmentation_args={
-#     'method': 'stardist2D', 
+#     'method': 'cellpose2D', 
 #     'model': model, 
-#     'blur': [1,1], 
-#     # 'n_tiles': (2,2),
+#     'blur': None, 
+#     'channels': [0, 0],
+#     # 'diameter':[45, 35],
+#     'diameter':100
 # }
+
+### LOAD STARDIST MODEL ###
+from stardist.models import StarDist2D
+model = StarDist2D.from_pretrained('2D_versatile_fluo')
+
+segmentation_args={
+    'method': 'stardist2D', 
+    'model': model, 
+    'blur': [1,1], 
+    # 'n_tiles': (2,2),
+}
 
 concatenation3D_args = {
     'distance_th_z': 20.0, # microns
