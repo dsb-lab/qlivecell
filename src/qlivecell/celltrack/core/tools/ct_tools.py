@@ -244,22 +244,6 @@ def compute_labels_stack(point_stack, jitcells):
                     point_stack[t, z, x, y] = color
     return point_stack
 
-
-from copy import deepcopy
-
-
-def check_and_override_args(args_preferred, args_unpreferred, raise_exception=True):
-    new_args = deepcopy(args_unpreferred)
-    for arg in args_preferred.keys():
-        if arg not in new_args.keys():
-            if raise_exception:
-                raise Exception("argument %s is not a supported argument" % arg)
-        else:
-            new_args[arg] = args_preferred[arg]
-
-    return new_args
-
-
 @njit
 def _label_presence(unique_labels_T, max_lab):
     labels_T = np.zeros((max_lab + 1, len(unique_labels_T)))

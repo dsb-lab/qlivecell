@@ -76,8 +76,7 @@ from .core.tools.cell_tools import (_predefine_jitcell_inputs,
                                     find_t_discontinuities_jit,
                                     find_z_discontinuities_jit, update_cell,
                                     update_jitcell, update_jitcells)
-from .core.tools.ct_tools import (check_and_override_args,
-                                  compute_labels_stack, compute_point_stack,
+from .core.tools.ct_tools import (compute_labels_stack, compute_point_stack,
                                   find_discontinuities_unique_labels_T)
 from .core.tools.input_tools import (get_file_name, get_file_names,
                                      separate_times_hyperstack, tif_reader_5D)
