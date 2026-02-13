@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 logging.disable(logging.WARNING)
 
 
-def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_args):
+def cell_segmentation2D_cellpose(img, segmentation_config, segmentation_method_args):
     """
     Parameters
     ----------
@@ -27,7 +27,7 @@ def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_arg
     """
     from cellpose.utils import outlines_list
 
-    model = segmentation_args["model"]
+    model = segmentation_config["model"]
     chans = segmentation_method_args["channels"]
     if chans[-1] == 0:
         seg_img = img[chans[0]-1]
@@ -38,7 +38,7 @@ def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_arg
     return outlines
 
 
-def cell_segmentation2D_stardist(img, segmentation_args, segmentation_method_args):
+def cell_segmentation2D_stardist(img, segmentation_config, segmentation_method_args):
     """
     Parameters
     ----------
@@ -60,7 +60,7 @@ def cell_segmentation2D_stardist(img, segmentation_args, segmentation_method_arg
     """
     from csbdeep.utils import normalize
 
-    model = segmentation_args["model"]
+    model = segmentation_config["model"]
     labels, _ = model.predict_instances(normalize(img), **segmentation_method_args)
     # labels, _ = model.predict_instances(img, **segmentation_method_args)
 
@@ -71,7 +71,7 @@ def cell_segmentation2D_stardist(img, segmentation_args, segmentation_method_arg
 
 
 def cell_segmentation3D_from2D(
-    stack, segmentation_args, segmentation_method_args, min_outline_length
+    stack, segmentation_config, segmentation_method_args, min_outline_length
 ):
     """
     Parameters
@@ -81,7 +81,7 @@ def cell_segmentation3D_from2D(
     segmentation_function: function
         returns outlines and masks for a 2D image
 
-    segmentation_args: list
+    segmentation_config: list
         arguments for segmentation_function
 
     blur_args : None or list
@@ -103,13 +103,13 @@ def cell_segmentation3D_from2D(
     Masks = []
 
     slices = stack.shape[0]
-    blur_args = segmentation_args["blur"]
+    blur_args = segmentation_config["blur"]
     # Loop over the z-levels
 
-    if "cellpose" in segmentation_args["method"]:
+    if "cellpose" in segmentation_config["method"]:
         segmentation_function = cell_segmentation2D_cellpose
         main_ch = segmentation_method_args["channels"][0] - 1
-    elif "stardist" in segmentation_args["method"]:
+    elif "stardist" in segmentation_config["method"]:
         segmentation_function = cell_segmentation2D_stardist
         main_ch = 0
 
@@ -117,10 +117,10 @@ def cell_segmentation3D_from2D(
         progressbar(z + 1, slices)
         # Current xy plane
 
-        if "cellpose" in segmentation_args["method"]:
+        if "cellpose" in segmentation_config["method"]:
             img = stack[z]
 
-        elif "stardist" in segmentation_args["method"]:
+        elif "stardist" in segmentation_config["method"]:
             img = stack[z, main_ch]
 
         if blur_args is not None:
@@ -129,7 +129,7 @@ def cell_segmentation3D_from2D(
             )
             # Select whether we are using a pre-trained model or a cellpose base-model
         outlines = segmentation_function(
-            img, segmentation_args, segmentation_method_args
+            img, segmentation_config, segmentation_method_args
         )
 
         # Some segmentatin methods can return empty outlines, doen't make sense but has happen before
@@ -172,15 +172,15 @@ def cell_segmentation3D_from2D(
 
         # Keep the outline for the current z-level
         for o, outline in enumerate(outlines):
-            if len(outline) < segmentation_args["min_outline_length"]:
+            if len(outline) < segmentation_config["min_outline_length"]:
                 outlines[o] = increase_point_resolution(
-                    outline, segmentation_args["min_outline_length"]
+                    outline, segmentation_config["min_outline_length"]
                 )
         Outlines.append(outlines)
     return Outlines, Masks, None
 
 
-def cell_segmentation3D_cellpose(stack, segmentation_args, segmentation_method_args):
+def cell_segmentation3D_cellpose(stack, segmentation_config, segmentation_method_args):
     """
     Parameters
     ----------
@@ -197,7 +197,7 @@ def cell_segmentation3D_cellpose(stack, segmentation_args, segmentation_method_a
 
     segmentation_method_args["do_3D"] = True
 
-    model = segmentation_args["model"]
+    model = segmentation_config["model"]
     masks, flows, styles = model.eval(stack, **segmentation_method_args)
 
     Outlines = []
@@ -209,7 +209,7 @@ def cell_segmentation3D_cellpose(stack, segmentation_args, segmentation_method_a
     return Outlines, Labels
 
 
-def cell_segmentation3D_stardist(stack, segmentation_args, segmentation_method_args):
+def cell_segmentation3D_stardist(stack, segmentation_config, segmentation_method_args):
     """
     Parameters
     ----------
@@ -223,7 +223,7 @@ def cell_segmentation3D_stardist(stack, segmentation_args, segmentation_method_a
     """
     from csbdeep.utils import normalize
 
-    model = segmentation_args["model"]
+    model = segmentation_config["model"]
     # labels, _ = model.predict_instances(normalize(stack), **segmentation_method_args)
     labels, _ = model.predict_instances(stack, **segmentation_method_args)
 
@@ -239,7 +239,7 @@ def cell_segmentation3D_stardist(stack, segmentation_args, segmentation_method_a
 
 
 def cell_segmentation3D_from3D(
-    stack, segmentation_args, segmentation_method_args, min_outline_length
+    stack, segmentation_config, segmentation_method_args, min_outline_length
 ):
     """
     Parameters
@@ -249,7 +249,7 @@ def cell_segmentation3D_from3D(
     segmentation_function: function
         returns outlines and masks for a 2D image
 
-    segmentation_args: list
+    segmentation_config: list
         arguments for segmentation_function
 
     blur_args : None or list
@@ -271,17 +271,17 @@ def cell_segmentation3D_from3D(
     Masks = []
     Labels = []
     slices = stack.shape[0]
-    blur_args = segmentation_args["blur"]
+    blur_args = segmentation_config["blur"]
 
-    if "cellpose" in segmentation_args["method"]:
+    if "cellpose" in segmentation_config["method"]:
         segmentation_function = cell_segmentation3D_cellpose
 
-    elif "stardist" in segmentation_args["method"]:
+    elif "stardist" in segmentation_config["method"]:
         segmentation_function = cell_segmentation3D_stardist
 
     # NEED TO ADD BLUR FUNCTIONALITY
     _Outlines, _Labels = segmentation_function(
-        stack, segmentation_args, segmentation_method_args
+        stack, segmentation_config, segmentation_method_args
     )
 
     for z in range(slices):
@@ -317,39 +317,39 @@ def cell_segmentation3D_from3D(
 
 
 def cell_segmentation3D(
-    stack, segmentation_args, segmentation_method_args, min_outline_length=100
+    stack, segmentation_config, segmentation_method_args, min_outline_length=100
 ):
-    seg3d = check3Dmethod(segmentation_args["method"])
+    seg3d = check3Dmethod(segmentation_config["method"])
     if seg3d:
         segmentation_function = cell_segmentation3D_from3D
     else:
         segmentation_function = cell_segmentation3D_from2D
 
     Outlines, Masks, Labels = segmentation_function(
-        stack, segmentation_args, segmentation_method_args, min_outline_length
+        stack, segmentation_config, segmentation_method_args, min_outline_length
     )
     return Outlines, Masks, Labels
 
 
-def check_segmentation_args(
-    segmentation_args,
+def check_segmentation_config(
+    segmentation_config,
     available_segmentation=["cellpose2D", "cellpose3D", "stardist2D", "stardist3D"],
 ):
-    if "method" not in segmentation_args.keys() or segmentation_args["method"] is None:
-        segmentation_args["method"] = None
+    if "method" not in segmentation_config.keys() or segmentation_config["method"] is None:
+        segmentation_config["method"] = None
     else:
-        if "model" not in segmentation_args.keys():
+        if "model" not in segmentation_config.keys():
             raise Exception("no model provided")
 
-        if segmentation_args["method"] not in available_segmentation:
+        if segmentation_config["method"] not in available_segmentation:
             raise Exception("invalid segmentation method")
     return
 
 
-def fill_segmentation_args(segmentation_args):
-    segmentation_method = segmentation_args["method"]
+def fill_segmentation_config(segmentation_config):
+    segmentation_method = segmentation_config["method"]
 
-    new_segmentation_args = {
+    new_segmentation_config = {
         "method": None,
         "model": None,
         "blur": None,
@@ -358,10 +358,10 @@ def fill_segmentation_args(segmentation_args):
         "compute_center_method": "weighted_centroid",
     }
     if segmentation_method is None:
-        return new_segmentation_args, dict()
+        return new_segmentation_config, dict()
 
     if "cellpose" in segmentation_method:
-        new_segmentation_args = {
+        new_segmentation_config = {
             "method": None,
             "model": None,
             "blur": None,
@@ -369,14 +369,14 @@ def fill_segmentation_args(segmentation_args):
             "min_outline_length": 1,
             "compute_center_method": "weighted_centroid",
         }
-        model = segmentation_args["model"]
+        model = segmentation_config["model"]
         if model is None:
             seg_method_args = {}
         else:
             seg_method_args = get_default_args(model.eval)
 
     elif "stardist" in segmentation_method:
-        new_segmentation_args = {
+        new_segmentation_config = {
             "method": None,
             "model": None,
             "blur": None,
@@ -384,32 +384,32 @@ def fill_segmentation_args(segmentation_args):
             "min_outline_length": 1,
             "compute_center_method": "weighted_centroid",
         }
-        model = segmentation_args["model"]
+        model = segmentation_config["model"]
         if model is None:
             seg_method_args = {}
         else:
             seg_method_args = get_default_args(model.predict_instances)
 
-    for sarg in segmentation_args.keys():
-        if sarg in new_segmentation_args.keys():
-            new_segmentation_args[sarg] = segmentation_args[sarg]
+    for sarg in segmentation_config.keys():
+        if sarg in new_segmentation_config.keys():
+            new_segmentation_config[sarg] = segmentation_config[sarg]
         elif sarg in seg_method_args.keys():
-            seg_method_args[sarg] = segmentation_args[sarg]
+            seg_method_args[sarg] = segmentation_config[sarg]
         else:
             raise Exception(
                 "key %s is not a correct argument for the selected segmentation method"
                 % sarg
             )
 
-    assert new_segmentation_args["compute_center_method"] in [
+    assert new_segmentation_config["compute_center_method"] in [
         "centroid",
         "weighted_centroid",
     ], "compute_center_method selected not among the options [centroid, weighted_centroid]"
 
-    if "3D" not in new_segmentation_args["method"]:
-        new_segmentation_args["make_isotropic"][0] = False
+    if "3D" not in new_segmentation_config["method"]:
+        new_segmentation_config["make_isotropic"][0] = False
 
-    return new_segmentation_args, seg_method_args
+    return new_segmentation_config, seg_method_args
 
 
 def check_and_fill_concatenation3D_args(concatenation3D_args):

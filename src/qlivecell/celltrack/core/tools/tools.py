@@ -71,12 +71,9 @@ def progressbar(step, total, width=46):
         print("#   Progress: [", tags, spaces, "] ", percents, "  #", sep="")
 
 import inspect
-
 """
     copied from https://stackoverflow.com/questions/12627118/get-a-function-arguments-default-value
 """
-
-
 def get_default_args(func):
     signature = inspect.signature(func)
     return {

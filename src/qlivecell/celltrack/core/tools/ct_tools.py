@@ -139,7 +139,7 @@ def numba_delete(arr, idx):
 
 @njit()
 def set_cell_color(
-    cell_stack, points, cell_times, cell_zs, color, dim_change, times, z
+    cell_stack, points, cell_times, cell_zs, color, display_scaling, times, z
 ):
     for tid in nb.prange(len(cell_times)):
         tc = cell_times[tid]
@@ -152,8 +152,8 @@ def set_cell_color(
                     for pid in nb.prange(len(outline)):
                         pid = nb.int64(pid)
                         p = outline[pid]
-                        x = np.int64(np.floor(p[1] * dim_change))
-                        y = np.int64(np.floor(p[0] * dim_change))
+                        x = np.int64(np.floor(p[1] * display_scaling))
+                        y = np.int64(np.floor(p[0] * display_scaling))
                         cell_stack[tc, zc, x, y] = color
 
 
@@ -172,7 +172,7 @@ def compute_point_stack(
     jitcells,
     times,
     unique_labs,
-    dim_change,
+    display_scaling,
     labels_colors,
     blocked_cells=[],
     alpha=1,
@@ -209,7 +209,7 @@ def compute_point_stack(
             jitcell.times,
             jitcell.zs,
             color,
-            dim_change,
+            display_scaling,
             times,
             -1,
         )

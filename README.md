@@ -64,12 +64,11 @@ cST = cellSegTrack(
     path_data="path/to/image_data",
     path_save="path/to/output",
     channels=[0], 
-    segmentation_args={...},
+    segmentation_config={...},
     concatenation3D_args={...},
     tracking_args={...},
-    error_correction_args={...},
     batch_args={...},
-    plot_args={...}
+    viewer_config={...}
 )
 
 # Run segmentation + tracking
@@ -91,7 +90,7 @@ For now, the `examples/` folder contains a single minimal, end-to-end example:
 
 This script is the recommended starting point. It demonstrates:
 - how to initialize `cellSegTrack`,
-- how to configure `segmentation_args` for **StarDist** and **Cellpose**,
+- how to configure `segmentation_config` for **StarDist** and **Cellpose**,
 - how to run segmentation and tracking,
 - and how to launch the interactive curation GUI.
 

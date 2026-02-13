@@ -30,15 +30,15 @@ def get_axis_PACP(PACP, event):
             return False
 
 
-def get_point_PACP(dim_change, event):
+def get_point_PACP(display_scaling, event):
     x = np.rint(event.xdata).astype(np.uint16)
     y = np.rint(event.ydata).astype(np.uint16)
     picked_point = np.array([x, y])
-    return np.rint(picked_point / dim_change).astype("uint16")
+    return np.rint(picked_point / display_scaling).astype("uint16")
 
 
 def get_cell_PACP(PACP, event, block=True):
-    picked_point = get_point_PACP(PACP.CTplot_args["dim_change"], event)
+    picked_point = get_point_PACP(PACP.CTviewer_config["display_scaling"], event)
     for i, mask in enumerate(PACP.CTMasks[PACP.t][PACP.z]):
         for point in mask:
             if (picked_point == point).all():
@@ -107,7 +107,7 @@ class PlotAction:
 
         self._3d_on = False
         
-        if CT._plot_args["wheel_motor"] == "regular":
+        if CT._viewer_config["wheel_motor"] == "regular":
             
             # Profiles: precise vs fast
             self.profile_precise = dict(
@@ -120,7 +120,7 @@ class PlotAction:
             self.motor_z = RegularWheelMotor(self.cr_scroll_regular, **self.profile_precise)
             self.motor_t = RegularWheelMotor(self.time_scroll_regular, **self.profile_precise)
 
-        elif CT._plot_args["wheel_motor"] == "smooth":
+        elif CT._viewer_config["wheel_motor"] == "smooth":
             # If your Logitech sends ~3 events per notch, start here and tune:
 
             # Profiles: precise vs fast
@@ -177,8 +177,8 @@ class PlotAction:
         self.CTmitotic_events = CT.mitotic_events
         self.CThints = CT.hints
         self.CTconflicts = CT.total_conflicts
-        self.CTplot_args = CT._plot_args
-        self.CTplot_masks = self.CTplot_args["plot_masks"]
+        self.CTviewer_config = CT._viewer_config
+        self.CTplot_masks = self.CTviewer_config["plot_masks"]
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
@@ -195,11 +195,11 @@ class PlotAction:
         self.set_val_z_slider = CT._z_slider.set_val
 
         groupsize = (
-            self.CTplot_args["plot_layout"][0] * self.CTplot_args["plot_layout"][1]
+            self.CTviewer_config["layout"][0] * self.CTviewer_config["layout"][1]
         )
         self.max_round = int(
             np.ceil(
-                (CT.slices - groupsize) / (groupsize - self.CTplot_args["plot_overlap"])
+                (CT.slices - groupsize) / (groupsize - self.CTviewer_config["overlap"])
             )
         )
         self.get_size()
@@ -245,8 +245,8 @@ class PlotAction:
 
         self.CThints = CT.hints
         self.CTconflicts = CT.total_conflicts
-        self.CTplot_args = CT._plot_args
-        self.CTplot_masks = self.CTplot_args["plot_masks"]
+        self.CTviewer_config = CT._viewer_config
+        self.CTplot_masks = self.CTviewer_config["plot_masks"]
         self.CTunique_labels = CT.unique_labels
         self.CTMasks = CT.ctattr.Masks
         self.CTLabels = CT.ctattr.Labels
@@ -937,7 +937,7 @@ class PlotActionCT(PlotAction):
 
             try:
                 color = get_cell_color(
-                    jitcell, self.CTplot_args["labels_colors"], 1, self.CTblocked_cells
+                    jitcell, self.CTviewer_config["labels_colors"], 1, self.CTblocked_cells
                 )
             except AttributeError:
                 print("ERROR: Attr error get color label {}".format(lab_z_t[0]))
@@ -961,7 +961,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color,
-                self.CTplot_args["dim_change"],
+                self.CTviewer_config["display_scaling"],
                 times_to_plot,
                 zs_to_plot,
             )
@@ -973,7 +973,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color_napari,
-                self.CTplot_args["dim_change"],
+                self.CTviewer_config["display_scaling"],
                 times_to_plot,
                 zs_to_plot,
             )
@@ -986,7 +986,7 @@ class PlotActionCT(PlotAction):
                 continue
 
             color = get_cell_color(
-                jitcell, self.CTplot_args["labels_colors"], 0, self.CTblocked_cells
+                jitcell, self.CTviewer_config["labels_colors"], 0, self.CTblocked_cells
             )
             color = np.rint(color * 255).astype("uint8")
             if self.past_state in ["Del", "blo", "Com"] or self.current_state in [
@@ -1014,7 +1014,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color,
-                self.CTplot_args["dim_change"],
+                self.CTviewer_config["display_scaling"],
                 times_to_plot,
                 zs_to_plot,
             )
@@ -1027,7 +1027,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color_napari,
-                self.CTplot_args["dim_change"],
+                self.CTviewer_config["display_scaling"],
                 times_to_plot,
                 zs_to_plot,
             )
@@ -1191,7 +1191,7 @@ class PlotActionCT(PlotAction):
             else:
                 alpha = 0
             color = get_cell_color(
-                jitcell, self.CTplot_args["labels_colors"], alpha, self.CTblocked_cells
+                jitcell, self.CTviewer_config["labels_colors"], alpha, self.CTblocked_cells
             )
             color = np.rint(color * 255).astype("uint8")
             set_cell_color(
@@ -1200,7 +1200,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color,
-                self.CTplot_args["dim_change"],
+                self.CTviewer_config["display_scaling"],
                 jitcell.times,
                 -1,
             )
@@ -1212,7 +1212,7 @@ class PlotActionCT(PlotAction):
                 jitcell.times,
                 jitcell.zs,
                 color_napari,
-                self.CTplot_args["dim_change"],
+                self.CTviewer_config["display_scaling"],
                 jitcell.times,
                 -1,
             )
@@ -1220,11 +1220,11 @@ class PlotActionCT(PlotAction):
 
     def switch_centers(self, point=False, number=False):
         if point:
-            self.CTplot_args["plot_centers"][0] = not self.CTplot_args["plot_centers"][
+            self.CTviewer_config["display_centers"][0] = not self.CTviewer_config["display_centers"][
                 0
             ]
         if number:
-            self.CTplot_args["plot_centers"][1] = not self.CTplot_args["plot_centers"][
+            self.CTviewer_config["display_centers"][1] = not self.CTviewer_config["display_centers"][
                 1
             ]
         self.visualization()
@@ -1714,14 +1714,14 @@ class PlotActionCT(PlotAction):
         self.napari_viewer = napari.view_image(
             self._plot_stack,
             name="hyperstack",
-            scale=(zres * self.CTplot_args["dim_change"], 1/xyres, 1/xyres),
+            scale=(zres * self.CTviewer_config["display_scaling"], 1/xyres, 1/xyres),
             rgb=False,
             ndisplay=3,
         )
         self.napari_viewer.add_image(
             self._napari_masks_stack,
             name="masks",
-            scale=(zres * self.CTplot_args["dim_change"], 1/xyres, 1/xyres),
+            scale=(zres * self.CTviewer_config["display_scaling"], 1/xyres, 1/xyres),
             channel_axis=-1,
             colormap=["red", "green", "blue"],
             rendering="iso",

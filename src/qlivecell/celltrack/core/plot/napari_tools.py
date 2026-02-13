@@ -124,14 +124,14 @@ def get_whole_lineage(mitotic_events, label):
 
 def arboretum_napari(cellSegTrack_instance):
     cST = cellSegTrack_instance
-    controls, colors = cST._plot_args["labels_colors"].get_map()
+    controls, colors = cST._viewer_config["labels_colors"].get_map()
     custom_cmap = vispy.color.Colormap(colors, controls)
 
     graph = get_lineage_graph(cST.mitotic_events)
 
     napari_tracks_data = napari_tracks(cST.jitcells)
     colors = [
-        cST._plot_args["labels_colors"].get_control(label)
+        cST._viewer_config["labels_colors"].get_control(label)
         for label in napari_tracks_data[:, 0]
     ]
     properties = {"colors": colors}

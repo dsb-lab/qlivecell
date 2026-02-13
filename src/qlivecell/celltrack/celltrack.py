@@ -36,12 +36,11 @@ from .core.plot.PA import PlotActionCellPicker, PlotActionCT
 from .core.plot.GUI.pickers import LineBuilder_lasso, LineBuilder_points
 from .core.plot.plot_extraclasses import Slider_t, Slider_t_batch, Slider_z
 from .core.plot.plot_iters import plotRound
-from .core.plot.plotting import (check_and_fill_plot_args,
-                                 check_stacks_for_plotting, norm_stack_per_z)
+from .core.plot.plotting import (check_stacks_for_plotting, norm_stack_per_z)
 from .core.segmentation.segmentation import (
     cell_segmentation2D_cellpose, cell_segmentation2D_stardist,
     cell_segmentation3D, check_and_fill_concatenation3D_args,
-    check_segmentation_args, fill_segmentation_args)
+    check_segmentation_config, fill_segmentation_config)
 from .core.segmentation.segmentation_tools import (assign_labels,
                                                    check3Dmethod,
                                                    concatenate_to_3D,
@@ -50,7 +49,7 @@ from .core.segmentation.segmentation_tools import (assign_labels,
                                                    remove_short_cells,
                                                    separate_concatenated_cells)
 from .core.segmentation.segmentation_training import (
-    check_and_fill_train_segmentation_args, get_training_set,
+    check_and_fill_train_segmentation_config, get_training_set,
     train_CellposeModel, train_StardistModel)
 from .core.tools.batch_tools import (_init_hints, _update_mito_apo_events,
                                      add_lab_change, check_and_fill_batch_args,
@@ -90,8 +89,7 @@ from .core.tools.save_tools import (extract_integer_from_filename,
                                     save_labels_stack, substitute_labels)
 from .core.tools.stack_tools import (construct_RGB, isotropize_hyperstack,
                                      isotropize_stack, isotropize_stackRGB)
-from .core.tools.tools import (check_and_fill_error_correction_args,
-                               check_or_create_dir, copytree, correct_path,
+from .core.tools.tools import (check_or_create_dir, copytree, correct_path,
                                get_default_args, increase_outline_width,
                                increase_point_resolution, mask_from_outline,
                                printclear, printfancy, progressbar,
@@ -108,6 +106,8 @@ from .core.tracking.tracking_tools import (
     _update_CT_cell_attributes, get_labels_centers,
     prepare_labels_stack_for_tracking, replace_labels_in_place,
     replace_labels_t)
+
+from .core.tools.config_tools import validate_and_fill_viewer_config
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -133,20 +133,18 @@ class cellSegTrack(object):
         self,
         pthtodata,
         pthtosave,
-        segmentation_args=None,
+        segmentation_config=None,
         concatenation3D_args=None,
         tracking_args=None,
-        error_correction_args=None,
-        plot_args=None,
+        viewer_config=None,
         batch_args=None,
         channels=None,
         save_cells=True,
     ):
-        segmentation_args = segmentation_args or {}
+        segmentation_config = segmentation_config or {}
         concatenation3D_args = concatenation3D_args or {}
         tracking_args = tracking_args or {}
-        error_correction_args = error_correction_args or {}
-        plot_args = plot_args or {}
+        viewer_config = viewer_config or {}
         batch_args = batch_args or {}
         channels = channels or [0]
         
@@ -185,11 +183,10 @@ class cellSegTrack(object):
         self._ids_selected = []
 
         self.init_from_args(
-            segmentation_args,
+            segmentation_config,
             concatenation3D_args,
             tracking_args,
-            error_correction_args,
-            plot_args,
+            viewer_config,
             batch_args,
         )
         
@@ -203,16 +200,15 @@ class cellSegTrack(object):
 
     def init_from_args(
         self,
-        segmentation_args,
+        segmentation_config,
         concatenation3D_args,
         tracking_args,
-        error_correction_args,
-        plot_args,
+        viewer_config,
         batch_args,
     ):
         # check and fill segmentation arguments
-        check_segmentation_args(
-            segmentation_args,
+        check_segmentation_config(
+            segmentation_config,
             available_segmentation=[
                 "cellpose2D",
                 "cellpose3D",
@@ -220,8 +216,8 @@ class cellSegTrack(object):
                 "stardist3D",
             ],
         )
-        self._seg_args, self._seg_method_args = fill_segmentation_args(
-            segmentation_args
+        self._seg_args, self._seg_method_args = fill_segmentation_config(
+            segmentation_config
         )
 
         # check and fill tracking arguments
@@ -231,11 +227,6 @@ class cellSegTrack(object):
         # In batch mode, stacks are read during initialization
         # First and last time of the first batch
         self.total_times = extract_total_times_from_files(self.path_to_data)
-
-        # check and fill error correction arguments
-        self._err_corr_args = check_and_fill_error_correction_args(
-            error_correction_args
-        )
 
         self._batch_args = check_and_fill_batch_args(batch_args)
 
@@ -274,9 +265,10 @@ class cellSegTrack(object):
             self._conc3D_args = {}
 
         # check and fill plot arguments
-        self._plot_args = check_and_fill_plot_args(
-            plot_args, (self.stack_dims[0], self.stack_dims[1]), self.channels_order
-        )
+        self._viewer_config = validate_and_fill_viewer_config(viewer_config, (self.stack_dims[0], self.stack_dims[1]), self.channels_order)
+        # self._viewer_config = check_and_fill_viewer_config(
+        #     viewer_config, (self.stack_dims[0], self.stack_dims[1]), self.channels_order
+        # )
         
         # check and fill batch arguments
         self._batch_args = check_and_fill_batch_args(batch_args)
@@ -554,7 +546,7 @@ class cellSegTrack(object):
         self.plot_stacks = check_stacks_for_plotting(
             None,
             self.hyperstack,
-            self._plot_args,
+            self._viewer_config,
             self.times,
             self.slices,
             self.metadata["voxel_size"],
@@ -562,7 +554,7 @@ class cellSegTrack(object):
 
         t = self.times
         z = self.slices
-        x, y = self._plot_args["plot_stack_dims"][0:2]
+        x, y = self._viewer_config["plot_stack_dims"][0:2]
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
@@ -1206,25 +1198,25 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="masks",
         )
-        self._plot_args["plot_masks"] = True
+        self._viewer_config["plot_masks"] = True
 
         compute_point_stack(
             self._outlines_stack,
             self.jitcells_selected,
             List(range(self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
     def _get_max_label(self):
@@ -1278,8 +1270,8 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             labels=labs,
             alpha=0,
@@ -1290,13 +1282,13 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             labels=labs,
             alpha=1,
             mode="outlines",
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
         self.nactions += 1
@@ -1590,7 +1582,7 @@ class cellSegTrack(object):
                         (PACP.linebuilder.xss[t][z], PACP.linebuilder.yss[t][z])
                     )[0]
                     new_outline = np.rint(
-                        new_outline / self._plot_args["dim_change"]
+                        new_outline / self._viewer_config["display_scaling"]
                     ).astype("uint16")
                     if np.max(new_outline) > self.stack_dims[0]:
                         printfancy("ERROR: drawing out of image")
@@ -1636,7 +1628,7 @@ class cellSegTrack(object):
                         )
                         return
                     new_outline = np.floor(
-                        PACP.linebuilder.outlines[t][z] / self._plot_args["dim_change"]
+                        PACP.linebuilder.outlines[t][z] / self._viewer_config["display_scaling"]
                     )
                     new_outline = new_outline.astype("uint16")
 
@@ -1654,8 +1646,8 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(ts),
             self.unique_labels,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=0,
             labels=[self.jitcells_selected[-1].label],
@@ -1666,13 +1658,13 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(ts),
             self.unique_labels,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=1,
             labels=[self.jitcells_selected[-1].label],
             mode="outlines",
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
         self.nactions += 1
@@ -1705,8 +1697,8 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(np.unique(Ts).astype("int64")),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             labels=cells,
             mode="masks",
@@ -1718,13 +1710,13 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(np.unique(Ts).astype("int64")),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             labels=cells,
             mode="outlines",
             rem=True,
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
         self.update_label_attributes()
@@ -1845,8 +1837,8 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(min(Ts), self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             labels=[*new_labs, *labs_to_replot],
             alpha=0,
@@ -1857,13 +1849,13 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(min(Ts), self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             labels=[*new_labs, *labs_to_replot],
             alpha=1,
             mode="outlines",
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
     def delete_cell_in_batch(self, PACP, count_action=True):
@@ -1884,8 +1876,8 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             labels=cells,
             mode="masks",
@@ -1897,13 +1889,13 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             labels=cells,
             mode="outlines",
             rem=True,
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
         # Pre compute max label in the whole time-series
@@ -1996,8 +1988,8 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List([t]),
             self.unique_labels,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=0,
             mode="masks",
@@ -2007,12 +1999,12 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List([t]),
             self.unique_labels,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
     def combine_cells_z(self, PACP):
@@ -2094,8 +2086,8 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List([PACP.t]),
             self.unique_labels,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=0,
             mode="masks",
@@ -2105,12 +2097,12 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List([PACP.t]),
             self.unique_labels,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
     def combine_cells_t(self):
@@ -2147,8 +2139,8 @@ class cellSegTrack(object):
                     self.jitcells_selected,
                     List(Ts),
                     self.unique_labels_batch,
-                    self._plot_args["dim_change"],
-                    self._plot_args["labels_colors"],
+                    self._viewer_config["display_scaling"],
+                    self._viewer_config["labels_colors"],
                     blocked_cells=self.blocked_cells,
                     alpha=0,
                     mode="masks",
@@ -2158,12 +2150,12 @@ class cellSegTrack(object):
                     self.jitcells_selected,
                     List(Ts),
                     self.unique_labels_batch,
-                    self._plot_args["dim_change"],
-                    self._plot_args["labels_colors"],
+                    self._viewer_config["display_scaling"],
+                    self._viewer_config["labels_colors"],
                     blocked_cells=self.blocked_cells,
                     alpha=1,
                     mode="outlines",
-                    min_length=self._plot_args["min_outline_length"],
+                    min_length=self._viewer_config["min_outline_length"],
                 )
 
                 return
@@ -2183,8 +2175,8 @@ class cellSegTrack(object):
                     self.jitcells_selected,
                     List(Ts),
                     self.unique_labels_batch,
-                    self._plot_args["dim_change"],
-                    self._plot_args["labels_colors"],
+                    self._viewer_config["display_scaling"],
+                    self._viewer_config["labels_colors"],
                     blocked_cells=self.blocked_cells,
                     alpha=0,
                     mode="masks",
@@ -2194,12 +2186,12 @@ class cellSegTrack(object):
                     self.jitcells_selected,
                     List(Ts),
                     self.unique_labels_batch,
-                    self._plot_args["dim_change"],
-                    self._plot_args["labels_colors"],
+                    self._viewer_config["display_scaling"],
+                    self._viewer_config["labels_colors"],
                     blocked_cells=self.blocked_cells,
                     alpha=1,
                     mode="outlines",
-                    min_length=self._plot_args["min_outline_length"],
+                    min_length=self._viewer_config["min_outline_length"],
                 )
 
                 return
@@ -2246,8 +2238,8 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(min(Ts), self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=0,
             mode="masks",
@@ -2257,12 +2249,12 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(min(Ts), self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
         self.nactions += 1
@@ -2337,8 +2329,8 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(min(Ts), self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=0,
             mode="masks",
@@ -2348,12 +2340,12 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(min(Ts), self.times)),
             self.unique_labels_batch,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
         self.nactions += 1
@@ -2453,8 +2445,8 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(self.times)),
             self.unique_labels,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="masks",
@@ -2464,12 +2456,12 @@ class cellSegTrack(object):
             self.jitcells_selected,
             List(range(self.times)),
             self.unique_labels,
-            self._plot_args["dim_change"],
-            self._plot_args["labels_colors"],
+            self._viewer_config["display_scaling"],
+            self._viewer_config["labels_colors"],
             blocked_cells=self.blocked_cells,
             alpha=1,
             mode="outlines",
-            min_length=self._plot_args["min_outline_length"],
+            min_length=self._viewer_config["min_outline_length"],
         )
 
     def _get_cell(self, label=None, cellid=None):
@@ -2644,24 +2636,25 @@ class cellSegTrack(object):
 
     def plot(
         self,
-        plot_args=None,
+        viewer_config=None,
         cell_picker=False,
         mode=None,
         update_labels=True,
         block_plot=True,
     ):
         printfancy()
-        if plot_args is None:
-            plot_args = self._plot_args
+        if viewer_config is None:
+            viewer_config = self._viewer_config
 
         #  Plotting Attributes
-        self._plot_args = check_and_fill_plot_args(plot_args, self.hyperstack.shape[3:], self.channels_order)
-        self._plot_args["plot_masks"] = True
+        # self._viewer_config = check_and_fill_viewer_config(viewer_config, self.hyperstack.shape[3:], self.channels_order)
+        self._viewer_config = validate_and_fill_viewer_config(viewer_config, self.hyperstack.shape[3:], self.channels_order)
+        self._viewer_config["plot_masks"] = True
 
         self.plot_stacks = check_stacks_for_plotting(
             None,
             self.hyperstack,
-            self._plot_args,
+            self._viewer_config,
             self.times,
             self.slices,
             self.metadata["voxel_size"],
@@ -2669,7 +2662,7 @@ class cellSegTrack(object):
 
         t = self.times
         z = self.slices
-        x, y = self._plot_args["plot_stack_dims"][0:2]
+        x, y = self._viewer_config["plot_stack_dims"][0:2]
 
         self._masks_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
         self._outlines_stack = np.zeros((t, z, x, y, 4), dtype="uint8")
@@ -2686,9 +2679,9 @@ class cellSegTrack(object):
         self.list_of_cellsm = []
 
         counter = plotRound(
-            layout=self._plot_args["plot_layout"],
+            layout=self._viewer_config["layout"],
             totalsize=self.slices,
-            overlap=self._plot_args["plot_overlap"],
+            overlap=self._viewer_config["overlap"],
             round=0,
         )
         fig, ax = plt.subplots(counter.layout[0], counter.layout[1], figsize=(10, 10))
@@ -2724,12 +2717,12 @@ class cellSegTrack(object):
         sliderstr = "/%d" % (self.slices)
 
         groupsize = (
-            self._plot_args["plot_layout"][0] * self._plot_args["plot_layout"][1]
+            self._viewer_config["layout"][0] * self._viewer_config["layout"][1]
         )
         max_round = int(
             np.ceil(
                 (self.slices - groupsize)
-                / (groupsize - self._plot_args["plot_overlap"])
+                / (groupsize - self._viewer_config["overlap"])
             )
         )
         if len(ax) > 1:
@@ -2799,13 +2792,13 @@ class cellSegTrack(object):
                     cell = self._get_cell(lab)
                     tid = cell.times.index(t)
                     zz, ys, xs = cell.centers[tid]
-                    xs = round(xs * self._plot_args["dim_change"])
-                    ys = round(ys * self._plot_args["dim_change"])
+                    xs = round(xs * self._viewer_config["display_scaling"])
+                    ys = round(ys * self._viewer_config["display_scaling"])
                     if zz == z:
-                        if self._plot_args["plot_centers"][0]:
+                        if self._viewer_config["display_centers"][0]:
                             pos = ax[id].scatter([ys], [xs], s=1.0, c="white")
                             self._pos_scatters.append(pos)
-                        if self._plot_args["plot_centers"][1]:
+                        if self._viewer_config["display_centers"][1]:
                             ano = ax[id].annotate(str(lab), xy=(ys, xs), c="white")
                             self._annotations.append(ano)
 
@@ -2826,9 +2819,9 @@ class cellSegTrack(object):
     def replot(self, PACP, plot_outlines=True):
         t = PACP.t
         counter = plotRound(
-            layout=self._plot_args["plot_layout"],
+            layout=self._viewer_config["layout"],
             totalsize=self.slices,
-            overlap=self._plot_args["plot_overlap"],
+            overlap=self._viewer_config["overlap"],
             round=PACP.cr,
         )
         zidxs = np.unravel_index(range(counter.groupsize), counter.layout)
@@ -2843,7 +2836,7 @@ class cellSegTrack(object):
         for z, id, r in counter:
             # select current z plane
             if z == None:
-                img = np.zeros(self._plot_args["plot_stack_dims"])
+                img = np.zeros(self._viewer_config["plot_stack_dims"])
                 self._imshows[id].set_array(img)
                 self._imshows_masks[id].set_array(img)
                 self._imshows_outlines[id].set_array(img)
@@ -2854,20 +2847,20 @@ class cellSegTrack(object):
                 labs = self.ctattr.Labels[t][z]
                 self.replot_axis(img, z, t, id, plot_outlines=plot_outlines)
 
-                if self._plot_args["plot_centers"][0]:
+                if self._viewer_config["display_centers"][0]:
                     for lab in labs:
                         cell = self._get_cell(lab)
                         tid = cell.times.index(t)
                         zz, ys, xs = cell.centers[tid]
-                        xs = round(xs * self._plot_args["dim_change"])
-                        ys = round(ys * self._plot_args["dim_change"])
+                        xs = round(xs * self._viewer_config["display_scaling"])
+                        ys = round(ys * self._viewer_config["display_scaling"])
 
                         lab_to_display = lab
                         if zz == z:
                             sc = PACP.ax[id].scatter([ys], [xs], s=1.0, c="white")
                             self._pos_scatters.append(sc)
 
-                            if self._plot_args["plot_centers"][1]:
+                            if self._viewer_config["display_centers"][1]:
                                 # Check if cell is an immeadiate dauther and plot the corresponding label
                                 for mitoev in self.mitotic_events:
                                     for icell, mitocell in enumerate(mitoev[1:]):
@@ -2891,8 +2884,8 @@ class cellSegTrack(object):
                             tid = cell.times.index(t)
                             zz, ys, xs = cell.centers[tid]
                             if zz == z:
-                                xs = round(xs * self._plot_args["dim_change"])
-                                ys = round(ys * self._plot_args["dim_change"])
+                                xs = round(xs * self._viewer_config["display_scaling"])
+                                ys = round(ys * self._viewer_config["display_scaling"])
                                 if PACP.tg == ev[1]:
                                     sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="red")
                                     self._pos_scatters.append(sc)
@@ -2903,8 +2896,8 @@ class cellSegTrack(object):
                         tid = cell.times.index(t)
                         zz, ys, xs = cell.centers[tid]
                         if zz == z:
-                            xs = round(xs * self._plot_args["dim_change"])
-                            ys = round(ys * self._plot_args["dim_change"])
+                            xs = round(xs * self._viewer_config["display_scaling"])
+                            ys = round(ys * self._viewer_config["display_scaling"])
                             sc = PACP.ax[id].scatter([ys], [xs], s=5.0, c="k")
                             self._pos_scatters.append(sc)
 

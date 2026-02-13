@@ -1,42 +1,6 @@
 import numpy as np
-from matplotlib import cm
 from numba import njit
 from skimage.transform import resize
-
-from ..tools.ct_tools import get_cell_color, set_cell_color
-from ..tools.tools import printfancy
-from .plot_iters import CyclicList
-
-
-def check_and_fill_plot_args(plot_args, stack_dims, channels_order):
-    if "plot_layout" not in plot_args.keys():
-        plot_args["plot_layout"] = (1, 1)
-    if not hasattr(plot_args["plot_layout"], "__iter__"):
-        printfancy("WARNING: invalid plot_layout, using (1,1) instead")
-        plot_args["plot_layout"] = (1, 1)
-
-    if "plot_overlap" not in plot_args.keys():
-        plot_args["plot_overlap"] = 0
-    if np.multiply(*plot_args["plot_layout"]) >= plot_args["plot_overlap"]:
-        plot_args["plot_overlap"] = np.multiply(*plot_args["plot_layout"]) - 1
-    if "masks_cmap" not in plot_args.keys():
-        plot_args["masks_cmap"] = "tab10"
-    if "plot_stack_dims" not in plot_args.keys():
-        plot_args["plot_stack_dims"] = stack_dims
-    if "plot_centers" not in plot_args.keys():
-        plot_args["plot_centers"] = [True, True]
-    if "channels" not in plot_args.keys():
-        plot_args["channels"] = channels_order[:1]
-    if "min_outline_length" not in plot_args.keys():
-        plot_args["min_outline_length"] = 1
-    plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stack_dims[-1]
-    if "wheel_motor" not in plot_args.keys():
-        plot_args["wheel_motor"] = "regular"
-
-    _cmap = cm.get_cmap(plot_args["masks_cmap"])
-    plot_args["labels_colors"] = CyclicList(_cmap.colors)
-    plot_args["plot_masks"] = True
-    return plot_args
 
 def update_plot_stack(pstackdims, channels, img_for_plotting, plot_stack):
     if len(pstackdims) == 3:
@@ -97,29 +61,28 @@ def convert_to_8bit_per_channel(image, channel_axis=2):
     return image8
 
 def check_stacks_for_plotting(
-    stacks_for_plotting, stacks, plot_args, times, slices, voxel_size
+    stacks_for_plotting, stacks, viewer_config, times, slices, voxel_size
 ):
     if stacks_for_plotting is None:
         stacks_for_plotting = stacks
     if len(stacks_for_plotting.shape) == 5:
-        plot_args["plot_stack_dims"] = [
-            plot_args["plot_stack_dims"][0],
-            plot_args["plot_stack_dims"][1],
+        viewer_config["plot_stack_dims"] = [
+            viewer_config["plot_stack_dims"][0],
+            viewer_config["plot_stack_dims"][1],
             3,
         ]
-        channels = plot_args["channels"]
+        channels = viewer_config["channels"]
         if channels is None:
             # If no plotting channel is specified, the first three in the hyperstack are used for RGB plotting
             channels = [i for i in range(min(stacks_for_plotting.shape[2], 3))]
     stacks_for_plotting = convert_to_8bit_per_channel(stacks_for_plotting, 2)
-    plot_args["dim_change"] = plot_args["plot_stack_dims"][0] / stacks.shape[-2]
-    plot_args["_plot_xyresolution"] = voxel_size[1] * plot_args["dim_change"]
+    viewer_config["_plot_xyresolution"] = voxel_size[1] * viewer_config["display_scaling"]
 
-    if plot_args["dim_change"] != 1:
+    if viewer_config["display_scaling"] != 1:
         plot_stacks = np.zeros(
-            (times, slices, *plot_args["plot_stack_dims"]), dtype="uint8"
+            (times, slices, *viewer_config["plot_stack_dims"]), dtype="uint8"
         )
-        pstackdims = plot_args["plot_stack_dims"]
+        pstackdims = viewer_config["plot_stack_dims"]
         for t in range(times):
             for z in range(slices):
                 img_for_plotting = stacks_for_plotting[t, z]
@@ -127,9 +90,9 @@ def check_stacks_for_plotting(
                     pstackdims, channels, img_for_plotting, plot_stacks[t, z]
                 )
     else:
-        if len(plot_args["plot_stack_dims"]) == 3:
+        if len(viewer_config["plot_stack_dims"]) == 3:
             plot_stacks = np.zeros(
-                (times, slices, *plot_args["plot_stack_dims"]), dtype="uint8"
+                (times, slices, *viewer_config["plot_stack_dims"]), dtype="uint8"
             )
             for ch_id, ch in enumerate(channels):
                 plot_stacks[:, :, :, :, ch_id] = stacks_for_plotting[:, :, ch, :, :]
@@ -137,7 +100,7 @@ def check_stacks_for_plotting(
         else:
             plot_stacks = stacks_for_plotting
 
-    if len(plot_args["plot_stack_dims"]) == 3:
+    if len(viewer_config["plot_stack_dims"]) == 3:
         if len(channels) == 1:
             plot_stacks = plot_stacks[:, :, :, :, 0]
     return plot_stacks
@@ -178,13 +141,13 @@ def adjust_contrast(image, min_contrast, max_contrast):
 #         else:
 #             self.CTplot_masks = masks
 
-# def _switch_masks(jitcells_selected, CTplot_masks, CTblocked_cells, masks_stack, dim_change):
+# def _switch_masks(jitcells_selected, CTplot_masks, CTblocked_cells, masks_stack, display_scaling):
 #     for jitcell in jitcells_selected:
 #         if CTplot_masks:
 #             alpha = 1
 #         else:
 #             alpha = 0
-#         color = get_cell_color(jitcell, self._plot_args["labels_colors"], alpha, CTblocked_cells)
+#         color = get_cell_color(jitcell, self._viewer_config["labels_colors"], alpha, CTblocked_cells)
 #         color = np.rint(color * 255).astype("uint8")
 #         set_cell_color(
 #             masks_stack,
@@ -192,7 +155,7 @@ def adjust_contrast(image, min_contrast, max_contrast):
 #             jitcell.times,
 #             jitcell.zs,
 #             color,
-#             dim_change,
+#             display_scaling,
 #             jitcell.times,
 #             -1,
 #         )

@@ -17,7 +17,7 @@ from cellpose import models
 model = models.CellposeModel(gpu=True, model_type='cyto3')
 
 # ### DEFINE ARGUMENTS ###
-# segmentation_args={
+# segmentation_config={
 #     'method': 'cellpose2D', 
 #     'model': model, 
 #     'blur': None, 
@@ -30,7 +30,7 @@ model = models.CellposeModel(gpu=True, model_type='cyto3')
 from stardist.models import StarDist2D
 model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
-segmentation_args={
+segmentation_config={
     'method': 'stardist2D', 
     'model': model, 
     'blur': [1,1], 
@@ -61,18 +61,13 @@ tracking_args = {
     "cost_ratios": [0.6, 0.2, 0.2],
 }
 
-plot_args = {
-    'plot_layout': (1,1),
-    'plot_overlap': 1,
+viewer_config = {
+    'layout': (1,1),
+    'overlap': 1,
     'masks_cmap': 'tab10',
     # 'plot_stack_dims': (512, 512), 
-    'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
+    'display_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
     'channels':[0]
-}
-
-error_correction_args = {
-    'backup_steps': 10,
-    'line_builder_mode': 'points',
 }
 
 batch_args = {
@@ -82,30 +77,29 @@ batch_args = {
     'extension':".tif",
 }
 
-
 cST = cellSegTrack(
     path_data,
     path_save,
-    segmentation_args=segmentation_args,
+    segmentation_config=segmentation_config,
     concatenation3D_args=concatenation3D_args,
     tracking_args=tracking_args,
-    error_correction_args=error_correction_args,
-    plot_args=plot_args,
+    viewer_config=viewer_config,
     batch_args=batch_args,
     channels=[0]
 )
 
-cST.run()
+cST.load()
 # cST.cell_tracking()
-plot_args = {
-    'plot_layout': (1,1),
-    'plot_overlap': 1,
+viewer_config = {
+    'layout': (1,1),
+    'overlap': 0.5,
     'masks_cmap': 'tab10',
-    'plot_stack_dims': (256, 256), 
-    'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
+    'display_scaling': 0.5,
+    'display_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
     'channels':[0],
     'min_outline_length':75,
-    'wheel_motor':"regular"
+    'wheel_motor':"regular",
+    'line_builder_mode': 'points',
 }
-cST.plot(block_plot=False, plot_args=plot_args)
+cST.plot(block_plot=False, viewer_config=viewer_config)
 

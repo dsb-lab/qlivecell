@@ -83,15 +83,15 @@ def get_training_set(IMGS, Masks_stack, tz_actions, train_args, train3D=False):
 from datetime import datetime
 
 
-def check_and_fill_train_segmentation_args(
-    train_segmentation_args, model, seg_method, path_to_save
+def check_and_fill_train_segmentation_config(
+    train_segmentation_config, model, seg_method, path_to_save
 ):
     if model is None:
         return None, None
     else:
         train_seg_args = get_default_args(model.train)
 
-    new_train_segmentation_args = {
+    new_train_segmentation_config = {
         "blur": None,
     }
 
@@ -100,16 +100,16 @@ def check_and_fill_train_segmentation_args(
         path_save_arg = "save_path"
         model_name_arg = "model_name"
 
-        if path_save_arg not in train_segmentation_args.keys():
-            train_segmentation_args[path_save_arg] = path_to_save
+        if path_save_arg not in train_segmentation_config.keys():
+            train_segmentation_config[path_save_arg] = path_to_save
 
         if (
-            model_name_arg not in train_segmentation_args.keys()
-            or train_segmentation_args[model_name_arg] is None
+            model_name_arg not in train_segmentation_config.keys()
+            or train_segmentation_config[model_name_arg] is None
         ):
             now = datetime.now()
             dt = now.strftime(seg_method + "_%d-%m-%Y_%H-%M-%S")
-            train_segmentation_args[model_name_arg] = dt
+            train_segmentation_config[model_name_arg] = dt
 
         config_args_dict = {}
 
@@ -117,40 +117,40 @@ def check_and_fill_train_segmentation_args(
         path_save_arg = "basedir"
         model_name_arg = "name"
 
-        if path_save_arg not in train_segmentation_args.keys():
-            train_segmentation_args[path_save_arg] = path_to_save
+        if path_save_arg not in train_segmentation_config.keys():
+            train_segmentation_config[path_save_arg] = path_to_save
 
         if (
-            model_name_arg not in train_segmentation_args.keys()
-            or train_segmentation_args[model_name_arg] is None
+            model_name_arg not in train_segmentation_config.keys()
+            or train_segmentation_config[model_name_arg] is None
         ):
             now = datetime.now()
             dt = now.strftime(seg_method + "_%d-%m-%Y_%H-%M-%S")
-            train_segmentation_args[model_name_arg] = dt
+            train_segmentation_config[model_name_arg] = dt
 
-        if "train_new_model" not in train_segmentation_args.keys():
-            train_segmentation_args["train_new_model"] = False
+        if "train_new_model" not in train_segmentation_config.keys():
+            train_segmentation_config["train_new_model"] = False
 
-        train_seg_args["basedir"] = train_segmentation_args.pop(path_save_arg)
-        train_seg_args["name"] = train_segmentation_args.pop(model_name_arg)
+        train_seg_args["basedir"] = train_segmentation_config.pop(path_save_arg)
+        train_seg_args["name"] = train_segmentation_config.pop(model_name_arg)
         config_args_dict = model.config.__dict__
         train_seg_args["config"] = model.config
-        train_seg_args["train_new_model"] = train_segmentation_args.pop(
+        train_seg_args["train_new_model"] = train_segmentation_config.pop(
             "train_new_model"
         )
 
-    for tsarg in train_segmentation_args.keys():
-        if tsarg in new_train_segmentation_args.keys():
-            new_train_segmentation_args[tsarg] = train_segmentation_args[tsarg]
+    for tsarg in train_segmentation_config.keys():
+        if tsarg in new_train_segmentation_config.keys():
+            new_train_segmentation_config[tsarg] = train_segmentation_config[tsarg]
         elif tsarg in train_seg_args.keys():
-            train_seg_args[tsarg] = train_segmentation_args[tsarg]
+            train_seg_args[tsarg] = train_segmentation_config[tsarg]
         # In the case of Stardist, most training arguments are part of the model config
         elif tsarg in config_args_dict.keys():
-            train_seg_args["config"].__dict__[tsarg] = train_segmentation_args[tsarg]
+            train_seg_args["config"].__dict__[tsarg] = train_segmentation_config[tsarg]
         else:
             raise Exception(
                 "key %s is not a correct training argument for the selected segmentation method"
                 % tsarg
             )
 
-    return new_train_segmentation_args, train_seg_args
+    return new_train_segmentation_config, train_seg_args
