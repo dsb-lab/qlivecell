@@ -568,6 +568,122 @@ def quickhull_2d(S: np.ndarray) -> np.ndarray:
         + process(S, np.arange(S.shape[0]), b, a)[:-1]
     )
 
+import numpy as np
+from numba import njit
+
+@njit
+def outline_from_mask_nb(mask):
+    """Extract an ordered external contour from (x, y) mask pixels."""
+
+    if len(mask) == 0:
+        return np.empty((0, 2), dtype=np.uint16)
+
+    # Bounding box
+    xmin = int(np.min(mask[:, 0]))
+    xmax = int(np.max(mask[:, 0]))
+    ymin = int(np.min(mask[:, 1]))
+    ymax = int(np.max(mask[:, 1]))
+
+    w = xmax - xmin + 3
+    h = ymax - ymin + 3
+
+    # Binary image with padding
+    binary = np.zeros((h, w), dtype=np.uint8)
+
+    for i in range(len(mask)):
+        x = int(mask[i, 0]) - xmin + 1
+        y = int(mask[i, 1]) - ymin + 1
+        binary[y, x] = 1
+
+    # Clockwise neighbors, starting from west
+    dx = np.array([-1, -1, 0, 1, 1, 1, 0, -1], dtype=np.int32)
+    dy = np.array([0, -1, -1, -1, 0, 1, 1, 1], dtype=np.int32)
+
+    # Find the largest connected component
+    seen = np.zeros((h, w), dtype=np.uint8)
+    queue = np.empty((len(mask), 2), dtype=np.int32)
+
+    largest_size = -1
+    sx, sy = -1, -1
+
+    for i in range(len(mask)):
+        cx = int(mask[i, 0]) - xmin + 1
+        cy = int(mask[i, 1]) - ymin + 1
+
+        if seen[cy, cx]:
+            continue
+
+        head, tail = 0, 1
+        queue[0, 0] = cx
+        queue[0, 1] = cy
+        seen[cy, cx] = 1
+
+        first_x, first_y = cx, cy
+
+        while head < tail:
+            x, y = queue[head]
+            head += 1
+
+            if y < first_y or (y == first_y and x < first_x):
+                first_x, first_y = x, y
+
+            for d in range(8):
+                nx = x + dx[d]
+                ny = y + dy[d]
+
+                if binary[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = 1
+                    queue[tail, 0] = nx
+                    queue[tail, 1] = ny
+                    tail += 1
+
+        if tail > largest_size:
+            largest_size = tail
+            sx, sy = first_x, first_y
+
+    # Trace the external boundary
+    px, py = sx, sy
+    bx, by = sx - 1, sy
+
+    limit = 8 * len(mask) + 8
+    outline = np.empty((limit, 2), dtype=np.uint16)
+    n = 0
+
+    while n < limit:
+        outline[n, 0] = px + xmin - 1
+        outline[n, 1] = py + ymin - 1
+        n += 1
+
+        # Direction of the previous background pixel
+        k = 0
+        for j in range(8):
+            if px + dx[j] == bx and py + dy[j] == by:
+                k = j
+                break
+
+        found = False
+
+        for q in range(1, 9):
+            j = (k + q) % 8
+
+            nx = px + dx[j]
+            ny = py + dy[j]
+
+            if binary[ny, nx]:
+                previous = (j - 1) % 8
+
+                bx = px + dx[previous]
+                by = py + dy[previous]
+
+                px, py = nx, ny
+                found = True
+                break
+
+        if not found or (px == sx and py == sy):
+            break
+
+    return outline[:n]
+
 
 @njit()
 def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
@@ -598,8 +714,7 @@ def _extract_jitcell_from_label_stack(lab, labels_stack, unique_labels_T):
                 z2 = zids[-1]
                 mask = masks[z1 : z2 + 1]
 
-                hull = np.asarray(quickhull_2d(mask))
-                outline = mask[hull]
+                outline = outline_from_mask_nb(mask)
 
                 cell_maskst.append(np.ascontiguousarray(mask.astype("uint16")))
                 cell_outlinest.append(np.ascontiguousarray(outline.astype("uint16")))
