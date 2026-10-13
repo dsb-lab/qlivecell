@@ -9,7 +9,8 @@ import numpy as np
 from matplotlib import cm
 from matplotlib.lines import Line2D, lineStyles
 from matplotlib.ticker import MaxNLocator
-from matplotlib.widgets import Button
+from matplotlib.widgets import Button, RangeSlider
+
 from numba import njit, prange, typed
 from numba.typed import List
 from scipy.ndimage import zoom
@@ -1281,7 +1282,7 @@ class cellSegTrack(object):
     def unblock_cells(self):
         del self.blocked_cells[:]
 
-    def append_cell_from_outlines_t(self, outlines, zs, t, sort=True):
+    def append_cell_from_outlines_t(self, outlines, zs, t, sort=False):
         """
         Append a new cell to self.jitcells based on outlines at a specific time and and a reange of slices.
 
@@ -1373,7 +1374,7 @@ class cellSegTrack(object):
         if jitcellslen == len(self.jitcells_selected):
             self.jitcells_selected.append(self.jitcells[-1])
 
-    def append_cell_from_outlines(self, outlines, zs, ts, sort=True):
+    def append_cell_from_outlines(self, outlines, zs, ts, sort=False):
         """
         Append a new cell to self.jitcells based on outlines at a range of times and slices.
 
@@ -2733,7 +2734,7 @@ class cellSegTrack(object):
         )
         self._z_slider = z_slider
 
-        axbutt_actions = fig.add_axes([0.02, 0.8, 0.06, 0.06])
+        axbutt_actions = fig.add_axes([0.0075, 0.8, 0.0825, 0.06])
         self._actions_button = Button(
             axbutt_actions,
             "ACTIONS",
@@ -2743,7 +2744,7 @@ class cellSegTrack(object):
         )
         self._actions_button.on_clicked(self.print_actions)
 
-        axbutt_hints = fig.add_axes([0.02, 0.7, 0.06, 0.06])
+        axbutt_hints = fig.add_axes([0.0075, 0.7, 0.0825, 0.06])
         self._actions_hints = Button(
             axbutt_hints,
             "HINTS",
@@ -2753,7 +2754,7 @@ class cellSegTrack(object):
         )
         self._actions_hints.on_clicked(self.print_hints)
         
-        axbutt_selection = fig.add_axes([0.02, 0.6, 0.06, 0.06])
+        axbutt_selection = fig.add_axes([0.0075, 0.6, 0.0825, 0.06])
         self._actions_selection = Button(
             axbutt_selection,
             "SELECTION",
@@ -2800,6 +2801,35 @@ class cellSegTrack(object):
                         if self._plot_args["plot_centers"][1]:
                             ano = ax[id].annotate(str(lab), xy=(ys, xs), c="white")
                             self._annotations.append(ano)
+
+        # --- Contrast slider ---
+
+        # Get the background image artists
+        images = [a.images[0] for a in ax if a.images]
+
+        # Determine intensity range
+        vmin = min(np.nanmin(im.get_array()) for im in images)
+        vmax = max(np.nanmax(im.get_array()) for im in images)
+
+        # Create slider in the top-right corner
+        ax_contrast = fig.add_axes([0.935, 0.105, 0.03, 0.8]) # (left, bottom, width, height)
+        self._contrast_slider = RangeSlider(
+            ax_contrast,
+            "Contrast",
+            valmin=vmin,
+            valmax=vmax,
+            valinit=(vmin, vmax),
+            valfmt="%.0f",
+            orientation="vertical"
+        )
+
+        # Update displayed contrast
+        def update_contrast(values):
+            for im in images:
+                im.set_clim(*values)
+            fig.canvas.draw_idle()
+
+        self._contrast_slider.on_changed(update_contrast)
 
         plt.subplots_adjust(bottom=0.075)
         plt.show(block=block_plot)
