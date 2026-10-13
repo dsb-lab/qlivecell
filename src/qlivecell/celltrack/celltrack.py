@@ -225,10 +225,6 @@ class cellSegTrack(object):
         check_tracking_args(tracking_args, available_tracking=["greedy", "hungarian"])
         self._track_args = fill_tracking_args(tracking_args)
 
-        # In batch mode, stacks are read during initialization
-        # First and last time of the first batch
-        self.total_times = extract_total_times_from_files(self.path_to_data)
-
         # check and fill error correction arguments
         self._err_corr_args = check_and_fill_error_correction_args(
             error_correction_args
@@ -236,7 +232,11 @@ class cellSegTrack(object):
 
         self._batch_args = check_and_fill_batch_args(batch_args)
 
-        if ".tif" in self.path_to_data:
+        # In batch mode, stacks are read during initialization
+        # First and last time of the first batch
+        self.total_times = extract_total_times_from_files(self.path_to_data, self._batch_args["extension"])
+        
+        if self._batch_args["extension"] in self.path_to_data:
             if self.total_times <= self._batch_args["batch_size"]:
                 self.batch = False
             else:

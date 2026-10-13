@@ -52,7 +52,6 @@ def extract_integer_from_filename(file_name, file_format):
     pattern = re.compile(escaped_format)
     # Search for the pattern in the file name
     match = pattern.search(file_name)
-
     if match:
         return int(match.group(1))  # Extract the captured integer
     else:
@@ -497,10 +496,10 @@ def read_split_times(
             elif extension == ".npy":
                 IMG = np.load(path_to_file)
                 IMGS.append(IMG.astype("uint16"))
-    if extension == ".tif":
-        return np.array(IMGS), metadata
-    elif extension == ".npy":
+    if extension == ".npy":
         return np.array(IMGS)
+    else: 
+        return np.array(IMGS), metadata
 
 
 def substitute_labels(post_range_start, post_range_end, path_to_save, lcT, batch_args):

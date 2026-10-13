@@ -328,14 +328,12 @@ def increase_outline_width(label_image, neighs):
 import os
 
 
-def check_or_create_dir(path):
-    if os.path.isdir(path):
-        return
-    else:
-        if ".tif" in path:
-            return
-        os.makedirs(path)
+import os
 
+def check_or_create_dir(path):
+    if os.path.isfile(path):
+        return
+    os.makedirs(path, exist_ok=True)
 
 # adapted from https://stackoverflow.com/a/12514470/7546279
 import os

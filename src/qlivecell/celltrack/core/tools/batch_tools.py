@@ -46,7 +46,7 @@ def compute_batch_times(round, batch_size, batch_overlap, totalsize):
     return first, last
 
 
-def extract_total_times_from_files(path):
+def extract_total_times_from_files(path, extension):
     """
     Extract the total number of time points from files in the specified path.
 
@@ -64,7 +64,7 @@ def extract_total_times_from_files(path):
     -----
     This function extracts the total number of time points from files in the specified path. If the path points to a single TIFF file (.tif), it reads the file using `tif_reader_5D` and returns the number of frames in the stack. If the path points to a directory, it counts the number of files in the directory whose names are numeric before the file extension (e.g., "123.tif" will be counted).
     """
-    if ".tif" in path:
+    if extension in path:
         stack, metadata = tif_reader_5D(path)
         return stack.shape[0]
     else:
