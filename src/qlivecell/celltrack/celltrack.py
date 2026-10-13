@@ -2605,6 +2605,13 @@ class cellSegTrack(object):
         printfancy("")
         printfancy(None)
 
+    def print_selection(self, _event):
+        printfancy("")
+        printfancy("SELECTED CELLS:")
+        for c in self.PACP._cell_selection:
+            printfancy(c)
+        printfancy("")
+
     def plot_axis(self, _ax, img, z, t):
         im = _ax.imshow(img, vmin=0, vmax=255)
         im_masks = _ax.imshow(self._masks_stack[t][z])
@@ -2745,7 +2752,17 @@ class cellSegTrack(object):
             useblit=True,
         )
         self._actions_hints.on_clicked(self.print_hints)
-
+        
+        axbutt_selection = fig.add_axes([0.02, 0.6, 0.06, 0.06])
+        self._actions_selection = Button(
+            axbutt_selection,
+            "SELECTION",
+            color="olive",
+            hovercolor="black",
+            useblit=True,
+        )
+        self._actions_selection.on_clicked(self.print_selection)
+        
         if cell_picker:
             self.PACP = PlotActionCellPicker(fig, ax, self, mode)
         else:

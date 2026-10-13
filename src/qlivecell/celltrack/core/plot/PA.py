@@ -435,9 +435,9 @@ class PlotActionCT(PlotAction):
             va="top",
             bbox=dict(facecolor="black", alpha=0.4, edgecolor="black", pad=2),
         )
-        self.selected_cells = self.fig.text(
-            0.98, 0.89, "Selection", fontsize=1, ha="right", va="top"
-        )
+        # DEPRECATED self.selected_cells = self.fig.text(
+        # DEPRECATED     0.98, 0.89, "Selection", fontsize=1, ha="right", va="top"
+        # DEPRECATED )
 
         # Predefine some variables
         self.plot_outlines = True
@@ -814,7 +814,9 @@ class PlotActionCT(PlotAction):
             zs = [x[1] for x in cells_to_plot]
             ts = [x[2] for x in cells_to_plot]
 
-        s = "\n".join(cells_string)
+        # DEPRECATED s = "\n".join(cells_string)
+        self._cell_selection = cells_string
+
         self.get_size()
         if self.figheight < self.figwidth:
             width_or_height = self.figheight
@@ -937,8 +939,8 @@ class PlotActionCT(PlotAction):
 
         self._pre_labs_z_to_plot = labs_z_to_plot
 
-        self.selected_cells.set(fontsize=width_or_height / scale1)
-        self.selected_cells.set(text="Selection\n\n" + s)
+        # DEPRECATED self.selected_cells.set(fontsize=width_or_height / scale1)
+        # DEPRECATED self.selected_cells.set(text="Selection\n\n" + s)
         self.instructions.set(fontsize=width_or_height / scale2)
         if self.batch:
             self.timetxt.set(
