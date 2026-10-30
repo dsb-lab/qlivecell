@@ -486,13 +486,12 @@ def read_split_times(
     else:
         for t in times:
             path_to_file = correct_path(path_data) + name_format.format(t) + extension
-
             if extension == ".tif":
                 IMG, metadata = tif_reader_5D(path_to_file)
                 if channels is None:
                     channels = [i for i in range(IMG.shape[2])]
                 IMG = IMG[:, :, channels, :, :]
-                # IMGS.append(IMG[0].astype("uint8"))
+                IMGS.append(IMG[0].astype(IMG.dtype))
             elif extension == ".npy":
                 IMG = np.load(path_to_file)
                 IMGS.append(IMG.astype("uint16"))

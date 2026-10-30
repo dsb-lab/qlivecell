@@ -45,8 +45,19 @@ def compute_batch_times(round, batch_size, batch_overlap, totalsize):
     last = min(last, totalsize)
     return first, last
 
+import re
 
-def extract_total_times_from_files(path, extension):
+def extract_numbers(files, name_format):
+    prefix, suffix = name_format.split("{}")
+    pattern = re.compile(rf"{re.escape(prefix)}(\d+){re.escape(suffix)}")
+
+    return [
+        int(match.group(1))
+        for file in files
+        if (match := pattern.fullmatch(file))
+    ]
+    
+def extract_total_times_from_files(path, name_format, extension):
     """
     Extract the total number of time points from files in the specified path.
 
@@ -68,15 +79,12 @@ def extract_total_times_from_files(path, extension):
         stack, metadata = tif_reader_5D(path)
         return stack.shape[0]
     else:
-        total_times = 0
         files = get_file_names(path)
-        for file in files:
-            try:
-                _ = int(file.split(".")[0])
-                total_times += 1
-            except:
-                continue
-
+        numbers = extract_numbers(files, name_format+extension)
+        total_times = len(numbers)
+        
+    print(path)
+    print("TOTAL_TIMES", total_times)
     return total_times
 
 

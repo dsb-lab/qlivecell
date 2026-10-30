@@ -235,7 +235,7 @@ class cellSegTrack(object):
 
         # In batch mode, stacks are read during initialization
         # First and last time of the first batch
-        self.total_times = extract_total_times_from_files(self.path_to_data, self._batch_args["extension"])
+        self.total_times = extract_total_times_from_files(self.path_to_data, self._batch_args["name_format"], self._batch_args["extension"])
         
         if self._batch_args["extension"] in self.path_to_data:
             if self.total_times <= self._batch_args["batch_size"]:
@@ -253,7 +253,7 @@ class cellSegTrack(object):
             extension=self._batch_args["extension"],
             channels=self.channels,
         )
-
+        
         self.slices = self.hyperstack.shape[1]
         self.stack_dims = np.shape(self.hyperstack)[3:]
 
