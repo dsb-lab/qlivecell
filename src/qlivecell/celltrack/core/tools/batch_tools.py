@@ -83,8 +83,6 @@ def extract_total_times_from_files(path, name_format, extension):
         numbers = extract_numbers(files, name_format+extension)
         total_times = len(numbers)
         
-    print(path)
-    print("TOTAL_TIMES", total_times)
     return total_times
 
 
