@@ -15,13 +15,9 @@ def sort_point_sequence(outline):
     new_outline.append(outline[pidx])
     used_idxs.append(pidx)
     while len(new_outline) < len(outline):
-        print("CURRENT P =", pidx)
-        print("USED idxs =", used_idxs)
-        print(min_dist_idx[pidx, :])
         a = len(used_idxs)
         for id in min_dist_idx[pidx, :]:
             if id not in used_idxs:
-                print(id)
                 new_outline.append(outline[id])
                 used_idxs.append(id)
                 pidx = id

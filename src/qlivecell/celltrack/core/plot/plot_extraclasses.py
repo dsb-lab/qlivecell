@@ -1,11 +1,7 @@
-from copy import copy, deepcopy
-
-import numpy as np
 from matplotlib.transforms import TransformedPatchPath
 from matplotlib.widgets import LassoSelector, Slider
 
 
-# This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
 class Slider_t(Slider):
     def __init__(self, *args, **kwargs):
         Slider.__init__(self, *args, **kwargs)
@@ -20,7 +16,6 @@ class Slider_t(Slider):
             )
 
 
-# This class segments the cell of an embryo in a given time. The input data should be of shape (z, x or y, x or y)
 class Slider_t_batch(Slider):
     def __init__(self, *args, **kwargs):
         if hasattr(kwargs["valinit"], "__iter__"):

@@ -53,7 +53,6 @@ def extract_integer_from_filename(file_name, file_format):
     pattern = re.compile(escaped_format)
     # Search for the pattern in the file name
     match = pattern.search(file_name)
-
     if match:
         return int(match.group(1))  # Extract the captured integer
     else:
@@ -488,7 +487,6 @@ def read_split_times(
     else:
         for t in times:
             path_to_file = correct_path(path_data) + name_format.format(t) + extension
-
             if extension == ".tif":
                 IMG, metadata = tif_reader_5D(path_to_file)
                 if channels is None:
@@ -500,10 +498,10 @@ def read_split_times(
             elif extension == ".npy":
                 IMG = np.load(path_to_file)
                 IMGS.append(IMG.astype("uint16"))
-    if extension == ".tif":
-        return np.array(IMGS), metadata
-    elif extension == ".npy":
+    if extension == ".npy":
         return np.array(IMGS)
+    else:
+        return np.array(IMGS), metadata
 
 
 def read_split_vectors(

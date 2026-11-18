@@ -45,8 +45,28 @@ def compute_batch_times(round, batch_size, batch_overlap, totalsize):
     last = min(last, totalsize)
     return first, last
 
+import re
+from string import Formatter
 
-def extract_total_times_from_files(path):
+def extract_numbers(files, name_format):
+    pattern = ""
+    number_fields = 0
+    for literal, field, format_spec, conversion in Formatter().parse(name_format):
+        pattern += re.escape(literal)
+        if field is not None:
+            pattern += r"(\d+)"
+            number_fields += 1
+    if number_fields != 1:
+        raise ValueError("name_format must contain one time-point field")
+    pattern = re.compile(pattern)
+
+    return [
+        int(match.group(1))
+        for file in files
+        if (match := pattern.fullmatch(file))
+    ]
+
+def extract_total_times_from_files(path, name_format=None, extension=".tif"):
     """
     Extract the total number of time points from files in the specified path.
 
@@ -54,6 +74,12 @@ def extract_total_times_from_files(path):
     ----------
     path : str
         The path to the directory containing the files or directly to a single tif file.
+    name_format : str or None
+        Filename pattern containing a numeric field, such as {} or t{:04d}.
+        If None, retain the existing path-only behavior and count files
+        containing the extension.
+    extension : str
+        Image extension, including the leading dot. Defaults to ".tif".
 
     Returns
     -------
@@ -62,20 +88,23 @@ def extract_total_times_from_files(path):
 
     Notes
     -----
-    This function extracts the total number of time points from files in the specified path. If the path points to a single TIFF file (.tif), it reads the file using `tif_reader_5D` and returns the number of frames in the stack. If the path points to a directory, it counts the number of files in the directory whose names are numeric before the file extension (e.g., "123.tif" will be counted).
+    A single image file is read using `tif_reader_5D` to determine its frame count.
+    For a directory, an explicit filename pattern counts matching files regardless
+    of their starting number. Path-only calls retain the existing extension count.
     """
-    if ".tif" in path:
+    if extension in path:
         stack, metadata = tif_reader_5D(path)
         return stack.shape[0]
     else:
-        total_times = 0
         files = get_file_names(path)
-        for file in files:
-            if ".tif" in file:
-                total_times += 1
-            else:
-                continue
-
+        if name_format is None:
+            total_times = 0
+            for file in files:
+                if extension in file:
+                    total_times += 1
+        else:
+            numbers = extract_numbers(files, name_format+extension)
+            total_times = len(numbers)
     return total_times
 
 
