@@ -79,8 +79,8 @@ class jitCell(object):
         centers_weight,
         centers_all_weight,
     ):
-        self.id = uint16(id)
-        self.label = uint16(label)
+        self.id = id
+        self.label = label
         self.zs = zs
         self.times = times
         self.outlines = outlines
@@ -114,82 +114,115 @@ class jitCell(object):
 import numpy as np
 
 
+def _check_integer_values(values, name, minimum, maximum):
+    values = np.asarray(values)
+    if values.size == 0:
+        return
+    if values.dtype.kind not in "iuf":
+        raise ValueError(f"{name} must contain finite integer values")
+    if values.dtype.kind == "f":
+        if not np.all(np.isfinite(values)) or not np.all(values == np.floor(values)):
+            raise ValueError(f"{name} must contain finite integer values")
+    # Convert the extrema to Python integers to compare int64 limits exactly.
+    if int(values.min()) < minimum or int(values.max()) > maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}")
+
+
 def _cell_attr_to_jitcell_attr(cell: Cell):
     # Create empty python list
     attr_list = list()
+    int64_min = np.iinfo("int64").min
+    int64_max = np.iinfo("int64").max
 
     # [0]: cell id
+    _check_integer_values(cell.id, "id", int64_min, int64_max)
     attr_list.append(int64(cell.id))
 
     # [1]: cell label
+    # 65535 is also used by the existing toy cell; label encoding is unchanged.
+    _check_integer_values(cell.label, "label", 0, 65535)
     attr_list.append(int64(cell.label))
 
     # [2]: cell slices per time
-    zs = typed.List()
+    # Explicit element types also allow empty lists at the Python/Numba boundary.
+    zs = typed.List.empty_list(ListType(int64))
     for tid in range(len(cell.times)):
-        zst = typed.List(np.array(cell.zs[tid]).astype("int64"))
+        _check_integer_values(cell.zs[tid], f"zs[{tid}]", int64_min, int64_max)
+        zst = typed.List.empty_list(int64)
+        for z in cell.zs[tid]:
+            zst.append(int64(z))
         zs.append(zst)
     attr_list.append(zs)
 
     # [3]: cell times
-    attr_list.append(typed.List(np.array(cell.times).astype("int64")))
+    _check_integer_values(cell.times, "times", int64_min, int64_max)
+    times = typed.List.empty_list(int64)
+    for t in cell.times:
+        times.append(int64(t))
+    attr_list.append(times)
 
     # [4]: cell outlines
-    outlines = typed.List()
+    outlines = typed.List.empty_list(ListType(Array(uint16, 2, "C")))
     for tid in range(len(cell.times)):
-        outlinest = typed.List()
+        outlinest = typed.List.empty_list(Array(uint16, 2, "C"))
         for zid in range(len(cell.zs[tid])):
-            outlinesz = np.array(cell.outlines[tid][zid]).astype("uint16")
+            outlinesz = np.asarray(cell.outlines[tid][zid])
+            _check_integer_values(outlinesz, f"outlines[{tid}][{zid}]", 0, 65535)
+            outlinesz = outlinesz.astype("uint16", order="C")
             outlinest.append(outlinesz)
         outlines.append(outlinest)
     attr_list.append(outlines)
 
     # [5]: cell masks
-    masks = typed.List()
+    masks = typed.List.empty_list(ListType(Array(uint16, 2, "C")))
     for tid in range(len(cell.times)):
-        maskst = typed.List()
+        maskst = typed.List.empty_list(Array(uint16, 2, "C"))
         for zid in range(len(cell.zs[tid])):
-            masksz = np.array(cell.masks[tid][zid]).astype("uint16")
+            masksz = np.asarray(cell.masks[tid][zid])
+            _check_integer_values(masksz, f"masks[{tid}][{zid}]", 0, 65535)
+            masksz = masksz.astype("uint16", order="C")
             maskst.append(masksz)
         masks.append(maskst)
     attr_list.append(masks)
 
     # [6]: cell rem
-    attr_list.append(b1(False))
+    attr_list.append(b1(cell._rem))
 
     # [7]: cell centersi
-    centersi = typed.List()
+    centersi = typed.List.empty_list(Array(float32, 1, "C"))
     for tid in range(len(cell.times)):
         centersit = np.array(cell.centersi[tid]).astype("float32")
         centersi.append(centersit)
     attr_list.append(centersi)
 
     # [8]: cell centersj
-    centersj = typed.List()
+    centersj = typed.List.empty_list(Array(float32, 1, "C"))
     for tid in range(len(cell.times)):
         centersjt = np.array(cell.centersj[tid]).astype("float32")
         centersj.append(centersjt)
     attr_list.append(centersj)
 
     # [9]: cell centers
-    centers = typed.List()
+    centers = typed.List.empty_list(Array(float32, 1, "C"))
     for tid in range(len(cell.times)):
         centerst = np.array(cell.centers[tid]).astype("float32")
         centers.append(centerst)
     attr_list.append(centers)
 
     # [10]: cell centers all
-    centers_all = typed.List()
+    centers_all = typed.List.empty_list(ListType(Array(float32, 1, "C")))
     for tid in range(len(cell.times)):
-        centers_allt = typed.List(np.array(cell.centers_all[tid]).astype("float32"))
+        centers_allt = typed.List.empty_list(Array(float32, 1, "C"))
+        for center in cell.centers_all[tid]:
+            centers_allt.append(np.array(center).astype("float32"))
         centers_all.append(centers_allt)
     attr_list.append(centers_all)
 
     # [11]: cell centers weight
-    attr_list.append(np.array(cell.times).astype("float32"))
+    attr_list.append(np.array(cell.centers_weight).astype("float32"))
 
     # [12]: cell centers weight all
-    centers_all_weight = typed.List()
+    centers_all_weight = typed.List.empty_list(Array(float32, 1, "C"))
     for tid in range(len(cell.times)):
         centers_all_weightt = np.array(cell.centers_all_weight[tid]).astype("float32")
         centers_all_weight.append(centers_all_weightt)
@@ -207,17 +240,18 @@ def _jitcell_attr_to_cell_attr(cell: jitCell):
     attr_list.append(cell.id)
 
     # [1]: cell label
+    _check_integer_values(cell.label, "label", 0, 65535)
     attr_list.append(cell.label)
 
     # [2]: cell slices per time
     zs = list()
     for tid in range(len(cell.times)):
-        zst = list(np.array(cell.zs[tid]).astype("uint16"))
+        zst = list(cell.zs[tid])
         zs.append(zst)
     attr_list.append(zs)
 
     # [3]: cell times
-    attr_list.append(list(np.array(cell.times).astype("uint16")))
+    attr_list.append(list(cell.times))
 
     # [4]: cell outlines
     outlines = list()
@@ -240,7 +274,7 @@ def _jitcell_attr_to_cell_attr(cell: jitCell):
     attr_list.append(masks)
 
     # [6]: cell rem
-    attr_list.append(b1(False))
+    attr_list.append(b1(cell._rem))
 
     # [7]: cell centersi
     centersi = list()
@@ -266,12 +300,14 @@ def _jitcell_attr_to_cell_attr(cell: jitCell):
     # [10]: cell centers all
     centers_all = list()
     for tid in range(len(cell.times)):
-        centers_allt = list(np.array(cell.centers_all[tid]).astype("float32"))
+        centers_allt = list()
+        for center in cell.centers_all[tid]:
+            centers_allt.append(np.array(center).astype("float32"))
         centers_all.append(centers_allt)
     attr_list.append(centers_all)
 
     # [11]: cell centers weight
-    attr_list.append(np.array(cell.times).astype("float32"))
+    attr_list.append(np.array(cell.centers_weight).astype("float32"))
 
     # [12]: cell centers weight all
     centers_all_weight = list()
