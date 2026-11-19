@@ -1038,7 +1038,7 @@ def check_and_remove_if_cell_mitotic(lab, t, mitotic_events):
     [[[1, 1], [2, 1], [3, 1]], [[7, 3], [8, 3], [9, 3]]]
     """
     mevs_remove = get_mito_cells_to_remove(lab, t, mitotic_events)
-    for i in prange(len(mevs_remove), 0, -1):
+    for i in prange(len(mevs_remove) - 1, -1, -1):
         ev = mevs_remove[i]
         _ = mitotic_events.pop(ev)
     return
@@ -1128,7 +1128,7 @@ def check_and_remove_if_cell_apoptotic(lab, t, apoptotic_events):
     [[2, 1], [6, 3]]
     """
     aevs_remove = get_apo_cells_to_remove(lab, t, apoptotic_events)
-    for i in prange(len(aevs_remove), 0, -1):
+    for i in prange(len(aevs_remove) - 1, -1, -1):
         ev = aevs_remove[i]
         _ = apoptotic_events.pop(ev)
     return
