@@ -94,20 +94,59 @@ class jitCell(object):
         self.centers_all_weight = centers_all_weight
 
     def copy(self):
+        # Typed list copies are shallow, so copy each nested list and array too.
+        zs = self.zs.copy()
+        for tid in range(len(zs)):
+            zs[tid] = zs[tid].copy()
+
+        outlines = self.outlines.copy()
+        for tid in range(len(outlines)):
+            outlines[tid] = outlines[tid].copy()
+            for zid in range(len(outlines[tid])):
+                outlines[tid][zid] = outlines[tid][zid].copy()
+
+        masks = self.masks.copy()
+        for tid in range(len(masks)):
+            masks[tid] = masks[tid].copy()
+            for zid in range(len(masks[tid])):
+                masks[tid][zid] = masks[tid][zid].copy()
+
+        centersi = self.centersi.copy()
+        for tid in range(len(centersi)):
+            centersi[tid] = centersi[tid].copy()
+
+        centersj = self.centersj.copy()
+        for tid in range(len(centersj)):
+            centersj[tid] = centersj[tid].copy()
+
+        centers = self.centers.copy()
+        for tid in range(len(centers)):
+            centers[tid] = centers[tid].copy()
+
+        centers_all = self.centers_all.copy()
+        for tid in range(len(centers_all)):
+            centers_all[tid] = centers_all[tid].copy()
+            for zid in range(len(centers_all[tid])):
+                centers_all[tid][zid] = centers_all[tid][zid].copy()
+
+        centers_all_weight = self.centers_all_weight.copy()
+        for tid in range(len(centers_all_weight)):
+            centers_all_weight[tid] = centers_all_weight[tid].copy()
+
         return jitCell(
             self.id,
             self.label,
-            self.zs.copy(),
+            zs,
             self.times.copy(),
-            self.outlines.copy(),
-            self.masks.copy(),
+            outlines,
+            masks,
             self._rem,
-            self.centersi.copy(),
-            self.centersj,
-            self.centers.copy(),
-            self.centers_all.copy(),
+            centersi,
+            centersj,
+            centers,
+            centers_all,
             self.centers_weight.copy(),
-            self.centers_all_weight.copy(),
+            centers_all_weight,
         )
 
 
