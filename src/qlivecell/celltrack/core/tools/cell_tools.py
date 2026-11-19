@@ -373,6 +373,12 @@ def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, 
     tid = cell.times.index(t)
     if not checkConsecutive(cell.zs[tid]):
         discontinuities = whereNotConsecutive(cell.zs[tid])
+        # Saved pixels use label + 1, with zero reserved for background.
+        if int(max_label) + len(discontinuities) >= 65535:
+            raise ValueError("Not enough uint16 labels to split the cell")
+        if int(currentcellid) + len(discontinuities) > np.iinfo("int64").max:
+            raise ValueError("Not enough int64 IDs to split the cell")
+        new_cells = []
         for discid, disc in enumerate(discontinuities):
             try:
                 nextdisc = discontinuities[discid + 1]
@@ -382,7 +388,7 @@ def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, 
             newoutlines = cell.outlines[tid][disc:nextdisc]
             newmasks = cell.masks[tid][disc:nextdisc]
             new_cell = create_cell(
-                currentcellid,
+                0,
                 max_label + 1,
                 [newzs],
                 [t],
@@ -390,18 +396,20 @@ def find_z_discontinuities_jit(cell: jitCell, stacks, max_label, currentcellid, 
                 [newmasks],
                 stacks,
             )
+            # create_cell narrows IDs to uint16; assign the full int64 ID here.
+            new_cell.id = currentcellid + 1
+            new_cells.append(new_cell)
             currentcellid += 1
             max_label += 1
 
         cell.zs[tid] = cell.zs[tid][0 : discontinuities[0]]
         cell.outlines[tid] = cell.outlines[tid][0 : discontinuities[0]]
         cell.masks[tid] = cell.masks[tid][0 : discontinuities[0]]
-        return max_label, currentcellid, new_cell
+        return max_label, currentcellid, new_cells
     else:
         return None, None, None
 
 
-# ISSUE: ONLY WORKS FOR NOW FOR ONE DISCONTINUITY
 # @njit
 def find_t_discontinuities_jit(
     cell: jitCell, stacks, max_label, currentcellid, center_method
@@ -409,6 +417,12 @@ def find_t_discontinuities_jit(
     consecutive = checkConsecutive(cell.times)
     if not consecutive:
         discontinuities = whereNotConsecutive(cell.times)
+        # Saved pixels use label + 1, with zero reserved for background.
+        if int(max_label) + len(discontinuities) >= 65535:
+            raise ValueError("Not enough uint16 labels to split the cell")
+        if int(currentcellid) + len(discontinuities) > np.iinfo("int64").max:
+            raise ValueError("Not enough int64 IDs to split the cell")
+        new_cells = []
         for discid, disc in enumerate(discontinuities):
             try:
                 nextdisc = discontinuities[discid + 1]
@@ -424,6 +438,7 @@ def find_t_discontinuities_jit(
             new_cell.id = currentcellid + 1
             new_cell.label = max_label + 1
             update_jitcell(new_cell, stacks, center_method)
+            new_cells.append(new_cell)
             currentcellid += 1
             max_label += 1
 
@@ -431,7 +446,7 @@ def find_t_discontinuities_jit(
         cell.outlines = cell.outlines[0 : discontinuities[0]]
         cell.masks = cell.masks[0 : discontinuities[0]]
         cell.times = cell.times[0 : discontinuities[0]]
-        return max_label, currentcellid, new_cell
+        return max_label, currentcellid, new_cells
     else:
         return None, None, None
 

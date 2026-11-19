@@ -1682,6 +1682,7 @@ class cellSegTrack(object):
     def delete_cell(self, PACP, count_action=True):
         cells = [x[0] for x in PACP.list_of_cells]
         cellids = []
+        cell_times = {}
         Zs = [x[1] for x in PACP.list_of_cells]
         Ts = [x[2] for x in PACP.list_of_cells]
 
@@ -1736,6 +1737,9 @@ class cellSegTrack(object):
             cell = self._get_cell(lab)
             if cell.id not in (cellids):
                 cellids.append(cell.id)
+                cell_times[cell.id] = []
+            if t not in cell_times[cell.id]:
+                cell_times[cell.id].append(t)
             tid = cell.times.index(t)
 
             idrem = cell.zs[tid].index(z)
@@ -1767,38 +1771,38 @@ class cellSegTrack(object):
                     labs_to_replot.append(lab)
 
         new_labs = []
-        for i, cellid in enumerate(np.unique(cellids)):
-            z = Zs[i]
-            t = Ts[i]
+        for cellid in np.unique(cellids):
             cell = self._get_cell(cellid=cellid)
             new_labs.append(cell.label)
 
-            new_maxlabel, new_currentcellid, new_cell = find_z_discontinuities_jit(
-                cell,
-                stack,
-                self.max_label,
-                self.currentcellid,
-                t,
-            )
-
-            update_jitcell(cell, stack, self._seg_args["compute_center_method"])
-
-            if new_maxlabel is not None:
-                new_jitcell = construct_jitCell_from_Cell(new_cell)
-                new_labs.append(new_jitcell.label)
-                self.max_label = new_maxlabel
-                self.currentcellid = new_currentcellid
-
-                update_jitcell(
-                    new_jitcell, stack, self._seg_args["compute_center_method"]
+            for t in cell_times[cellid]:
+                new_maxlabel, new_currentcellid, new_cells = find_z_discontinuities_jit(
+                    cell,
+                    stack,
+                    self.max_label,
+                    self.currentcellid,
+                    t,
                 )
 
-                jitcellslen = len(self.jitcells_selected)
-                self.jitcells.append(new_jitcell)
-                if jitcellslen == len(self.jitcells_selected):
-                    self.jitcells_selected.append(self.jitcells[-1])
+                update_jitcell(cell, stack, self._seg_args["compute_center_method"])
 
-            new_maxlabel, new_currentcellid, new_cell = find_t_discontinuities_jit(
+                if new_maxlabel is not None:
+                    self.max_label = new_maxlabel
+                    self.currentcellid = new_currentcellid
+                    for new_cell in new_cells:
+                        new_jitcell = construct_jitCell_from_Cell(new_cell)
+                        new_labs.append(new_jitcell.label)
+
+                        update_jitcell(
+                            new_jitcell, stack, self._seg_args["compute_center_method"]
+                        )
+
+                        jitcellslen = len(self.jitcells_selected)
+                        self.jitcells.append(new_jitcell)
+                        if jitcellslen == len(self.jitcells_selected):
+                            self.jitcells_selected.append(self.jitcells[-1])
+
+            new_maxlabel, new_currentcellid, new_cells = find_t_discontinuities_jit(
                 cell,
                 stack,
                 self.max_label,
@@ -1808,37 +1812,39 @@ class cellSegTrack(object):
 
             update_jitcell(cell, stack, self._seg_args["compute_center_method"])
             if new_maxlabel is not None:
-                new_jitcell = construct_jitCell_from_Cell(new_cell)
-                new_labs.append(new_jitcell.label)
                 self.max_label = new_maxlabel
                 self.currentcellid = new_currentcellid
-                # If cell is not removed, check if last time is removed
-                lab_change = np.array([[cell.label, self.max_label]]).astype("uint16")
-
-                if t not in cell.times:
+                previous_label = cell.label
+                for new_jitcell in new_cells:
+                    new_labs.append(new_jitcell.label)
+                    # Apply successive time boundaries so events follow their fragment.
+                    lab_change = np.array(
+                        [[previous_label, new_jitcell.label]], dtype="uint16"
+                    )
+                    first_time = self.batch_times_list_global[new_jitcell.times[0]]
                     update_apo_cells(
-                        self.apoptotic_events,
-                        self.batch_times_list_global[t],
-                        lab_change,
+                        self.apoptotic_events, first_time, lab_change
                     )
                     update_mito_cells(
-                        self.mitotic_events, self.batch_times_list_global[t], lab_change
+                        self.mitotic_events, first_time, lab_change
                     )
-                    update_blocked_cells(self.blocked_cells, lab_change)
-                    first_future_time = self.batch_times_list_global[-1] + 1
-                    add_lab_change(
-                        first_future_time,
-                        lab_change,
-                        self.label_correspondance_T,
-                        self.unique_labels_T,
-                    )
-                update_jitcell(
-                    new_jitcell, stack, self._seg_args["compute_center_method"]
+                    previous_label = new_jitcell.label
+
+                    jitcellslen = len(self.jitcells_selected)
+                    self.jitcells.append(new_jitcell)
+                    if jitcellslen == len(self.jitcells_selected):
+                        self.jitcells_selected.append(self.jitcells[-1])
+
+                # As with a single split, future batches and blocking follow the tail.
+                lab_change = np.array([[cell.label, new_cells[-1].label]], dtype="uint16")
+                update_blocked_cells(self.blocked_cells, lab_change)
+                first_future_time = self.batch_times_list_global[-1] + 1
+                add_lab_change(
+                    first_future_time,
+                    lab_change,
+                    self.label_correspondance_T,
+                    self.unique_labels_T,
                 )
-                jitcellslen = len(self.jitcells_selected)
-                self.jitcells.append(new_jitcell)
-                if jitcellslen == len(self.jitcells_selected):
-                    self.jitcells_selected.append(self.jitcells[-1])
 
         self.update_label_attributes()
         compute_point_stack(

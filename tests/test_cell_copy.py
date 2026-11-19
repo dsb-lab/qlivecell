@@ -211,9 +211,11 @@ class TestJitCellCopy(unittest.TestCase):
         moved_mask = original.masks[2][0]
         moved_values = moved_mask.copy()
         stacks = np.ones((4, 3, 32, 32), dtype="float32")
-        max_label, currentcellid, new_cell = find_t_discontinuities_jit(
+        max_label, currentcellid, new_cells = find_t_discontinuities_jit(
             original, stacks, original.label, original.id, "centroid"
         )
+        self.assertEqual(len(new_cells), 1)
+        new_cell = new_cells[0]
         update_jitcell(original, stacks, "centroid")
         self.assertEqual((max_label, currentcellid), (124, 70001))
         self.assertEqual(list(original.times), [0, 1])
