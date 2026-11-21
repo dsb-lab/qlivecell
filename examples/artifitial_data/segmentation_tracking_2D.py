@@ -50,7 +50,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size':20,
+    'batch_size':200,
     'name_format':"t{:04d}",
     'name_format_save':"{}",
     'extension':".tif",
@@ -70,7 +70,7 @@ cST = cellSegTrack(
 )
 
 # cST.run()
-cST.run()
+cST.load()
 
 plot_args = {
     'plot_layout': (1,1),
