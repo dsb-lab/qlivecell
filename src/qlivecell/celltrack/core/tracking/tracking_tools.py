@@ -713,7 +713,7 @@ def replace_labels_in_place(labels, label_correspondance):
     for t in prange(len(label_correspondance)):
         t = np.uint16(t)
         corr = label_correspondance[t]
-        if corr.shape[0]==0:  
+        if corr.shape[0] > 0: 
             labels_copy[t] = replace_labels_t(labels[t], corr)
         else:
             labels_copy[t] = labels[t]
