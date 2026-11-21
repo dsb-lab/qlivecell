@@ -659,11 +659,11 @@ def scale_cell_centers2D(sel_frames, xdim=512, ydim=512, xborder_margin=0.1, ybo
 
     for t in range(len(corrected_frames)):
         x, y = corrected_frames[t]['x'], corrected_frames[t]['y']
-        y -= center[1]
-        x -= center[2]
+        y -= center[0]
+        x -= center[1]
         
-        y /= ymax - center[1]
-        x /= xmax - center[2]
+        y /= ymax - center[0]
+        x /= xmax - center[1]
         
         y *= yrange/2
         x *= xrange/2

@@ -455,7 +455,7 @@ class PlotAction:
             return
 
         # Decide axis (ctrl => time, otherwise z)
-        motor = self.motor_t if self.ctrl_is_held else self.motor_z
+        motor = self.motor_t if self.ctrl_is_held or self.max_round == 0 else self.motor_z
 
         # Decide speed profile (shift => fast)
         if self.shift_is_held:

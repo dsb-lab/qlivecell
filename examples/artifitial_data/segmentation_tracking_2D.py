@@ -6,35 +6,23 @@ import qlivecell.config as cfg
 cfg.CLEARPRINTS = True
 
 import os
-path_cwd = os.path.abspath(os.getcwd())
-path_data = path_cwd+"/examples/artifitial_data/data/AGM_2Dexample/"
-path_save = path_cwd+"/examples/artifitial_data/segtrack/2Dexample/"
+path_cwd = os.path.dirname(os.path.abspath(__file__))
+path_data = path_cwd+"/data/AGM_2Dexample/"
+path_save = path_cwd+"/segtrack/2Dexample/"
 
 check_or_create_dir(path_save)
 import os
 
-### LOAD CELLPOSE MODEL ###
-from cellpose import models
-model = models.CellposeModel(gpu=True, model_type='cyto3')
+### LOAD STARDIST MODEL ###
+from stardist.models import StarDist2D
+model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
 ### DEFINE ARGUMENTS ###
 segmentation_args={
-    'method': 'cellpose2D', 
+    'method': 'stardist2D',
     'model': model, 
-    'blur': None, 
-    'channels': [0, 0],
-    'diameter':[50, 25],
+    'blur': [1,1],
 }
-# ### LOAD STARDIST MODEL ###
-# from stardist.models import StarDist2D
-# model = StarDist2D.from_pretrained('2D_versatile_fluo')
-
-# segmentation_args={
-#     'method': 'stardist2D', 
-#     'model': model, 
-#     'blur': [1,1], 
-#     # 'n_tiles': (2,2),
-# }
 
 concatenation3D_args = {
     'do_3Dconcatenation': False
@@ -45,14 +33,6 @@ tracking_args = {
     'method': 'greedy', 
     'z_th':10, 
     'dist_th' : 1000.0,
-}
-
-tracking_args = {
-    "time_step": 1,
-    "method": "hungarian",
-    "z_th": 2,
-    "cost_attributes": ["distance", "volume", "shape"],
-    "cost_ratios": [0.6, 0.2, 0.2],
 }
 
 plot_args = {
@@ -70,7 +50,7 @@ error_correction_args = {
 }
 
 batch_args = {
-    'batch_size':600,
+    'batch_size':20,
     'name_format':"t{:04d}",
     'name_format_save':"{}",
     'extension':".tif",
@@ -89,6 +69,7 @@ cST = cellSegTrack(
     channels=[0]
 )
 
+# cST.run()
 cST.run()
 
 plot_args = {
@@ -98,7 +79,7 @@ plot_args = {
     # 'plot_stack_dims': (512, 512), 
     'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
     'channels':[0],
-    'min_outline_length':75
+    'min_outline_length':1
 }
 cST.plot(plot_args=plot_args)
 

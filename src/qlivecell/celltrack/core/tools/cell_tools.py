@@ -344,6 +344,10 @@ def sort_over_z_jit(cell: jitCell):
     cell.masks = newmasks
 
 
+# TODO: Evaluate whether temporal sorting is still necessary.
+# Current temporal cell combination preserves chronological order.
+# Consider removing this function if all cell operations guarantee
+# that cell.times remains sorted.
 @njit
 def sort_over_t_jit(cell: jitCell):
     idxs = np.argsort(np.asarray(cell.times))
