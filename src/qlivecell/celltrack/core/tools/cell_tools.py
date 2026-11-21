@@ -350,15 +350,15 @@ def sort_over_t_jit(cell: jitCell):
     cell.times.sort()
 
     newzs = List()
-    for tid in range(len(idxs)):
+    for tid in idxs:
         newzs.append(List(cell.zs[tid]))
 
     newouts = List()
-    for tid in range(len(idxs)):
+    for tid in idxs:
         newouts.append(List(cell.outlines[tid]))
 
     newmasks = List()
-    for tid in range(len(idxs)):
+    for tid in idxs:
         newmasks.append(List(cell.masks[tid]))
 
     cell.zs = newzs
