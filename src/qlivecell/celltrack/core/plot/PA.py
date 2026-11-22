@@ -321,6 +321,7 @@ class PlotAction:
 
         else:
             self.t = t - self.global_times_list[0] - 1
+            self.tg = self.global_times_list[self.t]
             self.CTreplot(self, plot_outlines=self.plot_outlines)
             self.update()
 
