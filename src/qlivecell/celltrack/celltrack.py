@@ -2413,6 +2413,7 @@ class cellSegTrack(object):
                 [mito1[0], 0, mito1[1] - self.batch_times_list_global[0]]
             )
 
+            new_label = self.separate_cells_t(return_new_label=True)
             del self.list_of_cells[:]
             mito1[0] = new_label
 
