@@ -5,26 +5,13 @@ from qlivecell import cellSegTrack, get_file_names, tif_reader_5D, arboretum_nap
 import qlivecell.config as cfg
 cfg.CLEARPRINTS = True
 
-path_cwd = "/home/pablo/Desktop/PhD/projects/qlivecell"
-path_data = path_cwd+"/examples/artifitial_data/data/AGM_3Dexample/"
-path_save = path_cwd+"/examples/artifitial_data/segtrack/3Dexample/"
+import os
+path_cwd = os.path.dirname(os.path.abspath(__file__))
+path_data = path_cwd+"/data/AGM_3Dexample/"
+path_save = path_cwd+"/segtrack/3Dexample/"
 # import shutil
 # shutil.rmtree(path_save)
 check_or_create_dir(path_save)
-
-### LOAD CELLPOSE MODEL ###
-from cellpose import models
-model = models.CellposeModel(gpu=True, model_type='cyto3')
-
-# ### DEFINE ARGUMENTS ###
-# segmentation_args={
-#     'method': 'cellpose2D', 
-#     'model': model, 
-#     'blur': None, 
-#     'channels': [0, 0],
-#     # 'diameter':[45, 35],
-#     'diameter':100
-# }
 
 ### LOAD STARDIST MODEL ###
 from stardist.models import StarDist2D
@@ -47,18 +34,11 @@ concatenation3D_args = {
 }
 
 tracking_args = {
-    'time_step': 1, # a.u.
-    'method': 'greedy', 
-    'z_th':10, 
-    'dist_th' : 1000.0,
-}
-
-tracking_args = {
     "time_step": 1,
     "method": "hungarian",
     "z_th": 2,
-    "cost_attributes": ["distance", "volume", "shape"],
-    "cost_ratios": [0.6, 0.2, 0.2],
+    "cost_attributes": ["distance", "volume"],
+    "cost_ratios": [0.7, 0.3],
 }
 
 plot_args = {
@@ -96,7 +76,7 @@ cST = cellSegTrack(
 )
 
 cST.run()
-# cST.cell_tracking()
+# cST.load()
 plot_args = {
     'plot_layout': (1,1),
     'plot_overlap': 1,
@@ -104,8 +84,8 @@ plot_args = {
     'plot_stack_dims': (256, 256), 
     'plot_centers':[False, False], # [Plot center as a dot, plot label on 3D center]
     'channels':[0],
-    'min_outline_length':75,
+    'min_outline_length':1,
     'wheel_motor':"regular"
 }
-cST.plot(block_plot=False, plot_args=plot_args)
+cST.plot(plot_args=plot_args)
 
