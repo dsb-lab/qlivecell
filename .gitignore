@@ -5,6 +5,8 @@ tmp
 data*
 segtrack*
 
+.vscode 
+
 # Image files
 *.tif
 *.npy

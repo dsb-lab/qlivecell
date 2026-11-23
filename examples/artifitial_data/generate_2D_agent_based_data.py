@@ -6,7 +6,7 @@ from tifffile import imwrite
 model = dict(
     Nmax=50,
     rinit=5.0, minit=np.power(10.0, -6), 
-    rdiv=1.0/(2.0**(1.0/3.0)), sdiv=0.5, tdiv=50.0,
+    rdiv=1.0/(2.0**(1.0/3.0)), sdiv=0.5, tdiv=10.0,
     mu=2, b=np.power(10.0, -5.5), F0=np.power(10.0, -4),
 )
 
