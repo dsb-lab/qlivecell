@@ -258,7 +258,7 @@ def compute_ERK_traces(IMGS, cells, erkktr):
                 erk += np.mean(erkdonutdist) / np.mean(erknucleidist)
                 erkn += 1
 
-            ERKtrace[tid] = erk / np.float(erkn)
+            ERKtrace[tid] = erk / float(erkn)
         cell.ERKtrace = ERKtrace
 
 

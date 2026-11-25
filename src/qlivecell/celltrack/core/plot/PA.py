@@ -3,7 +3,6 @@ import time
 from copy import copy
 
 import matplotlib as mtp
-import napari
 import numpy as np
 from numba import typeof
 from numba.typed import List
@@ -13,6 +12,7 @@ from ..tools.ct_tools import get_cell_color, set_cell_color
 from ..tools.save_tools import save_cells_to_labels_stack
 from ..tools.tools import printfancy
 from .napari_tools import get_whole_lineage
+from .qt_platform import qt_platform
 from .GUI.pickers import (CellPicker, CellPicker_CM, CellPicker_CP,
                       SubplotPicker_add)
 from .GUI.scroll_handling import SmoothWheelMotor, RegularWheelMotor
@@ -188,20 +188,14 @@ class PlotAction:
         self.CThints = CT.hints
 
         # Point to sliders
-        CT._time_slider.on_changed(self.update_slider_t)
+        self._time_slider = CT._time_slider
+        self._time_slider.on_changed(self.update_slider_t)
         self.set_val_t_slider = CT._time_slider.set_val
 
         CT._z_slider.on_changed(self.update_slider_z)
         self.set_val_z_slider = CT._z_slider.set_val
 
-        groupsize = (
-            self.CTplot_args["plot_layout"][0] * self.CTplot_args["plot_layout"][1]
-        )
-        self.max_round = int(
-            np.ceil(
-                (CT.slices - groupsize) / (groupsize - self.CTplot_args["plot_overlap"])
-            )
-        )
+        self.max_round = CT._z_slider.valmax
         self.get_size()
         self.mode = mode
         self.plot_outlines = True
@@ -322,6 +316,7 @@ class PlotAction:
         else:
             self.t = t - self.global_times_list[0] - 1
             self.tg = self.global_times_list[self.t]
+            self._time_slider.set_batch_value(self.t + 1 if self.batch else 1)
             self.CTreplot(self, plot_outlines=self.plot_outlines)
             self.update()
 
@@ -1710,16 +1705,19 @@ class PlotActionCT(PlotAction):
         self.reploting()
 
     def viewer3D(self):
+        import napari
+
         self._3d_on = True
         xyres = self.CT_info.voxel_size[1]
         zres = self.CT_info.voxel_size[0]
 
-        self.napari_viewer = napari.view_image(
+        with qt_platform():
+            self.napari_viewer = napari.Viewer(ndisplay=3)
+        self.napari_viewer.add_image(
             self._plot_stack,
             name="hyperstack",
-            scale=(zres * self.CTplot_args["dim_change"], 1/xyres, 1/xyres),
+            scale=(zres * self.CTplot_args["dim_change"], 1 / xyres, 1 / xyres),
             rgb=False,
-            ndisplay=3,
         )
         self.napari_viewer.add_image(
             self._napari_masks_stack,
@@ -1733,6 +1731,8 @@ class PlotActionCT(PlotAction):
         self.update_3Dviewer3D()
 
     def update_3Dviewer3D(self, update_plot_stacks=False):
+        import napari
+
         if napari.current_viewer() == None:
             self._3d_on = False
             return

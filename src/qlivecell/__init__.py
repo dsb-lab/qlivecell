@@ -1,3 +1,7 @@
+from .config import _check_tensorflow_distributions
+
+_check_tensorflow_distributions()
+
 from .celltrack.celltrack import (arboretum_napari, cellSegTrack, check_or_create_dir,
                                   compute_labels_stack, compute_movement_cell,
                                   construct_RGB, correct_drift, correct_path,

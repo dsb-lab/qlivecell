@@ -35,7 +35,8 @@ from .core.artifitial_data_utils.AGM_data_utils import agentsim3D, agentsim2D, s
 from .core.plot.napari_tools import arboretum_napari
 from .core.plot.PA import PlotActionCellPicker, PlotActionCT
 from .core.plot.GUI.pickers import LineBuilder_lasso, LineBuilder_points
-from .core.plot.plot_extraclasses import Slider_t, Slider_t_batch, Slider_z
+from .core.plot.plot_extraclasses import Slider_t_batch, Slider_z
+from .core.plot.qt_platform import qt_platform
 from .core.plot.plot_iters import plotRound
 from .core.plot.plotting import (check_and_fill_plot_args,
                                  check_stacks_for_plotting, norm_stack_per_z)
@@ -711,7 +712,7 @@ class cellSegTrack(object):
             # needs to be adjusted accordingly. This allows for a range of values to be used
             # without a major setback on the performance.
             if "cellpose" in self._seg_args["method"]:
-                if  hasattr(self._seg_method_args['diameter'], "__iter__"):
+                if hasattr(self._seg_method_args.get("diameter"), "__iter__"):
                     seg_m_args = deepcopy(self._seg_method_args)
                     if len(self._seg_method_args['diameter'])==self.total_times:
                         diam_range = self._seg_method_args['diameter']
@@ -2707,7 +2708,8 @@ class cellSegTrack(object):
             overlap=self._plot_args["plot_overlap"],
             round=0,
         )
-        fig, ax = plt.subplots(counter.layout[0], counter.layout[1], figsize=(10, 10))
+        with qt_platform():
+            fig, ax = plt.subplots(counter.layout[0], counter.layout[1], figsize=(10, 10))
         fig.canvas.mpl_connect("close_event", self.on_close_plot)
 
         if not hasattr(ax, "__iter__"):
@@ -2739,14 +2741,9 @@ class cellSegTrack(object):
         axslide = fig.add_axes([0.10, 0.04, 0.75, 0.03])
         sliderstr = "/%d" % (self.slices)
 
-        groupsize = (
-            self._plot_args["plot_layout"][0] * self._plot_args["plot_layout"][1]
-        )
-        max_round = int(
-            np.ceil(
-                (self.slices - groupsize)
-                / (groupsize - self._plot_args["plot_overlap"])
-            )
+        groupsize = len(ax)
+        max_round = max(
+            0, int(np.ceil((self.slices - groupsize) / (groupsize - counter.overlap)))
         )
         if len(ax) > 1:
             zslide_val_fmt = "(%d-%d)" + sliderstr

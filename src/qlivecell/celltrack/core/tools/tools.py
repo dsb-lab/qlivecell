@@ -3,7 +3,7 @@ import random
 import numpy as np
 from numba import njit
 from scipy.spatial import ConvexHull, cKDTree
-from scipy.spatial._qhull import QhullError
+from scipy.spatial import QhullError
 import qlivecell.config as cfg
 
 LINE_UP = "\033[1A"

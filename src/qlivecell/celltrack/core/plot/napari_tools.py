@@ -1,6 +1,5 @@
-import napari
 import numpy as np
-import vispy.color
+from .qt_platform import qt_platform
 
 
 def napari_tracks(cells):
@@ -123,9 +122,12 @@ def get_whole_lineage(mitotic_events, label):
 
 
 def arboretum_napari(cellSegTrack_instance):
+    import napari
+    from napari.utils import Colormap
+
     cST = cellSegTrack_instance
     controls, colors = cST._plot_args["labels_colors"].get_map()
-    custom_cmap = vispy.color.Colormap(colors, controls)
+    custom_cmap = Colormap(colors=colors, controls=controls)
 
     graph = get_lineage_graph(cST.mitotic_events)
 
@@ -136,16 +138,13 @@ def arboretum_napari(cellSegTrack_instance):
     ]
     properties = {"colors": colors}
 
-    viewer = napari.view_image(
+    with qt_platform():
+        viewer = napari.Viewer(ndisplay=3)
+    viewer.add_image(
         cST.hyperstack[:, :, cST.channels_order[0]],
         name="hyperstack",
-        scale=(
-            cST.metadata["voxel_size"][0],
-            cST.metadata["voxel_size"][1],
-            cST.metadata["voxel_size"][2],
-        ),
+        scale=cST.metadata["voxel_size"],
         rgb=False,
-        ndisplay=3,
     )
 
     tracks_layer = viewer.add_tracks(
@@ -173,8 +172,8 @@ def arboretum_napari(cellSegTrack_instance):
         size=2,
         name="centers",
         properties=properties,
-        edge_color="colors",
-        edge_colormap=custom_cmap,
+        border_color="colors",
+        border_colormap=custom_cmap,
         face_color="colors",
         face_colormap=custom_cmap,
     )

@@ -1,100 +1,79 @@
-from matplotlib.transforms import TransformedPatchPath
+from matplotlib.backend_bases import MouseButton
 from matplotlib.widgets import LassoSelector, Slider
 
 
 class Slider_t(Slider):
     def __init__(self, *args, **kwargs):
-        Slider.__init__(self, *args, **kwargs)
-        ax = kwargs["ax"]
-        vmin = kwargs["valmin"]
-        vmax = kwargs["valmax"]
-        vstp = kwargs["valstep"]
-        colr = kwargs["initcolor"]
-        for v in range(vmin + vstp, vmax, vstp):
-            vline = ax.axvline(
-                v, 0, 1, color=colr, lw=1, clip_path=TransformedPatchPath(self.track)
-            )
+        super().__init__(*args, **kwargs)
+        orientation = self.orientation
+        draw_tick = self.ax.axvline if orientation == "horizontal" else self.ax.axhline
+        for value in range(self.valmin + self.valstep, self.valmax, self.valstep):
+            tick = draw_tick(value, color=kwargs["initcolor"], lw=1)
+            tick.set_clip_path(self.track)
 
 
-class Slider_t_batch(Slider):
+class Slider_t_batch(Slider_t):
     def __init__(self, *args, **kwargs):
-        if hasattr(kwargs["valinit"], "__iter__"):
-            kwargs["valinit"] = kwargs["valinit"][0]
-        Slider.__init__(self, *args, **kwargs)
-        ax = kwargs["ax"]
-        vmin = kwargs["valmin"]
-        vmax = kwargs["valmax"]
-        vstp = kwargs["valstep"]
-        colr = kwargs["initcolor"]
-        for v in range(vmin + vstp, vmax, vstp):
-            vline = ax.axvline(
-                v, 0, 1, color=colr, lw=1, clip_path=TransformedPatchPath(self.track)
-            )
-
-    def set_val(self, val1, val2=1):
-        """
-        Set slider value to *val*.
-
-        Parameters
-        ----------
-        val : float
-        """
-        xy = self.poly.xy
-        if self.orientation == "vertical":
-            xy[1] = 0.25, val1
-            xy[2] = 0.75, val1
-            self._handle.set_ydata([val1])
+        valinit = kwargs["valinit"]
+        if hasattr(valinit, "__iter__"):
+            kwargs["valinit"], self._batch_value = valinit
         else:
-            xy[2] = val1, 0.75
-            xy[3] = val1, 0.25
-            self._handle.set_xdata([val1])
-        self.poly.xy = xy
-        self.valtext.set_text(self._format(val1, val2))
-        if self.drawon:
-            self.ax.figure.canvas.draw_idle()
-        self.val = val1
-        if self.eventson:
-            self._observers.process("changed", val1)
+            self._batch_value = 1
+        super().__init__(*args, **kwargs)
 
-    def _format(self, val1, val2=1):
-        if self.valfmt is not None:
-            return self.valfmt % (val1, val2)
+    def set_val(self, val1, val2=None):
+        if val2 is not None:
+            self._batch_value = val2
+        super().set_val(val1)
 
-
-class Slider_z(Slider):
-    def __init__(self, *args, **kwargs):
-        self._counter = kwargs["counter"]
-        kwargs.pop("counter")
-        Slider.__init__(self, *args, **kwargs)
-        ax = kwargs["ax"]
-        vmin = kwargs["valmin"]
-        vmax = kwargs["valmax"]
-        vstp = kwargs["valstep"]
-        colr = kwargs["initcolor"]
-        for v in range(vmin + vstp, vmax, vstp):
-            vline = ax.axvline(
-                v, 0, 1, color=colr, lw=1, clip_path=TransformedPatchPath(self.track)
-            )
+    def set_batch_value(self, value):
+        self._batch_value = value
+        self.valtext.set_text(self._format(self.val))
 
     def _format(self, val):
+        if self.valfmt is None:
+            return super()._format(val)
+        return self.valfmt % (val, self._batch_value)
+
+
+class Slider_z(Slider_t):
+    def __init__(self, *args, counter, **kwargs):
+        self._counter = counter
+        super().__init__(*args, **kwargs)
+
+    def _format(self, val):
+        if self.valfmt is None:
+            return super()._format(val)
         first, last = self._counter.get_first_and_last_in_round(val)
-        if first == last:
-            if self.valfmt is not None:
-                return self.valfmt % (first)
-        else:
-            if self.valfmt is not None:
-                return self.valfmt % (first, last)
+        rows, columns = self._counter.layout
+        if rows * columns == 1:
+            return self.valfmt % first
+        return self.valfmt % (first, last)
+
+
+def stop_toolbar_navigation(event):
+    toolbar = event.canvas.toolbar
+    if toolbar is None or event.inaxes is None:
+        return
+    mode = event.inaxes.get_navigate_mode()
+    if mode == "ZOOM":
+        # The toolbar handles the press first. Release at the press coordinates
+        # to cancel its rectangle and clear the rubberband before editing.
+        toolbar.release_zoom(event)
+        toolbar.zoom()
+    elif mode == "PAN":
+        toolbar.release_pan(event)
+        toolbar.pan()
 
 
 class CustomLassoSelector(LassoSelector):
-    """
-    Similar to LassoSelector but it disables matplotlib zoom
-    """
+    """Allow right-button drawing while Matplotlib's navigation tools are active."""
 
     def press(self, event):
-        """Button press handler and validator."""
-        if event.button in self.validButtons:
-            if self.canvas.toolbar.mode != "":
-                self.canvas.mpl_disconnect(self.canvas.toolbar._zoom_info.cid)
-                self.canvas.toolbar.zoom()
-        super().press(event)
+        if (
+            event.button == MouseButton.RIGHT
+            and event.inaxes is self.ax
+            and self.active
+        ):
+            stop_toolbar_navigation(event)
+        return super().press(event)

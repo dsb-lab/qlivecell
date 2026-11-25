@@ -1,4 +1,4 @@
-PYTHON_VERSION ?= 3.9
+PYTHON_VERSION ?= 3.11
 PY_DIRECTORIES=src/ tests/
 
 .PHONY: install-requirements

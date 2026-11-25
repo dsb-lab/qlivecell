@@ -21,9 +21,11 @@ def create_cell(id, label, zs, times, outlines, masks, stacks=None):
     ]
     centers_weight = np.array([0 for t in times], dtype="float32")
     centers_all_weight = [np.array([0], dtype="float32") for t in times]
+    # Preserve the uint16 sentinel used for cells without an assigned ID/label.
+    unassigned = np.iinfo(np.uint16).max
     cell = Cell(
-        np.uint16(id),
-        np.uint16(label),
+        np.uint16(unassigned if id == -1 else id),
+        np.uint16(unassigned if label == -1 else label),
         zs,
         times,
         outlines,

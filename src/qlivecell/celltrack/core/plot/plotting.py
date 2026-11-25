@@ -1,7 +1,5 @@
 import numpy as np
-from matplotlib import cm
 from matplotlib import colormaps
-
 from numba import njit
 from skimage.transform import resize
 
@@ -35,8 +33,9 @@ def check_and_fill_plot_args(plot_args, stack_dims, channels_order):
     if "wheel_motor" not in plot_args.keys():
         plot_args["wheel_motor"] = "regular"
 
-    _cmap = colormaps.get_cmap(plot_args["masks_cmap"])
-    plot_args["labels_colors"] = CyclicList(_cmap.colors)
+    cmap = colormaps.get_cmap(plot_args["masks_cmap"])
+    colors = cmap.colors if hasattr(cmap, "colors") else cmap(np.linspace(0, 1, cmap.N))
+    plot_args["labels_colors"] = CyclicList(colors)
     plot_args["plot_masks"] = True
     return plot_args
 

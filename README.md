@@ -40,12 +40,62 @@ It provides a modular pipeline that combines state-of-the-art segmentation metho
 
 ## Installation
 
-We recommend using a fresh virtual environment (e.g., `pyenv`, `venv`, or `conda`).
+qlivecell 0.1.0 requires Python 3.11 or later. From a checkout, create and
+activate a virtual environment, then install the features you use.
 
-### Install from GitHub
 ```bash
-pip install git+https://github.com/dsb-lab/qlivecell.git
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
 ```
+
+The base install supports tracking, saved results, and Matplotlib. Add `qt`
+for PyQt6, `napari` for the 3D viewer, or `cellpose` for Cellpose. For
+StarDist, select its extra and **one** TensorFlow extra per environment.
+
+| StarDist environment | Install from the checkout |
+| --- | --- |
+| CPU | `python -m pip install -e '.[stardist,tensorflow,qt]'` |
+| CUDA 12 (Linux) | `python -m pip install -e '.[stardist,cuda12,qt]'` |
+| CUDA 13 (Linux, release candidate or newer) | `python -m pip install -e '.[stardist,cuda13,qt]'` |
+
+Use separate environments when switching between CUDA 13 and the standard
+TensorFlow distribution. pip combines requested extras, and both distributions
+write the same `tensorflow` package files. qlivecell detects the overlapping
+installs at import. StarDist also needs a model checkpoint, which
+`StarDist2D.from_pretrained(...)` downloads on first use. [TensorFlow installation guide](https://www.tensorflow.org/install/pip) · [CUDA 13 wheels](https://pypi.org/project/tensorflow-cuda13/)
+
+Cellpose `2.x` and `3.x` use their legacy channel configuration. With
+Cellpose `4.x`, use `models.CellposeModel`. The model receives channels in
+input order by default. To select channels explicitly, pass a legacy channel
+pair in `segmentation_args`. qlivecell applies that selection before
+inference because Cellpose 4 ignores the old `channels` parameter. Cellpose 4
+uses different checkpoints and
+model architectures, so upgrading the model can change masks. Use
+`gpu=False` for CPU inference. For GPU inference, install the PyTorch
+build for your driver and platform before adding qlivecell's `cellpose`
+extra, then verify `torch.cuda.is_available()`. The TensorFlow extras
+configure StarDist's runtime. [Cellpose settings](https://cellpose.readthedocs.io/en/latest/settings.html) · [PyTorch installation](https://pytorch.org/get-started/locally/)
+
+### Linux display troubleshooting
+
+When qlivecell launches its Matplotlib curation or napari viewer on a Wayland
+session, it prefers Qt's native Wayland plugin and includes XCB as a fallback
+if `DISPLAY` is set. On X11, Qt uses its default platform. qlivecell honors
+`QT_QPA_PLATFORM` and the Matplotlib backend already selected by the caller.
+
+- If you already have a Qt application, set its platform before that application
+  starts. To diagnose plugin loading, launch the script with
+  `QT_DEBUG_PLUGINS=1 QT_QPA_PLATFORM=wayland python your_script.py`.
+- On X11 or XWayland, try `QT_QPA_PLATFORM=xcb` for a single launch. Qt 6's
+  XCB plugin needs the system X11 libraries, including `libxcb-cursor0` on
+  Ubuntu. If a runtime library is missing, use native Wayland where available
+  or ask the system administrator to provide the library.
+- Use `MPLBACKEND=Agg` for headless Matplotlib runs. For Qt tests without a
+  display, use `QT_QPA_PLATFORM=offscreen MPLBACKEND=QtAgg`.
+
+[Qt platform selection](https://doc.qt.io/qt-6/qpa.html#selecting-a-qpa-plugin) · [Qt Linux runtime requirements](https://doc.qt.io/qt-6/linux-requirements.html)
 
 ---
 
@@ -79,23 +129,16 @@ cST.run()
 # cST.load()
 
 # Launch interactive curation 
-# cST.plot_tracking()
+# cST.plot()
 
 ```
 
 ## Examples
 
-For now, the `examples/` folder contains a single minimal, end-to-end example:
-
-- `examples/segmentation_tracking.py`
-
-This script is the recommended starting point. It demonstrates:
-- how to initialize `cellSegTrack`,
-- how to configure `segmentation_args` for **StarDist** and **Cellpose**,
-- how to run segmentation and tracking,
-- and how to launch the interactive curation GUI.
-
-More examples will be provided shortly.
+The scripts under [examples/artifitial_data](examples/artifitial_data) generate
+synthetic 2D and 3D TIFF time series and run StarDist segmentation, tracking,
+and manual curation. Run the generator for the desired dimensionality before
+the matching tracking script.
 
 ---
 

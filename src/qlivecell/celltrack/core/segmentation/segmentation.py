@@ -1,4 +1,4 @@
-import logging
+from importlib.metadata import version
 
 import numpy as np
 import skimage
@@ -7,8 +7,45 @@ from ..tools.tools import (get_default_args, get_outlines_masks_labels,
                            increase_point_resolution, mask_from_outline,
                            printclear, printfancy, progressbar)
 from .segmentation_tools import check3Dmethod
-import matplotlib.pyplot as plt
-logging.disable(logging.WARNING)
+
+
+def _cellpose_masks(model, image, method_args, *, volume=False):
+    args = method_args.copy()
+    if volume:
+        args["do_3D"] = True
+        if args.get("z_axis") is None:
+            args["z_axis"] = 0
+
+    channel_axis = 1 if volume else 0  # ZCYX volume or CYX plane
+    if args.get("channel_axis") is None and image.ndim == (4 if volume else 3):
+        args["channel_axis"] = channel_axis
+
+    channels = args.pop("channels", None)
+    if channels is not None and int(version("cellpose").split(".")[0]) >= 4:
+        # Cellpose-SAM ignores legacy channel numbers. Select them on the
+        # qlivecell input before handing the channels to Cellpose.
+        first, second = channels
+        input_axis = args.get("channel_axis")
+        if input_axis is None:
+            if first not in (0, 1) or second:
+                raise ValueError("Cellpose channel selection exceeds the input channels")
+        elif first == 0:
+            image = image.mean(axis=input_axis, keepdims=True)
+        else:
+            indices = [first - 1]
+            if second:
+                indices.append(second - 1)
+            image = np.take(image, indices, axis=input_axis)
+    elif channels is not None:
+        args["channels"] = channels
+        if not volume and channels[-1] == 0:
+            # Preserve historical single-channel selection on v2/v3.
+            image = image[channels[0] - 1]
+            args["channel_axis"] = None
+
+    # CellposeModel returns three values. The v2/v3 Cellpose wrapper also
+    # returns its diameter estimate. Both put the label mask first.
+    return model.eval(image, **args)[0]
 
 
 def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_args):
@@ -27,15 +64,8 @@ def cell_segmentation2D_cellpose(img, segmentation_args, segmentation_method_arg
     """
     from cellpose.utils import outlines_list
 
-    model = segmentation_args["model"]
-    chans = segmentation_method_args["channels"]
-    if chans[-1] == 0:
-        seg_img = img[chans[0]-1]
-    else:
-        seg_img = img
-    masks, flows, styles = model.eval(seg_img, **segmentation_method_args)
-    outlines = outlines_list(masks)
-    return outlines
+    masks = _cellpose_masks(segmentation_args["model"], img, segmentation_method_args)
+    return outlines_list(masks)
 
 
 def cell_segmentation2D_stardist(img, segmentation_args, segmentation_method_args):
@@ -108,7 +138,8 @@ def cell_segmentation3D_from2D(
 
     if "cellpose" in segmentation_args["method"]:
         segmentation_function = cell_segmentation2D_cellpose
-        main_ch = segmentation_method_args["channels"][0] - 1
+        channels = segmentation_method_args.get("channels")
+        main_ch = channels[0] - 1 if channels is not None else 0
     elif "stardist" in segmentation_args["method"]:
         segmentation_function = cell_segmentation2D_stardist
         main_ch = 0
@@ -195,10 +226,9 @@ def cell_segmentation3D_cellpose(stack, segmentation_args, segmentation_method_a
         Contains the 2D of the points forming the outlines
     """
 
-    segmentation_method_args["do_3D"] = True
-
-    model = segmentation_args["model"]
-    masks, flows, styles = model.eval(stack, **segmentation_method_args)
+    masks = _cellpose_masks(
+        segmentation_args["model"], stack, segmentation_method_args, volume=True
+    )
 
     Outlines = []
     Labels = []
@@ -389,6 +419,9 @@ def fill_segmentation_args(segmentation_args):
             seg_method_args = {}
         else:
             seg_method_args = get_default_args(model.predict_instances)
+
+    if "cellpose" in segmentation_method:
+        seg_method_args.setdefault("channels", None)
 
     for sarg in segmentation_args.keys():
         if sarg in new_segmentation_args.keys():

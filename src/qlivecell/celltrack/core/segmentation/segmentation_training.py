@@ -9,13 +9,22 @@ from ..tools.tools import get_default_args
 def train_CellposeModel(train_imgs, train_masks, model, train_seg_args):
     from cellpose import models
 
-    new_model = models.CellposeModel(
-        gpu=model.gpu, pretrained_model=model.pretrained_model[0]
-    )
+    pretrained = model.pretrained_model
+    if isinstance(pretrained, (list, tuple)):
+        pretrained = pretrained[0]
 
-    modelpath = new_model.train(train_imgs, train_masks, **train_seg_args)
-    new_model = models.CellposeModel(gpu=model.gpu, pretrained_model=modelpath)
-    return new_model
+    model_args = {"gpu": model.gpu, "device": model.device}
+    new_model = models.CellposeModel(pretrained_model=pretrained, **model_args)
+
+    if hasattr(new_model, "train"):
+        modelpath = new_model.train(train_imgs, train_masks, **train_seg_args)
+    else:
+        from cellpose.train import train_seg
+
+        modelpath, _, _ = train_seg(
+            new_model.net, train_data=train_imgs, train_labels=train_masks, **train_seg_args
+        )
+    return models.CellposeModel(pretrained_model=modelpath, **model_args)
 
 
 def train_StardistModel(train_imgs, train_masks, model, train_seg_args):
@@ -88,6 +97,12 @@ def check_and_fill_train_segmentation_args(
 ):
     if model is None:
         return None, None
+    if "cellpose" in seg_method and not hasattr(model, "train"):
+        from cellpose.train import train_seg
+
+        train_seg_args = get_default_args(train_seg)
+        train_seg_args.pop("train_data", None)
+        train_seg_args.pop("train_labels", None)
     else:
         train_seg_args = get_default_args(model.train)
 
@@ -111,6 +126,8 @@ def check_and_fill_train_segmentation_args(
             dt = now.strftime(seg_method + "_%d-%m-%Y_%H-%M-%S")
             train_segmentation_args[model_name_arg] = dt
 
+        if "channel_axis" in train_seg_args:
+            train_seg_args["channel_axis"] = 0
         config_args_dict = {}
 
     elif "stardist" in seg_method:

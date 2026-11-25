@@ -1,5 +1,7 @@
 import numpy as np
 
+from ..plot_extraclasses import CustomLassoSelector, stop_toolbar_navigation
+
 
 class SubplotPicker_add:
     def __init__(self, ax, canvas, zs, callback):
@@ -51,11 +53,7 @@ class LineBuilder_points:
         if event.inaxes != self.lines[self.t][self.z].axes:
             return
         if event.button == 3:
-            if self.lines[self.t][self.z].figure.canvas.toolbar.mode != "":
-                self.lines[self.t][self.z].figure.canvas.mpl_disconnect(
-                    self.lines[self.t][self.z].figure.canvas.toolbar._zoom_info.cid
-                )
-                self.lines[self.t][self.z].figure.canvas.toolbar.zoom()
+            stop_toolbar_navigation(event)
             self.xss[self.t][self.z].append(event.xdata)
             self.yss[self.t][self.z].append(event.ydata)
             self.lines[self.t][self.z].set_data(
@@ -70,9 +68,6 @@ class LineBuilder_points:
         for lines in self.lines:
             for line in lines:
                 line.remove()
-
-
-from ..plot_extraclasses import CustomLassoSelector
 
 
 class LineBuilder_lasso:

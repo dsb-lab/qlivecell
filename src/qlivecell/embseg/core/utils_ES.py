@@ -221,7 +221,7 @@ def segment_embryo(image, binths, seg_embryo_params):
     nint1 = 0
     for p in mask1:
         img1[p[1], p[0]] = image[p[1], p[0]]
-        int1 += image[p[1], p[0]]
+        int1 += image[p[1], p[0]].item()
         nint1 += 1
 
     img2 = np.zeros_like(image)
@@ -229,7 +229,7 @@ def segment_embryo(image, binths, seg_embryo_params):
     nint2 = 0
     for p in mask2:
         img2[p[1], p[0]] = image[p[1], p[0]]
-        int2 += image[p[1], p[0]]
+        int2 += image[p[1], p[0]].item()
         nint2 += 1
 
     if nint1 == 0:
