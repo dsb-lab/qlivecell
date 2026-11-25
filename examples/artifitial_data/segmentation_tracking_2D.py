@@ -1,7 +1,3 @@
-a = 2
-b = 3
-print(a + b)
-
 ### LOAD PACKAGE ###
 from qlivecell import cellSegTrack, get_file_names, tif_reader_5D, arboretum_napari, check_or_create_dir, fill_channels
 
@@ -10,8 +6,8 @@ import qlivecell.config as cfg
 cfg.CLEARPRINTS = True
 
 import os
-# path_cwd = os.path.dirname(os.path.abspath(__file__))
-path_cwd = "/home/pablo/Desktop/qlivecell/examples/artifitial_data"
+path_cwd = os.path.dirname(os.path.abspath(__file__))
+# path_cwd = "/home/pablo/Desktop/qlivecell/examples/artifitial_data"
 path_data = path_cwd+"/data/AGM_2Dexample/"
 path_save = path_cwd+"/segtrack/2Dexample/"
 
@@ -74,7 +70,7 @@ cST = cellSegTrack(
     channels=[0]
 )
 
-cST.load()
+cST.run()
 
 plot_args = {
     'plot_layout': (1,1),

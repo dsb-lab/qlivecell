@@ -110,7 +110,8 @@ from .core.tracking.tracking_tools import (
     prepare_labels_stack_for_tracking, replace_labels_in_place,
     replace_labels_t)
 
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
+
+warnings.filterwarnings("ignore", category=np.exceptions.VisibleDeprecationWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.simplefilter("ignore", UserWarning)
 
