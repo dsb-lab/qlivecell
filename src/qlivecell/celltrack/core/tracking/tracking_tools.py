@@ -261,7 +261,7 @@ def _order_labels_t(unique_labels_T, max_label):
                 for ij in range(len(Ci[n])):
                     Q[Ci[n][ij]][Cj[n][ij]] = nmax + 1
 
-                PQ[n] = nmax + 1
+                PQ[np.int64(n)] = nmax + 1
                 nmax += 1
 
     newQ = List()
