@@ -766,7 +766,7 @@ class cellSegTrack(object):
             lc = [[lab, lab] for lab in TLabels[0]]
             label_correspondance.append(lc)
 
-            printfancy("Segmentation and corrections completed.", clear_prev=2)
+            printfancy("Segmentation and corrections completed.", clear_prev=1)
             printfancy("Creating cells and saving results...", clear_prev=1)
             printfancy("")
 

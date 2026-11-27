@@ -478,6 +478,7 @@ def read_split_times(
     if extension in path_data:
         path_to_file = path_data
         IMGS, metadata = tif_reader_5D(path_to_file)
+        IMGS = IMGS[list(times)]
         if channels is None:
             channels = [i for i in range(IMGS.shape[2])]
         IMGS = IMGS[:, :, channels, :, :]
